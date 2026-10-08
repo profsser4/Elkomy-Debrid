@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elkomy Debrid PRO</title>
+    <!-- استدعاء Tailwind CSS للتصميم -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- استدعاء FontAwesome للأيقونات -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- خطوط جوجل -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #0f172a; /* لون خلفية داكن فخم */
+            color: #f8fafc;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .loader {
+            border: 3px solid #1e293b;
+            border-bottom-color: #3b82f6;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- حاوية الموقع الرئيسية -->
+    <div class="w-full max-w-3xl glass-panel rounded-2xl shadow-2xl p-6 md:p-10 relative">
+        
+        <!-- زر الإعدادات للـ API -->
+        <button onclick="toggleSettings()" class="absolute top-4 left-4 text-gray-400 hover:text-white transition">
+            <i class="fas fa-cog text-xl"></i>
+        </button>
+
+        <!-- الهيدر -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-2">
+                <i class="fas fa-bolt mr-2"></i> Elkomy Debrid
+            </h1>
+            <p class="text-gray-400">حول روابط التورنت والمواقع إلى روابط مباشرة صاروخية</p>
+        </div>
+
+        <!-- منطقة إعدادات API (مخفية افتراضياً) -->
+        <div id="settingsArea" class="hidden mb-6 p-4 bg-slate-800 rounded-xl border border-slate-600">
+            <label class="block text-sm font-semibold mb-2">TorBox API Key المفتاح السري:</label>
+            <div class="flex gap-2">
+                <input type="password" id="apiKeyInput" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 text-left" dir="ltr" placeholder="ضع الـ API Key هنا...">
+                <button onclick="saveApiKey()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold transition">حفظ</button>
+            </div>
+            <p class="text-xs text-yellow-400 mt-2"><i class="fas fa-info-circle"></i> يتم حفظ المفتاح في متصفحك فقط بأمان تام.</p>
+        </div>
+
+        <!-- مربع الإدخال -->
+        <div class="flex flex-col md:flex-row gap-3 mb-8">
+            <input type="text" id="linkInput" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-5 py-4 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-left placeholder-right text-lg transition" dir="ltr" placeholder="...أدخل رابط Magnet أو 1fichier هنا">
+            <button onclick="startConversion()" id="convertBtn" class="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg transform transition active:scale-95 flex items-center justify-center gap-2">
+                <i class="fas fa-rocket"></i> تحويل
+            </button>
+        </div>
+
+        <!-- منطقة عرض الحالة والنتائج -->
+        <div id="statusArea" class="hidden bg-slate-800/50 rounded-xl p-6 text-center border border-slate-700">
+            <div id="loadingIndicator" class="hidden mb-4">
+                <span class="loader w-10 h-10"></span>
+                <p id="statusText" class="text-blue-400 font-semibold mt-3">جاري الاتصال بالسيرفر...</p>
+            </div>
+
+            <!-- النتيجة النهائية -->
+            <div id="resultBox" class="hidden text-right">
+                <div class="flex items-center gap-3 mb-4 bg-slate-800 p-4 rounded-lg">
+                    <i class="fas fa-file-video text-3xl text-emerald-400"></i>
+                    <div>
+                        <h3 id="fileName" class="font-bold text-lg text-white truncate max-w-[250px] md:max-w-md" dir="ltr">File_Name.mp4</h3>
+                        <p id="fileSize" class="text-sm text-gray-400">الحجم: 0 MB</p>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap gap-3 justify-center mt-6">
+                    <a id="downloadBtn" href="#" target="_blank" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center px-6 py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
+                        <i class="fas fa-download"></i> تحميل مباشر
+                    </a>
+                    <button onclick="openVideoPlayer()" id="watchBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
+                        <i class="fas fa-play"></i> مشاهدة
+                    </button>
+                </div>
+                <!-- مربع خطأ لو حصل -->
+                <div id="errorBox" class="hidden mt-4 bg-red-900/50 border border-red-500 text-red-200 p-3 rounded-lg text-sm text-center"></div>
+            </div>
+        </div>
+
+        <!-- مشغل الفيديو (نافذة منبثقة) -->
+        <div id="videoModal" class="hidden fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4">
+            <button onclick="closeVideoPlayer()" class="absolute top-6 right-6 text-white hover:text-red-500 text-3xl transition">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="w-full max-w-5xl bg-black rounded-lg overflow-hidden shadow-2xl">
+                <video id="videoPlayer" controls class="w-full max-h-[80vh]">
+                    <source id="videoSource" src="" type="video/mp4">
+                    متصفحك لا يدعم تشغيل الفيديو.
+                </video>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- كود الجافاسكريبت المدمج لعمل الموقع -->
+    <script>
+        // مفتاحك الافتراضي (إذا لم يقم المستخدم بتغييره)
+        const DEFAULT_API_KEY = "610978e6-60be-4d90-97af-c77f0efd8caf";
+        let checkingInterval;
+
+        // عند تحميل الصفحة
+        window.onload = function() {
+            // جلب الـ API من التخزين المحلي أو وضع الافتراضي
+            let savedKey = localStorage.getItem("torbox_key");
+            if (!savedKey) {
+                localStorage.setItem("torbox_key", DEFAULT_API_KEY);
+                savedKey = DEFAULT_API_KEY;
+            }
+            document.getElementById("apiKeyInput").value = savedKey;
+        };
+
+        function toggleSettings() {
+            const settings = document.getElementById("settingsArea");
+            settings.classList.toggle("hidden");
+        }
+
+        function saveApiKey() {
+            const newKey = document.getElementById("apiKeyInput").value.trim();
+            if (newKey) {
+                localStorage.setItem("torbox_key", newKey);
+                alert("تم حفظ المفتاح السري بنجاح!");
+                toggleSettings();
+            }
+        }
+
+        function getApiKey() {
+            return localStorage.getItem("torbox_key") || DEFAULT_API_KEY;
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
+
+        function showError(msg) {
+            document.getElementById("loadingIndicator").classList.add("hidden");
+            const errorBox = document.getElementById("errorBox");
+            errorBox.innerText = msg;
+            errorBox.classList.remove("hidden");
+            document.getElementById("resultBox").classList.remove("hidden");
+            document.getElementById("downloadBtn").classList.add("hidden");
+            document.getElementById("watchBtn").classList.add("hidden");
+        }
+
+        // --- دالة التحويل الأساسية ---
+        async function startConversion() {
+            const link = document.getElementById("linkInput").value.trim();
+            if (!link) return alert("الرجاء إدخال رابط للتحويل!");
+
+            const apiKey = getApiKey();
+            const headers = {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/x-www-form-urlencoded" // مهم جداً لـ TorBox
+            };
+
+            // تجهيز واجهة المستخدم
+            document.getElementById("statusArea").classList.remove("hidden");
+            document.getElementById("resultBox").classList.add("hidden");
+            document.getElementById("errorBox").classList.add("hidden");
+            document.getElementById("loadingIndicator").classList.remove("hidden");
+            
+            const isTorrent = link.startsWith("magnet:");
+            const endpoint = isTorrent ? "torrents/createtorrent" : "webdl/createwebdownload";
+            const payload = isTorrent ? `magnet=${encodeURIComponent(link)}` : `link=${encodeURIComponent(link)}`;
+
+            document.getElementById("statusText").innerText = "1/3: جاري إرسال الطلب للسيرفر...";
+
+            try {
+                // إرسال الطلب لـ Torbox
+                const response = await fetch(`https://api.torbox.app/v1/api/${endpoint}`, {
+                    method: "POST",
+                    headers: headers,
+                    body: payload
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById("statusText").innerText = "2/3: تم القبول! جاري التجهيز...";
+                    // استخراج الـ ID
+                    let itemId = data.data.torrent_id || data.data.web_id || data.data.id || data.data.uid;
+                    
+                    // إذا لم يأتِ الـ ID مباشرة، ننتظر قليلاً ونجلبه
+                    if (!itemId) {
+                         await new Promise(r => setTimeout(r, 3000));
+                         const listRes = await fetch(`https://api.torbox.app/v1/api/${isTorrent ? 'torrents' : 'webdl'}/mylist`, {headers});
+                         const listData = await listRes.json();
+                         if(listData.success && listData.data.length > 0) itemId = listData.data[0].id;
+                    }
+
+                    if (itemId) {
+                        monitorProgress(itemId, isTorrent, apiKey);
+                    } else {
+                        showError("تم القبول ولكن فشل استخراج كود الملف.");
+                    }
+                } else {
+                    showError(`فشل: ${data.detail}`);
+                }
+            } catch (error) {
+                showError("حدث خطأ في الاتصال بالشبكة. جرب مجدداً.");
+            }
+        }
+
+        // --- دالة المراقبة (Polling) ---
+        async function monitorProgress(itemId, isTorrent, apiKey) {
+            const apiPath = isTorrent ? "torrents" : "webdl";
+            let attempts = 0;
+            const maxAttempts = 60; // 5 دقائق كحد أقصى
+
+            const check = async () => {
+                attempts++;
+                if(attempts > maxAttempts) {
+                    showError("انتهى وقت الانتظار. الملف ضخم جداً.");
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`https://api.torbox.app/v1/api/${apiPath}/mylist`, {
+                        headers: { "Authorization": `Bearer ${apiKey}` }
+                    });
+                    const data = await response.json();
+                    
+                    if(data.success) {
+                        const items = data.data;
+                        let targetItem = items.find(i => String(i.id) === String(itemId) || String(i.uid) === String(itemId));
+                        if(!targetItem && items.length > 0) targetItem = items[0];
+
+                        if(targetItem) {
+                            const state = targetItem.download_state || targetItem.status || "unknown";
+                            
+                            if (["error", "failed", "cancelled", "deleted"].includes(state)) {
+                                showError(`فشل التحميل من المصدر. الحالة: ${state}`);
+                                return;
+                            }
+
+                            if (["completed", "seeding", "cached", "finished", "downloaded", "active"].includes(state)) {
+                                document.getElementById("statusText").innerText = "3/3: اكتمل التحميل! جاري سحب الرابط...";
+                                getDirectLink(targetItem, apiPath, apiKey, isTorrent);
+                                return;
+                            } else {
+                                document.getElementById("statusText").innerText = `⏳ جاري التحميل في السيرفر (الحالة: ${state})...`;
+                            }
+                        }
+                    }
+                } catch(e) {
+                    console.log("Network blip, retrying...");
+                }
+
+                // استدعاء الدالة نفسها بعد 5 ثواني إذا لم يكتمل
+                checkingInterval = setTimeout(check, 5000);
+            };
+
+            check(); // بدء دورة التحقق
+        }
+
+        // --- جلب الرابط النهائي وعرضه ---
+        async function getDirectLink(targetItem, apiPath, apiKey, isTorrent) {
+            const files = targetItem.files || [];
+            let fileId = null;
+            let fileName = targetItem.name || "ملف جاهز";
+            let fileSize = targetItem.size || 0;
+
+            if (files.length > 0) {
+                // استخراج أكبر ملف (عادة يكون الفيلم)
+                const targetFile = files.reduce((max, f) => (f.size > max.size ? f : max), files[0]);
+                fileId = targetFile.id;
+                fileName = targetFile.name;
+                fileSize = targetFile.size || 0;
+            }
+
+            let dlUrl = `https://api.torbox.app/v1/api/${apiPath}/requestdl?token=${apiKey}&zip_link=false`;
+            if (isTorrent) dlUrl += `&torrent_id=${targetItem.id}`;
+            else dlUrl += `&web_id=${targetItem.id}`;
+            if (fileId) dlUrl += `&file_id=${fileId}`;
+
+            try {
+                let response = await fetch(dlUrl, { headers: { "Authorization": `Bearer ${apiKey}` } });
+                let data = await response.json();
+
+                // محاولة بدون file_id لو لزم الأمر
+                if (!data.success && fileId) {
+                    let altUrl = dlUrl.replace(`&file_id=${fileId}`, '');
+                    response = await fetch(altUrl, { headers: { "Authorization": `Bearer ${apiKey}` } });
+                    data = await response.json();
+                }
+
+                if (data.success) {
+                    // عرض النتيجة
+                    document.getElementById("loadingIndicator").classList.add("hidden");
+                    document.getElementById("resultBox").classList.remove("hidden");
+                    document.getElementById("downloadBtn").classList.remove("hidden");
+                    
+                    const finalLink = data.data;
+                    document.getElementById("fileName").innerText = fileName;
+                    document.getElementById("fileSize").innerText = `الحجم: ${formatBytes(fileSize)}`;
+                    document.getElementById("downloadBtn").href = finalLink;
+                    
+                    // إعداد مشغل الفيديو
+                    const isVideo = fileName.match(/\.(mp4|mkv|webm|avi|mov)$/i);
+                    const watchBtn = document.getElementById("watchBtn");
+                    if (isVideo) {
+                        watchBtn.classList.remove("hidden");
+                        document.getElementById("videoSource").src = finalLink;
+                    } else {
+                        watchBtn.classList.add("hidden");
+                    }
+
+                } else {
+                    showError(`فشل سحب الرابط: ${data.detail}`);
+                }
+            } catch (e) {
+                showError("حدث خطأ أثناء جلب الرابط المباشر.");
+            }
+        }
+
+        // --- دوال مشغل الفيديو ---
+        function openVideoPlayer() {
+            const player = document.getElementById("videoPlayer");
+            document.getElementById("videoModal").classList.remove("hidden");
+            player.load();
+            player.play();
+        }
+
+        function closeVideoPlayer() {
+            const player = document.getElementById("videoPlayer");
+            player.pause();
+            player.currentTime = 0;
+            document.getElementById("videoModal").classList.add("hidden");
+        }
+    </script>
+</body>
+</html>
