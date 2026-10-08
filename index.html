@@ -213,11 +213,11 @@
 
         // --- نظام البروكسي القوي لكسر حظر CORS في مصر والدول العربية ---
         async function fetchWithProxy(url, options = {}) {
-            // استخدام بروكسيات قوية ومفتوحة لا تحظر في الدول العربية غالباً
+            // تم تحديث البروكسيات لإزالة corsproxy لأنه أصبح مدفوعاً
             const proxies = [
-                "https://api.codetabs.com/v1/proxy?quest=", // قوي جداً
-                "https://corsproxy.io/?",                  // ممتاز
-                ""                                         // محاولة مباشرة
+                "",                                         // 1. محاولة مباشرة (الآن تعمل بشكل ممتاز)
+                "https://api.codetabs.com/v1/proxy?quest=", // 2. قوي جداً ومجاني
+                "https://api.allorigins.win/raw?url="       // 3. احتياطي إضافي
             ];
 
             let lastErrorMsg = "";
@@ -236,6 +236,15 @@
                     }
                     
                     const res = await fetch(targetUrl, options);
+                    
+                    // فحص إذا كان البروكسي يطلب فلوس أو مفتاح مدفوع (مثل مشكلة corsproxy)
+                    const clone = res.clone();
+                    try {
+                        const text = await clone.text();
+                        if (text.includes("keyless_legacy_url") || text.includes("CORSPROXY")) {
+                            continue; // تخطي هذا البروكسي الفاسد
+                        }
+                    } catch(e) {}
                     
                     // إذا استجاب السيرفر بأي رد منطقي نعتبره نجاح للاتصال
                     if (res.ok || res.status === 400 || res.status === 401 || res.status === 403 || res.status === 500) {
