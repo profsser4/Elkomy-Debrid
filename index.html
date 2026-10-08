@@ -153,11 +153,11 @@
         <div class="flex-1 bg-black flex items-center justify-center relative w-full h-full">
             <video id="videoPlayer" class="w-full h-full max-h-screen object-contain" controls playsinline x-webkit-airplay="allow" crossorigin="anonymous">
                 <source id="videoSource" src="" type="video/mp4">
-                متصفحك لا يدعم مشغل الفيديو المتقدم.
+                متصفحك لا يدعم مشغل الفيديو.
             </video>
             
             <div id="resumeToast" class="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-blue-600/95 text-white px-6 py-3 rounded-full text-sm font-bold hidden shadow-2xl border border-blue-400">
-                <i class="fas fa-history mr-2"></i> تم استئناف المشاهدة من حيث توقفت 🎬
+                <i class="fas fa-history mr-2"></i> تم استئناف المشاهدة 🎬
             </div>
         </div>
     </div>
@@ -241,57 +241,67 @@
         }
 
         // =========================================================================
-        // الدالة السحرية: اتصال مباشر 100% بدون أي بروكسي (تنفيذ فكرتك العبقرية)
+        // نظام الدبابة (Triple-Layer Proxy) لتخطي حظر الشركات المصرية (CORS Bypass)
         // =========================================================================
         async function fetchTorboxAPI(endpoint, paramsObj = {}, method = "GET") {
             const apiKey = localStorage.getItem("torbox_key") || DEFAULT_API_KEY;
+            let targetUrl = `https://api.torbox.app/v1/api/${endpoint}`;
             
-            // 1. إضافة المفتاح في الرابط نفسه (لإلغاء الحاجة لـ Headers)
-            let url = `https://api.torbox.app/v1/api/${endpoint}`;
-            url += url.includes('?') ? `&token=${apiKey}` : `?token=${apiKey}`;
-
-            // 2. إعداد الطلب (بدون أي Headers عشان المتصفح ميعملش بلوك)
-            let options = { method: method };
+            // تهيئة الطلب بصيغة x-www-form-urlencoded (عشان المتصفح والبروكسي ميشكوش فيه)
+            let options = {
+                method: method,
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Accept": "application/json"
+                }
+            };
 
             if (method === "POST") {
-                // إرسال البيانات كـ FormData بيخلي الطلب "Simple Request" المتصفح بيعديه فوراً
-                const formData = new FormData();
-                for (const key in paramsObj) {
-                    formData.append(key, paramsObj[key]);
-                }
-                options.body = formData;
+                options.headers["Content-Type"] = "application/x-www-form-urlencoded";
+                options.body = new URLSearchParams(paramsObj).toString();
             } else if (method === "GET" && Object.keys(paramsObj).length > 0) {
-                const qs = new URLSearchParams(paramsObj).toString();
-                url += `&${qs}`;
+                targetUrl += `?${new URLSearchParams(paramsObj).toString()}`;
             }
 
-            try {
-                // اتصال مباشر بدون وسيط!
-                const res = await fetch(url, options);
-                return await res.json();
-            } catch (error) {
-                console.error("Direct TorBox fetch error:", error);
-                return { success: false, detail: `تعذر الاتصال المباشر بالسيرفر: ${error.message}` };
-            }
-        }
-        // =========================================================================
+            // قائمة البروكسيات القوية والمجانية
+            const proxies = [
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
+                `https://thingproxy.freeboard.io/fetch/${targetUrl}`,
+                targetUrl // محاولة الاتصال المباشر كحل أخير
+            ];
 
-        async function fetchSearchAPI(url) {
-            try {
-                // مواقع البحث (Stremio/Cinemeta) مش بتعمل بلوك فبنطلبها مباشر
-                const res = await fetch(url);
-                if (res.ok) return await res.json();
-            } catch(e) {
-                console.log("Search API direct failed, trying proxy for search only...");
+            let lastError = "";
+            for (const proxyUrl of proxies) {
                 try {
-                    // بروكسي احتياطي للبحث بس لو شركة النت قافلة Yify مثلاً
-                    const pUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
-                    const res2 = await fetch(pUrl);
-                    if (res2.ok) return await res2.json();
-                } catch(err) { console.error("All search proxies failed"); }
+                    const res = await fetch(proxyUrl, options);
+                    const data = await res.json();
+                    if (data) return data; 
+                } catch (error) {
+                    lastError = error.message;
+                    console.log(`فشل الاتصال عبر ${proxyUrl}، جاري تجربة التالي...`);
+                }
+            }
+
+            return { success: false, detail: `فشل الاتصال بجميع السيرفرات بسبب الحماية: ${lastError}` };
+        }
+
+        // دالة مخصصة للبحث عشان Stremio/Yify
+        async function fetchSearchAPI(url) {
+            const proxies = [
+                url, // المباشر الأول عشان أسرع
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+            ];
+            
+            for (const pUrl of proxies) {
+                try {
+                    const res = await fetch(pUrl);
+                    if (res.ok) return await res.json();
+                } catch(e) { /* التجربة في اللي بعده */ }
             }
             return null;
         }
+        // =========================================================================
 
         async function executeAction() {
             const input = document.getElementById("searchInput").value.trim();
@@ -308,7 +318,7 @@
         }
 
         async function searchHybrid(query) {
-            showLoader("جاري البحث الشامل (أفلام ومسلسلات)...");
+            showLoader("جاري البحث في قاعدة البيانات...");
             let results = [];
             const encodedQuery = encodeURIComponent(query);
             const isSeries = query.includes("مسلسل") || query.toLowerCase().includes("series");
@@ -419,7 +429,7 @@
             
             const dlProgress = document.getElementById("dlProgress");
             document.getElementById("dlTitle").innerText = "تهيئة السيرفر...";
-            dlProgress.innerHTML = `<span class="text-blue-400"><i class="fas fa-spinner fa-spin"></i> جاري إرسال الطلب لـ TorBox مباشرة...</span>`;
+            dlProgress.innerHTML = `<span class="text-blue-400"><i class="fas fa-spinner fa-spin"></i> جاري إرسال الطلب للسيرفر المضيف...</span>`;
             
             currentMovieHash = hash || btoa(link).substring(0, 10); 
 
@@ -431,7 +441,7 @@
             else payload.link = link;
 
             try {
-                // الاتصال المباشر 100% بالدالة الجديدة
+                // الاتصال بنظام الدبابة الجديد
                 const data = await fetchTorboxAPI(endpoint, payload, "POST");
                 
                 if (data && data.success) {
@@ -464,7 +474,7 @@
 
             const check = async () => {
                 attempts++;
-                if(attempts > 60) return debridError("انتهى وقت الانتظار. الملف يحمل في الخلفية على حسابك.");
+                if(attempts > 60) return debridError("انتهى وقت الانتظار. الملف ضخم ويتم تحميله في الخلفية.");
 
                 try {
                     const data = await fetchTorboxAPI(`${apiPath}/mylist`, {}, "GET");
@@ -544,7 +554,6 @@
         // --- مشغل الفيديو واستكمال المشاهدة ---
         const videoPlayer = document.getElementById("videoPlayer");
         const videoSource = document.getElementById("videoSource");
-        let resumeSaved = false;
 
         function startStreaming() {
             if (!currentStreamUrl) return;
@@ -553,7 +562,6 @@
             
             videoSource.src = currentStreamUrl;
             videoPlayer.load();
-            resumeSaved = false;
 
             const savedTime = localStorage.getItem(`resume_${currentMovieHash}`);
             if (savedTime && parseFloat(savedTime) > 15) {
