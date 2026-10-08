@@ -230,6 +230,20 @@
         }
 
         // --- 3. UI Helpers ---
+        // دالة سحرية لكسر حماية المتصفح (CORS Proxy)
+        async function fetchWithProxy(url, options = {}) {
+            try {
+                // المحاولة الأولى: اتصال مباشر
+                const res = await fetch(url, options);
+                return res;
+            } catch (err) {
+                // المحاولة الثانية: عبر بروكسي لتخطي حظر المتصفح (CORS)
+                console.log("Direct connection blocked by CORS, trying proxy...");
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                return await fetch(proxyUrl, options);
+            }
+        }
+
         function showToast(msg, isError = false) {
             const toast = document.getElementById('toast');
             toast.innerText = msg;
@@ -468,9 +482,10 @@
             }
 
             try {
-                const response = await fetch(`https://api.torbox.app/v1/api/${endpoint}`, {
+                const targetUrl = `https://api.torbox.app/v1/api/${endpoint}`;
+                const response = await fetchWithProxy(targetUrl, {
                     method: "POST", 
-                    headers: { "Authorization": `Bearer ${apiKey}` }, // لا نضع Content-Type مع FormData
+                    headers: { "Authorization": `Bearer ${apiKey}` }, 
                     body: formData
                 });
                 const data = await response.json();
@@ -482,7 +497,8 @@
                          // إذا لم يرسل الـ ID، نجلبه من القائمة
                          document.getElementById("dlProgress").innerText = "جاري استخراج كود الملف...";
                          await new Promise(r => setTimeout(r, 2000));
-                         const listRes = await fetch(`https://api.torbox.app/v1/api/${isTorrent ? 'torrents' : 'webdl'}/mylist`, {
+                         const listUrl = `https://api.torbox.app/v1/api/${isTorrent ? 'torrents' : 'webdl'}/mylist`;
+                         const listRes = await fetchWithProxy(listUrl, {
                              headers: { "Authorization": `Bearer ${apiKey}` }
                          });
                          const listData = await listRes.json();
@@ -512,7 +528,8 @@
                 if(attempts > 60) return debridError("انتهى وقت الانتظار. الملف ضخم ويحمل في الخلفية.");
 
                 try {
-                    const res = await fetch(`https://api.torbox.app/v1/api/${apiPath}/mylist`, { headers: { "Authorization": `Bearer ${apiKey}` } });
+                    const targetUrl = `https://api.torbox.app/v1/api/${apiPath}/mylist`;
+                    const res = await fetchWithProxy(targetUrl, { headers: { "Authorization": `Bearer ${apiKey}` } });
                     const data = await res.json();
                     
                     if(data.success) {
@@ -556,13 +573,13 @@
             if (fileId) dlUrl += `&file_id=${fileId}`;
 
             try {
-                let res = await fetch(dlUrl, { headers: { "Authorization": `Bearer ${apiKey}` } });
+                let res = await fetchWithProxy(dlUrl, { headers: { "Authorization": `Bearer ${apiKey}` } });
                 let data = await res.json();
                 
                 // المحاولة بدون File ID لو فشلت
                 if (!data.success && fileId) {
                     let altUrl = dlUrl.replace(`&file_id=${fileId}`, '');
-                    res = await fetch(altUrl, { headers: { "Authorization": `Bearer ${apiKey}` } });
+                    res = await fetchWithProxy(altUrl, { headers: { "Authorization": `Bearer ${apiKey}` } });
                     data = await res.json();
                 }
 
