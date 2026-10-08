@@ -50,6 +50,7 @@
 </head>
 <body class="min-h-screen relative">
 
+    <!-- شاشة تسجيل الدخول -->
     <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-95">
         <div class="glass-panel p-8 rounded-2xl shadow-2xl w-full max-w-md text-center border-t-4 border-blue-500">
             <i class="fas fa-user-shield text-5xl text-blue-500 mb-4"></i>
@@ -72,9 +73,9 @@
         </div>
     </div>
 
+    <!-- التطبيق الرئيسي -->
     <div id="mainApp" class="hidden flex flex-col min-h-screen">
         
-        <!-- Header -->
         <header class="glass-panel sticky top-0 z-30 shadow-lg px-4 py-3 border-b border-slate-700">
             <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-2">
@@ -140,6 +141,7 @@
         </main>
     </div>
 
+    <!-- مشغل الفيديو السينمائي -->
     <div id="videoModal" class="hidden fixed inset-0 bg-black z-[100] flex flex-col">
         <div class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/90 to-transparent z-10 flex justify-between items-center transition-opacity duration-300 hover:opacity-100 opacity-0" id="playerControls">
             <h2 id="videoTitle" class="text-white font-bold text-lg truncate px-4 drop-shadow-md" dir="ltr">جاري التشغيل...</h2>
@@ -211,42 +213,6 @@
             checkAuth();
         }
 
-        async function fetchWithProxy(url, options = {}) {
-            // قائمة البروكسيات المجانية الآمنة تماماً
-            const proxies = [
-                "",                                         // 1. محاولة مباشرة (الأنسب لـ TorBox لأننا نرسل الـ Token في اللينك)
-                "https://api.codetabs.com/v1/proxy?quest=", // 2. بروكسي قوي ومجاني
-                "https://api.allorigins.win/raw?url="       // 3. احتياطي إضافي
-            ];
-
-            let lastErrorMsg = "";
-
-            for (let i = 0; i < proxies.length; i++) {
-                try {
-                    const proxy = proxies[i];
-                    let targetUrl = url;
-
-                    if (proxy) {
-                        if (proxy.includes("quest=")) {
-                            targetUrl = proxy + url;
-                        } else {
-                            targetUrl = proxy + encodeURIComponent(url);
-                        }
-                    }
-                    
-                    const res = await fetch(targetUrl, options);
-                    
-                    if (res.ok || res.status === 400 || res.status === 401 || res.status === 403 || res.status === 500) {
-                        return res;
-                    }
-                } catch (err) {
-                    lastErrorMsg = err.message;
-                    console.log(`Proxy attempt ${i} failed:`, err.message);
-                }
-            }
-            throw new Error(`مشكلة الحظر (CORS). تأكد من اتصالك بالإنترنت. تفاصيل: ${lastErrorMsg}`);
-        }
-
         function showToast(msg, isError = false) {
             const toast = document.getElementById('toast');
             toast.innerText = msg;
@@ -270,15 +236,61 @@
             }
         }
 
-        function formatBytes(bytes) {
-            if (!+bytes) return '0 Bytes';
-            const k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-        }
-
         function handleEnter(e) {
             if (e.key === 'Enter') executeAction();
+        }
+
+        // =========================================================================
+        // الدالة السحرية: اتصال مباشر 100% بدون أي بروكسي (تنفيذ فكرتك العبقرية)
+        // =========================================================================
+        async function fetchTorboxAPI(endpoint, paramsObj = {}, method = "GET") {
+            const apiKey = localStorage.getItem("torbox_key") || DEFAULT_API_KEY;
+            
+            // 1. إضافة المفتاح في الرابط نفسه (لإلغاء الحاجة لـ Headers)
+            let url = `https://api.torbox.app/v1/api/${endpoint}`;
+            url += url.includes('?') ? `&token=${apiKey}` : `?token=${apiKey}`;
+
+            // 2. إعداد الطلب (بدون أي Headers عشان المتصفح ميعملش بلوك)
+            let options = { method: method };
+
+            if (method === "POST") {
+                // إرسال البيانات كـ FormData بيخلي الطلب "Simple Request" المتصفح بيعديه فوراً
+                const formData = new FormData();
+                for (const key in paramsObj) {
+                    formData.append(key, paramsObj[key]);
+                }
+                options.body = formData;
+            } else if (method === "GET" && Object.keys(paramsObj).length > 0) {
+                const qs = new URLSearchParams(paramsObj).toString();
+                url += `&${qs}`;
+            }
+
+            try {
+                // اتصال مباشر بدون وسيط!
+                const res = await fetch(url, options);
+                return await res.json();
+            } catch (error) {
+                console.error("Direct TorBox fetch error:", error);
+                return { success: false, detail: `تعذر الاتصال المباشر بالسيرفر: ${error.message}` };
+            }
+        }
+        // =========================================================================
+
+        async function fetchSearchAPI(url) {
+            try {
+                // مواقع البحث (Stremio/Cinemeta) مش بتعمل بلوك فبنطلبها مباشر
+                const res = await fetch(url);
+                if (res.ok) return await res.json();
+            } catch(e) {
+                console.log("Search API direct failed, trying proxy for search only...");
+                try {
+                    // بروكسي احتياطي للبحث بس لو شركة النت قافلة Yify مثلاً
+                    const pUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+                    const res2 = await fetch(pUrl);
+                    if (res2.ok) return await res2.json();
+                } catch(err) { console.error("All search proxies failed"); }
+            }
+            return null;
         }
 
         async function executeAction() {
@@ -299,54 +311,27 @@
             showLoader("جاري البحث الشامل (أفلام ومسلسلات)...");
             let results = [];
             const encodedQuery = encodeURIComponent(query);
-            
             const isSeries = query.includes("مسلسل") || query.toLowerCase().includes("series");
 
-            // 1. بحث YIFY للأفلام فقط
-            if (!isSeries) {
-                try {
-                    const yifyUrl = `https://en.yify.sc/api/v2/list_movies.json?query_term=${encodedQuery}&limit=4`;
-                    const yifyRes = await fetchWithProxy(yifyUrl);
-                    const yifyData = await yifyRes.json();
-
-                    if (yifyData && yifyData.data && yifyData.data.movies) {
-                        yifyData.data.movies.forEach(m => {
-                            let movie = {
-                                id: m.id, title: m.title, year: m.year,
-                                rating: m.rating, cover: m.large_cover_image || m.medium_cover_image,
-                                type: "فيلم", torrents: []
-                            };
-                            m.torrents.forEach(t => {
-                                movie.torrents.push({ quality: `🎬 ${t.quality} | ${t.size}`, hash: t.hash });
-                            });
-                            if (movie.torrents.length > 0) results.push(movie);
-                        });
-                    }
-                } catch (e) { console.log("YIFY failed:", e); }
-            }
-
-            // 2. بحث Cinemeta/Torrentio الشامل
-            if (results.length < 2) {
-                try {
-                    const type = isSeries ? 'series' : 'movie';
-                    const cUrl = `https://v3-cinemeta.strem.io/catalog/${type}/top/search=${encodedQuery}.json`;
-                    const cRes = await fetchWithProxy(cUrl);
-                    const cData = await cRes.json();
-                    
-                    if (cData.metas) {
-                        for (let m of cData.metas.slice(0, 4)) {
-                            let item = {
-                                id: m.imdb_id, title: m.name, year: m.releaseInfo,
-                                rating: m.imdbRating || "N/A", cover: m.poster,
-                                type: m.type === 'series' ? "مسلسل" : "فيلم", torrents: []
-                            };
-                            
-                            const torUrl = `https://torrentio.strem.fun/stream/${m.type}/${m.imdb_id}.json`;
-                            const torRes = await fetchWithProxy(torUrl);
-                            const torData = await torRes.json();
-                            
-                            let seen = new Set();
-                            (torData.streams || []).forEach(s => {
+            try {
+                const type = isSeries ? 'series' : 'movie';
+                const cUrl = `https://v3-cinemeta.strem.io/catalog/${type}/top/search=${encodedQuery}.json`;
+                const cData = await fetchSearchAPI(cUrl);
+                
+                if (cData && cData.metas) {
+                    for (let m of cData.metas.slice(0, 4)) {
+                        let item = {
+                            id: m.imdb_id || m.id, title: m.name, year: m.releaseInfo,
+                            rating: m.imdbRating || "N/A", cover: m.poster,
+                            type: m.type === 'series' ? "مسلسل" : "فيلم", torrents: []
+                        };
+                        
+                        const torUrl = `https://torrentio.strem.fun/stream/${m.type}/${item.id}.json`;
+                        const torData = await fetchSearchAPI(torUrl);
+                        
+                        let seen = new Set();
+                        if(torData && torData.streams) {
+                            torData.streams.forEach(s => {
                                 if(s.infoHash && !seen.has(s.infoHash)) {
                                     let qMatch = s.name.match(/(1080p|720p|4k|2160p)/i);
                                     let quality = qMatch ? qMatch[0].toUpperCase() : "HD";
@@ -361,12 +346,12 @@
                                     seen.add(s.infoHash);
                                 }
                             });
-                            item.torrents = item.torrents.slice(0, 4);
-                            if (item.torrents.length > 0) results.push(item);
                         }
+                        item.torrents = item.torrents.slice(0, 4);
+                        if (item.torrents.length > 0) results.push(item);
                     }
-                } catch (e) { console.log("Cinemeta fallback failed:", e); }
-            }
+                }
+            } catch (e) { console.log("Search failed:", e); }
 
             hideLoader();
             renderMovies(results);
@@ -434,72 +419,57 @@
             
             const dlProgress = document.getElementById("dlProgress");
             document.getElementById("dlTitle").innerText = "تهيئة السيرفر...";
-            dlProgress.innerHTML = `<span class="text-blue-400"><i class="fas fa-spinner fa-spin"></i> جاري إرسال الطلب لـ TorBox...</span>`;
+            dlProgress.innerHTML = `<span class="text-blue-400"><i class="fas fa-spinner fa-spin"></i> جاري إرسال الطلب لـ TorBox مباشرة...</span>`;
             
             currentMovieHash = hash || btoa(link).substring(0, 10); 
 
-            const apiKey = localStorage.getItem("torbox_key") || DEFAULT_API_KEY;
             const isTorrent = link.startsWith("magnet:");
             const endpoint = isTorrent ? "torrents/createtorrent" : "webdl/createwebdownload";
             
-            // نضع مفتاح الـ API داخل اللينك مباشرة لمنع حظر المتصفح (CORS Block)
-            const targetUrl = `https://api.torbox.app/v1/api/${endpoint}?token=${apiKey}`;
-            
-            const params = new URLSearchParams();
-            if (isTorrent) params.append("magnet", link);
-            else params.append("link", link);
+            const payload = {};
+            if (isTorrent) payload.magnet = link;
+            else payload.link = link;
 
             try {
-                const response = await fetchWithProxy(targetUrl, {
-                    method: "POST", 
-                    headers: { 
-                        "Content-Type": "application/x-www-form-urlencoded"
-                    }, 
-                    body: params.toString()
-                });
+                // الاتصال المباشر 100% بالدالة الجديدة
+                const data = await fetchTorboxAPI(endpoint, payload, "POST");
                 
-                const data = await response.json();
-                
-                if (data.success) {
+                if (data && data.success) {
                     let itemId = data.data.torrent_id || data.data.web_id || data.data.id || data.data.uid;
                     
                     if (!itemId) { 
                          dlProgress.innerHTML = `<span class="text-yellow-400"><i class="fas fa-search"></i> جاري استخراج كود الملف...</span>`;
                          await new Promise(r => setTimeout(r, 2000));
-                         const listUrl = `https://api.torbox.app/v1/api/${isTorrent ? 'torrents' : 'webdl'}/mylist?token=${apiKey}`;
-                         const listRes = await fetchWithProxy(listUrl);
-                         const listData = await listRes.json();
-                         if(listData.success && listData.data.length > 0) itemId = listData.data[0].id;
+                         const listData = await fetchTorboxAPI(isTorrent ? 'torrents/mylist' : 'webdl/mylist', {}, "GET");
+                         if(listData && listData.success && listData.data.length > 0) itemId = listData.data[0].id;
                     }
 
                     if (itemId) {
-                        monitorProgress(itemId, isTorrent, apiKey);
+                        monitorProgress(itemId, isTorrent);
                     } else {
                         debridError("تم القبول ولكن فشل استخراج كود التتبع من السيرفر.");
                     }
                 } else {
-                    debridError(`الرفض من السيرفر: ${data.detail || JSON.stringify(data)}`);
+                    debridError(`الرفض من السيرفر: ${data ? data.detail || JSON.stringify(data) : 'بدون رد'}`);
                 }
             } catch (error) {
-                debridError(`مشكلة في الاتصال: ${error.message}`);
+                debridError(`مشكلة في الاتصال المباشر. تفاصيل: ${error.message}`);
             }
         }
 
-        async function monitorProgress(itemId, isTorrent, apiKey) {
+        async function monitorProgress(itemId, isTorrent) {
             const apiPath = isTorrent ? "torrents" : "webdl";
             let attempts = 0;
             if(checkingInterval) clearTimeout(checkingInterval);
 
             const check = async () => {
                 attempts++;
-                if(attempts > 60) return debridError("انتهى وقت الانتظار. الملف ضخم ويحمل في الخلفية على حسابك.");
+                if(attempts > 60) return debridError("انتهى وقت الانتظار. الملف يحمل في الخلفية على حسابك.");
 
                 try {
-                    const targetUrl = `https://api.torbox.app/v1/api/${apiPath}/mylist?token=${apiKey}`;
-                    const res = await fetchWithProxy(targetUrl);
-                    const data = await res.json();
+                    const data = await fetchTorboxAPI(`${apiPath}/mylist`, {}, "GET");
                     
-                    if(data.success) {
+                    if(data && data.success) {
                         const target = data.data.find(i => String(i.id) === String(itemId) || String(i.uid) === String(itemId)) || data.data[0];
                         if(target) {
                             const state = target.download_state || target.status || "unknown";
@@ -507,7 +477,7 @@
 
                             if (["completed", "seeding", "cached", "finished", "downloaded"].includes(state)) {
                                 document.getElementById("dlProgress").innerHTML = `<span class="text-emerald-400"><i class="fas fa-check-circle"></i> اكتمل! جاري سحب الرابط المباشر...</span>`;
-                                getDirectLink(target, apiPath, apiKey, isTorrent);
+                                getDirectLink(target, apiPath, isTorrent);
                                 return;
                             } else {
                                 const progressTxt = target.progress ? `(${Math.round(target.progress * 100)}%)` : '';
@@ -523,7 +493,7 @@
             check(); 
         }
 
-        async function getDirectLink(targetItem, apiPath, apiKey, isTorrent) {
+        async function getDirectLink(targetItem, apiPath, isTorrent) {
             const files = targetItem.files || [];
             let fileId = null;
             let fileName = targetItem.name || "الملف جاهز";
@@ -536,22 +506,20 @@
                 fileName = targetFile.name;
             }
 
-            let dlUrl = `https://api.torbox.app/v1/api/${apiPath}/requestdl?token=${apiKey}&zip_link=false`;
-            if (isTorrent) dlUrl += `&torrent_id=${targetItem.id}`;
-            else dlUrl += `&web_id=${targetItem.id}`;
-            if (fileId) dlUrl += `&file_id=${fileId}`;
+            const params = { zip_link: "false" };
+            if (isTorrent) params.torrent_id = targetItem.id;
+            else params.web_id = targetItem.id;
+            if (fileId) params.file_id = fileId;
 
             try {
-                let res = await fetchWithProxy(dlUrl);
-                let data = await res.json();
+                let data = await fetchTorboxAPI(`${apiPath}/requestdl`, params, "GET");
                 
-                if (!data.success && fileId) {
-                    let altUrl = dlUrl.replace(`&file_id=${fileId}`, '');
-                    res = await fetchWithProxy(altUrl);
-                    data = await res.json();
+                if (data && !data.success && fileId) {
+                    delete params.file_id; 
+                    data = await fetchTorboxAPI(`${apiPath}/requestdl`, params, "GET");
                 }
 
-                if (data.success) {
+                if (data && data.success) {
                     currentStreamUrl = data.data;
                     document.getElementById("dlTitle").innerText = fileName;
                     document.getElementById("dlProgress").innerHTML = `<span class="text-emerald-400 font-bold"><i class="fas fa-check"></i> تم التجهيز بنجاح! جاهز للعرض أو التحميل.</span>`;
@@ -561,10 +529,10 @@
                     document.getElementById("videoTitle").innerText = fileName;
                     showToast("الملف جاهز للمشاهدة!");
                 } else {
-                    debridError(`فشل سحب الرابط المباشر: ${data.detail}`);
+                    debridError(`فشل سحب الرابط المباشر: ${data ? data.detail : 'خطأ غير معروف'}`);
                 }
             } catch (e) {
-                debridError(`حدث خطأ أثناء جلب الرابط من سيرفرات Torbox.`);
+                debridError(`حدث خطأ أثناء جلب الرابط المباشر.`);
             }
         }
 
@@ -573,6 +541,7 @@
             document.getElementById("dlButtons").classList.add("hidden");
         }
 
+        // --- مشغل الفيديو واستكمال المشاهدة ---
         const videoPlayer = document.getElementById("videoPlayer");
         const videoSource = document.getElementById("videoSource");
         let resumeSaved = false;
