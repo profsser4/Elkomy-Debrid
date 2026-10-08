@@ -25,7 +25,6 @@
 </head>
 <body class="min-h-screen relative">
 
-    <!-- شاشة تسجيل الدخول -->
     <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-95">
         <div class="glass-panel p-8 rounded-2xl shadow-2xl w-full max-w-md text-center border-t-4 border-blue-500">
             <i class="fas fa-user-shield text-5xl text-blue-500 mb-4"></i>
@@ -47,7 +46,6 @@
         </div>
     </div>
 
-    <!-- التطبيق الرئيسي -->
     <div id="mainApp" class="hidden flex flex-col min-h-screen">
         <header class="glass-panel sticky top-0 z-30 shadow-lg px-4 py-3 border-b border-slate-700">
             <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
@@ -74,7 +72,6 @@
             </div>
         </header>
 
-        <!-- الإعدادات (تم ضبطها تلقائياً على سيرفر Railway) -->
         <div id="settingsArea" class="hidden max-w-7xl mx-auto w-full p-4 mt-4">
             <div class="glass-panel p-6 rounded-xl border border-slate-600">
                 <h3 class="text-xl font-bold mb-4 text-emerald-400"><i class="fas fa-server"></i> إعدادات السيرفر الخاص</h3>
@@ -111,7 +108,6 @@
         </main>
     </div>
 
-    <!-- مشغل الفيديو -->
     <div id="videoModal" class="hidden fixed inset-0 bg-black z-[100] flex flex-col">
         <div class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/90 to-transparent z-10 flex justify-between items-center transition-opacity duration-300 hover:opacity-100 opacity-0" id="playerControls">
             <h2 id="videoTitle" class="text-white font-bold text-lg truncate px-4 drop-shadow-md" dir="ltr">جاري التشغيل...</h2>
@@ -136,7 +132,8 @@
         let checkingInterval;
         let currentStreamUrl = "";
         let currentMovieHash = ""; 
-        // السيرفر الأساسي بتاعنا على Railway
+        
+        // تم تحديث الرابط ليكون سيرفر Railway الخاص بك!
         const DEFAULT_SERVER_URL = "https://elkomy-server-production.up.railway.app";
 
         window.onload = function() {
@@ -193,18 +190,15 @@
         function handleEnter(e) { if (e.key === 'Enter') executeAction(); }
 
         // =========================================================================
-        // الدالة الجبارة: الاتصال عبر سيرفر Railway الخاص بك (لا يمكن حظره)
+        // الاتصال عبر سيرفر Railway الخاص بك 
         // =========================================================================
         async function fetchTorboxAPI(endpoint, paramsObj = {}, method = "GET") {
             let renderUrl = localStorage.getItem("render_url") || DEFAULT_SERVER_URL;
             
-            // تنظيف الرابط
             if (renderUrl.endsWith('/')) renderUrl = renderUrl.slice(0, -1);
             if (!renderUrl.startsWith('http')) renderUrl = 'https://' + renderUrl;
             
-            // توجيه الطلب للبوت بتاعنا في أمريكا
             let targetUrl = `${renderUrl}/proxy/${endpoint}`;
-            
             let options = { method: method };
 
             if (method === "POST") {
@@ -214,22 +208,19 @@
             }
 
             try {
-                console.log("جارِ الاتصال عبر سيرفرك الخاص:", targetUrl);
                 const res = await fetch(targetUrl, options);
                 return await res.json();
             } catch (error) {
-                console.error("Proxy Error:", error);
-                return { success: false, detail: "فشل الاتصال بسيرفر البوت الخاص بك. تأكد أن السيرفر يعمل." };
+                return { success: false, detail: "فشل الاتصال بسيرفر البوت الخاص بك." };
             }
         }
 
-        // --- محرك البحث (Cinemeta + PirateBay) ---
         async function fetchSearchAPI(url) {
             try {
                 const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
                 const res = await fetch(proxyUrl);
                 if (res.ok) return await res.json();
-            } catch(e) { console.log(e); }
+            } catch(e) {}
             return null;
         }
 
@@ -291,7 +282,7 @@
                         if (item.torrents.length > 0) results.push(item);
                     }
                 }
-            } catch (e) { console.log(e); }
+            } catch (e) {}
 
             hideLoader();
             renderMovies(results);
@@ -330,12 +321,9 @@
         function showLoader(text) {
             document.getElementById("globalLoader").classList.remove("hidden");
             document.getElementById("loaderText").innerText = text;
-            document.getElementById("moviesGrid").innerHTML = "";
-            document.getElementById("downloadStatus").classList.add("hidden");
         }
         function hideLoader() { document.getElementById("globalLoader").classList.add("hidden"); }
 
-        // --- مسار التحميل الأساسي (عبر البوت) ---
         async function startDebridConversion(link, hash = "") {
             document.getElementById("moviesGrid").innerHTML = "";
             document.getElementById("downloadStatus").classList.remove("hidden");
@@ -351,7 +339,6 @@
             const payload = isTorrent ? { magnet: link } : { link: link };
 
             try {
-                // الطلب هيروح لسيرفرك بدل TorBox مباشرة
                 const data = await fetchTorboxAPI(endpoint, payload, "POST");
                 
                 if (data && data.success) {
@@ -363,13 +350,10 @@
                          if(listData && listData.success && listData.data.length > 0) itemId = listData.data[0].id;
                     }
 
-                    if (itemId) {
-                        monitorProgress(itemId, isTorrent);
-                    } else {
-                        debridError("تم القبول ولكن فشل استخراج كود التتبع من البوت.");
-                    }
+                    if (itemId) monitorProgress(itemId, isTorrent);
+                    else debridError("فشل استخراج كود التتبع من البوت.");
                 } else {
-                    debridError(`الرفض: ${data ? data.detail || JSON.stringify(data) : 'لا يوجد رد'}`);
+                    debridError(`الرفض: ${data ? JSON.stringify(data) : 'لا يوجد رد'}`);
                 }
             } catch (error) {
                 debridError(`خطأ: ${error.message}`);
@@ -394,7 +378,7 @@
                             if (["error", "failed"].includes(state)) return debridError(`فشل التحميل (الحالة: ${state})`);
 
                             if (["completed", "seeding", "cached", "finished", "downloaded"].includes(state)) {
-                                document.getElementById("dlProgress").innerHTML = `<span class="text-emerald-400"><i class="fas fa-check-circle"></i> اكتمل! جاري سحب الرابط من البوت...</span>`;
+                                document.getElementById("dlProgress").innerHTML = `<span class="text-emerald-400"><i class="fas fa-check-circle"></i> اكتمل! جاري سحب الرابط...</span>`;
                                 getDirectLink(target, apiPath, isTorrent);
                                 return;
                             } else {
@@ -429,6 +413,8 @@
 
             try {
                 let data = await fetchTorboxAPI(`${apiPath}/requestdl`, params, "GET");
+                
+                // محاولة بدون file_id لو فشلت
                 if (data && !data.success && fileId) {
                     delete params.file_id; 
                     data = await fetchTorboxAPI(`${apiPath}/requestdl`, params, "GET");
@@ -437,12 +423,15 @@
                 if (data && data.success) {
                     currentStreamUrl = data.data;
                     document.getElementById("dlTitle").innerText = fileName;
-                    document.getElementById("dlProgress").innerHTML = `<span class="text-emerald-400 font-bold"><i class="fas fa-check"></i> تم التجهيز بنجاح عبر السيرفر الخاص!</span>`;
+                    document.getElementById("dlProgress").innerHTML = `<span class="text-emerald-400 font-bold"><i class="fas fa-check"></i> تم التجهيز بنجاح!</span>`;
                     document.getElementById("btnDownload").href = currentStreamUrl;
                     document.getElementById("dlButtons").classList.remove("hidden");
                     document.getElementById("videoTitle").innerText = fileName;
                 } else {
-                    debridError(`فشل سحب الرابط المباشر من البوت: ${data ? data.detail : 'خطأ'}`);
+                    // هنا التعديل لكشف سبب الخطأ بالظبط!
+                    let errStr = "";
+                    try { errStr = JSON.stringify(data); } catch(e) { errStr = "Error Object"; }
+                    debridError(`فشل سحب الرابط المباشر:<br><span class="text-xs text-yellow-300 mt-2 block" dir="ltr">${errStr}</span>`);
                 }
             } catch (e) {
                 debridError(`حدث خطأ أثناء جلب الرابط.`);
@@ -454,7 +443,6 @@
             document.getElementById("dlButtons").classList.add("hidden");
         }
 
-        // --- مشغل الفيديو واستكمال المشاهدة ---
         const videoPlayer = document.getElementById("videoPlayer");
         const videoSource = document.getElementById("videoSource");
 
