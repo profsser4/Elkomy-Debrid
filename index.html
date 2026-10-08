@@ -16,7 +16,6 @@
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { margin: 0; background: var(--bg-color); color: var(--text-main); }
         
-        /* شاشة تسجيل الدخول */
         #login-screen {
             position: fixed; inset: 0; background: var(--bg-color);
             display: flex; align-items: center; justify-content: center; z-index: 9999;
@@ -37,13 +36,11 @@
         }
         .error-msg { color: var(--danger); margin-top: 10px; display: none; }
 
-        /* المحتوى الأساسي */
         #main-content { display: none; padding: 20px; max-width: 800px; margin: 0 auto; }
         .header { text-align: center; margin-bottom: 30px; }
         .header h1 { color: var(--primary); }
         .user-badge { background: #334155; padding: 5px 15px; border-radius: 20px; font-size: 14px; display: inline-block; }
         
-        /* شريط البحث */
         .search-container { display: flex; gap: 10px; margin-bottom: 20px; }
         .search-input {
             flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #334155;
@@ -53,8 +50,11 @@
             padding: 12px 25px; background: var(--primary); color: #000;
             font-weight: bold; border: none; border-radius: 8px; cursor: pointer;
         }
+        .logout-btn {
+            background: var(--danger); color: white; border: none; padding: 5px 15px;
+            border-radius: 5px; cursor: pointer; margin-right: 10px; font-size: 12px;
+        }
 
-        /* كروت النتائج */
         .movie-card {
             background: var(--panel-bg); padding: 15px; border-radius: 8px; margin-bottom: 15px;
             display: flex; gap: 15px; align-items: flex-start;
@@ -72,7 +72,6 @@
         .btn-download { background: #22c55e; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 10px; }
         .btn-vlc { background: #f97316; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; cursor: pointer; border: none; font-weight: bold; display: inline-block; margin-top: 10px; margin-right: 5px; }
         
-        /* رسالة الخطأ زي الصورة */
         .no-results { text-align: center; color: var(--danger); font-size: 20px; font-weight: bold; display: none; margin-top: 40px; }
         .no-results span { display: block; font-size: 40px; margin-bottom: 10px; }
     </style>
@@ -82,9 +81,9 @@
     <div id="login-screen">
         <div class="login-box">
             <h2>Elkomy VIP 🎬</h2>
-            <input type="text" id="username" class="login-input" placeholder="اسم المستخدم">
-            <input type="password" id="password" class="login-input" placeholder="كلمة المرور">
-            <button class="login-btn" onclick="checkLogin()">دخول</button>
+            <input type="text" id="username" class="login-input" placeholder="اسم المستخدم" onkeypress="handleLoginEnter(event)">
+            <input type="password" id="password" class="login-input" placeholder="كلمة المرور" onkeypress="handleLoginEnter(event)">
+            <button type="button" class="login-btn" onclick="checkLogin()">دخول</button>
             <p id="login-error" class="error-msg">بيانات الدخول غير صحيحة!</p>
         </div>
     </div>
@@ -93,11 +92,12 @@
         <div class="header">
             <h1>Elkomy VIP 🚀</h1>
             <div id="user-welcome" class="user-badge"></div>
+            <button type="button" class="logout-btn" onclick="logout()">تسجيل خروج</button>
         </div>
 
         <div class="search-container">
-            <input type="text" id="searchInput" class="search-input" placeholder="ابحث عن فيلم (إنجليزي)، أو الصق رابط مباشر/تورنت...">
-            <button class="search-btn" onclick="processInput()">بحث</button>
+            <input type="text" id="searchInput" class="search-input" placeholder="ابحث عن فيلم (إنجليزي)، أو الصق رابط مباشر/تورنت..." onkeypress="handleSearchEnter(event)">
+            <button type="button" class="search-btn" onclick="processInput()">بحث</button>
         </div>
 
         <div id="loading" style="display: none; text-align: center; color: var(--primary);">جاري المعالجة... ⏳</div>
@@ -117,16 +117,54 @@
 
         const SERVER_URL = "https://elkomy-server-production.up.railway.app/generate"; 
 
+        // فحص تسجيل الدخول عند تحميل الصفحة
+        window.onload = function() {
+            if (sessionStorage.getItem("isLoggedIn") === "true") {
+                const savedUser = sessionStorage.getItem("savedUsername");
+                const savedRole = sessionStorage.getItem("savedRole");
+                showMainContent(savedUser, savedRole);
+            }
+        };
+
+        function handleLoginEnter(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                checkLogin();
+            }
+        }
+
+        function handleSearchEnter(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                processInput();
+            }
+        }
+
         function checkLogin() {
             const userIn = document.getElementById('username').value.trim();
             const passIn = document.getElementById('password').value.trim();
+            
             if (users[userIn] && users[userIn].password === passIn) {
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('main-content').style.display = 'block';
-                document.getElementById('user-welcome').innerHTML = `أهلاً بك: <b>${userIn}</b> (${users[userIn].role})`;
+                // حفظ البيانات في الجلسة
+                sessionStorage.setItem("isLoggedIn", "true");
+                sessionStorage.setItem("savedUsername", userIn);
+                sessionStorage.setItem("savedRole", users[userIn].role);
+                
+                showMainContent(userIn, users[userIn].role);
             } else {
                 document.getElementById('login-error').style.display = 'block';
             }
+        }
+
+        function showMainContent(username, role) {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            document.getElementById('user-welcome').innerHTML = `أهلاً بك: <b>${username}</b> (${role})`;
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            location.reload(); // إعادة تحميل الصفحة للرجوع لشاشة الدخول
         }
 
         async function processInput() {
@@ -137,13 +175,11 @@
             document.getElementById('no-results-msg').style.display = 'none';
             document.getElementById('loading').style.display = 'block';
 
-            // لو المدخل عبارة عن رابط (مباشر أو ماجنيت) نبعته للسيرفر فوراً
             if (query.startsWith('http') || query.startsWith('magnet:')) {
                 generateDebridLink(query);
                 return;
             }
 
-            // لو المدخل نص (اسم فيلم)، نبحث عنه في قاعدة الأفلام YTS
             try {
                 const response = await fetch(`https://yts.mx/api/v2/list_movies.json?query_term=${encodeURIComponent(query)}`);
                 const data = await response.json();
@@ -171,11 +207,10 @@
                         <p style="margin:0 0 10px 0; font-size:13px; color:var(--text-muted);">تقييم: ⭐ ${movie.rating}/10</p>
                         <div>
                 `;
-                // عرض الجودات المتاحة
                 movie.torrents.forEach(t => {
                     const trackers = "&tr=udp://open.demonii.com:1337/announce&tr=udp://tracker.openbittorrent.com:80";
                     const magnet = `magnet:?xt=urn:btih:${t.hash}&dn=${encodeURIComponent(movie.title)}${trackers}`;
-                    html += `<button class="quality-btn" onclick="generateDebridLink('${magnet}')">${t.quality} ${t.type}</button>`;
+                    html += `<button type="button" class="quality-btn" onclick="generateDebridLink('${magnet}')">${t.quality} ${t.type}</button>`;
                 });
                 
                 html += `</div></div></div>`;
@@ -185,11 +220,9 @@
 
         async function generateDebridLink(linkOrMagnet) {
             const resultsDiv = document.getElementById('results');
-            // نحتفظ بكروت الأفلام ونضيف رسالة التحميل تحتها
             const currentHTML = resultsDiv.innerHTML;
             resultsDiv.innerHTML = currentHTML + `<div id="debrid-status" style="text-align:center; color:var(--primary); margin-top:20px;">جاري إرسال الطلب لسيرفر Elkomy وفك التشفير... ⏳</div>`;
             
-            // عمل سكرول لتحت عشان تشوف النتيجة
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 
             try {
@@ -207,7 +240,7 @@
                         <div class="result-card">
                             <h3 style="margin:0 0 10px 0; color:#22c55e;">✅ تم فك الرابط بنجاح!</h3>
                             <a href="${data.direct_link}" target="_blank" class="btn-download">تحميل مباشر ⬇️</a>
-                            <button class="btn-vlc" onclick="navigator.clipboard.writeText('${data.direct_link}').then(()=>alert('تم النسخ لـ VLC!'))">نسخ الرابط 📋</button>
+                            <button type="button" class="btn-vlc" onclick="navigator.clipboard.writeText('${data.direct_link}').then(()=>alert('تم النسخ بنجاح! 📋'))">نسخ الرابط 📋</button>
                         </div>
                     `;
                 } else {
