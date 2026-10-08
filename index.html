@@ -25,6 +25,7 @@
 </head>
 <body class="min-h-screen relative">
 
+    <!-- شاشة تسجيل الدخول -->
     <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-95">
         <div class="glass-panel p-8 rounded-2xl shadow-2xl w-full max-w-md text-center border-t-4 border-blue-500">
             <i class="fas fa-user-shield text-5xl text-blue-500 mb-4"></i>
@@ -46,7 +47,9 @@
         </div>
     </div>
 
+    <!-- التطبيق الرئيسي -->
     <div id="mainApp" class="hidden flex flex-col min-h-screen">
+        <!-- الهيدر -->
         <header class="glass-panel sticky top-0 z-30 shadow-lg px-4 py-3 border-b border-slate-700">
             <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-2">
@@ -72,6 +75,7 @@
             </div>
         </header>
 
+        <!-- منطقة الإعدادات (السيرفر مخفي ومدمج، لكن يمكن تغييره لو لزم الأمر) -->
         <div id="settingsArea" class="hidden max-w-7xl mx-auto w-full p-4 mt-4">
             <div class="glass-panel p-6 rounded-xl border border-slate-600">
                 <h3 class="text-xl font-bold mb-4 text-emerald-400"><i class="fas fa-server"></i> إعدادات السيرفر الخاص</h3>
@@ -84,13 +88,16 @@
         </div>
 
         <main class="flex-1 max-w-7xl mx-auto w-full p-4 mt-4">
+            <!-- لودر البحث -->
             <div id="globalLoader" class="hidden flex flex-col items-center justify-center py-20">
                 <span class="loader w-12 h-12"></span>
                 <p id="loaderText" class="text-blue-400 font-semibold mt-4 text-lg">جاري البحث...</p>
             </div>
 
+            <!-- شبكة الأفلام -->
             <div id="moviesGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
             
+            <!-- شاشة التحميل والمشاهدة -->
             <div id="downloadStatus" class="hidden glass-panel rounded-xl p-6 text-center border border-blue-500/30 max-w-2xl mx-auto mt-10 shadow-2xl">
                 <i class="fas fa-cloud-download-alt text-5xl text-blue-400 mb-4 animate-pulse"></i>
                 <h3 id="dlTitle" class="text-xl font-bold text-white mb-2" dir="ltr">جاري التجهيز...</h3>
@@ -108,6 +115,7 @@
         </main>
     </div>
 
+    <!-- مشغل الفيديو المنبثق -->
     <div id="videoModal" class="hidden fixed inset-0 bg-black z-[100] flex flex-col">
         <div class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/90 to-transparent z-10 flex justify-between items-center transition-opacity duration-300 hover:opacity-100 opacity-0" id="playerControls">
             <h2 id="videoTitle" class="text-white font-bold text-lg truncate px-4 drop-shadow-md" dir="ltr">جاري التشغيل...</h2>
@@ -133,7 +141,7 @@
         let currentStreamUrl = "";
         let currentMovieHash = ""; 
         
-        // تم تحديث الرابط ليكون سيرفر Railway الخاص بك!
+        // تم دمج الرابط هنا! السيرفر هيشتغل أوتوماتيك من غير تدخل.
         const DEFAULT_SERVER_URL = "https://elkomy-server-production.up.railway.app";
 
         window.onload = function() {
@@ -190,7 +198,7 @@
         function handleEnter(e) { if (e.key === 'Enter') executeAction(); }
 
         // =========================================================================
-        // الاتصال عبر سيرفر Railway الخاص بك 
+        // الاتصال عبر السيرفر
         // =========================================================================
         async function fetchTorboxAPI(endpoint, paramsObj = {}, method = "GET") {
             let renderUrl = localStorage.getItem("render_url") || DEFAULT_SERVER_URL;
@@ -353,7 +361,9 @@
                     if (itemId) monitorProgress(itemId, isTorrent);
                     else debridError("فشل استخراج كود التتبع من البوت.");
                 } else {
-                    debridError(`الرفض: ${data ? JSON.stringify(data) : 'لا يوجد رد'}`);
+                    let errStr = "لا يوجد رد";
+                    try { errStr = JSON.stringify(data); } catch(e) {}
+                    debridError(`تم رفض الرابط من السيرفر السحابي.<br><span class="text-xs text-yellow-300 mt-2 block" dir="ltr">${errStr}</span>`);
                 }
             } catch (error) {
                 debridError(`خطأ: ${error.message}`);
@@ -428,10 +438,13 @@
                     document.getElementById("dlButtons").classList.remove("hidden");
                     document.getElementById("videoTitle").innerText = fileName;
                 } else {
-                    // هنا التعديل لكشف سبب الخطأ بالظبط!
-                    let errStr = "";
-                    try { errStr = JSON.stringify(data); } catch(e) { errStr = "Error Object"; }
-                    debridError(`فشل سحب الرابط المباشر:<br><span class="text-xs text-yellow-300 mt-2 block" dir="ltr">${errStr}</span>`);
+                    // الكود ده هيعرض لنا الخطأ بالظبط بدل كلمة [Object object]
+                    let errStr = "لا توجد رسالة خطأ واضحة";
+                    try { 
+                        if (data && data.detail) errStr = data.detail;
+                        else errStr = JSON.stringify(data); 
+                    } catch(e) { errStr = "Error Object"; }
+                    debridError(`فشل سحب الرابط المباشر من Torbox:<br><span class="text-xs text-yellow-300 mt-2 block break-all" dir="ltr">${errStr}</span>`);
                 }
             } catch (e) {
                 debridError(`حدث خطأ أثناء جلب الرابط.`);
