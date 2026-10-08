@@ -283,17 +283,29 @@
         }
 
         async function searchMovies(query) {
-            showLoader("جاري البحث في YIFY و قواعد البيانات...");
+            showLoader("جاري البحث في قواعد البيانات الشاملة (أفلام ومسلسلات)...");
             
             let results = [];
             const encodedQuery = encodeURIComponent(query);
 
+            // 1. البحث عن المسلسلات عبر Cinemeta
             try {
-                // 1. المحرك الجديد: YIFY (YTS Clone) - https://en.yify.sc
-                // نستخدم AllOrigins كبروكسي لتفادي مشكلة CORS
-                const yifyUrl = `https://en.yify.sc/api/v2/list_movies.json?query_term=${encodedQuery}&limit=5`;
+                const sUrl = `https://v3-cinemeta.strem.io/catalog/series/top/search=${encodedQuery}.json`;
+                const sRes = await fetch(sUrl);
+                const sData = await sRes.json();
+                if (sData.metas) {
+                    for (let m of sData.metas.slice(0, 2)) {
+                        await processStremioItem(m, results, "مسلسل");
+                    }
+                }
+            } catch(e) {
+                console.log("Series search failed", e);
+            }
+
+            // 2. البحث عن الأفلام عبر YIFY
+            try {
+                const yifyUrl = `https://en.yify.sc/api/v2/list_movies.json?query_term=${encodedQuery}&limit=4`;
                 const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yifyUrl)}`;
-                
                 const yifyRes = await fetch(proxyUrl);
                 const yifyData = await yifyRes.json();
 
@@ -305,11 +317,12 @@
                             year: m.year,
                             rating: m.rating,
                             cover: m.large_cover_image || m.medium_cover_image,
+                            type: "فيلم",
                             torrents: []
                         };
                         m.torrents.forEach(t => {
                             movie.torrents.push({
-                                quality: `${t.quality} | ${t.size}`,
+                                quality: `🎬 ${t.quality} | ${t.size}`,
                                 hash: t.hash
                             });
                         });
@@ -317,59 +330,65 @@
                     });
                 }
             } catch (e) {
-                console.log("YIFY search failed, trying fallback...", e);
+                console.log("YIFY search failed", e);
             }
 
-            // 2. البحث المساعد (Stremio/Cinemeta) لو YIFY مجابش نتايج كفاية
-            if (results.length < 2) {
+            // 3. البحث الاحتياطي للأفلام لو Yify مجابش نتائج كافية
+            if (results.filter(r => r.type === "فيلم").length === 0) {
                 try {
-                    const cineUrl = `https://v3-cinemeta.strem.io/catalog/movie/top/search=${encodedQuery}.json`;
-                    const cineRes = await fetch(cineUrl);
-                    const cineData = await cineRes.json();
-                    
-                    if (cineData.metas) {
-                        for (let m of cineData.metas.slice(0, 3)) {
-                            let movie = {
-                                id: m.imdb_id,
-                                title: m.name,
-                                year: m.releaseInfo,
-                                rating: m.imdbRating || "N/A",
-                                cover: m.poster,
-                                torrents: []
-                            };
-                            
-                            // استخراج الجودات من Torrentio
-                            try {
-                                const torUrl = `https://torrentio.strem.fun/stream/movie/${m.imdb_id}.json`;
-                                const torRes = await fetch(torUrl);
-                                const torData = await torRes.json();
-                                
-                                let seen = new Set();
-                                (torData.streams || []).forEach(s => {
-                                    if(s.infoHash && !seen.has(s.infoHash)) {
-                                        let qMatch = s.name.match(/(1080p|720p|4k|2160p)/i);
-                                        let quality = qMatch ? qMatch[0].toUpperCase() : "HD";
-                                        let sizeMatch = s.title.match(/💾\s*([^\n⚙️]+)/);
-                                        let size = sizeMatch ? sizeMatch[1].trim() : "N/A";
-                                        
-                                        movie.torrents.push({ quality: `${quality} | ${size}`, hash: s.infoHash });
-                                        seen.add(s.infoHash);
-                                    }
-                                });
-                                // نأخذ أفضل 4 جودات
-                                movie.torrents = movie.torrents.slice(0, 4);
-                            } catch(e){}
-                            
-                            if (movie.torrents.length > 0) results.push(movie);
+                    const mUrl = `https://v3-cinemeta.strem.io/catalog/movie/top/search=${encodedQuery}.json`;
+                    const mRes = await fetch(mUrl);
+                    const mData = await mRes.json();
+                    if (mData.metas) {
+                        for (let m of mData.metas.slice(0, 2)) {
+                            await processStremioItem(m, results, "فيلم");
                         }
                     }
                 } catch (e) {
-                    console.log("Cinemeta fallback failed.", e);
+                    console.log("Cinemeta fallback failed", e);
                 }
             }
 
             hideLoader();
             renderMovies(results);
+        }
+
+        async function processStremioItem(m, results, typeLabel) {
+            let item = {
+                id: m.imdb_id,
+                title: m.name,
+                year: m.releaseInfo,
+                rating: m.imdbRating || "N/A",
+                cover: m.poster,
+                type: typeLabel,
+                torrents: []
+            };
+            
+            try {
+                const torUrl = `https://torrentio.strem.fun/stream/${m.type}/${m.imdb_id}.json`;
+                const torRes = await fetch(torUrl);
+                const torData = await torRes.json();
+                
+                let seen = new Set();
+                (torData.streams || []).forEach(s => {
+                    if(s.infoHash && !seen.has(s.infoHash)) {
+                        let qMatch = s.name.match(/(1080p|720p|4k|2160p)/i);
+                        let quality = qMatch ? qMatch[0].toUpperCase() : "HD";
+                        let sizeMatch = s.title.match(/💾\s*([^\n⚙️]+)/);
+                        let size = sizeMatch ? sizeMatch[1].trim() : "N/A";
+                        
+                        let label = typeLabel === "مسلسل" ? `📺 ${quality}` : `🎬 ${quality}`;
+                        let seasonMatch = s.title.match(/S\d+E\d+/i);
+                        if(seasonMatch) label = `📺 ${seasonMatch[0]} | ${quality}`;
+
+                        item.torrents.push({ quality: `${label} | ${size}`, hash: s.infoHash });
+                        seen.add(s.infoHash);
+                    }
+                });
+                item.torrents = item.torrents.slice(0, 4);
+            } catch(e){}
+            
+            if (item.torrents.length > 0) results.push(item);
         }
 
         function renderMovies(movies) {
@@ -386,12 +405,17 @@
                 let buttonsHtml = m.torrents.map(t => 
                     `<button onclick="startDebridConversion('magnet:?xt=urn:btih:${t.hash}&dn=${encodeURIComponent(m.title)}', '${t.hash}')" 
                      class="w-full bg-slate-700 hover:bg-blue-600 text-white text-sm py-2 rounded transition border border-slate-600 hover:border-blue-500 mb-2">
-                        🎬 ${t.quality}
+                        ${t.quality}
                     </button>`
                 ).join('');
 
+                const typeBadge = m.type === "مسلسل" ? 'bg-purple-600' : 'bg-blue-600';
+
                 const card = `
-                    <div class="movie-card glass-panel rounded-xl overflow-hidden flex flex-col">
+                    <div class="movie-card glass-panel rounded-xl overflow-hidden flex flex-col relative">
+                        <div class="absolute top-2 left-2 ${typeBadge} text-white text-xs font-bold px-2 py-1 rounded z-10 shadow-lg">
+                            ${m.type}
+                        </div>
                         <div class="relative pt-[150%]">
                             <img src="${m.cover}" onerror="this.src='https://placehold.co/400x600/1e293b/3b82f6?text=No+Poster'" class="absolute top-0 left-0 w-full h-full object-cover">
                             <div class="absolute top-2 right-2 bg-black/70 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-500/30">
@@ -429,39 +453,52 @@
             document.getElementById("dlTitle").innerText = "تهيئة السيرفر...";
             document.getElementById("dlProgress").innerText = "جاري إرسال الطلب لـ TorBox...";
             
-            // حفظ الهاش عشان الاستئناف
             currentMovieHash = hash || btoa(link).substring(0, 10); 
 
             const apiKey = getApiKey();
-            const headers = { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/x-www-form-urlencoded" };
             const isTorrent = link.startsWith("magnet:");
             const endpoint = isTorrent ? "torrents/createtorrent" : "webdl/createwebdownload";
-            const payload = isTorrent ? `magnet=${encodeURIComponent(link)}` : `link=${encodeURIComponent(link)}`;
+            
+            // إصلاح المشكلة: إرسال البيانات كـ FormData بدلاً من سلسلة نصية
+            const formData = new FormData();
+            if (isTorrent) {
+                formData.append("magnet", link);
+            } else {
+                formData.append("link", link);
+            }
 
             try {
                 const response = await fetch(`https://api.torbox.app/v1/api/${endpoint}`, {
-                    method: "POST", headers: headers, body: payload
+                    method: "POST", 
+                    headers: { "Authorization": `Bearer ${apiKey}` }, // لا نضع Content-Type مع FormData
+                    body: formData
                 });
                 const data = await response.json();
                 
                 if (data.success) {
                     let itemId = data.data.torrent_id || data.data.web_id || data.data.id || data.data.uid;
-                    if (!itemId) { // Fallback get latest
+                    
+                    if (!itemId) { 
+                         // إذا لم يرسل الـ ID، نجلبه من القائمة
+                         document.getElementById("dlProgress").innerText = "جاري استخراج كود الملف...";
                          await new Promise(r => setTimeout(r, 2000));
-                         const listRes = await fetch(`https://api.torbox.app/v1/api/${isTorrent ? 'torrents' : 'webdl'}/mylist`, {headers});
+                         const listRes = await fetch(`https://api.torbox.app/v1/api/${isTorrent ? 'torrents' : 'webdl'}/mylist`, {
+                             headers: { "Authorization": `Bearer ${apiKey}` }
+                         });
                          const listData = await listRes.json();
                          if(listData.success && listData.data.length > 0) itemId = listData.data[0].id;
                     }
+
                     if (itemId) {
                         monitorProgress(itemId, isTorrent, apiKey);
                     } else {
-                        debridError("تم القبول ولكن فشل استخراج كود التتبع.");
+                        debridError("تم القبول ولكن فشل استخراج كود التتبع من السيرفر.");
                     }
                 } else {
                     debridError(`الرفض من السيرفر: ${data.detail}`);
                 }
             } catch (error) {
-                debridError("خطأ في الاتصال بسيرفر التحميل.");
+                debridError(`خطأ في الاتصال بسيرفر التحميل: ${error.message}`);
             }
         }
 
