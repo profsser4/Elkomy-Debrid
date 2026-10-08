@@ -120,7 +120,7 @@
             </div>
 
             <div id="moviesGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                <!-- Movies injected here -->
+                <!-- سيتم حقن الأفلام هنا -->
             </div>
             
             <div id="downloadStatus" class="hidden glass-panel rounded-xl p-6 text-center border border-blue-500/30 max-w-2xl mx-auto mt-10 shadow-2xl">
@@ -211,12 +211,11 @@
             checkAuth();
         }
 
-        // --- نظام البروكسي القوي لكسر حظر CORS في مصر والدول العربية ---
         async function fetchWithProxy(url, options = {}) {
-            // تم تحديث البروكسيات لإزالة corsproxy لأنه أصبح مدفوعاً
+            // قائمة البروكسيات المجانية الآمنة تماماً
             const proxies = [
-                "",                                         // 1. محاولة مباشرة (الآن تعمل بشكل ممتاز)
-                "https://api.codetabs.com/v1/proxy?quest=", // 2. قوي جداً ومجاني
+                "",                                         // 1. محاولة مباشرة (الأنسب لـ TorBox لأننا نرسل الـ Token في اللينك)
+                "https://api.codetabs.com/v1/proxy?quest=", // 2. بروكسي قوي ومجاني
                 "https://api.allorigins.win/raw?url="       // 3. احتياطي إضافي
             ];
 
@@ -237,16 +236,6 @@
                     
                     const res = await fetch(targetUrl, options);
                     
-                    // فحص إذا كان البروكسي يطلب فلوس أو مفتاح مدفوع (مثل مشكلة corsproxy)
-                    const clone = res.clone();
-                    try {
-                        const text = await clone.text();
-                        if (text.includes("keyless_legacy_url") || text.includes("CORSPROXY")) {
-                            continue; // تخطي هذا البروكسي الفاسد
-                        }
-                    } catch(e) {}
-                    
-                    // إذا استجاب السيرفر بأي رد منطقي نعتبره نجاح للاتصال
                     if (res.ok || res.status === 400 || res.status === 401 || res.status === 403 || res.status === 500) {
                         return res;
                     }
@@ -255,7 +244,7 @@
                     console.log(`Proxy attempt ${i} failed:`, err.message);
                 }
             }
-            throw new Error(`مشكلة الحظر. تأكد من اتصالك بالإنترنت. تفاصيل: ${lastErrorMsg}`);
+            throw new Error(`مشكلة الحظر (CORS). تأكد من اتصالك بالإنترنت. تفاصيل: ${lastErrorMsg}`);
         }
 
         function showToast(msg, isError = false) {
@@ -313,7 +302,7 @@
             
             const isSeries = query.includes("مسلسل") || query.toLowerCase().includes("series");
 
-            // 1. بحث YIFY للأفلام
+            // 1. بحث YIFY للأفلام فقط
             if (!isSeries) {
                 try {
                     const yifyUrl = `https://en.yify.sc/api/v2/list_movies.json?query_term=${encodedQuery}&limit=4`;
@@ -336,7 +325,7 @@
                 } catch (e) { console.log("YIFY failed:", e); }
             }
 
-            // 2. بحث Cinemeta/Torrentio 
+            // 2. بحث Cinemeta/Torrentio الشامل
             if (results.length < 2) {
                 try {
                     const type = isSeries ? 'series' : 'movie';
@@ -453,7 +442,7 @@
             const isTorrent = link.startsWith("magnet:");
             const endpoint = isTorrent ? "torrents/createtorrent" : "webdl/createwebdownload";
             
-            // الحل القاطع لمشكلة CORS: وضع الـ Token داخل اللينك مباشرة بدلاً من الهيدر!
+            // نضع مفتاح الـ API داخل اللينك مباشرة لمنع حظر المتصفح (CORS Block)
             const targetUrl = `https://api.torbox.app/v1/api/${endpoint}?token=${apiKey}`;
             
             const params = new URLSearchParams();
@@ -461,7 +450,6 @@
             else params.append("link", link);
 
             try {
-                // إرسال الطلب بدون Authorization header لأننا أرسلناه في اللينك
                 const response = await fetchWithProxy(targetUrl, {
                     method: "POST", 
                     headers: { 
@@ -478,7 +466,6 @@
                     if (!itemId) { 
                          dlProgress.innerHTML = `<span class="text-yellow-400"><i class="fas fa-search"></i> جاري استخراج كود الملف...</span>`;
                          await new Promise(r => setTimeout(r, 2000));
-                         // جلب القائمة باستخدام الـ Token في اللينك أيضاً
                          const listUrl = `https://api.torbox.app/v1/api/${isTorrent ? 'torrents' : 'webdl'}/mylist?token=${apiKey}`;
                          const listRes = await fetchWithProxy(listUrl);
                          const listData = await listRes.json();
@@ -494,7 +481,7 @@
                     debridError(`الرفض من السيرفر: ${data.detail || JSON.stringify(data)}`);
                 }
             } catch (error) {
-                debridError(`مشكلة في الاتصال (قد تكون بسبب الحظر في بلدك): ${error.message}`);
+                debridError(`مشكلة في الاتصال: ${error.message}`);
             }
         }
 
@@ -531,7 +518,7 @@
                 } catch(e) {
                     console.log("Monitor Error:", e);
                 }
-                checkingInterval = setTimeout(check, 5000); // يفحص كل 5 ثواني
+                checkingInterval = setTimeout(check, 5000); 
             };
             check(); 
         }
@@ -558,7 +545,6 @@
                 let res = await fetchWithProxy(dlUrl);
                 let data = await res.json();
                 
-                // المحاولة بدون File ID لو الأولى فشلت
                 if (!data.success && fileId) {
                     let altUrl = dlUrl.replace(`&file_id=${fileId}`, '');
                     res = await fetchWithProxy(altUrl);
@@ -600,7 +586,6 @@
             videoPlayer.load();
             resumeSaved = false;
 
-            // ميزة استعادة وقت المشاهدة الذكية
             const savedTime = localStorage.getItem(`resume_${currentMovieHash}`);
             if (savedTime && parseFloat(savedTime) > 15) {
                 videoPlayer.currentTime = parseFloat(savedTime);
