@@ -43,7 +43,6 @@
         .toast-enter { transform: translateY(0); opacity: 1; }
         .toast-exit { transform: translateY(20px); opacity: 0; }
         
-        /* تجميل سكرول المتصفح */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
@@ -86,7 +85,7 @@
                 </div>
                 
                 <div class="flex-1 min-w-[250px] max-w-2xl relative">
-                    <input type="text" id="searchInput" onkeypress="handleEnter(event)" class="w-full bg-slate-800 border border-slate-600 rounded-full pl-12 pr-6 py-2.5 text-white focus:outline-none focus:border-blue-500 transition shadow-inner" placeholder="ابحث عن فيلم، أو ضع رابط Magnet...">
+                    <input type="text" id="searchInput" onkeypress="handleEnter(event)" class="w-full bg-slate-800 border border-slate-600 rounded-full pl-12 pr-6 py-2.5 text-white focus:outline-none focus:border-blue-500 transition shadow-inner" placeholder="ابحث عن فيلم/مسلسل، أو ضع رابط Magnet...">
                     <button onclick="executeAction()" class="absolute left-1 top-1 bottom-1 bg-blue-600 hover:bg-blue-500 text-white px-5 rounded-full transition flex items-center justify-center">
                         <i class="fas fa-search"></i>
                     </button>
@@ -105,7 +104,7 @@
 
         <div id="settingsArea" class="hidden max-w-7xl mx-auto w-full p-4 mt-4">
             <div class="glass-panel p-4 rounded-xl border border-slate-600">
-                <label class="block text-sm font-semibold mb-2">TorBox API Key (لتشغيل التحميل):</label>
+                <label class="block text-sm font-semibold mb-2">TorBox API Key (مفتاح التشغيل):</label>
                 <div class="flex gap-2">
                     <input type="password" id="apiKeyInput" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 text-left" dir="ltr">
                     <button onclick="saveApiKey()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg font-bold transition">حفظ</button>
@@ -115,59 +114,48 @@
 
         <main class="flex-1 max-w-7xl mx-auto w-full p-4 mt-4">
             
-            <!-- Loading Indicator -->
             <div id="globalLoader" class="hidden flex flex-col items-center justify-center py-20">
                 <span class="loader w-12 h-12"></span>
-                <p id="loaderText" class="text-blue-400 font-semibold mt-4 text-lg">جاري البحث في السيرفرات العالمية...</p>
+                <p id="loaderText" class="text-blue-400 font-semibold mt-4 text-lg">جاري البحث...</p>
             </div>
 
-            <!-- Results Grid -->
             <div id="moviesGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                <!-- Movie cards will be injected here -->
+                <!-- Movies injected here -->
             </div>
             
-            <!-- Direct Download Status -->
-            <div id="downloadStatus" class="hidden glass-panel rounded-xl p-6 text-center border border-blue-500/30 max-w-2xl mx-auto mt-10">
-                <i class="fas fa-cloud-download-alt text-4xl text-blue-400 mb-3"></i>
+            <div id="downloadStatus" class="hidden glass-panel rounded-xl p-6 text-center border border-blue-500/30 max-w-2xl mx-auto mt-10 shadow-2xl">
+                <i class="fas fa-cloud-download-alt text-5xl text-blue-400 mb-4 animate-pulse"></i>
                 <h3 id="dlTitle" class="text-xl font-bold text-white mb-2" dir="ltr">جاري التجهيز...</h3>
-                <p id="dlProgress" class="text-gray-400 mb-6">يرجى الانتظار...</p>
+                <p id="dlProgress" class="text-gray-300 mb-6 text-lg">يرجى الانتظار...</p>
                 
-                <div id="dlButtons" class="hidden flex flex-wrap gap-3 justify-center">
-                    <a id="btnDownload" href="#" target="_blank" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg font-bold transition flex items-center gap-2">
+                <div id="dlButtons" class="hidden flex flex-wrap gap-4 justify-center">
+                    <a id="btnDownload" href="#" target="_blank" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-lg font-bold transition flex items-center gap-2 shadow-lg hover:shadow-blue-500/50">
                         <i class="fas fa-download"></i> تحميل مباشر
                     </a>
-                    <button id="btnWatch" onclick="startStreaming()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-bold transition flex items-center gap-2">
+                    <button id="btnWatch" onclick="startStreaming()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-lg font-bold transition flex items-center gap-2 shadow-lg hover:shadow-emerald-500/50">
                         <i class="fas fa-play"></i> مشاهدة الآن
                     </button>
                 </div>
             </div>
-
         </main>
     </div>
 
     <div id="videoModal" class="hidden fixed inset-0 bg-black z-[100] flex flex-col">
-        <!-- شريط علوي للمشغل -->
-        <div class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent z-10 flex justify-between items-center transition-opacity duration-300 hover:opacity-100 opacity-0" id="playerControls">
-            <h2 id="videoTitle" class="text-white font-bold text-lg truncate px-4" dir="ltr">جاري التشغيل...</h2>
-            <button onclick="closeVideoPlayer()" class="text-white hover:text-red-500 bg-black/50 rounded-full w-10 h-10 flex items-center justify-center transition">
-                <i class="fas fa-times text-xl"></i>
+        <div class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/90 to-transparent z-10 flex justify-between items-center transition-opacity duration-300 hover:opacity-100 opacity-0" id="playerControls">
+            <h2 id="videoTitle" class="text-white font-bold text-lg truncate px-4 drop-shadow-md" dir="ltr">جاري التشغيل...</h2>
+            <button onclick="closeVideoPlayer()" class="text-white hover:text-red-500 bg-black/60 rounded-full w-12 h-12 flex items-center justify-center transition shadow-lg">
+                <i class="fas fa-times text-2xl"></i>
             </button>
         </div>
         
-        <div class="flex-1 bg-black flex items-center justify-center relative">
-            <!-- 
-               خصائص الشاشات الذكية: 
-               playsinline, x-webkit-airplay="allow" (للآيفون والآبل تي في)
-               controlsList="nodownload" (اختياري)
-            -->
-            <video id="videoPlayer" class="w-full h-full max-h-screen" controls playsinline x-webkit-airplay="allow" crossorigin="anonymous">
+        <div class="flex-1 bg-black flex items-center justify-center relative w-full h-full">
+            <video id="videoPlayer" class="w-full h-full max-h-screen object-contain" controls playsinline x-webkit-airplay="allow" crossorigin="anonymous">
                 <source id="videoSource" src="" type="video/mp4">
                 متصفحك لا يدعم مشغل الفيديو المتقدم.
             </video>
             
-            <!-- إشعار استئناف المشاهدة -->
-            <div id="resumeToast" class="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-blue-600/90 text-white px-4 py-2 rounded-full text-sm font-bold hidden shadow-lg">
-                تم استئناف المشاهدة من حيث توقفت 🎬
+            <div id="resumeToast" class="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-blue-600/95 text-white px-6 py-3 rounded-full text-sm font-bold hidden shadow-2xl border border-blue-400">
+                <i class="fas fa-history mr-2"></i> تم استئناف المشاهدة من حيث توقفت 🎬
             </div>
         </div>
     </div>
@@ -177,14 +165,12 @@
     </div>
 
     <script>
-        // --- 1. State & Constants ---
         const DEFAULT_API_KEY = "610978e6-60be-4d90-97af-c77f0efd8caf";
         let checkingInterval;
         let currentStreamUrl = "";
         let currentMovieHash = ""; 
         let cachedMovies = {};
 
-        // --- 2. Authentication Logic ---
         window.onload = function() {
             checkAuth();
             let savedKey = localStorage.getItem("torbox_key");
@@ -196,8 +182,7 @@
         };
 
         function checkAuth() {
-            const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-            if (isLoggedIn) {
+            if (localStorage.getItem("isLoggedIn") === "true") {
                 document.getElementById("loginScreen").classList.add("hidden");
                 document.getElementById("mainApp").classList.remove("hidden");
             } else {
@@ -209,16 +194,13 @@
         function handleLogin() {
             const user = document.getElementById("username").value;
             const pass = document.getElementById("password").value;
-            const errorEl = document.getElementById("loginError");
-            
-            // بيانات الدخول (للتطوير، يمكن ربطها بقاعدة بيانات لاحقاً)
             if (user === "admin" && pass === "12345") {
                 localStorage.setItem("isLoggedIn", "true");
-                errorEl.classList.add("hidden");
-                showToast("تم تسجيل الدخول بنجاح!", false);
+                document.getElementById("loginError").classList.add("hidden");
+                showToast("تم تسجيل الدخول بنجاح!");
                 checkAuth();
             } else {
-                errorEl.classList.remove("hidden");
+                document.getElementById("loginError").classList.remove("hidden");
             }
         }
 
@@ -229,25 +211,47 @@
             checkAuth();
         }
 
-        // --- 3. UI Helpers ---
-        // دالة سحرية لكسر حماية المتصفح (CORS Proxy)
         async function fetchWithProxy(url, options = {}) {
-            try {
-                // المحاولة الأولى: اتصال مباشر
-                const res = await fetch(url, options);
-                return res;
-            } catch (err) {
-                // المحاولة الثانية: عبر بروكسي لتخطي حظر المتصفح (CORS)
-                console.log("Direct connection blocked by CORS, trying proxy...");
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-                return await fetch(proxyUrl, options);
+            let fetchOptions = { ...options };
+            
+            // سلسلة بروكسيات قوية لتخطي حماية CORS
+            const proxies = [
+                "", // المحاولة المباشرة أولاً
+                "https://corsproxy.io/?", // بروكسي قوي جداً للطلبات المعقدة
+                "https://api.allorigins.win/raw?url=" // للطلبات البسيطة (GET)
+            ];
+
+            let lastErrorMsg = "";
+
+            for (let i = 0; i < proxies.length; i++) {
+                try {
+                    const proxy = proxies[i];
+                    // allorigins لا يدعم POST بشكل جيد، فنتخطاه إذا كان الطلب POST
+                    if (proxy.includes("allorigins") && fetchOptions.method === "POST") continue;
+
+                    let targetUrl = url;
+                    if (proxy) {
+                        targetUrl = proxy + encodeURIComponent(url);
+                    }
+                    
+                    const res = await fetch(targetUrl, fetchOptions);
+                    
+                    // إذا استجاب السيرفر بأي رد منطقي (حتى لو خطأ 400 من السيرفر نفسه مش من المتصفح)
+                    if (res.ok || res.status === 400 || res.status === 401 || res.status === 403 || res.status === 500) {
+                        return res;
+                    }
+                } catch (err) {
+                    lastErrorMsg = err.message;
+                    console.log(`Proxy attempt ${i} failed:`, err.message);
+                }
             }
+            throw new Error(`فشل الاتصال بسبب حماية المتصفح (CORS). تفاصيل: ${lastErrorMsg}`);
         }
 
         function showToast(msg, isError = false) {
             const toast = document.getElementById('toast');
             toast.innerText = msg;
-            toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg transition-all duration-300 z-[110] text-white ${isError ? 'bg-red-600' : 'bg-emerald-600'} toast-enter`;
+            toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-xl transition-all duration-300 z-[110] text-white font-bold ${isError ? 'bg-red-600' : 'bg-emerald-600'} toast-enter`;
             setTimeout(() => {
                 toast.classList.remove('toast-enter');
                 toast.classList.add('toast-exit');
@@ -265,10 +269,6 @@
                 showToast("تم حفظ المفتاح بنجاح!");
                 toggleSettings();
             }
-        }
-
-        function getApiKey() {
-            return localStorage.getItem("torbox_key") || DEFAULT_API_KEY;
         }
 
         function formatBytes(bytes) {
@@ -292,117 +292,85 @@
             if (input.startsWith("magnet:") || input.startsWith("http")) {
                 startDebridConversion(input);
             } else {
-                searchMovies(input);
+                searchHybrid(input);
             }
         }
 
-        async function searchMovies(query) {
-            showLoader("جاري البحث في قواعد البيانات الشاملة (أفلام ومسلسلات)...");
-            
+        async function searchHybrid(query) {
+            showLoader("جاري البحث الشامل (أفلام ومسلسلات)...");
             let results = [];
             const encodedQuery = encodeURIComponent(query);
+            
+            const isSeries = query.includes("مسلسل") || query.toLowerCase().includes("series");
 
-            // 1. البحث عن المسلسلات عبر Cinemeta
-            try {
-                const sUrl = `https://v3-cinemeta.strem.io/catalog/series/top/search=${encodedQuery}.json`;
-                const sRes = await fetch(sUrl);
-                const sData = await sRes.json();
-                if (sData.metas) {
-                    for (let m of sData.metas.slice(0, 2)) {
-                        await processStremioItem(m, results, "مسلسل");
-                    }
-                }
-            } catch(e) {
-                console.log("Series search failed", e);
-            }
-
-            // 2. البحث عن الأفلام عبر YIFY
-            try {
-                const yifyUrl = `https://en.yify.sc/api/v2/list_movies.json?query_term=${encodedQuery}&limit=4`;
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yifyUrl)}`;
-                const yifyRes = await fetch(proxyUrl);
-                const yifyData = await yifyRes.json();
-
-                if (yifyData && yifyData.data && yifyData.data.movies) {
-                    yifyData.data.movies.forEach(m => {
-                        let movie = {
-                            id: m.id,
-                            title: m.title,
-                            year: m.year,
-                            rating: m.rating,
-                            cover: m.large_cover_image || m.medium_cover_image,
-                            type: "فيلم",
-                            torrents: []
-                        };
-                        m.torrents.forEach(t => {
-                            movie.torrents.push({
-                                quality: `🎬 ${t.quality} | ${t.size}`,
-                                hash: t.hash
-                            });
-                        });
-                        results.push(movie);
-                    });
-                }
-            } catch (e) {
-                console.log("YIFY search failed", e);
-            }
-
-            // 3. البحث الاحتياطي للأفلام لو Yify مجابش نتائج كافية
-            if (results.filter(r => r.type === "فيلم").length === 0) {
+            // 1. بحث YIFY للأفلام (سريع جداً ومضمون)
+            if (!isSeries) {
                 try {
-                    const mUrl = `https://v3-cinemeta.strem.io/catalog/movie/top/search=${encodedQuery}.json`;
-                    const mRes = await fetch(mUrl);
-                    const mData = await mRes.json();
-                    if (mData.metas) {
-                        for (let m of mData.metas.slice(0, 2)) {
-                            await processStremioItem(m, results, "فيلم");
+                    const yifyUrl = `https://en.yify.sc/api/v2/list_movies.json?query_term=${encodedQuery}&limit=4`;
+                    const yifyRes = await fetchWithProxy(yifyUrl);
+                    const yifyData = await yifyRes.json();
+
+                    if (yifyData && yifyData.data && yifyData.data.movies) {
+                        yifyData.data.movies.forEach(m => {
+                            let movie = {
+                                id: m.id, title: m.title, year: m.year,
+                                rating: m.rating, cover: m.large_cover_image || m.medium_cover_image,
+                                type: "فيلم", torrents: []
+                            };
+                            m.torrents.forEach(t => {
+                                movie.torrents.push({ quality: `🎬 ${t.quality} | ${t.size}`, hash: t.hash });
+                            });
+                            if (movie.torrents.length > 0) results.push(movie);
+                        });
+                    }
+                } catch (e) { console.log("YIFY failed:", e); }
+            }
+
+            // 2. بحث Cinemeta/Torrentio للمسلسلات أو كبديل للأفلام
+            if (results.length < 2) {
+                try {
+                    const type = isSeries ? 'series' : 'movie';
+                    const cUrl = `https://v3-cinemeta.strem.io/catalog/${type}/top/search=${encodedQuery}.json`;
+                    const cRes = await fetchWithProxy(cUrl);
+                    const cData = await cRes.json();
+                    
+                    if (cData.metas) {
+                        for (let m of cData.metas.slice(0, 4)) {
+                            let item = {
+                                id: m.imdb_id, title: m.name, year: m.releaseInfo,
+                                rating: m.imdbRating || "N/A", cover: m.poster,
+                                type: m.type === 'series' ? "مسلسل" : "فيلم", torrents: []
+                            };
+                            
+                            const torUrl = `https://torrentio.strem.fun/stream/${m.type}/${m.imdb_id}.json`;
+                            const torRes = await fetchWithProxy(torUrl);
+                            const torData = await torRes.json();
+                            
+                            let seen = new Set();
+                            (torData.streams || []).forEach(s => {
+                                if(s.infoHash && !seen.has(s.infoHash)) {
+                                    let qMatch = s.name.match(/(1080p|720p|4k|2160p)/i);
+                                    let quality = qMatch ? qMatch[0].toUpperCase() : "HD";
+                                    let sizeMatch = s.title.match(/💾\s*([^\n⚙️]+)/);
+                                    let size = sizeMatch ? sizeMatch[1].trim() : "N/A";
+                                    
+                                    let label = item.type === "مسلسل" ? `📺 ${quality}` : `🎬 ${quality}`;
+                                    let seasonMatch = s.title.match(/S\d+E\d+/i) || s.title.match(/Season \d+/i);
+                                    if(seasonMatch) label = `📺 ${seasonMatch[0]} | ${quality}`;
+
+                                    item.torrents.push({ quality: `${label} | ${size}`, hash: s.infoHash });
+                                    seen.add(s.infoHash);
+                                }
+                            });
+                            item.torrents = item.torrents.slice(0, 4); // تحديد 4 جودات فقط
+                            if (item.torrents.length > 0) results.push(item);
                         }
                     }
-                } catch (e) {
-                    console.log("Cinemeta fallback failed", e);
-                }
+                } catch (e) { console.log("Cinemeta fallback failed:", e); }
             }
 
             hideLoader();
             renderMovies(results);
-        }
-
-        async function processStremioItem(m, results, typeLabel) {
-            let item = {
-                id: m.imdb_id,
-                title: m.name,
-                year: m.releaseInfo,
-                rating: m.imdbRating || "N/A",
-                cover: m.poster,
-                type: typeLabel,
-                torrents: []
-            };
-            
-            try {
-                const torUrl = `https://torrentio.strem.fun/stream/${m.type}/${m.imdb_id}.json`;
-                const torRes = await fetch(torUrl);
-                const torData = await torRes.json();
-                
-                let seen = new Set();
-                (torData.streams || []).forEach(s => {
-                    if(s.infoHash && !seen.has(s.infoHash)) {
-                        let qMatch = s.name.match(/(1080p|720p|4k|2160p)/i);
-                        let quality = qMatch ? qMatch[0].toUpperCase() : "HD";
-                        let sizeMatch = s.title.match(/💾\s*([^\n⚙️]+)/);
-                        let size = sizeMatch ? sizeMatch[1].trim() : "N/A";
-                        
-                        let label = typeLabel === "مسلسل" ? `📺 ${quality}` : `🎬 ${quality}`;
-                        let seasonMatch = s.title.match(/S\d+E\d+/i);
-                        if(seasonMatch) label = `📺 ${seasonMatch[0]} | ${quality}`;
-
-                        item.torrents.push({ quality: `${label} | ${size}`, hash: s.infoHash });
-                        seen.add(s.infoHash);
-                    }
-                });
-                item.torrents = item.torrents.slice(0, 4);
-            } catch(e){}
-            
-            if (item.torrents.length > 0) results.push(item);
         }
 
         function renderMovies(movies) {
@@ -410,7 +378,7 @@
             grid.innerHTML = "";
             
             if (movies.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center text-gray-400 py-10">لم يتم العثور على نتائج. جرب اسماً بالإنجليزية.</div>`;
+                grid.innerHTML = `<div class="col-span-full text-center text-red-400 py-10 font-bold text-xl"><i class="fas fa-exclamation-circle mb-2 text-3xl"></i><br>لم يتم العثور على نتائج. جرب اسماً بالإنجليزية.</div>`;
                 return;
             }
 
@@ -418,7 +386,7 @@
                 cachedMovies[m.id] = m;
                 let buttonsHtml = m.torrents.map(t => 
                     `<button onclick="startDebridConversion('magnet:?xt=urn:btih:${t.hash}&dn=${encodeURIComponent(m.title)}', '${t.hash}')" 
-                     class="w-full bg-slate-700 hover:bg-blue-600 text-white text-sm py-2 rounded transition border border-slate-600 hover:border-blue-500 mb-2">
+                     class="w-full bg-slate-700 hover:bg-blue-600 text-white text-sm py-2.5 rounded-lg transition border border-slate-600 hover:border-blue-400 mb-2 font-semibold shadow-sm">
                         ${t.quality}
                     </button>`
                 ).join('');
@@ -426,20 +394,20 @@
                 const typeBadge = m.type === "مسلسل" ? 'bg-purple-600' : 'bg-blue-600';
 
                 const card = `
-                    <div class="movie-card glass-panel rounded-xl overflow-hidden flex flex-col relative">
-                        <div class="absolute top-2 left-2 ${typeBadge} text-white text-xs font-bold px-2 py-1 rounded z-10 shadow-lg">
+                    <div class="movie-card glass-panel rounded-xl overflow-hidden flex flex-col relative border border-slate-700">
+                        <div class="absolute top-2 left-2 ${typeBadge} text-white text-xs font-bold px-2.5 py-1 rounded-md z-10 shadow-lg">
                             ${m.type}
                         </div>
-                        <div class="relative pt-[150%]">
+                        <div class="relative pt-[140%]">
                             <img src="${m.cover}" onerror="this.src='https://placehold.co/400x600/1e293b/3b82f6?text=No+Poster'" class="absolute top-0 left-0 w-full h-full object-cover">
-                            <div class="absolute top-2 right-2 bg-black/70 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-500/30">
+                            <div class="absolute top-2 right-2 bg-black/80 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-500/30 backdrop-blur-sm">
                                 <i class="fas fa-star"></i> ${m.rating}
                             </div>
                         </div>
-                        <div class="p-4 flex-1 flex flex-col">
-                            <h3 class="font-bold text-lg mb-1 truncate" dir="ltr">${m.title}</h3>
-                            <p class="text-gray-400 text-sm mb-4">${m.year}</p>
-                            <div class="mt-auto space-y-1">
+                        <div class="p-4 flex-1 flex flex-col bg-slate-800/50">
+                            <h3 class="font-bold text-lg mb-1 truncate text-white" dir="ltr" title="${m.title}">${m.title}</h3>
+                            <p class="text-blue-300 text-sm mb-4 font-semibold">${m.year}</p>
+                            <div class="mt-auto">
                                 ${buttonsHtml}
                             </div>
                         </div>
@@ -464,38 +432,41 @@
             document.getElementById("moviesGrid").innerHTML = "";
             document.getElementById("downloadStatus").classList.remove("hidden");
             document.getElementById("dlButtons").classList.add("hidden");
+            
+            const dlProgress = document.getElementById("dlProgress");
             document.getElementById("dlTitle").innerText = "تهيئة السيرفر...";
-            document.getElementById("dlProgress").innerText = "جاري إرسال الطلب لـ TorBox...";
+            dlProgress.innerHTML = `<span class="text-blue-400"><i class="fas fa-spinner fa-spin"></i> جاري إرسال الطلب لـ TorBox...</span>`;
             
             currentMovieHash = hash || btoa(link).substring(0, 10); 
 
-            const apiKey = getApiKey();
+            const apiKey = localStorage.getItem("torbox_key") || DEFAULT_API_KEY;
             const isTorrent = link.startsWith("magnet:");
             const endpoint = isTorrent ? "torrents/createtorrent" : "webdl/createwebdownload";
             
-            // إصلاح المشكلة: إرسال البيانات كـ FormData بدلاً من سلسلة نصية
-            const formData = new FormData();
-            if (isTorrent) {
-                formData.append("magnet", link);
-            } else {
-                formData.append("link", link);
-            }
+            // الحل السحري: إرسال البيانات كـ URLSearchParams بدلاً من FormData لتجنب مشاكل البروكسي
+            const params = new URLSearchParams();
+            if (isTorrent) params.append("magnet", link);
+            else params.append("link", link);
 
             try {
                 const targetUrl = `https://api.torbox.app/v1/api/${endpoint}`;
+                
                 const response = await fetchWithProxy(targetUrl, {
                     method: "POST", 
-                    headers: { "Authorization": `Bearer ${apiKey}` }, 
-                    body: formData
+                    headers: { 
+                        "Authorization": `Bearer ${apiKey}`,
+                        "Content-Type": "application/x-www-form-urlencoded" // مهم جداً
+                    }, 
+                    body: params.toString()
                 });
+                
                 const data = await response.json();
                 
                 if (data.success) {
                     let itemId = data.data.torrent_id || data.data.web_id || data.data.id || data.data.uid;
                     
                     if (!itemId) { 
-                         // إذا لم يرسل الـ ID، نجلبه من القائمة
-                         document.getElementById("dlProgress").innerText = "جاري استخراج كود الملف...";
+                         dlProgress.innerHTML = `<span class="text-yellow-400"><i class="fas fa-search"></i> جاري استخراج كود الملف...</span>`;
                          await new Promise(r => setTimeout(r, 2000));
                          const listUrl = `https://api.torbox.app/v1/api/${isTorrent ? 'torrents' : 'webdl'}/mylist`;
                          const listRes = await fetchWithProxy(listUrl, {
@@ -511,10 +482,10 @@
                         debridError("تم القبول ولكن فشل استخراج كود التتبع من السيرفر.");
                     }
                 } else {
-                    debridError(`الرفض من السيرفر: ${data.detail}`);
+                    debridError(`الرفض من السيرفر: ${data.detail || JSON.stringify(data)}`);
                 }
             } catch (error) {
-                debridError(`خطأ في الاتصال بسيرفر التحميل: ${error.message}`);
+                debridError(`مشكلة في الاتصال (قد تكون بسبب الحماية أو الباقة): ${error.message}`);
             }
         }
 
@@ -525,7 +496,7 @@
 
             const check = async () => {
                 attempts++;
-                if(attempts > 60) return debridError("انتهى وقت الانتظار. الملف ضخم ويحمل في الخلفية.");
+                if(attempts > 60) return debridError("انتهى وقت الانتظار. الملف ضخم ويحمل في الخلفية على حسابك.");
 
                 try {
                     const targetUrl = `https://api.torbox.app/v1/api/${apiPath}/mylist`;
@@ -536,19 +507,22 @@
                         const target = data.data.find(i => String(i.id) === String(itemId) || String(i.uid) === String(itemId)) || data.data[0];
                         if(target) {
                             const state = target.download_state || target.status || "unknown";
-                            if (["error", "failed"].includes(state)) return debridError(`فشل التحميل (الحالة: ${state})`);
+                            if (["error", "failed"].includes(state)) return debridError(`فشل التحميل من المصدر (الحالة: ${state})`);
 
-                            if (["completed", "seeding", "cached", "finished"].includes(state)) {
-                                document.getElementById("dlProgress").innerText = "اكتمل! جاري سحب الرابط המباشر...";
+                            if (["completed", "seeding", "cached", "finished", "downloaded"].includes(state)) {
+                                document.getElementById("dlProgress").innerHTML = `<span class="text-emerald-400"><i class="fas fa-check-circle"></i> اكتمل! جاري سحب الرابط المباشر...</span>`;
                                 getDirectLink(target, apiPath, apiKey, isTorrent);
                                 return;
                             } else {
-                                document.getElementById("dlProgress").innerText = `جاري التحميل في السيرفر السحابي (محاولة ${attempts}/60)...`;
+                                const progressTxt = target.progress ? `(${Math.round(target.progress * 100)}%)` : '';
+                                document.getElementById("dlProgress").innerText = `جاري التحميل في السيرفر السحابي ${progressTxt} (محاولة ${attempts}/60)...`;
                             }
                         }
                     }
-                } catch(e) {}
-                checkingInterval = setTimeout(check, 5000);
+                } catch(e) {
+                    console.log("Monitor Error:", e);
+                }
+                checkingInterval = setTimeout(check, 5000); // يفحص كل 5 ثواني
             };
             check(); 
         }
@@ -556,7 +530,7 @@
         async function getDirectLink(targetItem, apiPath, apiKey, isTorrent) {
             const files = targetItem.files || [];
             let fileId = null;
-            let fileName = targetItem.name || "Movie";
+            let fileName = targetItem.name || "الملف جاهز";
 
             // فلترة لأكبر ملف فيديو (نتجاهل الصور وملفات txt)
             if (files.length > 0) {
@@ -576,7 +550,7 @@
                 let res = await fetchWithProxy(dlUrl, { headers: { "Authorization": `Bearer ${apiKey}` } });
                 let data = await res.json();
                 
-                // المحاولة بدون File ID لو فشلت
+                // المحاولة بدون File ID لو الأولى فشلت
                 if (!data.success && fileId) {
                     let altUrl = dlUrl.replace(`&file_id=${fileId}`, '');
                     res = await fetchWithProxy(altUrl, { headers: { "Authorization": `Bearer ${apiKey}` } });
@@ -586,27 +560,25 @@
                 if (data.success) {
                     currentStreamUrl = data.data;
                     document.getElementById("dlTitle").innerText = fileName;
-                    document.getElementById("dlProgress").innerText = "تم التجهيز بنجاح! جاهز للعرض أو التحميل.";
+                    document.getElementById("dlProgress").innerHTML = `<span class="text-emerald-400 font-bold"><i class="fas fa-check"></i> تم التجهيز بنجاح! جاهز للعرض أو التحميل.</span>`;
                     document.getElementById("btnDownload").href = currentStreamUrl;
                     document.getElementById("dlButtons").classList.remove("hidden");
                     
-                    // تحديث اسم الفيديو في المشغل
                     document.getElementById("videoTitle").innerText = fileName;
-                    showToast("جاهز للمشاهدة!");
+                    showToast("الملف جاهز للمشاهدة!");
                 } else {
-                    debridError(`فشل سحب الرابط: ${data.detail}`);
+                    debridError(`فشل سحب الرابط المباشر: ${data.detail}`);
                 }
             } catch (e) {
-                debridError("حدث خطأ أثناء جلب الرابط.");
+                debridError(`حدث خطأ أثناء جلب الرابط من سيرفرات Torbox.`);
             }
         }
 
         function debridError(msg) {
-            document.getElementById("dlProgress").innerHTML = `<span class='text-red-400'><i class="fas fa-exclamation-triangle"></i> ${msg}</span>`;
+            document.getElementById("dlProgress").innerHTML = `<span class='text-red-400 font-bold bg-red-900/30 px-4 py-2 rounded-lg inline-block'><i class="fas fa-exclamation-triangle mr-2"></i> ${msg}</span>`;
             document.getElementById("dlButtons").classList.add("hidden");
         }
 
-        // --- 4. Video Player & Resume Feature ---
         const videoPlayer = document.getElementById("videoPlayer");
         const videoSource = document.getElementById("videoSource");
         let resumeSaved = false;
@@ -614,15 +586,15 @@
         function startStreaming() {
             if (!currentStreamUrl) return;
             document.getElementById("videoModal").classList.remove("hidden");
-            document.body.style.overflow = "hidden"; // منع السكرول للصفحة
+            document.body.style.overflow = "hidden"; // منع السكرول للصفحة الأساسية
             
             videoSource.src = currentStreamUrl;
             videoPlayer.load();
             resumeSaved = false;
 
-            // استعادة وقت المشاهدة
+            // ميزة استعادة وقت المشاهدة الذكية
             const savedTime = localStorage.getItem(`resume_${currentMovieHash}`);
-            if (savedTime && parseFloat(savedTime) > 10) {
+            if (savedTime && parseFloat(savedTime) > 15) {
                 videoPlayer.currentTime = parseFloat(savedTime);
                 showResumeToast();
             }
@@ -630,30 +602,27 @@
         }
 
         function closeVideoPlayer() {
-            // حفظ الدقيقة الحالية قبل الإغلاق
-            saveProgress();
-            
+            saveProgress(); // حفظ قبل الإغلاق
             videoPlayer.pause();
             videoSource.src = "";
             document.getElementById("videoModal").classList.add("hidden");
             document.body.style.overflow = "auto";
         }
 
-        // حفظ التقدم بشكل دوري كل 5 ثواني
+        // حفظ التقدم بشكل دوري (كل 5 ثواني لمنع الإرهاق)
         videoPlayer.addEventListener("timeupdate", () => {
-            if (videoPlayer.currentTime > 5 && !videoPlayer.paused) {
-                // حفظ فقط إذا لم ينتهي الفيلم (قبل النهاية بـ 3 دقائق مثلا)
-                if(videoPlayer.duration - videoPlayer.currentTime > 180){
+            if (videoPlayer.currentTime > 15 && !videoPlayer.paused) {
+                // حفظ فقط إذا لم ينتهي الفيلم (قبل النهاية بـ 3 دقائق)
+                if(videoPlayer.duration && (videoPlayer.duration - videoPlayer.currentTime > 180)){
                     localStorage.setItem(`resume_${currentMovieHash}`, videoPlayer.currentTime);
-                } else {
-                    // مسح الحفظ إذا انتهى الفيلم
-                    localStorage.removeItem(`resume_${currentMovieHash}`);
+                } else if (videoPlayer.duration && (videoPlayer.duration - videoPlayer.currentTime <= 180)) {
+                    localStorage.removeItem(`resume_${currentMovieHash}`); // مسح إذا انتهى
                 }
             }
         });
 
         function saveProgress() {
-            if (videoPlayer.currentTime > 5) {
+            if (videoPlayer.currentTime > 15) {
                 localStorage.setItem(`resume_${currentMovieHash}`, videoPlayer.currentTime);
             }
         }
@@ -661,10 +630,10 @@
         function showResumeToast() {
             const toast = document.getElementById("resumeToast");
             toast.classList.remove("hidden");
-            setTimeout(() => toast.classList.add("hidden"), 4000);
+            setTimeout(() => toast.classList.add("hidden"), 5000);
         }
 
-        // إخفاء/إظهار شريط التحكم العلوي مع حركة الماوس
+        // إخفاء/إظهار شريط التحكم العلوي للمشغل مع حركة الماوس
         let controlsTimeout;
         document.getElementById("videoModal").addEventListener("mousemove", () => {
             const controls = document.getElementById("playerControls");
