@@ -211,14 +211,13 @@
             checkAuth();
         }
 
+        // --- نظام البروكسي القوي لكسر حظر CORS في مصر والدول العربية ---
         async function fetchWithProxy(url, options = {}) {
-            let fetchOptions = { ...options };
-            
-            // سلسلة بروكسيات قوية لتخطي حماية CORS
+            // استخدام بروكسيات قوية ومفتوحة لا تحظر في الدول العربية غالباً
             const proxies = [
-                "", // المحاولة المباشرة أولاً
-                "https://corsproxy.io/?", // بروكسي قوي جداً للطلبات المعقدة
-                "https://api.allorigins.win/raw?url=" // للطلبات البسيطة (GET)
+                "https://api.codetabs.com/v1/proxy?quest=", // قوي جداً
+                "https://corsproxy.io/?",                  // ممتاز
+                ""                                         // محاولة مباشرة
             ];
 
             let lastErrorMsg = "";
@@ -226,17 +225,19 @@
             for (let i = 0; i < proxies.length; i++) {
                 try {
                     const proxy = proxies[i];
-                    // allorigins لا يدعم POST بشكل جيد، فنتخطاه إذا كان الطلب POST
-                    if (proxy.includes("allorigins") && fetchOptions.method === "POST") continue;
-
                     let targetUrl = url;
+
                     if (proxy) {
-                        targetUrl = proxy + encodeURIComponent(url);
+                        if (proxy.includes("quest=")) {
+                            targetUrl = proxy + url;
+                        } else {
+                            targetUrl = proxy + encodeURIComponent(url);
+                        }
                     }
                     
-                    const res = await fetch(targetUrl, fetchOptions);
+                    const res = await fetch(targetUrl, options);
                     
-                    // إذا استجاب السيرفر بأي رد منطقي (حتى لو خطأ 400 من السيرفر نفسه مش من المتصفح)
+                    // إذا استجاب السيرفر بأي رد منطقي نعتبره نجاح للاتصال
                     if (res.ok || res.status === 400 || res.status === 401 || res.status === 403 || res.status === 500) {
                         return res;
                     }
@@ -245,7 +246,7 @@
                     console.log(`Proxy attempt ${i} failed:`, err.message);
                 }
             }
-            throw new Error(`فشل الاتصال بسبب حماية المتصفح (CORS). تفاصيل: ${lastErrorMsg}`);
+            throw new Error(`مشكلة الحظر. تأكد من اتصالك بالإنترنت. تفاصيل: ${lastErrorMsg}`);
         }
 
         function showToast(msg, isError = false) {
@@ -303,7 +304,7 @@
             
             const isSeries = query.includes("مسلسل") || query.toLowerCase().includes("series");
 
-            // 1. بحث YIFY للأفلام (سريع جداً ومضمون)
+            // 1. بحث YIFY للأفلام
             if (!isSeries) {
                 try {
                     const yifyUrl = `https://en.yify.sc/api/v2/list_movies.json?query_term=${encodedQuery}&limit=4`;
@@ -326,7 +327,7 @@
                 } catch (e) { console.log("YIFY failed:", e); }
             }
 
-            // 2. بحث Cinemeta/Torrentio للمسلسلات أو كبديل للأفلام
+            // 2. بحث Cinemeta/Torrentio 
             if (results.length < 2) {
                 try {
                     const type = isSeries ? 'series' : 'movie';
@@ -362,7 +363,7 @@
                                     seen.add(s.infoHash);
                                 }
                             });
-                            item.torrents = item.torrents.slice(0, 4); // تحديد 4 جودات فقط
+                            item.torrents = item.torrents.slice(0, 4);
                             if (item.torrents.length > 0) results.push(item);
                         }
                     }
@@ -443,19 +444,19 @@
             const isTorrent = link.startsWith("magnet:");
             const endpoint = isTorrent ? "torrents/createtorrent" : "webdl/createwebdownload";
             
-            // الحل السحري: إرسال البيانات كـ URLSearchParams بدلاً من FormData لتجنب مشاكل البروكسي
+            // الحل القاطع لمشكلة CORS: وضع الـ Token داخل اللينك مباشرة بدلاً من الهيدر!
+            const targetUrl = `https://api.torbox.app/v1/api/${endpoint}?token=${apiKey}`;
+            
             const params = new URLSearchParams();
             if (isTorrent) params.append("magnet", link);
             else params.append("link", link);
 
             try {
-                const targetUrl = `https://api.torbox.app/v1/api/${endpoint}`;
-                
+                // إرسال الطلب بدون Authorization header لأننا أرسلناه في اللينك
                 const response = await fetchWithProxy(targetUrl, {
                     method: "POST", 
                     headers: { 
-                        "Authorization": `Bearer ${apiKey}`,
-                        "Content-Type": "application/x-www-form-urlencoded" // مهم جداً
+                        "Content-Type": "application/x-www-form-urlencoded"
                     }, 
                     body: params.toString()
                 });
@@ -468,10 +469,9 @@
                     if (!itemId) { 
                          dlProgress.innerHTML = `<span class="text-yellow-400"><i class="fas fa-search"></i> جاري استخراج كود الملف...</span>`;
                          await new Promise(r => setTimeout(r, 2000));
-                         const listUrl = `https://api.torbox.app/v1/api/${isTorrent ? 'torrents' : 'webdl'}/mylist`;
-                         const listRes = await fetchWithProxy(listUrl, {
-                             headers: { "Authorization": `Bearer ${apiKey}` }
-                         });
+                         // جلب القائمة باستخدام الـ Token في اللينك أيضاً
+                         const listUrl = `https://api.torbox.app/v1/api/${isTorrent ? 'torrents' : 'webdl'}/mylist?token=${apiKey}`;
+                         const listRes = await fetchWithProxy(listUrl);
                          const listData = await listRes.json();
                          if(listData.success && listData.data.length > 0) itemId = listData.data[0].id;
                     }
@@ -485,7 +485,7 @@
                     debridError(`الرفض من السيرفر: ${data.detail || JSON.stringify(data)}`);
                 }
             } catch (error) {
-                debridError(`مشكلة في الاتصال (قد تكون بسبب الحماية أو الباقة): ${error.message}`);
+                debridError(`مشكلة في الاتصال (قد تكون بسبب الحظر في بلدك): ${error.message}`);
             }
         }
 
@@ -499,8 +499,8 @@
                 if(attempts > 60) return debridError("انتهى وقت الانتظار. الملف ضخم ويحمل في الخلفية على حسابك.");
 
                 try {
-                    const targetUrl = `https://api.torbox.app/v1/api/${apiPath}/mylist`;
-                    const res = await fetchWithProxy(targetUrl, { headers: { "Authorization": `Bearer ${apiKey}` } });
+                    const targetUrl = `https://api.torbox.app/v1/api/${apiPath}/mylist?token=${apiKey}`;
+                    const res = await fetchWithProxy(targetUrl);
                     const data = await res.json();
                     
                     if(data.success) {
@@ -532,7 +532,6 @@
             let fileId = null;
             let fileName = targetItem.name || "الملف جاهز";
 
-            // فلترة لأكبر ملف فيديو (نتجاهل الصور وملفات txt)
             if (files.length > 0) {
                 const videoFiles = files.filter(f => f.name.match(/\.(mp4|mkv|avi|webm)$/i));
                 const targetFiles = videoFiles.length > 0 ? videoFiles : files;
@@ -547,13 +546,13 @@
             if (fileId) dlUrl += `&file_id=${fileId}`;
 
             try {
-                let res = await fetchWithProxy(dlUrl, { headers: { "Authorization": `Bearer ${apiKey}` } });
+                let res = await fetchWithProxy(dlUrl);
                 let data = await res.json();
                 
                 // المحاولة بدون File ID لو الأولى فشلت
                 if (!data.success && fileId) {
                     let altUrl = dlUrl.replace(`&file_id=${fileId}`, '');
-                    res = await fetchWithProxy(altUrl, { headers: { "Authorization": `Bearer ${apiKey}` } });
+                    res = await fetchWithProxy(altUrl);
                     data = await res.json();
                 }
 
@@ -586,7 +585,7 @@
         function startStreaming() {
             if (!currentStreamUrl) return;
             document.getElementById("videoModal").classList.remove("hidden");
-            document.body.style.overflow = "hidden"; // منع السكرول للصفحة الأساسية
+            document.body.style.overflow = "hidden"; 
             
             videoSource.src = currentStreamUrl;
             videoPlayer.load();
@@ -602,21 +601,19 @@
         }
 
         function closeVideoPlayer() {
-            saveProgress(); // حفظ قبل الإغلاق
+            saveProgress(); 
             videoPlayer.pause();
             videoSource.src = "";
             document.getElementById("videoModal").classList.add("hidden");
             document.body.style.overflow = "auto";
         }
 
-        // حفظ التقدم بشكل دوري (كل 5 ثواني لمنع الإرهاق)
         videoPlayer.addEventListener("timeupdate", () => {
             if (videoPlayer.currentTime > 15 && !videoPlayer.paused) {
-                // حفظ فقط إذا لم ينتهي الفيلم (قبل النهاية بـ 3 دقائق)
                 if(videoPlayer.duration && (videoPlayer.duration - videoPlayer.currentTime > 180)){
                     localStorage.setItem(`resume_${currentMovieHash}`, videoPlayer.currentTime);
                 } else if (videoPlayer.duration && (videoPlayer.duration - videoPlayer.currentTime <= 180)) {
-                    localStorage.removeItem(`resume_${currentMovieHash}`); // مسح إذا انتهى
+                    localStorage.removeItem(`resume_${currentMovieHash}`); 
                 }
             }
         });
@@ -633,7 +630,6 @@
             setTimeout(() => toast.classList.add("hidden"), 5000);
         }
 
-        // إخفاء/إظهار شريط التحكم العلوي للمشغل مع حركة الماوس
         let controlsTimeout;
         document.getElementById("videoModal").addEventListener("mousemove", () => {
             const controls = document.getElementById("playerControls");
