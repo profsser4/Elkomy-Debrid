@@ -85,8 +85,8 @@ function processDirectLink(){
 
 async function sendToRailway(link){
  let resultsDiv = document.getElementById('results');
- // الرسالة دي هتفضل ظاهرة طول ما السيرفر بيحاول يسحب الملف
- resultsDiv.innerHTML = `<div style="text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;border:1px dashed #38bdf8;">⏳ جاري سحب الرابط من السيرفرات... (ممكن ياخد شوية وقت لو الملف جديد)</div>`;
+ // الرسالة دي هتفضل ظاهرة طول ما السيرفر بيحاول يسحب الملف (نظام الانتظار)
+ resultsDiv.innerHTML = `<div style="text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;border:1px dashed #38bdf8;">⏳ جاري سحب الرابط من السيرفرات...<br><span style="font-size:12px;color:#94a3b8;display:block;margin-top:8px;">(السيرفر بينتظر الملف يجهز.. متقفلش الصفحة)</span></div>`;
  
  try{
   let res=await fetch(SERVER_URL,{
