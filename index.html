@@ -6,22 +6,40 @@
 <title>Elkomy Debrid VIP</title>
 <style>
 :root{--bg:#0f172a;--panel:#1e293b;--primary:#38bdf8;--text:#f8fafc;--danger:#ef4444;--success:#22c55e}
-*{box-sizing:border-box;font-family:Tahoma}body{margin:0;background:var(--bg);color:var(--text)}
+*{box-sizing:border-box;font-family:Tahoma}
+body{margin:0;background:var(--bg);color:var(--text)}
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
-.login-box{background:var(--panel);padding:2rem;border-radius:12px;width:90%;max-width:400px;text-align:center;box-shadow:0 10px 25px rgba(0,0,0,.5)}
+.login-box{background:var(--panel);padding:2rem;border-radius:12px;width:90%;max-width:400px;text-align:center}
 .login-input{width:100%;padding:12px;margin-bottom:12px;border-radius:8px;border:1px solid #334155;background:var(--bg);color:#fff;text-align:center}
 .login-btn{width:100%;padding:12px;background:var(--primary);color:#000;font-weight:bold;border:none;border-radius:8px;cursor:pointer;font-size:16px}
 #main-content{display:none;padding:20px;max-width:800px;margin:0 auto}
-.action-box{background:var(--panel);padding:30px 20px;border-radius:10px;margin-bottom:20px;border:1px solid #334155;text-align:center}
-.search-container{display:flex;flex-direction:column;gap:15px;margin-top:20px}
-.search-input{width:100%;padding:15px;border-radius:8px;border:1px solid #334155;background:var(--bg);color:#fff;text-align:left;direction:ltr;font-size:14px}
-.search-btn{width:100%;padding:15px;background:var(--success);color:#fff;font-weight:bold;border:none;border-radius:8px;cursor:pointer;font-size:16px}
+.action-box{background:var(--panel);padding:25px 20px;border-radius:10px;margin-bottom:20px;border:1px solid #334155;text-align:center}
+.search-container{display:flex;flex-direction:column;gap:12px;margin-top:15px}
+.search-input{width:100%;padding:15px;border-radius:8px;border:1px solid #334155;background:var(--bg);color:#fff;font-size:15px}
+.ltr{text-align:left;direction:ltr}
+.search-btn{width:100%;padding:14px;background:var(--success);color:#fff;font-weight:bold;border:none;border-radius:8px;cursor:pointer;font-size:15px}
+.btn-blue{background:var(--primary);color:#000}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
 .result-card{background:var(--panel);padding:20px;border-radius:8px;margin-top:20px;border:1px solid var(--success);text-align:center}
 .btn-download{background:var(--success);color:#fff;padding:12px 20px;border-radius:5px;text-decoration:none;display:inline-block;margin-top:15px;font-weight:bold;width:100%}
 .btn-vlc{background:#f97316;color:#fff;padding:12px 20px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin-top:10px;width:100%}
 .pending{text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;border:1px dashed #38bdf8}
 .warn{text-align:center;color:#f59e0b;padding:15px;background:var(--panel);border-radius:8px;border:1px dashed #f59e0b}
 video{width:100%;border-radius:8px;background:#000}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:10px;margin-bottom:20px}
+.poster{background:var(--panel);border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid #334155}
+.poster img,.poster .noimg{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#0b1220}
+.poster .noimg{display:flex;align-items:center;justify-content:center;font-size:32px}
+.poster .t{padding:6px;font-size:12px;text-align:center;line-height:1.4}
+.poster .y{color:#94a3b8;font-size:11px}
+.tor{background:var(--panel);border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:10px}
+.tor .n{direction:ltr;text-align:left;font-size:13px;word-break:break-all;margin-bottom:8px}
+.tor .m{font-size:12px;color:#94a3b8;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px}
+.tor .s{color:var(--success)}
+.tor .s.zero{color:var(--danger)}
+.tor button{width:100%;padding:10px;background:var(--success);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer}
+h3.sec{margin:5px 0 12px 0;color:var(--primary)}
 </style>
 </head>
 <body>
@@ -37,16 +55,38 @@ video{width:100%;border-radius:8px;background:#000}
 </div>
 
 <div id="main-content">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px">
-    <h1 style="color:var(--primary);margin:0">Elkomy VIP 🚀</h1>
-    <button onclick="sessionStorage.clear();location.reload()" style="background:var(--danger);color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer">خروج</button>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px">
+<h1 style="color:var(--primary);margin:0">Elkomy VIP 🚀</h1>
+<button onclick="sessionStorage.clear();location.reload()" style="background:var(--danger);color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer">خروج</button>
+</div>
+
+<div class="action-box">
+<h2 style="margin-top:0;color:white">🔍 ابحث عن فيلم / مسلسل / أنمي</h2>
+<div class="search-container">
+<input id="searchInput" class="search-input" placeholder="اكتب الاسم (عربي أو إنجليزي)" onkeydown="if(event.key==='Enter')searchTitles()">
+<div class="row">
+<button class="search-btn" onclick="searchTitles()">🎬 بحث بالبوستر</button>
+<button class="search-btn btn-blue" onclick="directTorrentSearch()">🧲 بحث تورنت مباشر</button>
+</div>
+</div>
+</div>
+
+<div id="titles"></div>
+
+<div id="torrentPanel" style="display:none">
+<h3 class="sec">🧲 نسخ التورنت</h3>
+<div class="search-container" style="margin:0 0 15px 0">
+<input id="torrentQuery" class="search-input ltr" placeholder="الاسم + الموسم مثلاً S01" onkeydown="if(event.key==='Enter')searchTorrents()">
+<button class="search-btn btn-blue" onclick="searchTorrents()">ابحث في التورنت</button>
+</div>
+<div id="torrentResults"></div>
 </div>
 
 <div class="action-box">
 <h2 style="margin-top:0;color:white">🔗 فك الروابط المباشرة والتورنت</h2>
-<p style="color:#94a3b8;font-size:14px;margin-bottom:15px">ضع رابط Magnet أو رابط تحميل مباشر هنا للحصول على المشاهدة المباشرة</p>
+<p style="color:#94a3b8;font-size:14px;margin-bottom:15px">ضع رابط Magnet أو رابط تحميل مباشر هنا</p>
 <div class="search-container">
-<input id="linkInput" class="search-input" placeholder="magnet:?xt=... أو https://...">
+<input id="linkInput" class="search-input ltr" placeholder="magnet:?xt=... أو https://...">
 <button class="search-btn" onclick="processDirectLink()">سحب الرابط الآن 🚀</button>
 </div>
 </div>
@@ -55,78 +95,198 @@ video{width:100%;border-radius:8px;background:#000}
 </div>
 
 <script>
-const USER="admin";
-const PASS="admin";
-const SERVER_URL="https://elkomy-server-production.up.railway.app/generate";
-const MAX_TRIES=90; // × 5 ثواني = 7.5 دقيقة
+const USER = "admin";
+const PASS = "admin";
+const API = "https://elkomy-server-production.up.railway.app";
+const SERVER_URL = API + "/generate";
+const MAX_TRIES = 90;
+let titles = [];
+let torrents = [];
 
-window.onload=()=>{ if(sessionStorage.isLoggedIn==="true") showMainContent(); };
+window.onload = () => {
+  if (sessionStorage.isLoggedIn === "true") showMainContent();
+};
 
-document.addEventListener('keydown',e=>{
- if(e.key==='Enter' && document.getElementById('login-screen').style.display!=='none') checkLogin();
+document.addEventListener('keydown', e => {
+  const ls = document.getElementById('login-screen');
+  if (e.key === 'Enter' && ls.style.display !== 'none') checkLogin();
 });
 
-function checkLogin(){
- const u=document.getElementById('username').value.trim().toLowerCase();
- const p=document.getElementById('password').value.trim();
- if(u===USER && p===PASS){
-  sessionStorage.setItem("isLoggedIn","true");
-  showMainContent();
- }else{
-  document.getElementById('login-error').style.display='block';
- }
-}
-
-function showMainContent(){
- document.getElementById('login-screen').style.display='none';
- document.getElementById('main-content').style.display='block';
-}
-
-function processDirectLink(){
- let link=document.getElementById('linkInput').value.trim();
- if(!link) return alert("الرجاء لصق الرابط أولاً");
- if(!link.startsWith('http') && !link.startsWith('magnet:')) link='https://'+link;
- sendToRailway(link);
-}
-
-function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-async function sendToRailway(link, torrentId=null, tries=0){
- const box=document.getElementById('results');
- if(tries===0) box.innerHTML=`<div class="pending">⏳ جاري سحب الرابط...</div>`;
-
- try{
-  const res=await fetch(SERVER_URL,{
-   method:'POST',
-   headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({query:link, torrent_id:torrentId})
-  });
-  const data=await res.json();
-
-  // لسه بيجهز: اسأل تاني تلقائياً
-  if(res.status===202 && tries<MAX_TRIES){
-   const pct=data.progress?` – ${(data.progress*100).toFixed(0)}%`:'';
-   box.innerHTML=`<div class="pending">⏳ ${esc(data.status||'جاري التجهيز')}${pct}<br><span style="font-size:12px;color:#94a3b8">متقفلش الصفحة</span></div>`;
-   return setTimeout(()=>sendToRailway(link, data.torrent_id||torrentId, tries+1),5000);
+function checkLogin() {
+  const u = document.getElementById('username').value.trim().toLowerCase();
+  const p = document.getElementById('password').value.trim();
+  if (u === USER && p === PASS) {
+    sessionStorage.setItem("isLoggedIn", "true");
+    showMainContent();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
   }
+}
 
-  if(data.direct_link){
-   const url=data.direct_link;
-   box.innerHTML=`
-   <div class="result-card">
-    <h3 style="margin:0 0 15px 0;color:var(--success)">✅ الملف جاهز!</h3>
-    ${data.name?`<p style="direction:ltr;font-size:13px;color:#94a3b8;word-break:break-all">${esc(data.name)}</p>`:''}
-    <video controls src="${esc(url)}"></video>
-    <a href="${esc(url)}" target="_blank" class="btn-download">⬇️ فتح / تحميل مباشر</a>
-    <button class="btn-vlc" id="copyBtn">📋 نسخ الرابط (للصقه في VLC)</button>
-   </div>`;
-   document.getElementById('copyBtn').onclick=()=>{ navigator.clipboard.writeText(url); alert('تم نسخ الرابط!'); };
-  }else{
-   box.innerHTML=`<div class="warn">${esc(data.error||'حصل خطأ')}</div>`;
+function showMainContent() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-content').style.display = 'block';
+}
+
+function esc(s) {
+  const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+  return String(s).replace(/[&<>"']/g, c => map[c]);
+}
+
+function fmtSize(b) {
+  if (!b) return 'غير معروف';
+  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0;
+  while (b >= 1024 && i < 4) { b /= 1024; i++; }
+  return b.toFixed(i >= 3 ? 2 : 0) + ' ' + u[i];
+}
+
+function tags(t) {
+  const re = /2160p|4K|1080p|720p|480p|BluRay|WEB-?DL|WEBRip|HDTV|HDRip|CAM/gi;
+  const m = t.match(re) || [];
+  return [...new Set(m.map(x => x.toUpperCase()))].join(' · ');
+}
+
+async function searchTitles() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return alert("اكتب اسم الفيلم أو المسلسل");
+  const box = document.getElementById('titles');
+  document.getElementById('torrentPanel').style.display = 'none';
+  box.innerHTML = '<div class="pending">⏳ جاري البحث...</div>';
+  try {
+    const res = await fetch(API + '/tmdb?q=' + encodeURIComponent(q));
+    const data = await res.json();
+    if (data.error) {
+      box.innerHTML = '<div class="warn">' + esc(data.error) + '</div>';
+      return;
+    }
+    titles = data.results;
+    if (!titles.length) {
+      box.innerHTML = '<div class="warn">مفيش نتايج. جرب اسم تاني أو بحث التورنت المباشر.</div>';
+      return;
+    }
+    let html = '<div class="grid">';
+    titles.forEach((t, i) => {
+      const img = t.poster
+        ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">'
+        : '<div class="noimg">🎬</div>';
+      const kind = t.type === 'tv' ? 'مسلسل' : 'فيلم';
+      html += '<div class="poster" onclick="pickTitle(' + i + ')">' + img +
+        '<div class="t">' + esc(t.title) +
+        '<div class="y">' + esc(t.year) + ' · ' + kind + '</div></div></div>';
+    });
+    html += '</div>';
+    box.innerHTML = html;
+  } catch (e) {
+    box.innerHTML = '<div class="warn" style="color:#ef4444">❌ مش قادر أوصل للسيرفر.</div>';
   }
- }catch(e){
-  box.innerHTML=`<div class="warn" style="color:#ef4444">❌ مش قادر أوصل للسيرفر.</div>`;
- }
+}
+
+function pickTitle(i) {
+  const t = titles[i];
+  let q = t.search_title || t.title;
+  if (t.type === 'movie' && t.year) q += ' ' + t.year;
+  document.getElementById('torrentQuery').value = q;
+  searchTorrents();
+}
+
+function directTorrentSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return alert("اكتب الاسم الأول");
+  document.getElementById('torrentQuery').value = q;
+  searchTorrents();
+}
+
+async function searchTorrents() {
+  const q = document.getElementById('torrentQuery').value.trim();
+  if (!q) return;
+  const panel = document.getElementById('torrentPanel');
+  const box = document.getElementById('torrentResults');
+  panel.style.display = 'block';
+  box.innerHTML = '<div class="pending">⏳ جاري البحث في المصادر... (قد ياخد نص دقيقة)</div>';
+  panel.scrollIntoView({behavior: 'smooth'});
+  try {
+    const res = await fetch(API + '/search?q=' + encodeURIComponent(q));
+    const data = await res.json();
+    if (data.error) {
+      box.innerHTML = '<div class="warn">' + esc(data.error) + '</div>';
+      return;
+    }
+    torrents = data.results;
+    if (!torrents.length) {
+      box.innerHTML = '<div class="warn">مفيش نتايج. جرب تعدّل الاسم (بدون سنة، أو بالإنجليزي).</div>';
+      return;
+    }
+    let html = '';
+    torrents.forEach((t, i) => {
+      const tg = tags(t.title);
+      html += '<div class="tor"><div class="n">' + esc(t.title) + '</div>' +
+        '<div class="m"><span>💾 ' + fmtSize(t.size) + '</span>' +
+        '<span class="s ' + (t.seeders ? '' : 'zero') + '">🌱 ' + t.seeders + '</span>' +
+        (tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') +
+        '<span>' + esc(t.indexer) + '</span></div>' +
+        '<button onclick="pullTorrent(' + i + ')">⬇️ سحب</button></div>';
+    });
+    box.innerHTML = html;
+  } catch (e) {
+    box.innerHTML = '<div class="warn" style="color:#ef4444">❌ مش قادر أوصل للسيرفر.</div>';
+  }
+}
+
+function pullTorrent(i) {
+  document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+  sendToRailway(torrents[i].magnet);
+}
+
+function processDirectLink() {
+  let link = document.getElementById('linkInput').value.trim();
+  if (!link) return alert("الرجاء لصق الرابط أولاً");
+  if (!link.startsWith('http') && !link.startsWith('magnet:')) link = 'https://' + link;
+  sendToRailway(link);
+}
+
+async function sendToRailway(link, torrentId = null, tries = 0) {
+  const box = document.getElementById('results');
+  if (tries === 0) box.innerHTML = '<div class="pending">⏳ جاري سحب الرابط...</div>';
+  try {
+    const res = await fetch(SERVER_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({query: link, torrent_id: torrentId})
+    });
+    const data = await res.json();
+
+    if (res.status === 202 && tries < MAX_TRIES) {
+      const pct = data.progress ? ' – ' + (data.progress * 100).toFixed(0) + '%' : '';
+      box.innerHTML = '<div class="pending">⏳ ' + esc(data.status || 'جاري التجهيز') + pct +
+        '<br><span style="font-size:12px;color:#94a3b8">متقفلش الصفحة</span></div>';
+      return setTimeout(() => {
+        sendToRailway(link, data.torrent_id || torrentId, tries + 1);
+      }, 5000);
+    }
+
+    if (data.direct_link) {
+      const url = data.direct_link;
+      let html = '<div class="result-card">';
+      html += '<h3 style="margin:0 0 15px 0;color:var(--success)">✅ الملف جاهز!</h3>';
+      if (data.name) {
+        html += '<p style="direction:ltr;font-size:13px;color:#94a3b8;word-break:break-all">' + esc(data.name) + '</p>';
+      }
+      html += '<video controls src="' + esc(url) + '"></video>';
+      html += '<a href="' + esc(url) + '" target="_blank" class="btn-download">⬇️ فتح / تحميل مباشر</a>';
+      html += '<button class="btn-vlc" id="copyBtn">📋 نسخ الرابط (للصقه في VLC)</button>';
+      html += '</div>';
+      box.innerHTML = html;
+      document.getElementById('copyBtn').onclick = () => {
+        navigator.clipboard.writeText(url);
+        alert('تم نسخ الرابط!');
+      };
+    } else {
+      box.innerHTML = '<div class="warn">' + esc(data.error || 'حصل خطأ') + '</div>';
+    }
+  } catch (e) {
+    box.innerHTML = '<div class="warn" style="color:#ef4444">❌ مش قادر أوصل للسيرفر.</div>';
+  }
 }
 </script>
 </body>
