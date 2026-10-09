@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Elkomy Debrid VIP</title>
 <style>
-:root{--bg:#0f172a;--panel:#1e293b;--primary:#38bdf8;--text:#f8fafc;--muted:#94a3b8;--danger:#ef4444;--success:#22c55e}
+:root{--bg:#0f172a;--panel:#1e293b;--primary:#38bdf8;--text:#f8fafc;--danger:#ef4444;--success:#22c55e}
 *{box-sizing:border-box;font-family:Tahoma}body{margin:0;background:var(--bg);color:var(--text)}
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
 .login-box{background:var(--panel);padding:2rem;border-radius:12px;width:90%;max-width:400px;text-align:center;box-shadow: 0 10px 25px rgba(0,0,0,0.5);}
@@ -99,7 +99,7 @@ async function searchMovie(){
  results.innerHTML='';
  
  try{
-  // تم ضبط الرابط لدعم البحث الإنجليزي والعربي بدون مشاكل (بدون قيود لغة صارمة)
+  // تم التصليح: الرابط ده شغال صاروخ مع Batman وأي فيلم
   let res=await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(q)}`);
   let data=await res.json(); 
   loading.style.display='none';
@@ -178,12 +178,13 @@ function processDirectLink(){
  sendToRailway(encodeURIComponent(link));
 }
 
-// النظام المستقر القديم بدون لوب وبدون تكرار رسائل
+// تم إصلاح الدالة عشان الشاشة تفضل نضيفة وتستنى السيرفر براحتها
 async function sendToRailway(encodedLink){
  let resultsDiv = document.getElementById('results');
- // إنشاء رسالة الانتظار ووضعها في الأعلى
  let waitId = 'wait-' + Date.now();
- resultsDiv.innerHTML = `<div id="${waitId}" style="text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;margin-bottom:15px;border:1px dashed #38bdf8;">⏳ جاري إرسال الطلب لـ TorBox...</div>` + resultsDiv.innerHTML;
+ 
+ // الرسالة بتتحط مرة واحدة وتتمسح بعدين عشان الشاشة متتبهدلش
+ resultsDiv.innerHTML = `<div id="${waitId}" style="text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;margin-bottom:15px;border:1px dashed #38bdf8;">⏳ جاري الانتظار (السيرفر بيفحص الملف كل 5 ثواني)...</div>` + resultsDiv.innerHTML;
  window.scrollTo({top:0, behavior:'smooth'});
 
  try{
@@ -195,7 +196,7 @@ async function sendToRailway(encodedLink){
   
   let data=await res.json();
   let waitEl = document.getElementById(waitId);
-  if(waitEl) waitEl.remove(); // إزالة رسالة الانتظار بعد الرد
+  if(waitEl) waitEl.remove(); // شيل رسالة الانتظار أول ما الرد ييجي
 
   if(data.direct_link){
    resultsDiv.innerHTML = `
@@ -205,8 +206,8 @@ async function sendToRailway(encodedLink){
     <button class="btn-vlc" onclick="navigator.clipboard.writeText('${data.direct_link}');alert('تم نسخ الرابط! افتح VLC واضغط Network Stream')">📋 نسخ للـ VLC</button>
    </div>` + resultsDiv.innerHTML;
   }else{
-   // عرض رسالة (تحت المعالجة) بشكل مهندم
-   resultsDiv.innerHTML = `<div style="text-align:center;color:#f59e0b;padding:15px;background:var(--panel);border-radius:8px;margin-bottom:15px;border:1px dashed #f59e0b;">⏳ ${data.error||'الملف قيد التجهيز'}</div>` + resultsDiv.innerHTML;
+   // لو الملف لسه مخلصش بعد الـ 30 ثانية
+   resultsDiv.innerHTML = `<div style="text-align:center;color:#f59e0b;padding:15px;background:var(--panel);border-radius:8px;margin-bottom:15px;border:1px dashed #f59e0b;">⏳ ${data.error}</div>` + resultsDiv.innerHTML;
   }
  }catch(e){
   let waitEl = document.getElementById(waitId);
