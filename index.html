@@ -13,16 +13,13 @@
 .login-input{width:100%;padding:12px;margin-bottom:12px;border-radius:8px;border:1px solid #334155;background:var(--bg);color:#fff;text-align:center}
 .login-btn{width:100%;padding:12px;background:var(--primary);color:#000;font-weight:bold;border:none;border-radius:8px;cursor:pointer;font-size:16px;}
 #main-content{display:none;padding:20px;max-width:800px;margin:0 auto}
-.action-box{background:var(--panel);padding:20px;border-radius:10px;margin-bottom:20px;border:1px solid #334155}
-.search-container{display:flex;gap:10px}
-.search-input{flex:1;padding:12px;border-radius:8px;border:1px solid #334155;background:var(--bg);color:#fff}
-.search-btn{padding:12px 20px;background:var(--primary);color:#000;font-weight:bold;border:none;border-radius:8px;cursor:pointer;white-space:nowrap}
-.movie-card{background:var(--bg);padding:15px;border-radius:8px;margin-bottom:12px;display:flex;gap:15px;border:1px solid #334155}
-.movie-poster{width:90px;border-radius:8px;object-fit:cover;background:#334155}
-.quality-btn{background:#6366f1;color:#fff;padding:6px 10px;border:none;border-radius:5px;cursor:pointer;margin:3px;font-size:12px;font-weight:bold}
-.result-card{background:var(--panel);padding:15px;border-radius:8px;margin-bottom:15px;border:1px solid var(--success)}
-.btn-download{background:var(--success);color:#fff;padding:8px 12px;border-radius:5px;text-decoration:none;display:inline-block;margin-top:8px;font-weight:bold}
-.btn-vlc{background:#f97316;color:#fff;padding:8px 12px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin-right:10px}
+.action-box{background:var(--panel);padding:30px 20px;border-radius:10px;margin-bottom:20px;border:1px solid #334155;text-align:center;}
+.search-container{display:flex;flex-direction:column;gap:15px;margin-top:20px;}
+.search-input{width:100%;padding:15px;border-radius:8px;border:1px solid #334155;background:var(--bg);color:#fff;text-align:left;direction:ltr;font-size:14px;}
+.search-btn{width:100%;padding:15px;background:var(--success);color:#fff;font-weight:bold;border:none;border-radius:8px;cursor:pointer;font-size:16px;}
+.result-card{background:var(--panel);padding:20px;border-radius:8px;margin-top:20px;border:1px solid var(--success);text-align:center;}
+.btn-download{background:var(--success);color:#fff;padding:12px 20px;border-radius:5px;text-decoration:none;display:inline-block;margin-top:15px;font-weight:bold;width:100%;}
+.btn-vlc{background:#f97316;color:#fff;padding:12px 20px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin-top:10px;width:100%;}
 </style>
 </head>
 <body>
@@ -38,36 +35,26 @@
 </div>
 
 <div id="main-content">
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
     <h1 style="color:var(--primary);margin:0;">Elkomy VIP 🚀</h1>
-    <button onclick="sessionStorage.clear(); location.reload();" style="background:var(--danger);color:white;border:none;padding:5px 15px;border-radius:5px;cursor:pointer;">خروج</button>
+    <button onclick="sessionStorage.clear(); location.reload();" style="background:var(--danger);color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;">خروج</button>
 </div>
 
 <div class="action-box">
-<h3>🔍 البحث الذكي</h3>
-<div class="search-container">
-<input id="movieSearchInput" class="search-input" placeholder="اسم الفيلم أو المسلسل...">
-<button class="search-btn" onclick="searchMovie()">بحث شامل</button>
-</div>
-</div>
-
-<div class="action-box">
-<h3>🔗 فك رابط أو تورنت مباشر</h3>
+<h2 style="margin-top:0;color:white;">🔗 فك الروابط المباشرة والتورنت</h2>
+<p style="color:#94a3b8;font-size:14px;margin-bottom:15px;">ضع رابط Magnet أو رابط تحميل مباشر هنا للحصول على المشاهدة المباشرة</p>
 <div class="search-container">
 <input id="linkInput" class="search-input" placeholder="magnet:?xt=... أو https://...">
-<button class="search-btn" style="background:var(--success);color:#fff" onclick="processDirectLink()">سحب الرابط</button>
+<button class="search-btn" onclick="processDirectLink()">سحب الرابط الآن 🚀</button>
 </div>
 </div>
 
-<div id="loading" style="display:none;text-align:center;color:var(--primary);padding:15px;font-weight:bold">⏳ جاري المعالجة...</div>
 <div id="results"></div>
 </div>
 
 <script>
 const users={"admin":{password:"elkomy2026",role:"الإدارة"},"user":{password:"12345",role:"ضيف"}};
 const SERVER_URL="https://elkomy-server-production.up.railway.app/generate";
-const TMDB_KEY="903eab699bbf9b106eeb072e9d22c9bb";
-const TRACKERS="&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce";
 
 window.onload=()=>{
  if(sessionStorage.isLoggedIn==="true") showMainContent();
@@ -89,102 +76,16 @@ function showMainContent(){
  document.getElementById('main-content').style.display='block';
 }
 
-async function searchMovie(){
- let q=document.getElementById('movieSearchInput').value.trim();
- if(!q) return alert("اكتب اسم الفيلم أو المسلسل");
- 
- let loading=document.getElementById('loading');
- let results=document.getElementById('results');
- loading.style.display='block'; 
- results.innerHTML='';
- 
- try{
-  // تم التصليح: الرابط ده شغال صاروخ مع Batman وأي فيلم
-  let res=await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(q)}`);
-  let data=await res.json(); 
-  loading.style.display='none';
-  
-  if(data.results && data.results.length>0){
-   displayTMDB(data.results);
-  }else{
-   results.innerHTML=`<div style="text-align:center;color:#ef4444;padding:20px;font-weight:bold">❌ مفيش نتائج لـ "${q}"</div>`;
-  }
- }catch(e){
-  loading.style.display='none'; 
-  results.innerHTML=`<div style="text-align:center;color:#ef4444;padding:20px;font-weight:bold">❌ خطأ في الاتصال بسيرفر الأفلام</div>`;
- }
-}
-
-function displayTMDB(arr){
- let html="<h3 style='color:var(--primary)'>نتائج البحث:</h3>";
- arr.slice(0,10).forEach(item=>{
-  if(item.media_type!=='movie' && item.media_type!=='tv') return;
-  let title=item.title || item.name || "بدون عنوان";
-  let orig=(item.original_title || item.original_name || title).replace(/'/g,"");
-  let poster=item.poster_path ? `https://image.tmdb.org/t/p/w200${item.poster_path}` : "https://via.placeholder.com/100x150?text=No+Image";
-  let year=(item.release_date || item.first_air_date || "").slice(0,4);
-  
-  html+=`
-  <div class="movie-card">
-   <img src="${poster}" class="movie-poster" loading="lazy">
-   <div style="flex:1">
-    <h3 style="margin:0;color:#38bdf8">${title} (${year})</h3>
-    <span style="background:#475569;font-size:11px;padding:2px 8px;border-radius:10px;color:white">${item.media_type==='tv'?'مسلسل':'فيلم'}</span>
-    <p style="font-size:12px;color:#94a3b8;line-height:1.4">${(item.overview||"لا توجد قصة متوفرة").slice(0,100)}...</p>
-    <div id="links-${item.id}">
-     <button class="quality-btn" onclick="fetchTorrents(${item.id},'${item.media_type}','${orig}','${year}')">دور على روابط التحميل 🚀</button>
-    </div>
-   </div>
-  </div>`;
- });
- document.getElementById('results').innerHTML=html;
-}
-
-async function fetchTorrents(tmdbId,type,orig,year){
- let cont=document.getElementById(`links-${tmdbId}`);
- cont.innerHTML="<span style='color:#22c55e;font-size:12px;font-weight:bold'>⏳ جاري البحث في السيرفرات...</span>";
- 
- try{
-  let ext=await fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}/external_ids?api_key=${TMDB_KEY}`).then(r=>r.json());
-  let imdb=ext.imdb_id;
-  if(!imdb){cont.innerHTML="<span style='color:red;font-size:12px'>❌ المعرف غير موجود</span>"; return;}
-  
-  let url=type==='movie'?`https://torrentio.strem.fun/stream/movie/${imdb}.json`:`https://torrentio.strem.fun/stream/series/${imdb}:1:1.json`;
-  let tData=await fetch(url).then(r=>r.json());
-  
-  if(!tData.streams || tData.streams.length === 0){
-      cont.innerHTML="<span style='color:red;font-size:12px'>❌ مفيش تورنت متوفر حالياً لهذا العمل</span>"; return;
-  }
-  
-  let h="";
-  tData.streams.slice(0,6).forEach(s=>{
-   let safeTitle = encodeURIComponent(s.title||orig);
-   let magnet=`magnet:?xt=urn:btih:${s.infoHash}&dn=${safeTitle}${TRACKERS}`;
-   let qual=(s.name.match(/1080p|720p|4K|2160p/i)||["SD"])[0];
-   let size=(s.title.match(/\d+(\.\d+)? (GB|MB)/i)||[""])[0];
-   
-   h+=`<button class="quality-btn" onclick="sendToRailway('${encodeURIComponent(magnet)}')">${qual} ${size}</button>`;
-  });
-  cont.innerHTML=h;
- }catch(e){
-  cont.innerHTML="<span style='color:red;font-size:12px'>❌ فشل البحث في السيرفرات</span>"; 
- }
-}
-
 function processDirectLink(){
  let link=document.getElementById('linkInput').value.trim();
- if(!link) return alert("الرجاء لصق الرابط");
+ if(!link) return alert("الرجاء لصق الرابط أولاً");
  if(!link.startsWith('http') && !link.startsWith('magnet:')) link='https://'+link;
  sendToRailway(encodeURIComponent(link));
 }
 
-// تم إصلاح الدالة عشان الشاشة تفضل نضيفة وتستنى السيرفر براحتها
 async function sendToRailway(encodedLink){
  let resultsDiv = document.getElementById('results');
- let waitId = 'wait-' + Date.now();
- 
- // الرسالة بتتحط مرة واحدة وتتمسح بعدين عشان الشاشة متتبهدلش
- resultsDiv.innerHTML = `<div id="${waitId}" style="text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;margin-bottom:15px;border:1px dashed #38bdf8;">⏳ جاري الانتظار (السيرفر بيفحص الملف كل 5 ثواني)...</div>` + resultsDiv.innerHTML;
+ resultsDiv.innerHTML = `<div style="text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;border:1px dashed #38bdf8;">⏳ جاري فك التشفير وسحب الرابط...<br><small>يرجى الانتظار بضع ثواني</small></div>`;
  window.scrollTo({top:0, behavior:'smooth'});
 
  try{
@@ -195,24 +96,19 @@ async function sendToRailway(encodedLink){
   });
   
   let data=await res.json();
-  let waitEl = document.getElementById(waitId);
-  if(waitEl) waitEl.remove(); // شيل رسالة الانتظار أول ما الرد ييجي
 
   if(data.direct_link){
    resultsDiv.innerHTML = `
    <div class="result-card">
-    <h3 style="margin:0 0 10px 0;color:var(--success)">✅ الملف جاهز للتحميل!</h3>
+    <h3 style="margin:0 0 15px 0;color:var(--success)">✅ الملف جاهز للمشاهدة!</h3>
     <a href="${data.direct_link}" target="_blank" class="btn-download">▶️ مشاهدة / تحميل مباشر ⬇️</a>
     <button class="btn-vlc" onclick="navigator.clipboard.writeText('${data.direct_link}');alert('تم نسخ الرابط! افتح VLC واضغط Network Stream')">📋 نسخ للـ VLC</button>
-   </div>` + resultsDiv.innerHTML;
+   </div>`;
   }else{
-   // لو الملف لسه مخلصش بعد الـ 30 ثانية
-   resultsDiv.innerHTML = `<div style="text-align:center;color:#f59e0b;padding:15px;background:var(--panel);border-radius:8px;margin-bottom:15px;border:1px dashed #f59e0b;">⏳ ${data.error}</div>` + resultsDiv.innerHTML;
+   resultsDiv.innerHTML = `<div style="text-align:center;color:#f59e0b;padding:15px;background:var(--panel);border-radius:8px;border:1px dashed #f59e0b;">⏳ ${data.error}</div>`;
   }
  }catch(e){
-  let waitEl = document.getElementById(waitId);
-  if(waitEl) waitEl.remove();
-  resultsDiv.innerHTML = `<div style="text-align:center;color:#ef4444;font-weight:bold;padding:15px;background:var(--panel);border-radius:8px;margin-bottom:15px;">❌ مش قادر أوصل للسيرفر. تأكد إن Railway شغال.</div>` + resultsDiv.innerHTML;
+  resultsDiv.innerHTML = `<div style="text-align:center;color:#ef4444;font-weight:bold;padding:15px;background:var(--panel);border-radius:8px;">❌ مش قادر أوصل للسيرفر. تأكد إن Railway شغال.</div>`;
  }
 }
 </script>
