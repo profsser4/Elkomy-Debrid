@@ -85,7 +85,8 @@ function processDirectLink(){
 
 async function sendToRailway(link){
  let resultsDiv = document.getElementById('results');
- resultsDiv.innerHTML = `<div style="text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;border:1px dashed #38bdf8;">⏳ جاري سحب الرابط...</div>`;
+ // الرسالة دي هتفضل ظاهرة طول ما السيرفر بيحاول يسحب الملف
+ resultsDiv.innerHTML = `<div style="text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;border:1px dashed #38bdf8;">⏳ جاري سحب الرابط من السيرفرات... (ممكن ياخد شوية وقت لو الملف جديد)</div>`;
  
  try{
   let res=await fetch(SERVER_URL,{
@@ -104,7 +105,7 @@ async function sendToRailway(link){
     <button class="btn-vlc" onclick="navigator.clipboard.writeText('${data.direct_link}');alert('تم نسخ الرابط!')">📋 نسخ الرابط</button>
    </div>`;
   }else{
-   resultsDiv.innerHTML = `<div style="text-align:center;color:#f59e0b;padding:15px;background:var(--panel);border-radius:8px;border:1px dashed #f59e0b;">⏳ ${data.error}</div>`;
+   resultsDiv.innerHTML = `<div style="text-align:center;color:#f59e0b;padding:15px;background:var(--panel);border-radius:8px;border:1px dashed #f59e0b;">${data.error}</div>`;
   }
  }catch(e){
   resultsDiv.innerHTML = `<div style="text-align:center;color:#ef4444;font-weight:bold;padding:15px;background:var(--panel);border-radius:8px;">❌ مش قادر أوصل للسيرفر.</div>`;
