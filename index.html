@@ -29,4 +29,105 @@ video{width:100%;border-radius:8px;background:#000}
 <div id="login-screen">
 <div class="login-box">
 <h2 style="color:var(--primary)">Elkomy VIP 🚀</h2>
-<input id="username" class="login-input"
+<input id="username" class="login-input" placeholder="اسم المستخدم" autocapitalize="off" autocorrect="off" autocomplete="username">
+<input id="password" type="password" class="login-input" placeholder="كلمة المرور" autocomplete="current-password">
+<button class="login-btn" onclick="checkLogin()">دخول</button>
+<p id="login-error" style="color:var(--danger);display:none;margin-top:10px">بيانات الدخول غير صحيحة!</p>
+</div>
+</div>
+
+<div id="main-content">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px">
+    <h1 style="color:var(--primary);margin:0">Elkomy VIP 🚀</h1>
+    <button onclick="sessionStorage.clear();location.reload()" style="background:var(--danger);color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer">خروج</button>
+</div>
+
+<div class="action-box">
+<h2 style="margin-top:0;color:white">🔗 فك الروابط المباشرة والتورنت</h2>
+<p style="color:#94a3b8;font-size:14px;margin-bottom:15px">ضع رابط Magnet أو رابط تحميل مباشر هنا للحصول على المشاهدة المباشرة</p>
+<div class="search-container">
+<input id="linkInput" class="search-input" placeholder="magnet:?xt=... أو https://...">
+<button class="search-btn" onclick="processDirectLink()">سحب الرابط الآن 🚀</button>
+</div>
+</div>
+
+<div id="results"></div>
+</div>
+
+<script>
+const USER="admin";
+const PASS="admin";
+const SERVER_URL="https://elkomy-server-production.up.railway.app/generate";
+const MAX_TRIES=90; // × 5 ثواني = 7.5 دقيقة
+
+window.onload=()=>{ if(sessionStorage.isLoggedIn==="true") showMainContent(); };
+
+document.addEventListener('keydown',e=>{
+ if(e.key==='Enter' && document.getElementById('login-screen').style.display!=='none') checkLogin();
+});
+
+function checkLogin(){
+ const u=document.getElementById('username').value.trim().toLowerCase();
+ const p=document.getElementById('password').value.trim();
+ if(u===USER && p===PASS){
+  sessionStorage.setItem("isLoggedIn","true");
+  showMainContent();
+ }else{
+  document.getElementById('login-error').style.display='block';
+ }
+}
+
+function showMainContent(){
+ document.getElementById('login-screen').style.display='none';
+ document.getElementById('main-content').style.display='block';
+}
+
+function processDirectLink(){
+ let link=document.getElementById('linkInput').value.trim();
+ if(!link) return alert("الرجاء لصق الرابط أولاً");
+ if(!link.startsWith('http') && !link.startsWith('magnet:')) link='https://'+link;
+ sendToRailway(link);
+}
+
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function sendToRailway(link, torrentId=null, tries=0){
+ const box=document.getElementById('results');
+ if(tries===0) box.innerHTML=`<div class="pending">⏳ جاري سحب الرابط...</div>`;
+
+ try{
+  const res=await fetch(SERVER_URL,{
+   method:'POST',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({query:link, torrent_id:torrentId})
+  });
+  const data=await res.json();
+
+  // لسه بيجهز: اسأل تاني تلقائياً
+  if(res.status===202 && tries<MAX_TRIES){
+   const pct=data.progress?` – ${(data.progress*100).toFixed(0)}%`:'';
+   box.innerHTML=`<div class="pending">⏳ ${esc(data.status||'جاري التجهيز')}${pct}<br><span style="font-size:12px;color:#94a3b8">متقفلش الصفحة</span></div>`;
+   return setTimeout(()=>sendToRailway(link, data.torrent_id||torrentId, tries+1),5000);
+  }
+
+  if(data.direct_link){
+   const url=data.direct_link;
+   box.innerHTML=`
+   <div class="result-card">
+    <h3 style="margin:0 0 15px 0;color:var(--success)">✅ الملف جاهز!</h3>
+    ${data.name?`<p style="direction:ltr;font-size:13px;color:#94a3b8;word-break:break-all">${esc(data.name)}</p>`:''}
+    <video controls src="${esc(url)}"></video>
+    <a href="${esc(url)}" target="_blank" class="btn-download">⬇️ فتح / تحميل مباشر</a>
+    <button class="btn-vlc" id="copyBtn">📋 نسخ الرابط (للصقه في VLC)</button>
+   </div>`;
+   document.getElementById('copyBtn').onclick=()=>{ navigator.clipboard.writeText(url); alert('تم نسخ الرابط!'); };
+  }else{
+   box.innerHTML=`<div class="warn">${esc(data.error||'حصل خطأ')}</div>`;
+  }
+ }catch(e){
+  box.innerHTML=`<div class="warn" style="color:#ef4444">❌ مش قادر أوصل للسيرفر.</div>`;
+ }
+}
+</script>
+</body>
+</html>
