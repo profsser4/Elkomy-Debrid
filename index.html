@@ -80,19 +80,18 @@ function processDirectLink(){
  let link=document.getElementById('linkInput').value.trim();
  if(!link) return alert("الرجاء لصق الرابط أولاً");
  if(!link.startsWith('http') && !link.startsWith('magnet:')) link='https://'+link;
- sendToRailway(encodeURIComponent(link));
+ sendToRailway(link);
 }
 
-async function sendToRailway(encodedLink){
+async function sendToRailway(link){
  let resultsDiv = document.getElementById('results');
- resultsDiv.innerHTML = `<div style="text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;border:1px dashed #38bdf8;">⏳ جاري فك التشفير وسحب الرابط...<br><small>يرجى الانتظار بضع ثواني</small></div>`;
- window.scrollTo({top:0, behavior:'smooth'});
-
+ resultsDiv.innerHTML = `<div style="text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;border:1px dashed #38bdf8;">⏳ جاري سحب الرابط...</div>`;
+ 
  try{
   let res=await fetch(SERVER_URL,{
    method:'POST',
    headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({query: decodeURIComponent(encodedLink)})
+   body:JSON.stringify({query: link})
   });
   
   let data=await res.json();
@@ -102,13 +101,13 @@ async function sendToRailway(encodedLink){
    <div class="result-card">
     <h3 style="margin:0 0 15px 0;color:var(--success)">✅ الملف جاهز للمشاهدة!</h3>
     <a href="${data.direct_link}" target="_blank" class="btn-download">▶️ مشاهدة / تحميل مباشر ⬇️</a>
-    <button class="btn-vlc" onclick="navigator.clipboard.writeText('${data.direct_link}');alert('تم نسخ الرابط! افتح VLC واضغط Network Stream')">📋 نسخ للـ VLC</button>
+    <button class="btn-vlc" onclick="navigator.clipboard.writeText('${data.direct_link}');alert('تم نسخ الرابط!')">📋 نسخ الرابط</button>
    </div>`;
   }else{
    resultsDiv.innerHTML = `<div style="text-align:center;color:#f59e0b;padding:15px;background:var(--panel);border-radius:8px;border:1px dashed #f59e0b;">⏳ ${data.error}</div>`;
   }
  }catch(e){
-  resultsDiv.innerHTML = `<div style="text-align:center;color:#ef4444;font-weight:bold;padding:15px;background:var(--panel);border-radius:8px;">❌ مش قادر أوصل للسيرفر. تأكد إن Railway شغال.</div>`;
+  resultsDiv.innerHTML = `<div style="text-align:center;color:#ef4444;font-weight:bold;padding:15px;background:var(--panel);border-radius:8px;">❌ مش قادر أوصل للسيرفر.</div>`;
  }
 }
 </script>
