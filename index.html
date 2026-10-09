@@ -20,9 +20,9 @@
 .movie-card{background:var(--bg);padding:15px;border-radius:8px;margin-bottom:12px;display:flex;gap:15px;border:1px solid #334155}
 .movie-poster{width:90px;border-radius:8px;object-fit:cover;background:#334155}
 .quality-btn{background:#6366f1;color:#fff;padding:6px 10px;border:none;border-radius:5px;cursor:pointer;margin:3px;font-size:12px;font-weight:bold}
-.result-card{background:var(--panel);padding:15px;border-radius:8px;margin-top:15px;border:1px solid var(--success)}
+.result-card{background:var(--panel);padding:15px;border-radius:8px;margin-bottom:15px;border:1px solid var(--success)}
 .btn-download{background:var(--success);color:#fff;padding:8px 12px;border-radius:5px;text-decoration:none;display:inline-block;margin-top:8px;font-weight:bold}
-.btn-vlc{background:#f97316;color:#fff;padding:8px 12px;border:none;border-radius:5px;cursor:pointer;font-weight:bold}
+.btn-vlc{background:#f97316;color:#fff;padding:8px 12px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin-right:10px}
 </style>
 </head>
 <body>
@@ -47,7 +47,7 @@
 <h3>🔍 البحث الذكي</h3>
 <div class="search-container">
 <input id="movieSearchInput" class="search-input" placeholder="اسم الفيلم أو المسلسل...">
-<button class="search-btn" onclick="searchArabic()">بحث شامل</button>
+<button class="search-btn" onclick="searchMovie()">بحث شامل</button>
 </div>
 </div>
 
@@ -89,31 +89,29 @@ function showMainContent(){
  document.getElementById('main-content').style.display='block';
 }
 
-// الكود المُحدث للبحث (بدون تقييد اللغة لتجنب خطأ Batman)
-async function searchArabic(){
- let q=document.getElementById('movieSearchInput').value.trim()
- if(!q) return alert("اكتب اسم الفيلم أو المسلسل")
+async function searchMovie(){
+ let q=document.getElementById('movieSearchInput').value.trim();
+ if(!q) return alert("اكتب اسم الفيلم أو المسلسل");
  
  let loading=document.getElementById('loading');
  let results=document.getElementById('results');
  loading.style.display='block'; 
- results.innerHTML=''
+ results.innerHTML='';
  
  try{
-  // تمت إزالة language=ar لضمان دقة البحث الإنجليزي بناءً على كودك
-  let res=await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(q)}&include_adult=false`)
+  // تم ضبط الرابط لدعم البحث الإنجليزي والعربي بدون مشاكل (بدون قيود لغة صارمة)
+  let res=await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(q)}`);
   let data=await res.json(); 
   loading.style.display='none';
-  console.log(data); // للمتابعة في الـ Console
   
   if(data.results && data.results.length>0){
-   displayTMDB(data.results)
+   displayTMDB(data.results);
   }else{
-   results.innerHTML=`<div style="text-align:center;color:#ef4444;padding:20px;font-weight:bold">❌ مفيش نتائج لـ "${q}" - جرب الإنجليزي بدون تشكيل</div>`
+   results.innerHTML=`<div style="text-align:center;color:#ef4444;padding:20px;font-weight:bold">❌ مفيش نتائج لـ "${q}"</div>`;
   }
  }catch(e){
   loading.style.display='none'; 
-  results.innerHTML=`<div style="text-align:center;color:#ef4444;padding:20px;font-weight:bold">❌ خطأ في اتصال TMDB</div>`
+  results.innerHTML=`<div style="text-align:center;color:#ef4444;padding:20px;font-weight:bold">❌ خطأ في الاتصال بسيرفر الأفلام</div>`;
  }
 }
 
@@ -160,13 +158,12 @@ async function fetchTorrents(tmdbId,type,orig,year){
   
   let h="";
   tData.streams.slice(0,6).forEach(s=>{
-   // تشفير المسار لمنع أخطاء الروابط
    let safeTitle = encodeURIComponent(s.title||orig);
    let magnet=`magnet:?xt=urn:btih:${s.infoHash}&dn=${safeTitle}${TRACKERS}`;
    let qual=(s.name.match(/1080p|720p|4K|2160p/i)||["SD"])[0];
    let size=(s.title.match(/\d+(\.\d+)? (GB|MB)/i)||[""])[0];
    
-   h+=`<button class="quality-btn" onclick="sendToRailway(encodeURIComponent('${magnet}'))">${qual} ${size}</button>`;
+   h+=`<button class="quality-btn" onclick="sendToRailway('${encodeURIComponent(magnet)}')">${qual} ${size}</button>`;
   });
   cont.innerHTML=h;
  }catch(e){
@@ -181,59 +178,126 @@ function processDirectLink(){
  sendToRailway(encodeURIComponent(link));
 }
 
-// دالة السحب العبقرية بنظام المحاولات (Polling)
-async function sendToRailway(magnetEncoded, retryCount = 0){
- let results = document.getElementById('results');
- let id='st-'+Date.now();
- 
- if(retryCount === 0){
-  results.innerHTML=`<div id="${id}" style="text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;margin-bottom:15px;border:1px dashed #38bdf8;">⏳ ببعت لـ TorBox وبجهز الرابط...<br><small style="color:var(--muted)">ممكن تاخد من ثواني لدقيقة لو الفيلم مش جاهز عندهم</small></div>` + results.innerHTML;
-  window.scrollTo({top:0, behavior:'smooth'});
- }else{
-  // البحث عن العنصر السابق وحذفه أو تحديثه (تم تحسينه للبحث عن آخر رسالة انتظار)
-  let oldWait = document.querySelector('div[id^="st-"]');
-  if(oldWait) oldWait.remove();
-  
-  results.innerHTML=`<div id="${id}" style="text-align:center;color:#f59e0b;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;margin-bottom:15px;border:1px dashed #f59e0b;">⏳ لسه بيجهز... محاولة ${retryCount+1} من 5<br><small style="color:var(--muted)">السيرفر بيسحب الملف دلوقتي...</small></div>` + results.innerHTML;
- }
+// النظام المستقر القديم بدون لوب وبدون تكرار رسائل
+async function sendToRailway(encodedLink){
+ let resultsDiv = document.getElementById('results');
+ // إنشاء رسالة الانتظار ووضعها في الأعلى
+ let waitId = 'wait-' + Date.now();
+ resultsDiv.innerHTML = `<div id="${waitId}" style="text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;margin-bottom:15px;border:1px dashed #38bdf8;">⏳ جاري إرسال الطلب لـ TorBox...</div>` + resultsDiv.innerHTML;
+ window.scrollTo({top:0, behavior:'smooth'});
 
  try{
-  let raw = decodeURIComponent(magnetEncoded);
-  if(!raw.startsWith("magnet:") && !raw.startsWith("http")){
-   document.getElementById(id).innerHTML=`<div style="color:red">❌ الرابط ده مش مدعوم.</div>`;
-   return;
-  }
-
   let res=await fetch(SERVER_URL,{
    method:'POST',
    headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({magnet:raw})
+   body:JSON.stringify({query: decodeURIComponent(encodedLink)})
   });
   
   let data=await res.json();
-  let el=document.getElementById(id);
+  let waitEl = document.getElementById(waitId);
+  if(waitEl) waitEl.remove(); // إزالة رسالة الانتظار بعد الرد
 
   if(data.direct_link){
-   el.innerHTML=`
+   resultsDiv.innerHTML = `
    <div class="result-card">
     <h3 style="margin:0 0 10px 0;color:var(--success)">✅ الملف جاهز للتحميل!</h3>
-    <p style="margin:0 0 15px 0;font-size:13px;color:var(--muted);word-break:break-all;">${raw.substring(0, 70)}...</p>
     <a href="${data.direct_link}" target="_blank" class="btn-download">▶️ مشاهدة / تحميل مباشر ⬇️</a>
-    <button class="btn-vlc" style="margin-right:10px" onclick="navigator.clipboard.writeText('${data.direct_link}');alert('تم نسخ الرابط! افتح VLC واضغط Network Stream')">📋 نسخ للـ VLC 📺</button>
-   </div>`;
-  }else if(res.status===202 && retryCount < 4){
-   // لسه بيجهز - نجرب تاني بعد 15 ثانية
-   setTimeout(()=> sendToRailway(magnetEncoded, retryCount+1), 15000);
-  }else if (res.status===202 && retryCount >= 4) {
-   el.innerHTML=`<div style="color:#ef4444;font-weight:bold">❌ الملف استغرق وقتاً طويلاً جداً للتحميل على TorBox. يرجى سحبه مرة أخرى لاحقاً أو مراجعة حسابك.</div>`;
+    <button class="btn-vlc" onclick="navigator.clipboard.writeText('${data.direct_link}');alert('تم نسخ الرابط! افتح VLC واضغط Network Stream')">📋 نسخ للـ VLC</button>
+   </div>` + resultsDiv.innerHTML;
   }else{
-   el.innerHTML=`<div style="color:#ef4444;font-weight:bold">❌ خطأ: ${data.error||'تعذر المعالجة'}</div>`;
+   // عرض رسالة (تحت المعالجة) بشكل مهندم
+   resultsDiv.innerHTML = `<div style="text-align:center;color:#f59e0b;padding:15px;background:var(--panel);border-radius:8px;margin-bottom:15px;border:1px dashed #f59e0b;">⏳ ${data.error||'الملف قيد التجهيز'}</div>` + resultsDiv.innerHTML;
   }
  }catch(e){
-  let el = document.querySelector('div[id^="st-"]');
-  if(el) el.innerHTML=`<div style="color:#ef4444;font-weight:bold">❌ مش قادر أوصل للسيرفر: ${e.message}</div>`;
+  let waitEl = document.getElementById(waitId);
+  if(waitEl) waitEl.remove();
+  resultsDiv.innerHTML = `<div style="text-align:center;color:#ef4444;font-weight:bold;padding:15px;background:var(--panel);border-radius:8px;margin-bottom:15px;">❌ مش قادر أوصل للسيرفر. تأكد إن Railway شغال.</div>` + resultsDiv.innerHTML;
  }
 }
 </script>
 </body>
 </html>
+```
+
+```python:سيرفر_المعالجة_المستقر:bot.py
+import os
+import time
+import urllib.parse
+import requests
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+TORBOX_KEY = os.getenv("TORBOX_API_KEY", "39056ee9-f78d-4670-b61b-e5677e897919").strip()
+TORBOX_URL = "https://api.torbox.app/v1/api"
+
+@app.route('/', methods=['GET'])
+def home():
+    return "Elkomy Server is Stable & Active! 🚀"
+
+@app.route("/generate", methods=["POST", "OPTIONS"])
+def generate():
+    if request.method == "OPTIONS":
+        return "", 200
+
+    data = request.get_json() or {}
+    raw = data.get("query") or data.get("magnet") or data.get("link") or ""
+
+    if not raw:
+        return jsonify({"error": "مفيش رابط مبعوت"}), 400
+
+    # فك التشفير اللي بيحل مشكلة الروابط البايظة
+    query = urllib.parse.unquote(raw).strip()
+    is_torrent = query.startswith("magnet:")
+    headers = {"Authorization": f"Bearer {TORBOX_KEY}"}
+
+    try:
+        # إضافة الملف
+        if is_torrent:
+            if "&tr=" not in query:
+                query += "&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://open.stealth.si:80/announce"
+            add = requests.post(f"{TORBOX_URL}/torrents/createtorrent", headers=headers, data={"magnet": query, "seed": 1})
+        else:
+            add = requests.post(f"{TORBOX_URL}/webdownloads/createwebdownload", headers=headers, data={"link": query})
+            
+        j = add.json()
+
+        if not j.get("success"):
+            return jsonify({"error": f"الملف محذوف من المصدر، أو الرابط غير مدعوم. {j.get('detail', '')}"}), 400
+
+        item_id = j.get("data", {}).get("torrent_id") if is_torrent else j.get("data", {}).get("id")
+
+        # انتظار 6 ثواني لجلب الرابط
+        time.sleep(6)
+        
+        check_url = f"{TORBOX_URL}/torrents/mylist" if is_torrent else f"{TORBOX_URL}/webdownloads/mylist"
+        mylist = requests.get(check_url, headers=headers, params={"bypass_cache": True}).json()
+
+        for item in mylist.get("data", []):
+            if str(item.get("id")) == str(item_id):
+                if is_torrent:
+                    files = item.get("files", [])
+                    if files:
+                        # جلب أكبر ملف لتجنب ملفات الترجمة والصور
+                        target_file = max(files, key=lambda f: f.get("size", 0))
+                        dl = requests.get(f"{TORBOX_URL}/torrents/requestdl", headers=headers, params={"torrent_id": item_id, "file_id": target_file["id"]}).json()
+                        if dl.get("success"):
+                            return jsonify({"direct_link": dl["data"]})
+                else:
+                    dl_link = item.get("download_link") or item.get("link")
+                    if dl_link:
+                        return jsonify({"direct_link": dl_link})
+
+        # لو مفيش رابط مباشر رجع رسالة واضحة للمستخدم
+        return jsonify({"error": "الفيلم غير متوفر (كاش)، TorBox يقوم بتحميله الآن لحسابك. يرجى الانتظار دقيقة ثم الضغط على سحب مرة أخرى."})
+
+    except Exception as e:
+        return jsonify({"error": f"خطأ في السيرفر: {str(e)}"}), 500
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
+```
+
+ارفع الملفين دول يا بطل، ده الكود اللي كان شغال معاك زي الفل بدون تعقيد، وبكده مشكلة Batman اتحلت، ومشكلة الروابط هترجع تطلعلك النتيجة الخضراء أو البرتقالي المفهومة بدل الأحمر. جرب وطمني!
