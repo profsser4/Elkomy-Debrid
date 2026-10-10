@@ -33,9 +33,16 @@ video{width:100%;border-radius:8px;background:#000}
 .poster .noimg{display:flex;align-items:center;justify-content:center;font-size:32px}
 .poster .t{padding:6px;font-size:12px;text-align:center;line-height:1.4}
 .poster .y{color:#94a3b8;font-size:11px}
-.tor{background:var(--panel);border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:10px}
+.selbox{display:flex;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--primary);border-radius:10px;padding:10px;margin-bottom:14px}
+.selbox img{width:80px;aspect-ratio:2/3;object-fit:cover;border-radius:6px}
+.selt{font-size:17px;font-weight:bold}
+.sely{font-size:13px;color:#94a3b8;margin-top:4px}
+.tor{display:flex;gap:12px;background:var(--panel);border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:10px}
+.tor .pic img{width:64px;aspect-ratio:2/3;object-fit:cover;border-radius:6px;display:block}
+.tor .body{flex:1;min-width:0}
 .tor .n{direction:ltr;text-align:left;font-size:13px;word-break:break-all;margin-bottom:8px}
 .tor .m{font-size:12px;color:#94a3b8;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px}
+.tor .size{color:#f8fafc;font-weight:bold;font-size:14px}
 .tor .s{color:var(--success)}
 .tor .s.zero{color:var(--danger)}
 .tor button{width:100%;padding:10px;background:var(--success);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer}
@@ -75,6 +82,7 @@ h3.sec{margin:5px 0 12px 0;color:var(--primary)}
 
 <div id="torrentPanel" style="display:none">
 <h3 class="sec">🧲 نسخ التورنت</h3>
+<div id="torrentHeader"></div>
 <div class="search-container" style="margin:0 0 15px 0">
 <input id="torrentQuery" class="search-input ltr" placeholder="الاسم + الموسم مثلاً S01" onkeydown="if(event.key==='Enter')searchTorrents()">
 <button class="search-btn btn-blue" onclick="searchTorrents()">ابحث في التورنت</button>
@@ -102,6 +110,7 @@ const SERVER_URL = API + "/generate";
 const MAX_TRIES = 90;
 let titles = [];
 let torrents = [];
+let selected = null;
 
 window.onload = () => {
   if (sessionStorage.isLoggedIn === "true") showMainContent();
@@ -151,6 +160,7 @@ async function searchTitles() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return alert("اكتب اسم الفيلم أو المسلسل");
   const box = document.getElementById('titles');
+  selected = null;
   document.getElementById('torrentPanel').style.display = 'none';
   box.innerHTML = '<div class="pending">⏳ جاري البحث...</div>';
   try {
@@ -184,6 +194,7 @@ async function searchTitles() {
 
 function pickTitle(i) {
   const t = titles[i];
+  selected = t;
   let q = t.search_title || t.title;
   if (t.type === 'movie' && t.year) q += ' ' + t.year;
   document.getElementById('torrentQuery').value = q;
@@ -193,8 +204,19 @@ function pickTitle(i) {
 function directTorrentSearch() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return alert("اكتب الاسم الأول");
+  selected = null;
   document.getElementById('torrentQuery').value = q;
   searchTorrents();
+}
+
+function showHeader() {
+  const h = document.getElementById('torrentHeader');
+  if (!selected) { h.innerHTML = ''; return; }
+  const img = selected.poster ? '<img src="' + esc(selected.poster) + '" alt="">' : '';
+  const kind = selected.type === 'tv' ? 'مسلسل' : 'فيلم';
+  h.innerHTML = '<div class="selbox">' + img + '<div><div class="selt">' +
+    esc(selected.title) + '</div><div class="sely">' +
+    esc(selected.year) + ' · ' + kind + '</div></div></div>';
 }
 
 async function searchTorrents() {
@@ -203,6 +225,7 @@ async function searchTorrents() {
   const panel = document.getElementById('torrentPanel');
   const box = document.getElementById('torrentResults');
   panel.style.display = 'block';
+  showHeader();
   box.innerHTML = '<div class="pending">⏳ جاري البحث في المصادر... (قد ياخد نص دقيقة)</div>';
   panel.scrollIntoView({behavior: 'smooth'});
   try {
@@ -217,15 +240,20 @@ async function searchTorrents() {
       box.innerHTML = '<div class="warn">مفيش نتايج. جرب تعدّل الاسم (بدون سنة، أو بالإنجليزي).</div>';
       return;
     }
+    const pic = (selected && selected.poster)
+      ? '<div class="pic"><img loading="lazy" src="' + esc(selected.poster) + '" alt=""></div>'
+      : '';
     let html = '';
     torrents.forEach((t, i) => {
       const tg = tags(t.title);
-      html += '<div class="tor"><div class="n">' + esc(t.title) + '</div>' +
-        '<div class="m"><span>💾 ' + fmtSize(t.size) + '</span>' +
+      html += '<div class="tor">' + pic + '<div class="body">' +
+        '<div class="n">' + esc(t.title) + '</div>' +
+        '<div class="m"><span class="size">💾 ' + fmtSize(t.size) + '</span>' +
         '<span class="s ' + (t.seeders ? '' : 'zero') + '">🌱 ' + t.seeders + '</span>' +
         (tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') +
         '<span>' + esc(t.indexer) + '</span></div>' +
-        '<button onclick="pullTorrent(' + i + ')">⬇️ سحب</button></div>';
+        '<button onclick="pullTorrent(' + i + ')">⬇️ سحب</button>' +
+        '</div></div>';
     });
     box.innerHTML = html;
   } catch (e) {
