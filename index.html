@@ -354,12 +354,19 @@ async function sendToRailway(link, tid = null, tries = 0) {
 // ---------- المزوّدين ----------
 async function loadProviders() {
   try {
-    const {d} = await api('/providers');
+    let {d} = await api('/providers');
+    if (!(d.items || []).length) {
+      const bk = localStorage.getItem('provBackup');
+      if (bk) { await api('/providers/import', {method: 'POST', body: bk}); ({d} = await api('/providers')); }
+    }
     $('provType').innerHTML = Object.entries(d.types || {}).map(([k, v]) => '<option value="' + k + '">' + esc(v) + '</option>').join('');
     $('provList').innerHTML = (d.items || []).map(p =>
       '<div class="ep"><div class="b">' + esc(p.name) + '<small>' + esc(p.type) + ' · ' + esc(p.domains.join(', ') || 'أي رابط') + ' · ' + esc(p.key) + '</small></div>' +
-      '<button style="background:var(--danger);color:#fff" onclick="delProv(\'' + p.id + '\')">🗑</button></div>').join('') ||
+      '<button style="background:var(--danger);color:#fff" onclick="delProv(\'' + p.id + '\')">🗑</button>' +
+      '<button style="margin-right:6px" onclick="testProv(\'' + p.id + '\',this)">اختبار</button></div>').join('') ||
       warn('مفيش مزوّدين. ضيف أول واحد (TorBox مطلوب للتورنت).');
+    const ex = await api('/providers/export');
+    if ((ex.d.items || []).length) localStorage.setItem('provBackup', JSON.stringify({items: ex.d.items}));
   } catch (e) {}
 }
 async function addProv() {
@@ -372,7 +379,16 @@ async function addProv() {
 async function delProv(id) {
   if (!confirm('حذف المزوّد؟')) return;
   await api('/providers/' + id, {method: 'DELETE'});
+  const ex = await api('/providers/export');
+  if ((ex.d.items || []).length) localStorage.setItem('provBackup', JSON.stringify({items: ex.d.items}));
+  else localStorage.removeItem('provBackup');
   loadProviders();
+}
+async function testProv(id, btn) {
+  btn.textContent = '...';
+  const {d} = await api('/providers/' + id + '/test', {method: 'POST'});
+  btn.textContent = d.ok ? '✅ شغال' : '❌ فشل';
+  if (!d.ok && d.error) alert(d.error);
 }
 </script>
 </body>
