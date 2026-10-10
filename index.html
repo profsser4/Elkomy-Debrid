@@ -5,48 +5,63 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Elkomy Debrid VIP</title>
 <style>
-:root{--bg:#0f172a;--panel:#1e293b;--primary:#38bdf8;--text:#f8fafc;--danger:#ef4444;--success:#22c55e}
+:root{--bg:#0f172a;--panel:#1e293b;--primary:#38bdf8;--text:#f8fafc;--danger:#ef4444;--success:#22c55e;--mut:#94a3b8}
 *{box-sizing:border-box;font-family:Tahoma}
 body{margin:0;background:var(--bg);color:var(--text)}
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
 .login-box{background:var(--panel);padding:2rem;border-radius:12px;width:90%;max-width:400px;text-align:center}
-.login-input{width:100%;padding:12px;margin-bottom:12px;border-radius:8px;border:1px solid #334155;background:var(--bg);color:#fff;text-align:center}
-.login-btn{width:100%;padding:12px;background:var(--primary);color:#000;font-weight:bold;border:none;border-radius:8px;cursor:pointer;font-size:16px}
-#main-content{display:none;padding:20px;max-width:800px;margin:0 auto}
-.action-box{background:var(--panel);padding:25px 20px;border-radius:10px;margin-bottom:20px;border:1px solid #334155;text-align:center}
-.search-container{display:flex;flex-direction:column;gap:12px;margin-top:15px}
-.search-input{width:100%;padding:15px;border-radius:8px;border:1px solid #334155;background:var(--bg);color:#fff;font-size:15px}
+.login-input,.search-input{width:100%;padding:13px;margin-bottom:10px;border-radius:8px;border:1px solid #334155;background:var(--bg);color:#fff;font-size:15px}
+.login-input{text-align:center}
+.login-btn,.search-btn{width:100%;padding:13px;background:var(--success);color:#fff;font-weight:bold;border:none;border-radius:8px;cursor:pointer;font-size:15px}
+.login-btn{background:var(--primary);color:#000}
+#main-content{display:none;padding:16px;max-width:800px;margin:0 auto}
+.action-box{background:var(--panel);padding:20px 16px;border-radius:10px;margin-bottom:18px;border:1px solid #334155;text-align:center}
 .ltr{text-align:left;direction:ltr}
-.search-btn{width:100%;padding:14px;background:var(--success);color:#fff;font-weight:bold;border:none;border-radius:8px;cursor:pointer;font-size:15px}
 .btn-blue{background:var(--primary);color:#000}
-.row{display:flex;gap:10px}
-.row>*{flex:1}
-.result-card{background:var(--panel);padding:20px;border-radius:8px;margin-top:20px;border:1px solid var(--success);text-align:center}
-.btn-download{background:var(--success);color:#fff;padding:12px 20px;border-radius:5px;text-decoration:none;display:inline-block;margin-top:15px;font-weight:bold;width:100%}
-.btn-vlc{background:#f97316;color:#fff;padding:12px 20px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin-top:10px;width:100%}
-.pending{text-align:center;color:#38bdf8;padding:20px;font-weight:bold;background:var(--panel);border-radius:8px;border:1px dashed #38bdf8}
-.warn{text-align:center;color:#f59e0b;padding:15px;background:var(--panel);border-radius:8px;border:1px dashed #f59e0b}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.result-card{background:var(--panel);padding:18px;border-radius:8px;margin-top:18px;border:1px solid var(--success);text-align:center}
+.btn-download{background:var(--success);color:#fff;padding:12px;border-radius:5px;text-decoration:none;display:block;margin-top:14px;font-weight:bold}
+.btn-vlc{background:#f97316;color:#fff;padding:12px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin-top:10px;width:100%}
+.pending,.warn{text-align:center;padding:16px;background:var(--panel);border-radius:8px;border:1px dashed var(--primary);color:var(--primary);font-weight:bold;margin-bottom:12px;line-height:1.9}
+.warn{color:#f59e0b;border-color:#f59e0b;font-weight:normal}
 video{width:100%;border-radius:8px;background:#000}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:10px;margin-bottom:20px}
-.poster{background:var(--panel);border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid #334155}
+h3.sec{margin:8px 0 10px;color:var(--primary)}
+.hrow{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;margin-bottom:8px}
+.poster{flex:0 0 108px;background:var(--panel);border-radius:10px;overflow:hidden;cursor:pointer;border:1px solid #334155}
 .poster img,.poster .noimg{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#0b1220}
-.poster .noimg{display:flex;align-items:center;justify-content:center;font-size:32px}
+.poster .noimg{display:flex;align-items:center;justify-content:center;font-size:30px}
 .poster .t{padding:6px;font-size:12px;text-align:center;line-height:1.4}
-.poster .y{color:#94a3b8;font-size:11px}
-.selbox{display:flex;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--primary);border-radius:10px;padding:10px;margin-bottom:14px}
-.selbox img{width:80px;aspect-ratio:2/3;object-fit:cover;border-radius:6px}
-.selt{font-size:17px;font-weight:bold}
-.sely{font-size:13px;color:#94a3b8;margin-top:4px}
+.poster .y{color:var(--mut);font-size:11px}
+#details{display:none}
+.hero{height:230px;background-size:cover;background-position:center;border-radius:12px;position:relative;display:flex;align-items:flex-end;padding:14px;margin-bottom:12px}
+.hero h2{margin:0;text-shadow:0 2px 8px #000}
+.back{position:absolute;top:10px;right:10px;background:#0009;color:#fff;border:none;border-radius:50%;width:38px;height:38px;cursor:pointer;font-size:16px}
+.meta{color:var(--mut);margin-bottom:8px}.ov{line-height:1.9;color:#cbd5e1}
+.lbl{color:var(--mut);font-size:13px;margin-top:10px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.chips.scroll{flex-wrap:nowrap;overflow-x:auto}
+.chip{background:var(--panel);padding:8px 14px;border-radius:20px;font-size:13px;white-space:nowrap}
+.tabs{display:flex;gap:8px;overflow-x:auto;margin:14px 0;padding-bottom:4px}
+.tab{padding:10px 16px;border-radius:20px;border:none;background:var(--panel);color:var(--mut);white-space:nowrap;cursor:pointer}
+.tab.on{background:#1d4ed8;color:#fff}
+.ep{display:flex;gap:10px;align-items:center;background:var(--panel);border-radius:8px;padding:8px;margin-bottom:8px;text-align:right}
+.ep img{width:90px;aspect-ratio:16/9;object-fit:cover;border-radius:6px;background:#0b1220}
+.ep .b{flex:1;font-size:13px}.ep small{color:var(--mut);display:block;margin-top:3px}
+.ep button{padding:8px 12px;border:none;border-radius:6px;background:var(--primary);cursor:pointer}
+.selbox{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--primary);border-radius:10px;padding:10px;margin-bottom:12px}
+.selbox img{width:60px;aspect-ratio:2/3;object-fit:cover;border-radius:6px}
 .tor{display:flex;gap:12px;background:var(--panel);border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:10px}
-.tor .pic img{width:64px;aspect-ratio:2/3;object-fit:cover;border-radius:6px;display:block}
+.tor .pic img{width:60px;aspect-ratio:2/3;object-fit:cover;border-radius:6px;display:block}
 .tor .body{flex:1;min-width:0}
 .tor .n{direction:ltr;text-align:left;font-size:13px;word-break:break-all;margin-bottom:8px}
-.tor .m{font-size:12px;color:#94a3b8;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px}
-.tor .size{color:#f8fafc;font-weight:bold;font-size:14px}
-.tor .s{color:var(--success)}
-.tor .s.zero{color:var(--danger)}
+.tor .m{font-size:12px;color:var(--mut);margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px}
+.tor .size{color:#fff;font-weight:bold;font-size:14px}
+.tor .s{color:var(--success)}.tor .s.zero{color:var(--danger)}
 .tor button{width:100%;padding:10px;background:var(--success);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer}
-h3.sec{margin:5px 0 12px 0;color:var(--primary)}
+.badge{background:#f59e0b;color:#000;border-radius:4px;padding:1px 6px;font-weight:bold}
+.bar{height:10px;background:#0b1220;border-radius:6px;overflow:hidden;margin:10px 0}
+.bar i{display:block;height:100%;background:var(--success);transition:width .5s}
+summary{cursor:pointer;font-weight:bold;font-size:16px}
 </style>
 </head>
 <body>
@@ -54,267 +69,304 @@ h3.sec{margin:5px 0 12px 0;color:var(--primary)}
 <div id="login-screen">
 <div class="login-box">
 <h2 style="color:var(--primary)">Elkomy VIP 🚀</h2>
-<input id="username" class="login-input" placeholder="اسم المستخدم" autocapitalize="off" autocorrect="off" autocomplete="username">
-<input id="password" type="password" class="login-input" placeholder="كلمة المرور" autocomplete="current-password">
+<input id="username" class="login-input" placeholder="اسم المستخدم" autocapitalize="off" autocorrect="off">
+<input id="password" type="password" class="login-input" placeholder="كلمة المرور">
 <button class="login-btn" onclick="checkLogin()">دخول</button>
 <p id="login-error" style="color:var(--danger);display:none;margin-top:10px">بيانات الدخول غير صحيحة!</p>
 </div>
 </div>
 
 <div id="main-content">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px">
-<h1 style="color:var(--primary);margin:0">Elkomy VIP 🚀</h1>
-<button onclick="sessionStorage.clear();location.reload()" style="background:var(--danger);color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer">خروج</button>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+<h1 style="color:var(--primary);margin:0;font-size:22px">Elkomy VIP 🚀</h1>
+<button onclick="sessionStorage.clear();location.reload()" style="background:var(--danger);color:#fff;border:none;padding:8px 15px;border-radius:5px;cursor:pointer">خروج</button>
 </div>
 
 <div class="action-box">
-<h2 style="margin-top:0;color:white">🔍 ابحث عن فيلم / مسلسل / أنمي</h2>
-<div class="search-container">
+<h2 style="margin-top:0">🔍 ابحث عن فيلم / مسلسل / أنمي</h2>
 <input id="searchInput" class="search-input" placeholder="اكتب الاسم (عربي أو إنجليزي)" onkeydown="if(event.key==='Enter')searchTitles()">
 <div class="row">
-<button class="search-btn" onclick="searchTitles()">🎬 بحث بالبوستر</button>
-<button class="search-btn btn-blue" onclick="directTorrentSearch()">🧲 بحث تورنت مباشر</button>
-</div>
+<button class="search-btn" onclick="searchTitles()">🎬 بحث</button>
+<button class="search-btn btn-blue" onclick="directTorrentSearch()">🧲 تورنت مباشر</button>
 </div>
 </div>
 
 <div id="titles"></div>
+<div id="details"></div>
 
 <div id="torrentPanel" style="display:none">
 <h3 class="sec">🧲 نسخ التورنت</h3>
 <div id="torrentHeader"></div>
-<div class="search-container" style="margin:0 0 15px 0">
-<input id="torrentQuery" class="search-input ltr" placeholder="الاسم + الموسم مثلاً S01" onkeydown="if(event.key==='Enter')searchTorrents()">
-<button class="search-btn btn-blue" onclick="searchTorrents()">ابحث في التورنت</button>
-</div>
+<input id="torrentQuery" class="search-input ltr" placeholder="الاسم + S01E01" onkeydown="if(event.key==='Enter')searchTorrents()">
+<button class="search-btn btn-blue" style="margin-bottom:14px" onclick="searchTorrents()">ابحث في التورنت</button>
 <div id="torrentResults"></div>
 </div>
 
 <div class="action-box">
-<h2 style="margin-top:0;color:white">🔗 فك الروابط المباشرة والتورنت</h2>
-<p style="color:#94a3b8;font-size:14px;margin-bottom:15px">ضع رابط Magnet أو رابط تحميل مباشر هنا</p>
-<div class="search-container">
+<h2 style="margin-top:0">🔗 فك الروابط المباشرة والتورنت</h2>
 <input id="linkInput" class="search-input ltr" placeholder="magnet:?xt=... أو https://...">
 <button class="search-btn" onclick="processDirectLink()">سحب الرابط الآن 🚀</button>
 </div>
-</div>
 
 <div id="results"></div>
+
+<details class="action-box" style="text-align:right">
+<summary>⚙️ المزوّدين (TorBox / Real-Debrid / ...)</summary>
+<div id="provList" style="margin:14px 0"></div>
+<select id="provType" class="search-input"></select>
+<input id="provName" class="search-input" placeholder="الاسم (اختياري)">
+<input id="provDomains" class="search-input ltr" placeholder="الدومينات (اختياري): rapidgator.net, mega.nz">
+<input id="provKey" class="search-input ltr" placeholder="API Key">
+<button class="search-btn" onclick="addProv()">➕ إضافة مزوّد</button>
+<p style="color:var(--mut);font-size:12px">الرابط بيجرّب المزوّد اللي دومينه بيطابقه أولاً، وبعدين باقي المزوّدين بالترتيب.</p>
+</details>
 </div>
 
 <script>
-const USER = "admin";
-const PASS = "admin";
 const API = "https://elkomy-server-production.up.railway.app";
-const SERVER_URL = API + "/generate";
-const MAX_TRIES = 90;
-let titles = [];
-let torrents = [];
-let selected = null;
-
-window.onload = () => {
-  if (sessionStorage.isLoggedIn === "true") showMainContent();
-};
-
-document.addEventListener('keydown', e => {
-  const ls = document.getElementById('login-screen');
-  if (e.key === 'Enter' && ls.style.display !== 'none') checkLogin();
-});
-
-function checkLogin() {
-  const u = document.getElementById('username').value.trim().toLowerCase();
-  const p = document.getElementById('password').value.trim();
-  if (u === USER && p === PASS) {
-    sessionStorage.setItem("isLoggedIn", "true");
-    showMainContent();
-  } else {
-    document.getElementById('login-error').style.display = 'block';
-  }
-}
-
-function showMainContent() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('main-content').style.display = 'block';
-}
+let PASS = sessionStorage.getItem('pass') || "";
+let torrents = [], selected = null, cur = null;
+const $ = id => document.getElementById(id);
+const ERR = '<div class="warn" style="color:#ef4444">❌ مش قادر أوصل للسيرفر.</div>';
+const warn = m => '<div class="warn">' + esc(m) + '</div>';
+const pend = m => '<div class="pending">⏳ ' + esc(m) + '</div>';
+const p2 = n => String(n).padStart(2, '0');
 
 function esc(s) {
-  const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
-  return String(s).replace(/[&<>"']/g, c => map[c]);
+  const m = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+  return String(s ?? '').replace(/[&<>"']/g, c => m[c]);
 }
-
 function fmtSize(b) {
   if (!b) return 'غير معروف';
-  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
-  let i = 0;
+  const u = ['B','KB','MB','GB','TB']; let i = 0;
   while (b >= 1024 && i < 4) { b /= 1024; i++; }
   return b.toFixed(i >= 3 ? 2 : 0) + ' ' + u[i];
 }
-
+function fmtEta(s) { return s ? Math.floor(s / 60) + 'د ' + (s % 60) + 'ث' : '—'; }
 function tags(t) {
-  const re = /2160p|4K|1080p|720p|480p|BluRay|WEB-?DL|WEBRip|HDTV|HDRip|CAM/gi;
-  const m = t.match(re) || [];
+  const m = t.match(/2160p|4K|1080p|720p|480p|BluRay|WEB-?DL|WEBRip|HDTV|HDRip|CAM/gi) || [];
   return [...new Set(m.map(x => x.toUpperCase()))].join(' · ');
 }
 
-async function searchTitles() {
-  const q = document.getElementById('searchInput').value.trim();
-  if (!q) return alert("اكتب اسم الفيلم أو المسلسل");
-  const box = document.getElementById('titles');
-  selected = null;
-  document.getElementById('torrentPanel').style.display = 'none';
-  box.innerHTML = '<div class="pending">⏳ جاري البحث...</div>';
-  try {
-    const res = await fetch(API + '/tmdb?q=' + encodeURIComponent(q));
-    const data = await res.json();
-    if (data.error) {
-      box.innerHTML = '<div class="warn">' + esc(data.error) + '</div>';
-      return;
-    }
-    titles = data.results;
-    if (!titles.length) {
-      box.innerHTML = '<div class="warn">مفيش نتايج. جرب اسم تاني أو بحث التورنت المباشر.</div>';
-      return;
-    }
-    let html = '<div class="grid">';
-    titles.forEach((t, i) => {
-      const img = t.poster
-        ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">'
-        : '<div class="noimg">🎬</div>';
-      const kind = t.type === 'tv' ? 'مسلسل' : 'فيلم';
-      html += '<div class="poster" onclick="pickTitle(' + i + ')">' + img +
-        '<div class="t">' + esc(t.title) +
-        '<div class="y">' + esc(t.year) + ' · ' + kind + '</div></div></div>';
-    });
-    html += '</div>';
-    box.innerHTML = html;
-  } catch (e) {
-    box.innerHTML = '<div class="warn" style="color:#ef4444">❌ مش قادر أوصل للسيرفر.</div>';
-  }
+async function api(path, opt = {}) {
+  const r = await fetch(API + path, {...opt, headers: {'Content-Type': 'application/json', 'X-Pass': PASS}});
+  if (r.status === 401) { sessionStorage.clear(); location.reload(); }
+  return {r, d: await r.json().catch(() => ({}))};
 }
 
-function pickTitle(i) {
-  const t = titles[i];
-  selected = t;
-  let q = t.search_title || t.title;
-  if (t.type === 'movie' && t.year) q += ' ' + t.year;
-  document.getElementById('torrentQuery').value = q;
+// ---------- دخول ----------
+window.onload = () => { if (PASS) showMain(); };
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && $('login-screen').style.display !== 'none') checkLogin();
+});
+async function checkLogin() {
+  const u = $('username').value.trim(), p = $('password').value.trim();
+  try {
+    const r = await fetch(API + '/auth', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({u, p})});
+    if (r.ok) { PASS = p; sessionStorage.setItem('pass', p); showMain(); }
+    else $('login-error').style.display = 'block';
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
+}
+function showMain() {
+  $('login-screen').style.display = 'none';
+  $('main-content').style.display = 'block';
+  loadProviders();
+}
+
+// ---------- البحث: أفلام / مسلسلات ----------
+function row(title, list) {
+  if (!list.length) return '';
+  return '<h3 class="sec">' + title + '</h3><div class="hrow">' + list.map(t =>
+    '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">' +
+    (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">' : '<div class="noimg">🎬</div>') +
+    '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) + '</div></div></div>').join('') + '</div>';
+}
+async function searchTitles() {
+  const q = $('searchInput').value.trim();
+  if (!q) return alert("اكتب اسم الفيلم أو المسلسل");
+  closeDetails();
+  const box = $('titles');
+  box.innerHTML = pend('جاري البحث...');
+  try {
+    const {d} = await api('/tmdb?q=' + encodeURIComponent(q));
+    if (d.error) return box.innerHTML = warn(d.error);
+    const r = d.results || [];
+    if (!r.length) return box.innerHTML = warn('مفيش نتايج. جرب اسم تاني أو التورنت المباشر.');
+    box.innerHTML = row('🎬 الأفلام', r.filter(x => x.type === 'movie')) + row('📺 المسلسلات', r.filter(x => x.type === 'tv'));
+  } catch (e) { box.innerHTML = ERR; }
+}
+
+// ---------- صفحة التفاصيل ----------
+const chips = (a, sc) => '<div class="chips' + (sc ? ' scroll' : '') + '">' + a.map(x => '<span class="chip">' + esc(x) + '</span>').join('') + '</div>';
+
+async function openDetails(type, id) {
+  $('titles').style.display = 'none';
+  $('torrentPanel').style.display = 'none';
+  const box = $('details');
+  box.style.display = 'block';
+  box.innerHTML = pend('جاري التحميل...');
+  try {
+    const {d} = await api('/details?type=' + type + '&id=' + id);
+    if (d.error) return box.innerHTML = warn(d.error);
+    cur = d;
+    selected = {title: d.title, year: d.year, type: d.type, poster: d.poster};
+    let h = '<div class="hero" style="background-image:linear-gradient(transparent 30%,#0f172a),url(\'' + esc(d.backdrop || d.poster || '') + '\')">' +
+      '<button class="back" onclick="closeDetails()">➡️</button><h2>' + esc(d.title) + '</h2></div>' +
+      '<div class="meta">⭐ ' + d.rating + ' · ' + esc(d.year) + (d.runtime ? ' · ' + d.runtime + ' د' : '') + '</div>' +
+      '<p class="ov">' + esc(d.overview) + '</p>' + chips(d.genres) +
+      '<div class="lbl">طاقم العمل</div>' + chips(d.cast, true);
+    if (d.type === 'movie') h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
+    else h += '<div class="tabs">' + d.seasons.map(s => '<button class="tab" id="tab' + s.n + '" onclick="loadSeason(' + s.n + ')">الموسم ' + s.n + '</button>').join('') + '</div><div id="eps"></div>';
+    box.innerHTML = h;
+    if (d.type === 'tv' && d.seasons.length) loadSeason(d.seasons[0].n);
+  } catch (e) { box.innerHTML = ERR; }
+}
+function closeDetails() {
+  $('details').style.display = 'none';
+  $('titles').style.display = 'block';
+}
+async function loadSeason(n) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab' + n));
+  const b = $('eps');
+  b.innerHTML = pend('جاري تحميل الحلقات...');
+  try {
+    const {d} = await api('/season?id=' + cur.id + '&n=' + n);
+    if (d.error) return b.innerHTML = warn(d.error);
+    b.innerHTML = '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' +
+      d.episodes.map(e => '<div class="ep">' + (e.still ? '<img loading="lazy" src="' + esc(e.still) + '" alt="">' : '') +
+        '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) + (e.runtime ? ' · ' + e.runtime + ' د' : '') + '</small></div>' +
+        '<button onclick="go(' + n + ',' + e.n + ')">🧲</button></div>').join('');
+  } catch (e) { b.innerHTML = ERR; }
+}
+function go(s, e) {
+  let q = cur.search_title || cur.title;
+  if (cur.type === 'movie' && cur.year) q += ' ' + cur.year;
+  if (s) q += ' S' + p2(s) + (e ? 'E' + p2(e) : '');
+  $('torrentQuery').value = q;
   searchTorrents();
 }
 
+// ---------- التورنت ----------
 function directTorrentSearch() {
-  const q = document.getElementById('searchInput').value.trim();
+  const q = $('searchInput').value.trim();
   if (!q) return alert("اكتب الاسم الأول");
   selected = null;
-  document.getElementById('torrentQuery').value = q;
+  $('torrentQuery').value = q;
   searchTorrents();
 }
-
-function showHeader() {
-  const h = document.getElementById('torrentHeader');
-  if (!selected) { h.innerHTML = ''; return; }
-  const img = selected.poster ? '<img src="' + esc(selected.poster) + '" alt="">' : '';
-  const kind = selected.type === 'tv' ? 'مسلسل' : 'فيلم';
-  h.innerHTML = '<div class="selbox">' + img + '<div><div class="selt">' +
-    esc(selected.title) + '</div><div class="sely">' +
-    esc(selected.year) + ' · ' + kind + '</div></div></div>';
-}
+const hashOf = m => { const x = /btih:([a-f0-9]{40})/i.exec(m); return x ? x[1].toLowerCase() : ''; };
 
 async function searchTorrents() {
-  const q = document.getElementById('torrentQuery').value.trim();
+  const q = $('torrentQuery').value.trim();
   if (!q) return;
-  const panel = document.getElementById('torrentPanel');
-  const box = document.getElementById('torrentResults');
+  const panel = $('torrentPanel'), box = $('torrentResults');
   panel.style.display = 'block';
-  showHeader();
-  box.innerHTML = '<div class="pending">⏳ جاري البحث في المصادر... (قد ياخد نص دقيقة)</div>';
+  $('torrentHeader').innerHTML = selected
+    ? '<div class="selbox">' + (selected.poster ? '<img src="' + esc(selected.poster) + '" alt="">' : '') +
+      '<div><b>' + esc(selected.title) + '</b><div style="color:var(--mut);font-size:13px">' + esc(selected.year) + '</div></div></div>' : '';
+  box.innerHTML = pend('جاري البحث في المصادر... (قد ياخد نص دقيقة)');
   panel.scrollIntoView({behavior: 'smooth'});
   try {
-    const res = await fetch(API + '/search?q=' + encodeURIComponent(q));
-    const data = await res.json();
-    if (data.error) {
-      box.innerHTML = '<div class="warn">' + esc(data.error) + '</div>';
-      return;
-    }
-    torrents = data.results;
-    if (!torrents.length) {
-      box.innerHTML = '<div class="warn">مفيش نتايج. جرب تعدّل الاسم (بدون سنة، أو بالإنجليزي).</div>';
-      return;
-    }
-    const pic = (selected && selected.poster)
-      ? '<div class="pic"><img loading="lazy" src="' + esc(selected.poster) + '" alt=""></div>'
-      : '';
-    let html = '';
-    torrents.forEach((t, i) => {
-      const tg = tags(t.title);
-      html += '<div class="tor">' + pic + '<div class="body">' +
-        '<div class="n">' + esc(t.title) + '</div>' +
-        '<div class="m"><span class="size">💾 ' + fmtSize(t.size) + '</span>' +
-        '<span class="s ' + (t.seeders ? '' : 'zero') + '">🌱 ' + t.seeders + '</span>' +
-        (tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') +
-        '<span>' + esc(t.indexer) + '</span></div>' +
-        '<button onclick="pullTorrent(' + i + ')">⬇️ سحب</button>' +
-        '</div></div>';
-    });
-    box.innerHTML = html;
-  } catch (e) {
-    box.innerHTML = '<div class="warn" style="color:#ef4444">❌ مش قادر أوصل للسيرفر.</div>';
-  }
+    const {d} = await api('/search?q=' + encodeURIComponent(q));
+    if (d.error) return box.innerHTML = warn(d.error);
+    torrents = d.results || [];
+    if (!torrents.length) return box.innerHTML = warn('مفيش نتايج. جرب تعدّل الاسم (بدون سنة، أو بالإنجليزي).');
+    renderTorrents();
+    markCached();
+  } catch (e) { box.innerHTML = ERR; }
 }
-
+function renderTorrents() {
+  const pic = (selected && selected.poster) ? '<div class="pic"><img loading="lazy" src="' + esc(selected.poster) + '" alt=""></div>' : '';
+  $('torrentResults').innerHTML = torrents.map((t, i) => {
+    const tg = tags(t.title);
+    return '<div class="tor">' + pic + '<div class="body"><div class="n">' + esc(t.title) + '</div>' +
+      '<div class="m"><span class="size">💾 ' + fmtSize(t.size) + '</span>' +
+      '<span class="s ' + (t.seeders ? '' : 'zero') + '">🌱 ' + t.seeders + '</span>' +
+      (t.cached ? '<span class="badge">⚡ فوري</span>' : '') +
+      (tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') + '<span>' + esc(t.indexer) + '</span></div>' +
+      '<button onclick="pullTorrent(' + i + ')">⬇️ سحب</button></div></div>';
+  }).join('');
+}
+async function markCached() {
+  const hs = [...new Set(torrents.map(t => hashOf(t.magnet)).filter(Boolean))].slice(0, 60);
+  if (!hs.length) return;
+  try {
+    const {d} = await api('/cached?h=' + hs.join(','));
+    const c = new Set(d.cached || []);
+    if (!c.size) return;
+    torrents.forEach(t => t.cached = c.has(hashOf(t.magnet)));
+    torrents.sort((a, b) => (!!b.cached - !!a.cached) || (b.seeders - a.seeders));
+    renderTorrents();
+  } catch (e) {}
+}
 function pullTorrent(i) {
-  document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+  $('results').scrollIntoView({behavior: 'smooth'});
   sendToRailway(torrents[i].magnet);
 }
-
 function processDirectLink() {
-  let link = document.getElementById('linkInput').value.trim();
+  let link = $('linkInput').value.trim();
   if (!link) return alert("الرجاء لصق الرابط أولاً");
   if (!link.startsWith('http') && !link.startsWith('magnet:')) link = 'https://' + link;
+  $('results').scrollIntoView({behavior: 'smooth'});
   sendToRailway(link);
 }
 
-async function sendToRailway(link, torrentId = null, tries = 0) {
-  const box = document.getElementById('results');
-  if (tries === 0) box.innerHTML = '<div class="pending">⏳ جاري سحب الرابط...</div>';
+// ---------- السحب + التقدم ----------
+function progHTML(d) {
+  const p = d.progress || 0, size = d.size || 0;
+  return '<div class="pending">⏳ ' + esc(d.provider || '') + ' — ' + esc(d.status || 'جاري التجهيز') +
+    '<div class="bar"><i style="width:' + (p * 100).toFixed(1) + '%"></i></div>' +
+    (p * 100).toFixed(1) + '%' + (size ? ' · ' + fmtSize(p * size) + ' / ' + fmtSize(size) : '') +
+    '<br>⚡ ' + fmtSize(d.speed || 0) + '/s · ⏱ ' + fmtEta(d.eta) + ' · 🌱 ' + (d.seeds || 0) + ' · 👥 ' + (d.peers || 0) +
+    (d.file ? '<br><small style="direction:ltr;display:block;word-break:break-all;color:var(--mut)">' + esc(d.file) + '</small>' : '') +
+    '<br><small style="color:var(--mut)">متقفلش الصفحة</small></div>';
+}
+const triedHTML = a => (a && a.length) ? '<div style="font-size:12px;color:var(--mut);margin-top:10px;text-align:right">' + a.map(x => '• ' + esc(x)).join('<br>') + '</div>' : '';
+
+async function sendToRailway(link, tid = null, tries = 0) {
+  const box = $('results');
+  if (!tries) box.innerHTML = pend('جاري سحب الرابط...');
   try {
-    const res = await fetch(SERVER_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({query: link, torrent_id: torrentId})
-    });
-    const data = await res.json();
-
-    if (res.status === 202 && tries < MAX_TRIES) {
-      const pct = data.progress ? ' – ' + (data.progress * 100).toFixed(0) + '%' : '';
-      box.innerHTML = '<div class="pending">⏳ ' + esc(data.status || 'جاري التجهيز') + pct +
-        '<br><span style="font-size:12px;color:#94a3b8">متقفلش الصفحة</span></div>';
-      return setTimeout(() => {
-        sendToRailway(link, data.torrent_id || torrentId, tries + 1);
-      }, 5000);
+    const {r, d} = await api('/generate', {method: 'POST', body: JSON.stringify({query: link, torrent_id: tid})});
+    if (r.status === 202 && tries < 400) {
+      box.innerHTML = progHTML(d) + triedHTML(d.tried);
+      return setTimeout(() => sendToRailway(link, d.torrent_id || tid, tries + 1), 3000);
     }
+    if (d.direct_link) {
+      const url = d.direct_link;
+      box.innerHTML = '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">✅ الملف جاهز!</h3>' +
+        '<p style="margin:0 0 10px">📡 المصدر: <b>' + esc(d.provider || '') + '</b>' + (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
+        (d.name ? '<p style="direction:ltr;font-size:13px;color:var(--mut);word-break:break-all">' + esc(d.name) + '</p>' : '') +
+        '<video controls src="' + esc(url) + '"></video>' +
+        '<a href="' + esc(url) + '" target="_blank" class="btn-download">⬇️ فتح / تحميل مباشر</a>' +
+        '<button class="btn-vlc" id="copyBtn">📋 نسخ الرابط (للصقه في VLC)</button>' + triedHTML(d.tried) + '</div>';
+      $('copyBtn').onclick = () => { navigator.clipboard.writeText(url); alert('تم نسخ الرابط!'); };
+    } else box.innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(d.tried);
+  } catch (e) { box.innerHTML = ERR; }
+}
 
-    if (data.direct_link) {
-      const url = data.direct_link;
-      let html = '<div class="result-card">';
-      html += '<h3 style="margin:0 0 15px 0;color:var(--success)">✅ الملف جاهز!</h3>';
-      if (data.name) {
-        html += '<p style="direction:ltr;font-size:13px;color:#94a3b8;word-break:break-all">' + esc(data.name) + '</p>';
-      }
-      html += '<video controls src="' + esc(url) + '"></video>';
-      html += '<a href="' + esc(url) + '" target="_blank" class="btn-download">⬇️ فتح / تحميل مباشر</a>';
-      html += '<button class="btn-vlc" id="copyBtn">📋 نسخ الرابط (للصقه في VLC)</button>';
-      html += '</div>';
-      box.innerHTML = html;
-      document.getElementById('copyBtn').onclick = () => {
-        navigator.clipboard.writeText(url);
-        alert('تم نسخ الرابط!');
-      };
-    } else {
-      box.innerHTML = '<div class="warn">' + esc(data.error || 'حصل خطأ') + '</div>';
-    }
-  } catch (e) {
-    box.innerHTML = '<div class="warn" style="color:#ef4444">❌ مش قادر أوصل للسيرفر.</div>';
-  }
+// ---------- المزوّدين ----------
+async function loadProviders() {
+  try {
+    const {d} = await api('/providers');
+    $('provType').innerHTML = Object.entries(d.types || {}).map(([k, v]) => '<option value="' + k + '">' + esc(v) + '</option>').join('');
+    $('provList').innerHTML = (d.items || []).map(p =>
+      '<div class="ep"><div class="b">' + esc(p.name) + '<small>' + esc(p.type) + ' · ' + esc(p.domains.join(', ') || 'أي رابط') + ' · ' + esc(p.key) + '</small></div>' +
+      '<button style="background:var(--danger);color:#fff" onclick="delProv(\'' + p.id + '\')">🗑</button></div>').join('') ||
+      warn('مفيش مزوّدين. ضيف أول واحد (TorBox مطلوب للتورنت).');
+  } catch (e) {}
+}
+async function addProv() {
+  const body = {type: $('provType').value, name: $('provName').value, domains: $('provDomains').value, key: $('provKey').value};
+  const {d} = await api('/providers', {method: 'POST', body: JSON.stringify(body)});
+  if (d.error) return alert(d.error);
+  ['provName', 'provDomains', 'provKey'].forEach(i => $(i).value = '');
+  loadProviders();
+}
+async function delProv(id) {
+  if (!confirm('حذف المزوّد؟')) return;
+  await api('/providers/' + id, {method: 'DELETE'});
+  loadProviders();
 }
 </script>
 </body>
