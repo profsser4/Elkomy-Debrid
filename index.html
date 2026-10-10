@@ -239,7 +239,7 @@ async function loadSeason(n) {
   } catch (e) { b.innerHTML = ERR; }
 }
 function go(s, e) {
-  let q = cur.search_title || cur.title;
+  let q = (cur.search_title || cur.title).replace(/[:'"!?,.&]/g, ' ').replace(/\s+/g, ' ').trim();
   if (cur.type === 'movie' && cur.year) q += ' ' + cur.year;
   if (s) q += ' S' + p2(s) + (e ? 'E' + p2(e) : '');
   $('torrentQuery').value = q;
@@ -256,7 +256,7 @@ function directTorrentSearch() {
 }
 const hashOf = m => { const x = /btih:([a-f0-9]{40})/i.exec(m); return x ? x[1].toLowerCase() : ''; };
 
-async function searchTorrents() {
+async function searchTorrents(retry) {
   const q = $('torrentQuery').value.trim();
   if (!q) return;
   const panel = $('torrentPanel'), box = $('torrentResults');
@@ -270,7 +270,13 @@ async function searchTorrents() {
     const {d} = await api('/search?q=' + encodeURIComponent(q));
     if (d.error) return box.innerHTML = warn(d.error);
     torrents = d.results || [];
-    if (!torrents.length) return box.innerHTML = warn('مفيش نتايج. جرب تعدّل الاسم (بدون سنة، أو بالإنجليزي).');
+    if (!torrents.length) {
+      if (!retry && /S\d+E\d+$/i.test(q)) {
+        $('torrentQuery').value = q.replace(/E\d+$/i, '');
+        return searchTorrents(true);
+      }
+      return box.innerHTML = warn('مفيش نتايج. جرب تعدّل الاسم (بدون سنة، أو بالإنجليزي).');
+    }
     renderTorrents();
     markCached();
   } catch (e) { box.innerHTML = ERR; }
