@@ -151,7 +151,7 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <div id="torrentHeader"></div>
 <input id="torrentQuery" class="search-input ltr" placeholder="الاسم + S01E01" onkeydown="if(event.key==='Enter')searchTorrents()">
 <button class="search-btn btn-blue" style="margin-bottom:6px" onclick="searchTorrents()">ابحث في التورنت</button>
-<p style="color:var(--mut);font-size:12px;margin:0 0 12px">لو العمل عربي جرّب تكتب اسمه بحروف إنجليزي (مثلاً Khamsin).</p>
+<p style="color:var(--mut);font-size:12px;margin:0 0 12px">لو العمل عربي اكتب اسمه بحروف إنجليزي زي ما بيبان على التورنت (مثلاً Khamsin).</p>
 <div id="torrentResults"></div>
 </div>
 
@@ -597,10 +597,11 @@ async function openDetails(type, id) {
   try {
     const {d} = await api('/details?type=' + type + '&id=' + id);
     if (d.error) return box.innerHTML = warn(d.error);
+    const last = latestOf(d.id);
+    if (last && last.qn) d.qname = last.qn;
     cur = d;
     selected = {title: d.title, year: d.year, type: d.type, poster: d.poster};
     const bg = esc(d.backdrop || d.poster || '');
-    const last = latestOf(d.id);
     const cb = (last && !last.done)
       ? '<button class="search-btn" style="margin-bottom:10px" data-k="' + esc(last.key) + '" onclick="playItem(this.dataset.k)">▶ كمّل ' +
         (last.s != null ? 'S' + p2(last.s) + 'E' + p2(last.e) + ' · ' : '') + fmtTime(last.pos) + '</button>' : '';
@@ -645,12 +646,36 @@ async function loadSeason(n) {
         '<button onclick="go(' + n + ',' + e.n + ')">🧲</button></div>').join('');
   } catch (e) { if (my === sReq) b.innerHTML = ERR; }
 }
+function altChips() {
+  const a = (cur && selected && cur.alt) ? cur.alt : [];
+  if (!a.length) return '';
+  return '<div class="lbl">جرّب اسم تاني:</div><div class="chips">' + a.map(x =>
+    '<button class="fc" data-n="' + esc(x) + '" onclick="useAlt(this.dataset.n)">' + esc(x) + '</button>').join('') + '</div>';
+}
+function useAlt(n) {
+  let q = n;
+  if (cur.type === 'movie' && cur.year) q += ' ' + cur.year;
+  if (want && want.s) q += ' S' + p2(want.s) + (want.e ? 'E' + p2(want.e) : '');
+  $('torrentQuery').value = q;
+  searchTorrents();
+}
 function go(s, e, auto) {
-  let q = (cur.search_title || cur.title).replace(/[:'"!?,.&]/g, ' ').replace(/\s+/g, ' ').trim();
+  const nm = (cur.qname || cur.search_title || '').trim();
+  want = s ? {s: s, e: e || null} : null;
+  autoPick = !!auto && !!nm;
+  if (!nm) {
+    const panel = $('torrentPanel');
+    panel.style.display = 'block';
+    $('torrentQuery').value = '';
+    $('torrentHeader').innerHTML = torrentHeader();
+    $('torrentResults').innerHTML = warn('الاسم ده عربي ومالوش اسم إنجليزي معروف. اكتب اسمه بحروف إنجليزي زي ما بيبان على التورنت (مثلاً Khamsin) وبعدين دوس "ابحث في التورنت".') + altChips();
+    panel.scrollIntoView({behavior: 'smooth'});
+    $('torrentQuery').focus();
+    return;
+  }
+  let q = nm.replace(/[:'"!?,.&]/g, ' ').replace(/\s+/g, ' ').trim();
   if (cur.type === 'movie' && cur.year) q += ' ' + cur.year;
   if (s) q += ' S' + p2(s) + (e ? 'E' + p2(e) : '');
-  want = s ? {s: s, e: e || null} : null;
-  autoPick = !!auto;
   $('torrentQuery').value = q;
   searchTorrents();
 }
@@ -658,6 +683,7 @@ function go(s, e, auto) {
 // ================= ذكاء البحث (فلترة النتايج) =================
 const STOP = new Set(['the', 'of', 'a', 'an', 'and', 'in', 'on', 'to']);
 const hashOf = m => { const x = /btih:([a-f0-9]{40})/i.exec(m || ''); return x ? x[1].toLowerCase() : ''; };
+const tok = s => String(s || '').toLowerCase().split(/[^\p{L}\p{N}\p{M}]+/u).filter(Boolean);
 
 function info(title) {
   const t = title.replace(/[._]/g, ' ');
@@ -671,16 +697,15 @@ function info(title) {
   return {};
 }
 function qWords(q) {
-  return q.toLowerCase()
+  const x = q.toLowerCase()
     .replace(/\bs\d{1,2}(e\d{1,3})?\b/g, ' ')
-    .replace(/\b(19|20)\d{2}\b/g, ' ')
-    .split(/[^a-z0-9]+/)
-    .filter(w => w && !STOP.has(w) && (w.length > 1 || /\d/.test(w)));
+    .replace(/\b(19|20)\d{2}\b/g, ' ');
+  return tok(x).filter(w => !STOP.has(w) && (w.length > 1 || /\d/.test(w)));
 }
 function titleOK(t, words) {
   if (!words.length) return true;
-  const n = ' ' + t.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ') + ' ';
-  const hit = words.filter(w => n.includes(' ' + w + ' ')).length;
+  const set = new Set(tok(t.title));
+  const hit = words.filter(w => set.has(w)).length;
   const need = words.length >= 4 ? words.length - 1 : words.length;
   return hit >= need;
 }
@@ -717,7 +742,7 @@ function dedupe(list) {
   return [...m.values()];
 }
 function visible() {
-  const words = /^[\x00-\x7F]*$/.test(lastQ) ? qWords(lastQ) : [];
+  const words = qWords(lastQ);
   const base = dedupe(torrents);
   const good = base.filter(t => titleOK(t, words) && yearOK(t) && wantOK(t) &&
     (t.seeders > 0 || t.cached));
@@ -743,8 +768,12 @@ function torrentHeader() {
     esc(selected.year) + esc(lbl) + '</div></div></div>';
 }
 async function searchTorrents(retry) {
-  const q = $('torrentQuery').value.trim();
+  let q = $('torrentQuery').value.trim();
   if (!q) return;
+  if (!retry && want && want.s && !/\bS\d{1,2}/i.test(q)) {
+    q += ' S' + p2(want.s) + (want.e ? 'E' + p2(want.e) : '');
+    $('torrentQuery').value = q;
+  }
   const my = ++seq;
   lastQ = q;
   if (!retry) { qf = 'all'; showAll = false; }
@@ -765,7 +794,7 @@ async function searchTorrents(retry) {
     }
     if (!torrents.length) {
       autoPick = false;
-      return box.innerHTML = warn('مفيش نتايج. جرب تعدّل الاسم (بدون سنة، أو بالإنجليزي).');
+      return box.innerHTML = warn('مفيش نتايج. جرب تعدّل الاسم (بدون سنة، أو بالإنجليزي).') + altChips();
     }
     renderTorrents();
     markCached();
@@ -773,8 +802,8 @@ async function searchTorrents(retry) {
 }
 function renderTorrents() {
   const {base, good} = visible();
-  const fell = !good.length;
-  const list = ((showAll || fell) ? base : good).filter(qOK);
+  const none = !good.length;
+  const list = (showAll ? base : good).filter(qOK);
   list.sort((a, b) => (!!b.cached - !!a.cached) || (b.seeders - a.seeders));
   shown = list;
   const hidden = base.length - good.length;
@@ -782,12 +811,19 @@ function renderTorrents() {
   let h = '<div class="fbar">' + fl.map(f =>
     '<button class="fc' + (qf === f[0] ? ' on' : '') + '" onclick="setQf(\'' + f[0] + '\')">' + f[1] + '</button>'
   ).join('');
-  if (!fell && hidden > 0) {
+  if ((!none && hidden > 0) || (none && showAll)) {
     h += '<button class="fc' + (showAll ? ' on' : '') + '" onclick="toggleAll()">' +
       (showAll ? 'إخفاء غير المطابق' : 'عرض الكل (+' + hidden + ')') + '</button>';
   }
   h += '</div>';
-  if (fell) h += warn('مفيش نتايج مطابقة بالظبط، دي أقرب النتايج:');
+  if (none && !showAll) {
+    shown = [];
+    h += warn('مفيش نتايج مطابقة للاسم ده بالظبط.') + altChips() +
+      '<button class="fc" style="margin-top:8px" onclick="toggleAll()">عرض كل النتايج (' + base.length + ') حتى لو مش مطابقة</button>';
+    $('torrentResults').innerHTML = h;
+    return;
+  }
+  if (none && showAll) h += warn('دي كل النتايج، وممكن تكون مش مطابقة للي بتدور عليه.');
   if (!list.length) h += warn('مفيش نتايج بالفلتر ده.');
   const pic = (selected && selected.poster)
     ? '<div class="pic"><img loading="lazy" src="' + esc(selected.poster) + '" alt=""></div>' : '';
@@ -842,8 +878,9 @@ function pullTorrent(i) {
   if (!t) return;
   let base = {src: t.magnet, title: ''};
   if (selected && cur) {
+    const qn = lastQ.replace(/\s*S\d{1,2}(E\d{1,3})?\s*$/i, '').replace(/\s+(19|20)\d{2}$/, '').trim();
     base = {src: t.magnet, title: selected.title, poster: selected.poster, year: selected.year,
-            type: cur.type, tmdb: cur.id};
+            type: cur.type, tmdb: cur.id, qn: qn};
     if (want) {
       base.s = want.s;
       base.e = want.e;
@@ -916,7 +953,7 @@ async function pullSource(src, base, fid) {
   }
   base.src = src;
   packBase = base;
-  if (d.pack && fid == null && d.files) {
+  if (d.pack && fid == null && d.files && base.type !== 'movie') {
     pack = d;
     const f = base.e != null
       ? d.files.find(x => x.episode === base.e && (base.s == null || x.season === base.s)) : null;
@@ -927,7 +964,7 @@ async function pullSource(src, base, fid) {
 }
 function setPlay(o) {
   PLAY = Object.assign({title: '', poster: '', year: '', type: null, tmdb: null, s: null, e: null,
-    eps: null, ms: null, src: '', fid: null, fname: '', resume: 0, sub: null}, o);
+    eps: null, ms: null, src: '', fid: null, fname: '', qn: '', resume: 0, sub: null}, o);
   PLAY.key = keyOf(PLAY);
   const old = getItem(PLAY.key);
   if (old && !old.del) {
@@ -941,7 +978,7 @@ function keyOf(c) {
   return 'u:' + hash(c.src || c.title || '') + (c.fid != null ? ':' + c.fid : '');
 }
 function playData(d, base) {
-  pack = d.files ? d : null;
+  pack = (d.files && base.type !== 'movie') ? d : null;
   if (!base.title) base.title = d.name || '';
   base.fid = d.file_id != null ? d.file_id : (base.fid != null ? base.fid : null);
   base.fname = d.name || base.fname || '';
@@ -990,7 +1027,7 @@ function saveProgress(v, ended) {
   setItem({
     key: c.key, title: c.title, poster: c.poster, year: c.year, type: c.type,
     tmdb: c.tmdb, s: c.s, e: c.e, eps: c.eps, ms: c.ms, src: c.src,
-    fid: c.fid, fname: c.fname, pos: Math.floor(pos), dur: Math.floor(v.duration),
+    fid: c.fid, fname: c.fname, qn: c.qn || '', pos: Math.floor(pos), dur: Math.floor(v.duration),
     done: done, sub: c.sub || null,
     next: (n && n.kind === 'pack')
       ? {fid: n.f.id, s: n.f.season, e: n.f.episode, name: n.f.name} : null
@@ -1025,7 +1062,7 @@ function attachPlayer() {
 }
 function nextTarget() {
   const c = PLAY;
-  if (!c) return null;
+  if (!c || c.type === 'movie') return null;
   if (pack && pack.files && c.fid != null) {
     const i = pack.files.findIndex(f => f.id === c.fid);
     if (i >= 0) {
@@ -1073,10 +1110,14 @@ function cancelNext() {
   const n = nextTarget(), box = $('nextUp');
   if (n && box) box.innerHTML = nextBtn(n);
 }
-async function ensureCur(id, type) {
-  if (cur && cur.id === id && cur.type === type) return;
+async function ensureCur(id, type, qn) {
+  if (cur && cur.id === id && cur.type === type) {
+    if (qn && !cur.qname) cur.qname = qn;
+    return;
+  }
   const {d} = await api('/details?type=' + type + '&id=' + id);
   if (d.error) return;
+  if (qn) d.qname = qn;
   cur = d;
   selected = {title: d.title, year: d.year, type: d.type, poster: d.poster};
 }
@@ -1085,7 +1126,8 @@ async function playNext() {
   const n = nextTarget();
   if (!n) return;
   if (n.kind === 'pack') return playPackFile(n.f);
-  await ensureCur(PLAY.tmdb, PLAY.type);
+  await ensureCur(PLAY.tmdb, PLAY.type, PLAY.qn);
+  if (!cur || cur.id !== PLAY.tmdb) return alert('مش قادر أجيب بيانات المسلسل');
   want = {s: n.s, e: n.e};
   go(n.s, n.e, true);
 }
@@ -1098,7 +1140,7 @@ async function playItem(key) {
   await pullSource(it.src, baseOf(it), it.fid != null ? it.fid : null);
 }
 const baseOf = it => ({title: it.title, poster: it.poster, year: it.year, type: it.type, tmdb: it.tmdb,
-  s: it.s, e: it.e, eps: it.eps, ms: it.ms, fid: it.fid, fname: it.fname, src: it.src});
+  s: it.s, e: it.e, eps: it.eps, ms: it.ms, fid: it.fid, fname: it.fname, src: it.src, qn: it.qn || ''});
 async function playAfter(it) {
   if (it.next && it.src) {
     const base = Object.assign(baseOf(it), {s: it.next.s, e: it.next.e, fid: it.next.fid, fname: it.next.name});
@@ -1106,7 +1148,8 @@ async function playAfter(it) {
   }
   const n = nextEpOf(it);
   if (!n) return alert('خلصت كل الحلقات المتاحة 🎉');
-  await ensureCur(it.tmdb, it.type);
+  await ensureCur(it.tmdb, it.type, it.qn);
+  if (!cur || cur.id !== it.tmdb) return alert('مش قادر أجيب بيانات المسلسل');
   want = {s: n.s, e: n.e};
   go(n.s, n.e, true);
 }
