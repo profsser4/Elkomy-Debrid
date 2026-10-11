@@ -18,7 +18,8 @@ body{margin:0;background:var(--bg);color:var(--text)}
 .action-box{background:var(--panel);padding:20px 16px;border-radius:10px;margin-bottom:18px;border:1px solid #334155;text-align:center}
 .ltr{text-align:left;direction:ltr}
 .btn-blue{background:var(--primary);color:#000}
-.row{display:flex;gap:10px}.row>*{flex:1}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
 .result-card{background:var(--panel);padding:18px;border-radius:8px;margin-top:18px;border:1px solid var(--success);text-align:center}
 .btn-download{background:var(--success);color:#fff;padding:12px;border-radius:5px;text-decoration:none;display:block;margin-top:14px;font-weight:bold}
 .btn-vlc{background:#f97316;color:#fff;padding:12px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin-top:10px;width:100%}
@@ -36,7 +37,8 @@ h3.sec{margin:8px 0 10px;color:var(--primary)}
 .hero{height:230px;background-size:cover;background-position:center;border-radius:12px;position:relative;display:flex;align-items:flex-end;padding:14px;margin-bottom:12px}
 .hero h2{margin:0;text-shadow:0 2px 8px #000}
 .back{position:absolute;top:10px;right:10px;background:#0009;color:#fff;border:none;border-radius:50%;width:38px;height:38px;cursor:pointer;font-size:16px}
-.meta{color:var(--mut);margin-bottom:8px}.ov{line-height:1.9;color:#cbd5e1}
+.meta{color:var(--mut);margin-bottom:8px}
+.ov{line-height:1.9;color:#cbd5e1}
 .lbl{color:var(--mut);font-size:13px;margin-top:10px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .chips.scroll{flex-wrap:nowrap;overflow-x:auto}
@@ -44,21 +46,29 @@ h3.sec{margin:8px 0 10px;color:var(--primary)}
 .tabs{display:flex;gap:8px;overflow-x:auto;margin:14px 0;padding-bottom:4px}
 .tab{padding:10px 16px;border-radius:20px;border:none;background:var(--panel);color:var(--mut);white-space:nowrap;cursor:pointer}
 .tab.on{background:#1d4ed8;color:#fff}
-.ep{display:flex;gap:10px;align-items:center;background:var(--panel);border-radius:8px;padding:8px;margin-bottom:8px;text-align:right}
+.ep{display:flex;gap:10px;align-items:center;background:var(--panel);border-radius:8px;padding:8px;margin-bottom:8px;text-align:right;border:1px solid transparent}
+.ep.hi{border-color:var(--primary)}
 .ep img{width:90px;aspect-ratio:16/9;object-fit:cover;border-radius:6px;background:#0b1220}
-.ep .b{flex:1;font-size:13px}.ep small{color:var(--mut);display:block;margin-top:3px}
+.ep .b{flex:1;font-size:13px;min-width:0;word-break:break-all}
+.ep small{color:var(--mut);display:block;margin-top:3px}
 .ep button{padding:8px 12px;border:none;border-radius:6px;background:var(--primary);cursor:pointer}
 .selbox{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--primary);border-radius:10px;padding:10px;margin-bottom:12px}
 .selbox img{width:60px;aspect-ratio:2/3;object-fit:cover;border-radius:6px}
+.fbar{display:flex;gap:8px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px}
+.fc{padding:7px 13px;border-radius:18px;border:1px solid #334155;background:var(--panel);color:var(--mut);white-space:nowrap;cursor:pointer;font-size:13px}
+.fc.on{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
 .tor{display:flex;gap:12px;background:var(--panel);border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:10px}
 .tor .pic img{width:60px;aspect-ratio:2/3;object-fit:cover;border-radius:6px;display:block}
 .tor .body{flex:1;min-width:0}
 .tor .n{direction:ltr;text-align:left;font-size:13px;word-break:break-all;margin-bottom:8px}
 .tor .m{font-size:12px;color:var(--mut);margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px}
 .tor .size{color:#fff;font-weight:bold;font-size:14px}
-.tor .s{color:var(--success)}.tor .s.zero{color:var(--danger)}
+.tor .s{color:var(--success)}
+.tor .s.zero{color:var(--danger)}
 .tor button{width:100%;padding:10px;background:var(--success);color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer}
 .badge{background:#f59e0b;color:#000;border-radius:4px;padding:1px 6px;font-weight:bold}
+.badge.b2{background:#a78bfa}
+.fn{direction:ltr;font-size:13px;color:var(--mut);word-break:break-all}
 .bar{height:10px;background:#0b1220;border-radius:6px;overflow:hidden;margin:10px 0}
 .bar i{display:block;height:100%;background:var(--success);transition:width .5s}
 summary{cursor:pointer;font-weight:bold;font-size:16px}
@@ -98,7 +108,8 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <h3 class="sec">🧲 نسخ التورنت</h3>
 <div id="torrentHeader"></div>
 <input id="torrentQuery" class="search-input ltr" placeholder="الاسم + S01E01" onkeydown="if(event.key==='Enter')searchTorrents()">
-<button class="search-btn btn-blue" style="margin-bottom:14px" onclick="searchTorrents()">ابحث في التورنت</button>
+<button class="search-btn btn-blue" style="margin-bottom:6px" onclick="searchTorrents()">ابحث في التورنت</button>
+<p style="color:var(--mut);font-size:12px;margin:0 0 12px">لو العمل عربي جرّب تكتب اسمه بحروف إنجليزي (مثلاً Khamsin).</p>
 <div id="torrentResults"></div>
 </div>
 
@@ -125,7 +136,9 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <script>
 const API = "https://elkomy-server-production.up.railway.app";
 let PASS = sessionStorage.getItem('pass') || "";
-let torrents = [], selected = null, cur = null;
+let torrents = [], shown = [], selected = null, cur = null, want = null;
+let qf = 'all', showAll = false, lastQ = '';
+let seq = 0, pullId = 0, sReq = 0, pack = null, links = [];
 const $ = id => document.getElementById(id);
 const ERR = '<div class="warn" style="color:#ef4444">❌ مش قادر أوصل للسيرفر.</div>';
 const warn = m => '<div class="warn">' + esc(m) + '</div>';
@@ -138,18 +151,32 @@ function esc(s) {
 }
 function fmtSize(b) {
   if (!b) return 'غير معروف';
-  const u = ['B','KB','MB','GB','TB']; let i = 0;
+  const u = ['B','KB','MB','GB','TB'];
+  let i = 0;
   while (b >= 1024 && i < 4) { b /= 1024; i++; }
   return b.toFixed(i >= 3 ? 2 : 0) + ' ' + u[i];
 }
-function fmtEta(s) { return s ? Math.floor(s / 60) + 'د ' + (s % 60) + 'ث' : '—'; }
+function fmtBytes(b) { return (!b || b < 0) ? '0 B' : fmtSize(b); }
+function fmtEta(s) {
+  if (!s || s < 0) return '—';
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+  return h ? h + 'س ' + m + 'د' : m + 'د ' + (s % 60) + 'ث';
+}
 function tags(t) {
-  const m = t.match(/2160p|4K|1080p|720p|480p|BluRay|WEB-?DL|WEBRip|HDTV|HDRip|CAM/gi) || [];
+  const re = /2160p|4K|1080p|720p|480p|BluRay|WEB-?DL|WEBRip|HDTV|HDRip|CAM/gi;
+  const m = t.match(re) || [];
   return [...new Set(m.map(x => x.toUpperCase()))].join(' · ');
+}
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); alert('تم النسخ!'); }
+  catch (e) { prompt('انسخ من هنا:', t); }
 }
 
 async function api(path, opt = {}) {
-  const r = await fetch(API + path, {...opt, headers: {'Content-Type': 'application/json', 'X-Pass': PASS}});
+  const r = await fetch(API + path, {
+    ...opt,
+    headers: {'Content-Type': 'application/json', 'X-Pass': PASS}
+  });
   if (r.status === 401) { sessionStorage.clear(); location.reload(); }
   return {r, d: await r.json().catch(() => ({}))};
 }
@@ -162,7 +189,11 @@ document.addEventListener('keydown', e => {
 async function checkLogin() {
   const u = $('username').value.trim(), p = $('password').value.trim();
   try {
-    const r = await fetch(API + '/auth', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({u, p})});
+    const r = await fetch(API + '/auth', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({u, p})
+    });
     if (r.ok) { PASS = p; sessionStorage.setItem('pass', p); showMain(); }
     else $('login-error').style.display = 'block';
   } catch (e) { alert('مش قادر أوصل للسيرفر'); }
@@ -178,8 +209,10 @@ function row(title, list) {
   if (!list.length) return '';
   return '<h3 class="sec">' + title + '</h3><div class="hrow">' + list.map(t =>
     '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">' +
-    (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">' : '<div class="noimg">🎬</div>') +
-    '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) + '</div></div></div>').join('') + '</div>';
+    (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">'
+              : '<div class="noimg">🎬</div>') +
+    '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) +
+    '</div></div></div>').join('') + '</div>';
 }
 async function searchTitles() {
   const q = $('searchInput').value.trim();
@@ -192,12 +225,14 @@ async function searchTitles() {
     if (d.error) return box.innerHTML = warn(d.error);
     const r = d.results || [];
     if (!r.length) return box.innerHTML = warn('مفيش نتايج. جرب اسم تاني أو التورنت المباشر.');
-    box.innerHTML = row('🎬 الأفلام', r.filter(x => x.type === 'movie')) + row('📺 المسلسلات', r.filter(x => x.type === 'tv'));
+    box.innerHTML = row('🎬 الأفلام', r.filter(x => x.type === 'movie')) +
+                    row('📺 المسلسلات', r.filter(x => x.type === 'tv'));
   } catch (e) { box.innerHTML = ERR; }
 }
 
 // ---------- صفحة التفاصيل ----------
-const chips = (a, sc) => '<div class="chips' + (sc ? ' scroll' : '') + '">' + a.map(x => '<span class="chip">' + esc(x) + '</span>').join('') + '</div>';
+const chips = (a, sc) => '<div class="chips' + (sc ? ' scroll' : '') + '">' +
+  a.map(x => '<span class="chip">' + esc(x) + '</span>').join('') + '</div>';
 
 async function openDetails(type, id) {
   $('titles').style.display = 'none';
@@ -205,45 +240,127 @@ async function openDetails(type, id) {
   const box = $('details');
   box.style.display = 'block';
   box.innerHTML = pend('جاري التحميل...');
+  window.scrollTo(0, 0);
   try {
     const {d} = await api('/details?type=' + type + '&id=' + id);
     if (d.error) return box.innerHTML = warn(d.error);
     cur = d;
     selected = {title: d.title, year: d.year, type: d.type, poster: d.poster};
-    let h = '<div class="hero" style="background-image:linear-gradient(transparent 30%,#0f172a),url(\'' + esc(d.backdrop || d.poster || '') + '\')">' +
+    const bg = esc(d.backdrop || d.poster || '');
+    let h = '<div class="hero" style="background-image:linear-gradient(transparent 30%,#0f172a),url(\'' + bg + '\')">' +
       '<button class="back" onclick="closeDetails()">➡️</button><h2>' + esc(d.title) + '</h2></div>' +
-      '<div class="meta">⭐ ' + d.rating + ' · ' + esc(d.year) + (d.runtime ? ' · ' + d.runtime + ' د' : '') + '</div>' +
+      '<div class="meta">⭐ ' + d.rating + ' · ' + esc(d.year) +
+      (d.runtime ? ' · ' + d.runtime + ' د' : '') + '</div>' +
       '<p class="ov">' + esc(d.overview) + '</p>' + chips(d.genres) +
       '<div class="lbl">طاقم العمل</div>' + chips(d.cast, true);
-    if (d.type === 'movie') h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
-    else h += '<div class="tabs">' + d.seasons.map(s => '<button class="tab" id="tab' + s.n + '" onclick="loadSeason(' + s.n + ')">الموسم ' + s.n + '</button>').join('') + '</div><div id="eps"></div>';
+    if (d.type === 'movie') {
+      h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
+    } else {
+      h += '<div class="tabs">' + d.seasons.map(s =>
+        '<button class="tab" id="tab' + s.n + '" onclick="loadSeason(' + s.n + ')">الموسم ' + s.n + '</button>'
+      ).join('') + '</div><div id="eps"></div>';
+    }
     box.innerHTML = h;
     if (d.type === 'tv' && d.seasons.length) loadSeason(d.seasons[0].n);
   } catch (e) { box.innerHTML = ERR; }
 }
 function closeDetails() {
   $('details').style.display = 'none';
+  $('torrentPanel').style.display = 'none';
   $('titles').style.display = 'block';
 }
 async function loadSeason(n) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab' + n));
-  const b = $('eps');
+  const b = $('eps'), my = ++sReq;
   b.innerHTML = pend('جاري تحميل الحلقات...');
   try {
     const {d} = await api('/season?id=' + cur.id + '&n=' + n);
+    if (my !== sReq) return;
     if (d.error) return b.innerHTML = warn(d.error);
     b.innerHTML = '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' +
-      d.episodes.map(e => '<div class="ep">' + (e.still ? '<img loading="lazy" src="' + esc(e.still) + '" alt="">' : '') +
-        '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) + (e.runtime ? ' · ' + e.runtime + ' د' : '') + '</small></div>' +
+      d.episodes.map(e => '<div class="ep">' +
+        (e.still ? '<img loading="lazy" src="' + esc(e.still) + '" alt="">' : '') +
+        '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) +
+        (e.runtime ? ' · ' + e.runtime + ' د' : '') + '</small></div>' +
         '<button onclick="go(' + n + ',' + e.n + ')">🧲</button></div>').join('');
-  } catch (e) { b.innerHTML = ERR; }
+  } catch (e) { if (my === sReq) b.innerHTML = ERR; }
 }
 function go(s, e) {
   let q = (cur.search_title || cur.title).replace(/[:'"!?,.&]/g, ' ').replace(/\s+/g, ' ').trim();
   if (cur.type === 'movie' && cur.year) q += ' ' + cur.year;
   if (s) q += ' S' + p2(s) + (e ? 'E' + p2(e) : '');
+  want = s ? {s: s, e: e || null} : null;
   $('torrentQuery').value = q;
   searchTorrents();
+}
+
+// ---------- ذكاء البحث (فلترة النتايج) ----------
+const STOP = new Set(['the', 'of', 'a', 'an', 'and', 'in', 'on', 'to']);
+const hashOf = m => { const x = /btih:([a-f0-9]{40})/i.exec(m || ''); return x ? x[1].toLowerCase() : ''; };
+
+function info(title) {
+  const t = title.replace(/[._]/g, ' ');
+  let m = /\bS(\d{1,2})\s*[- ]?\s*E(\d{1,3})\b/i.exec(t) || /\b(\d{1,2})x(\d{2,3})\b/i.exec(t);
+  if (m) return {s: +m[1], e: +m[2]};
+  m = /\bS(\d{1,2})\s*(?:-|to)\s*S?(\d{1,2})\b/i.exec(t);
+  if (m) return {s: +m[1], s2: +m[2], pack: true};
+  m = /\bS(\d{1,2})\b/i.exec(t) || /\bSeason\s*(\d{1,2})\b/i.exec(t);
+  if (m) return {s: +m[1], pack: true};
+  if (/\b(complete|collection)\b/i.test(t)) return {s: null, pack: true, all: true};
+  return {};
+}
+function qWords(q) {
+  return q.toLowerCase()
+    .replace(/\bs\d{1,2}(e\d{1,3})?\b/g, ' ')
+    .replace(/\b(19|20)\d{2}\b/g, ' ')
+    .split(/[^a-z0-9]+/)
+    .filter(w => w && !STOP.has(w) && (w.length > 1 || /\d/.test(w)));
+}
+function titleOK(t, words) {
+  if (!words.length) return true;
+  const n = ' ' + t.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ') + ' ';
+  const hit = words.filter(w => n.includes(' ' + w + ' ')).length;
+  const need = words.length >= 4 ? words.length - 1 : words.length;
+  return hit >= need;
+}
+function yearOK(t) {
+  if (!(selected && selected.type === 'movie' && selected.year)) return true;
+  const ys = t.title.match(/\b(19|20)\d{2}\b/g);
+  if (!ys) return true;
+  const y = +selected.year;
+  return ys.some(v => Math.abs(+v - y) <= 1);
+}
+function wantOK(t) {
+  if (!want || !want.s) return true;
+  const i = info(t.title);
+  if (i.all) return true;
+  if (i.s == null) return false;
+  if (!(i.s <= want.s && want.s <= (i.s2 || i.s))) return false;
+  if (want.e) return i.e == null ? !!i.pack : i.e === want.e;
+  return !!i.pack;
+}
+function qOK(t) {
+  if (qf === 'all') return true;
+  if (qf === 'fast') return !!t.cached;
+  if (qf === '4k') return /2160p|\b4K\b/i.test(t.title);
+  if (qf === '1080') return /1080p/i.test(t.title);
+  return /720p/i.test(t.title);
+}
+function dedupe(list) {
+  const m = new Map();
+  list.forEach(t => {
+    const k = t.hash || hashOf(t.magnet) || t.magnet;
+    const o = m.get(k);
+    if (!o || t.seeders > o.seeders) m.set(k, t);
+  });
+  return [...m.values()];
+}
+function visible() {
+  const words = /^[\x00-\x7F]*$/.test(lastQ) ? qWords(lastQ) : [];
+  const base = dedupe(torrents);
+  const good = base.filter(t => titleOK(t, words) && yearOK(t) && wantOK(t) &&
+    (t.seeders > 0 || t.cached));
+  return {base, good};
 }
 
 // ---------- التورنت ----------
@@ -251,63 +368,100 @@ function directTorrentSearch() {
   const q = $('searchInput').value.trim();
   if (!q) return alert("اكتب الاسم الأول");
   selected = null;
+  want = null;
   $('torrentQuery').value = q;
   searchTorrents();
 }
-const hashOf = m => { const x = /btih:([a-f0-9]{40})/i.exec(m); return x ? x[1].toLowerCase() : ''; };
-
+function torrentHeader() {
+  if (!selected) return '';
+  const lbl = want ? ' · S' + p2(want.s) + (want.e ? 'E' + p2(want.e) : ' (الموسم كامل)') : '';
+  return '<div class="selbox">' +
+    (selected.poster ? '<img src="' + esc(selected.poster) + '" alt="">' : '') +
+    '<div><b>' + esc(selected.title) + '</b><div style="color:var(--mut);font-size:13px">' +
+    esc(selected.year) + esc(lbl) + '</div></div></div>';
+}
 async function searchTorrents(retry) {
   const q = $('torrentQuery').value.trim();
   if (!q) return;
+  const my = ++seq;
+  lastQ = q;
+  if (!retry) { qf = 'all'; showAll = false; }
   const panel = $('torrentPanel'), box = $('torrentResults');
   panel.style.display = 'block';
-  $('torrentHeader').innerHTML = selected
-    ? '<div class="selbox">' + (selected.poster ? '<img src="' + esc(selected.poster) + '" alt="">' : '') +
-      '<div><b>' + esc(selected.title) + '</b><div style="color:var(--mut);font-size:13px">' + esc(selected.year) + '</div></div></div>' : '';
-  box.innerHTML = pend('جاري البحث في المصادر... (قد ياخد نص دقيقة)');
+  $('torrentHeader').innerHTML = torrentHeader();
+  box.innerHTML = pend(retry ? 'مفيش الحلقة لوحدها، بدوّر على باك الموسم...' : 'جاري البحث في المصادر... (قد ياخد نص دقيقة)');
   panel.scrollIntoView({behavior: 'smooth'});
   try {
     const {d} = await api('/search?q=' + encodeURIComponent(q));
+    if (my !== seq) return;
     if (d.error) return box.innerHTML = warn(d.error);
     torrents = d.results || [];
+    const needRetry = !retry && want && want.e && /E\d+$/i.test(q);
+    if (needRetry && (!torrents.length || !visible().good.length)) {
+      $('torrentQuery').value = q.replace(/\s*E\d+$/i, '');
+      return searchTorrents(true);
+    }
     if (!torrents.length) {
-      if (!retry && /S\d+E\d+$/i.test(q)) {
-        $('torrentQuery').value = q.replace(/E\d+$/i, '');
-        return searchTorrents(true);
-      }
       return box.innerHTML = warn('مفيش نتايج. جرب تعدّل الاسم (بدون سنة، أو بالإنجليزي).');
     }
     renderTorrents();
     markCached();
-  } catch (e) { box.innerHTML = ERR; }
+  } catch (e) { if (my === seq) box.innerHTML = ERR; }
 }
 function renderTorrents() {
-  const pic = (selected && selected.poster) ? '<div class="pic"><img loading="lazy" src="' + esc(selected.poster) + '" alt=""></div>' : '';
-  $('torrentResults').innerHTML = torrents.map((t, i) => {
-    const tg = tags(t.title);
+  const {base, good} = visible();
+  const fell = !good.length;
+  const list = ((showAll || fell) ? base : good).filter(qOK);
+  list.sort((a, b) => (!!b.cached - !!a.cached) || (b.seeders - a.seeders));
+  shown = list;
+  const hidden = base.length - good.length;
+  const fl = [['all', 'الكل'], ['fast', '⚡ فوري'], ['4k', '4K'], ['1080', '1080p'], ['720', '720p']];
+  let h = '<div class="fbar">' + fl.map(f =>
+    '<button class="fc' + (qf === f[0] ? ' on' : '') + '" onclick="setQf(\'' + f[0] + '\')">' + f[1] + '</button>'
+  ).join('');
+  if (!fell && hidden > 0) {
+    h += '<button class="fc' + (showAll ? ' on' : '') + '" onclick="toggleAll()">' +
+      (showAll ? 'إخفاء غير المطابق' : 'عرض الكل (+' + hidden + ')') + '</button>';
+  }
+  h += '</div>';
+  if (fell) h += warn('مفيش نتايج مطابقة بالظبط، دي أقرب النتايج:');
+  if (!list.length) h += warn('مفيش نتايج بالفلتر ده.');
+  const pic = (selected && selected.poster)
+    ? '<div class="pic"><img loading="lazy" src="' + esc(selected.poster) + '" alt=""></div>' : '';
+  h += list.map((t, i) => {
+    const tg = tags(t.title), inf = info(t.title);
+    let bd = '';
+    if (inf.pack) bd = '<span class="badge b2">📦 ' + (inf.all ? 'كامل' : 'باك S' + p2(inf.s)) + '</span>';
+    else if (inf.e != null) bd = '<span>S' + p2(inf.s) + 'E' + p2(inf.e) + '</span>';
     return '<div class="tor">' + pic + '<div class="body"><div class="n">' + esc(t.title) + '</div>' +
       '<div class="m"><span class="size">💾 ' + fmtSize(t.size) + '</span>' +
       '<span class="s ' + (t.seeders ? '' : 'zero') + '">🌱 ' + t.seeders + '</span>' +
-      (t.cached ? '<span class="badge">⚡ فوري</span>' : '') +
-      (tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') + '<span>' + esc(t.indexer) + '</span></div>' +
+      (t.cached ? '<span class="badge">⚡ فوري</span>' : '') + bd +
+      (tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') +
+      '<span>' + esc(t.indexer) + '</span></div>' +
       '<button onclick="pullTorrent(' + i + ')">⬇️ سحب</button></div></div>';
   }).join('');
+  $('torrentResults').innerHTML = h;
 }
+function setQf(v) { qf = v; renderTorrents(); }
+function toggleAll() { showAll = !showAll; renderTorrents(); }
+
 async function markCached() {
-  const hs = [...new Set(torrents.map(t => hashOf(t.magnet)).filter(Boolean))].slice(0, 60);
+  const my = seq;
+  const hs = [...new Set(torrents.map(t => t.hash || hashOf(t.magnet)).filter(Boolean))].slice(0, 60);
   if (!hs.length) return;
   try {
     const {d} = await api('/cached?h=' + hs.join(','));
+    if (my !== seq) return;
     const c = new Set(d.cached || []);
     if (!c.size) return;
-    torrents.forEach(t => t.cached = c.has(hashOf(t.magnet)));
-    torrents.sort((a, b) => (!!b.cached - !!a.cached) || (b.seeders - a.seeders));
+    torrents.forEach(t => { t.cached = c.has(t.hash || hashOf(t.magnet)); });
     renderTorrents();
   } catch (e) {}
 }
 function pullTorrent(i) {
   $('results').scrollIntoView({behavior: 'smooth'});
-  sendToRailway(torrents[i].magnet);
+  sendToRailway(shown[i].magnet);
 }
 function processDirectLink() {
   let link = $('linkInput').value.trim();
@@ -322,55 +476,150 @@ function progHTML(d) {
   const p = d.progress || 0, size = d.size || 0;
   return '<div class="pending">⏳ ' + esc(d.provider || '') + ' — ' + esc(d.status || 'جاري التجهيز') +
     '<div class="bar"><i style="width:' + (p * 100).toFixed(1) + '%"></i></div>' +
-    (p * 100).toFixed(1) + '%' + (size ? ' · ' + fmtSize(p * size) + ' / ' + fmtSize(size) : '') +
-    '<br>⚡ ' + fmtSize(d.speed || 0) + '/s · ⏱ ' + fmtEta(d.eta) + ' · 🌱 ' + (d.seeds || 0) + ' · 👥 ' + (d.peers || 0) +
-    (d.file ? '<br><small style="direction:ltr;display:block;word-break:break-all;color:var(--mut)">' + esc(d.file) + '</small>' : '') +
+    (p * 100).toFixed(1) + '%' + (size ? ' · ' + fmtBytes(p * size) + ' / ' + fmtBytes(size) : '') +
+    '<br>⚡ ' + (d.speed ? fmtBytes(d.speed) + '/s' : '—') + ' · ⏱ ' + fmtEta(d.eta) +
+    ' · 🌱 ' + (d.seeds || 0) + ' · 👥 ' + (d.peers || 0) +
+    (d.file ? '<br><small class="fn" style="display:block">' + esc(d.file) + '</small>' : '') +
     '<br><small style="color:var(--mut)">متقفلش الصفحة</small></div>';
 }
-const triedHTML = a => (a && a.length) ? '<div style="font-size:12px;color:var(--mut);margin-top:10px;text-align:right">' + a.map(x => '• ' + esc(x)).join('<br>') + '</div>' : '';
+const triedHTML = a => (a && a.length)
+  ? '<div style="font-size:12px;color:var(--mut);margin-top:10px;text-align:right">' +
+    a.map(x => '• ' + esc(x)).join('<br>') + '</div>' : '';
 
-async function sendToRailway(link, tid = null, tries = 0) {
+function linkCard(d, video) {
+  const u = esc(d.direct_link);
+  return '<p style="margin:0 0 10px">📡 المصدر: <b>' + esc(d.provider || '') + '</b>' +
+    (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
+    (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
+    (video ? '<video controls preload="metadata" src="' + u + '"></video>' : '') +
+    '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download">⬇️ فتح / تحميل مباشر</a>' +
+    '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في VLC)</button>';
+}
+
+async function sendToRailway(link, tid = null, tries = 0, id = 0) {
   const box = $('results');
-  if (!tries) box.innerHTML = pend('جاري سحب الرابط...');
+  if (!tries) { id = ++pullId; box.innerHTML = pend('جاري سحب الرابط...'); }
+  if (id !== pullId) return;
   try {
-    const {r, d} = await api('/generate', {method: 'POST', body: JSON.stringify({query: link, torrent_id: tid})});
+    const {r, d} = await api('/generate', {
+      method: 'POST',
+      body: JSON.stringify({query: link, torrent_id: tid})
+    });
+    if (id !== pullId) return;
     if (r.status === 202 && tries < 400) {
       box.innerHTML = progHTML(d) + triedHTML(d.tried);
-      return setTimeout(() => sendToRailway(link, d.torrent_id || tid, tries + 1), 3000);
+      return setTimeout(() => sendToRailway(link, d.torrent_id || tid, tries + 1, id), 3000);
     }
+    if (d.direct_link && d.pack) return showPack(d);
     if (d.direct_link) {
-      const url = d.direct_link;
       box.innerHTML = '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">✅ الملف جاهز!</h3>' +
-        '<p style="margin:0 0 10px">📡 المصدر: <b>' + esc(d.provider || '') + '</b>' + (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
-        (d.name ? '<p style="direction:ltr;font-size:13px;color:var(--mut);word-break:break-all">' + esc(d.name) + '</p>' : '') +
-        '<video controls src="' + esc(url) + '"></video>' +
-        '<a href="' + esc(url) + '" target="_blank" class="btn-download">⬇️ فتح / تحميل مباشر</a>' +
-        '<button class="btn-vlc" id="copyBtn">📋 نسخ الرابط (للصقه في VLC)</button>' + triedHTML(d.tried) + '</div>';
-      $('copyBtn').onclick = () => { navigator.clipboard.writeText(url); alert('تم نسخ الرابط!'); };
-    } else box.innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(d.tried);
-  } catch (e) { box.innerHTML = ERR; }
+        linkCard(d, true) + triedHTML(d.tried) + '</div>';
+    } else {
+      box.innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(d.tried);
+    }
+  } catch (e) { if (id === pullId) box.innerHTML = ERR; }
+}
+
+// ---------- باك المسلسل (حلقات كتير) ----------
+function fileRow(f) {
+  const tag = (f.season != null && f.episode != null) ? 'S' + p2(f.season) + 'E' + p2(f.episode) + ' · ' : '';
+  const hi = want && want.e && f.season === want.s && f.episode === want.e;
+  return '<div class="ep' + (hi ? ' hi' : '') + '"><div class="b">' + (hi ? '⭐ ' : '') + tag + esc(f.name) +
+    '<small>💾 ' + fmtSize(f.size) + '</small></div>' +
+    '<button onclick="packFile(' + f.id + ')">▶ رابط</button></div>';
+}
+function showPack(d) {
+  pack = d;
+  links = [];
+  $('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">✅ الباك جاهز (' +
+    d.files.length + ' حلقة)</h3>' +
+    '<p style="margin:0 0 12px">📡 ' + esc(d.provider || '') + ' · 💾 ' + fmtSize(d.total_size) + '</p>' +
+    '<div class="row"><button class="search-btn btn-blue" onclick="packZip()">📦 الموسم ZIP</button>' +
+    '<button class="search-btn" onclick="packAll()">📋 كل الروابط</button></div>' +
+    '<div id="packOut" style="margin-top:12px"></div>' +
+    '<div style="text-align:right;margin-top:12px">' + d.files.map(fileRow).join('') + '</div></div>';
+}
+async function packCall(body, label) {
+  const out = $('packOut');
+  out.innerHTML = pend(label);
+  const {d} = await api('/generate', {
+    method: 'POST',
+    body: JSON.stringify({query: '', torrent_id: pack.torrent_id, ...body})
+  });
+  return d;
+}
+async function packFile(fid) {
+  try {
+    const d = await packCall({file_id: fid}, 'جاري تجهيز الرابط...');
+    $('packOut').innerHTML = d.direct_link ? linkCard(d, true) : warn(d.error || 'حصل خطأ');
+    $('packOut').scrollIntoView({behavior: 'smooth'});
+  } catch (e) { $('packOut').innerHTML = ERR; }
+}
+async function packZip() {
+  try {
+    const d = await packCall({zip: true}, 'جاري تجهيز ملف ZIP...');
+    $('packOut').innerHTML = d.direct_link ? linkCard(d, false) : warn(d.error || 'ZIP مش متاح لهذا الباك');
+  } catch (e) { $('packOut').innerHTML = ERR; }
+}
+async function packAll() {
+  try {
+    const d = await packCall({all: true}, 'جاري تجهيز كل الروابط...');
+    if (!d.links) return $('packOut').innerHTML = warn(d.error || 'حصل خطأ');
+    links = d.links.filter(x => x.url);
+    $('packOut').innerHTML = '<p style="margin:0 0 8px">✅ ' + links.length + ' رابط' +
+      (links.length < d.links.length ? ' (' + (d.links.length - links.length) + ' فشلوا)' : '') + '</p>' +
+      '<div class="row"><button class="search-btn" onclick="copyText(links.map(x => x.url).join(\'\\n\'))">📋 نسخ الكل</button>' +
+      '<button class="search-btn btn-blue" onclick="dlM3U()">🎞 ملف M3U</button></div>' +
+      '<div style="text-align:right;margin-top:10px;font-size:13px">' + links.map(x =>
+        '<div class="ep"><div class="b">' + (x.season != null ? 'S' + p2(x.season) + 'E' + p2(x.episode) + ' · ' : '') +
+        esc(x.name) + '</div><a href="' + esc(x.url) + '" target="_blank" rel="noopener" style="color:var(--primary)">⬇️</a></div>'
+      ).join('') + '</div>';
+  } catch (e) { $('packOut').innerHTML = ERR; }
+}
+function dlM3U() {
+  const body = '#EXTM3U\n' + links.map(x => '#EXTINF:-1,' + x.name + '\n' + x.url).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([body], {type: 'audio/x-mpegurl'}));
+  a.download = 'playlist.m3u';
+  a.click();
 }
 
 // ---------- المزوّدين ----------
+function domTxt(a) {
+  if (!a || !a.length) return 'أي رابط';
+  return a.slice(0, 2).join(', ') + (a.length > 2 ? ' +' + (a.length - 2) : '');
+}
 async function loadProviders() {
   try {
     let {d} = await api('/providers');
     if (!(d.items || []).length) {
       const bk = localStorage.getItem('provBackup');
-      if (bk) { await api('/providers/import', {method: 'POST', body: bk}); ({d} = await api('/providers')); }
+      if (bk) {
+        await api('/providers/import', {method: 'POST', body: bk});
+        ({d} = await api('/providers'));
+      }
     }
-    $('provType').innerHTML = Object.entries(d.types || {}).map(([k, v]) => '<option value="' + k + '">' + esc(v) + '</option>').join('');
+    $('provType').innerHTML = Object.entries(d.types || {}).map(([k, v]) =>
+      '<option value="' + k + '">' + esc(v) + '</option>').join('');
     $('provList').innerHTML = (d.items || []).map(p =>
-      '<div class="ep"><div class="b">' + esc(p.name) + '<small>' + esc(p.type) + ' · ' + esc(p.domains.join(', ') || 'أي رابط') + ' · ' + esc(p.key) + '</small></div>' +
+      '<div class="ep"><div class="b">' + esc(p.name) + '<small>' + esc(p.type) + ' · ' +
+      esc(domTxt(p.domains)) + ' · ' + esc(p.key) + '</small></div>' +
       '<button style="background:var(--danger);color:#fff" onclick="delProv(\'' + p.id + '\')">🗑</button>' +
-      '<button style="margin-right:6px" onclick="testProv(\'' + p.id + '\',this)">اختبار</button></div>').join('') ||
-      warn('مفيش مزوّدين. ضيف أول واحد (TorBox مطلوب للتورنت).');
-    const ex = await api('/providers/export');
-    if ((ex.d.items || []).length) localStorage.setItem('provBackup', JSON.stringify({items: ex.d.items}));
+      '<button style="margin-right:6px" onclick="testProv(\'' + p.id + '\',this)">اختبار</button></div>'
+    ).join('') || warn('مفيش مزوّدين. ضيف أول واحد (TorBox مطلوب للتورنت).');
+    saveBackup();
   } catch (e) {}
 }
+async function saveBackup() {
+  const ex = await api('/providers/export');
+  if ((ex.d.items || []).length) localStorage.setItem('provBackup', JSON.stringify({items: ex.d.items}));
+  else localStorage.removeItem('provBackup');
+}
 async function addProv() {
-  const body = {type: $('provType').value, name: $('provName').value, domains: $('provDomains').value, key: $('provKey').value};
+  const body = {
+    type: $('provType').value, name: $('provName').value,
+    domains: $('provDomains').value, key: $('provKey').value
+  };
   const {d} = await api('/providers', {method: 'POST', body: JSON.stringify(body)});
   if (d.error) return alert(d.error);
   ['provName', 'provDomains', 'provKey'].forEach(i => $(i).value = '');
@@ -379,9 +628,7 @@ async function addProv() {
 async function delProv(id) {
   if (!confirm('حذف المزوّد؟')) return;
   await api('/providers/' + id, {method: 'DELETE'});
-  const ex = await api('/providers/export');
-  if ((ex.d.items || []).length) localStorage.setItem('provBackup', JSON.stringify({items: ex.d.items}));
-  else localStorage.removeItem('provBackup');
+  await saveBackup();
   loadProviders();
 }
 async function testProv(id, btn) {
