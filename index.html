@@ -755,7 +755,9 @@ async function stGo(s, e, auto) {
   if (my !== seq) return;
   if (d.error || !(d.results || []).length) {
     if (auto) return go(s, e, true, true);
-    return box.innerHTML = warn(d.error || 'الإضافات مرجعتش نتايج. جرّب 🧲 التورنت.');
+    const nt = (d.notes || []).map(x => '• ' + esc(x)).join('<br>');
+    return box.innerHTML = warn(d.error || 'الإضافات مرجعتش نتايج.') +
+      (nt ? '<div style="font-size:12px;color:var(--mut);direction:ltr;text-align:left">' + nt + '</div>' : '');
   }
   torrents = d.results;
   stMode = true;
