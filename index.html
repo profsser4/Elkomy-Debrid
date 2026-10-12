@@ -172,6 +172,11 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <input id="provKey" class="search-input ltr" placeholder="API Key">
 <button class="search-btn" onclick="addProv()">➕ إضافة مزوّد</button>
 <p style="color:var(--mut);font-size:12px">الرابط بيجرّب المزوّد اللي دومينه بيطابقه أولاً، وبعدين باقي المزوّدين بالترتيب.</p>
+<hr style="border:0;border-top:1px solid #334155;margin:18px 0">
+<h3 class="sec" style="margin-top:0">📺 إضافة Stremio</h3>
+<p style="color:var(--mut);font-size:13px;line-height:1.8;margin-top:0">بتضيف في Stremio نسخ ⚡ الفورية من TorBox والترجمة العربي. الرابط سري، متشاركوش.</p>
+<button class="search-btn btn-blue" onclick="loadStremio()">جيب رابط الإضافة</button>
+<div id="stremioBox" style="margin-top:10px"></div>
 </details>
 </div>
 
@@ -180,7 +185,7 @@ const API = "https://elkomy-server-production.up.railway.app";
 let PASS = sessionStorage.getItem('pass') || localStorage.getItem('rpass') || "";
 let UD = {profiles: {}, items: {}}, PID = null;
 let torrents = [], shown = [], selected = null, cur = null, want = null;
-let qf = 'all', showAll = false, lastQ = '', autoPick = false;
+let qf = 'all', showAll = false, lastQ = '', autoPick = false, altQ = [];
 let seq = 0, pullId = 0, sReq = 0;
 let pack = null, packBase = null, curSrc = '', links = [];
 let PLAY = null, subs = [], subSel = null, cdTimer = null, nextShown = false;
@@ -652,16 +657,22 @@ function altChips() {
   return '<div class="lbl">جرّب اسم تاني:</div><div class="chips">' + a.map(x =>
     '<button class="fc" data-n="' + esc(x) + '" onclick="useAlt(this.dataset.n)">' + esc(x) + '</button>').join('') + '</div>';
 }
-function useAlt(n) {
-  let q = n;
+function buildQ(name) {
+  let q = name.replace(/[:'"!?,.&]/g, ' ').replace(/\s+/g, ' ').trim();
   if (cur.type === 'movie' && cur.year) q += ' ' + cur.year;
   if (want && want.s) q += ' S' + p2(want.s) + (want.e ? 'E' + p2(want.e) : '');
-  $('torrentQuery').value = q;
+  return q;
+}
+function useAlt(n) {
+  altQ = [];
+  $('torrentQuery').value = buildQ(n);
   searchTorrents();
 }
 function go(s, e, auto) {
-  const nm = (cur.qname || cur.search_title || '').trim();
   want = s ? {s: s, e: e || null} : null;
+  let nm = (cur.qname || cur.search_title || '').trim();
+  altQ = (cur.alt || []).filter(x => x.toLowerCase() !== nm.toLowerCase()).slice(0, 3);
+  if (!nm && altQ.length) nm = altQ.shift();
   autoPick = !!auto && !!nm;
   if (!nm) {
     const panel = $('torrentPanel');
@@ -673,10 +684,7 @@ function go(s, e, auto) {
     $('torrentQuery').focus();
     return;
   }
-  let q = nm.replace(/[:'"!?,.&]/g, ' ').replace(/\s+/g, ' ').trim();
-  if (cur.type === 'movie' && cur.year) q += ' ' + cur.year;
-  if (s) q += ' S' + p2(s) + (e ? 'E' + p2(e) : '');
-  $('torrentQuery').value = q;
+  $('torrentQuery').value = buildQ(nm);
   searchTorrents();
 }
 
@@ -694,6 +702,8 @@ function info(title) {
   m = /\bS(\d{1,2})\b/i.exec(t) || /\bSeason\s*(\d{1,2})\b/i.exec(t);
   if (m) return {s: +m[1], pack: true};
   if (/\b(complete|collection)\b/i.test(t)) return {s: null, pack: true, all: true};
+  m = /(?:^|[^A-Za-z0-9])(?:Episode|EP|E)[ -]?(\d{1,3})(?!\d)/i.exec(t) || /الحلقة\s*(\d{1,3})/.exec(t);
+  if (m) return {s: null, e: +m[1]};
   return {};
 }
 function qWords(q) {
@@ -720,6 +730,7 @@ function wantOK(t) {
   if (!want || !want.s) return true;
   const i = info(t.title);
   if (i.all) return true;
+  if (i.s == null && i.e != null) return !!want.e && i.e === want.e;
   if (i.s == null) return false;
   if (!(i.s <= want.s && want.s <= (i.s2 || i.s))) return false;
   if (want.e) return i.e == null ? !!i.pack : i.e === want.e;
@@ -756,6 +767,7 @@ function directTorrentSearch() {
   selected = null;
   want = null;
   autoPick = false;
+  altQ = [];
   $('torrentQuery').value = q;
   searchTorrents();
 }
@@ -767,7 +779,7 @@ function torrentHeader() {
     '<div><b>' + esc(selected.title) + '</b><div style="color:var(--mut);font-size:13px">' +
     esc(selected.year) + esc(lbl) + '</div></div></div>';
 }
-async function searchTorrents(retry) {
+async function searchTorrents(retry, fromAlt) {
   let q = $('torrentQuery').value.trim();
   if (!q) return;
   if (!retry && want && want.s && !/\bS\d{1,2}/i.test(q)) {
@@ -780,17 +792,23 @@ async function searchTorrents(retry) {
   const panel = $('torrentPanel'), box = $('torrentResults');
   panel.style.display = 'block';
   $('torrentHeader').innerHTML = torrentHeader();
-  box.innerHTML = pend(retry ? 'مفيش الحلقة لوحدها، بدوّر على باك الموسم...' : 'جاري البحث في المصادر... (قد ياخد نص دقيقة)');
+  box.innerHTML = pend(retry ? 'مفيش الحلقة لوحدها، بدوّر على باك الموسم...'
+    : (fromAlt ? 'بجرّب اسم تاني: ' + q : 'جاري البحث في المصادر... (قد ياخد نص دقيقة)'));
   panel.scrollIntoView({behavior: 'smooth'});
   try {
     const {d} = await api('/search?q=' + encodeURIComponent(q));
     if (my !== seq) return;
     if (d.error) return box.innerHTML = warn(d.error);
     torrents = d.results || [];
-    const needRetry = !retry && want && want.e && /E\d+$/i.test(q);
-    if (needRetry && (!torrents.length || !visible().good.length)) {
+    const poor = !torrents.length || !visible().good.length;
+    if (poor && !retry && want && want.e && /E\d+$/i.test(q)) {
       $('torrentQuery').value = q.replace(/\s*E\d+$/i, '');
-      return searchTorrents(true);
+      return searchTorrents(true, fromAlt);
+    }
+    if (poor && altQ.length && selected && cur) {
+      const nm = altQ.shift();
+      $('torrentQuery').value = buildQ(nm);
+      return searchTorrents(false, true);
     }
     if (!torrents.length) {
       autoPick = false;
@@ -831,7 +849,7 @@ function renderTorrents() {
     const tg = tags(t.title), inf = info(t.title);
     let bd = '';
     if (inf.pack) bd = '<span class="badge b2">📦 ' + (inf.all ? 'كامل' : 'باك S' + p2(inf.s)) + '</span>';
-    else if (inf.e != null) bd = '<span>S' + p2(inf.s) + 'E' + p2(inf.e) + '</span>';
+    else if (inf.e != null) bd = '<span>' + (inf.s != null ? 'S' + p2(inf.s) : '') + 'E' + p2(inf.e) + '</span>';
     return '<div class="tor">' + pic + '<div class="body"><div class="n">' + esc(t.title) + '</div>' +
       '<div class="m"><span class="size">💾 ' + fmtSize(t.size) + '</span>' +
       '<span class="s ' + (t.seeders ? '' : 'zero') + '">🌱 ' + t.seeders + '</span>' +
@@ -956,7 +974,7 @@ async function pullSource(src, base, fid) {
   if (d.pack && fid == null && d.files && base.type !== 'movie') {
     pack = d;
     const f = base.e != null
-      ? d.files.find(x => x.episode === base.e && (base.s == null || x.season === base.s)) : null;
+      ? d.files.find(x => x.episode === base.e && (base.s == null || x.season == null || x.season === base.s)) : null;
     if (f) return playPackFile(f);
     return showPack(d);
   }
@@ -1156,9 +1174,10 @@ async function playAfter(it) {
 
 // ================= باك المسلسل (حلقات كتير) =================
 function fileRow(f) {
-  const tag = (f.season != null && f.episode != null) ? 'S' + p2(f.season) + 'E' + p2(f.episode) + ' · ' : '';
+  const tag = (f.season != null && f.episode != null) ? 'S' + p2(f.season) + 'E' + p2(f.episode) + ' · '
+    : (f.episode != null ? 'E' + p2(f.episode) + ' · ' : '');
   const now = !!(PLAY && $('nextUp') && PLAY.fid === f.id);
-  const hi = now || !!(want && want.e && f.season === want.s && f.episode === want.e);
+  const hi = now || !!(want && want.e && f.episode === want.e && (f.season == null || f.season === want.s));
   const mark = (packBase && packBase.tmdb && f.season != null && f.episode != null)
     ? epMark(packBase.tmdb, f.season, f.episode) : '';
   return '<div class="ep' + (hi ? ' hi' : '') + '"><div class="b">' + (now ? '▶ ' : '') + tag + esc(f.name) +
@@ -1192,6 +1211,10 @@ async function playPackFile(f) {
   const d = res.d;
   if (!d.direct_link) { $('results').innerHTML = warn(d.error || 'حصل خطأ'); return; }
   const base = Object.assign({}, packBase || {}, {s: f.season, e: f.episode, fid: f.id, fname: f.name});
+  if (packBase && packBase.type === 'tv') {
+    if (f.season == null && packBase.s != null) base.s = packBase.s;
+    if (f.episode == null && packBase.e != null && packBase.fid === f.id) base.e = packBase.e;
+  }
   if (!base.src) base.src = curSrc;
   playData(d, base);
   scrollToResults();
@@ -1365,7 +1388,7 @@ async function dlSub(i) {
   a.click();
 }
 
-// ================= المزوّدين =================
+// ================= المزوّدين + Stremio =================
 function domTxt(a) {
   if (!a || !a.length) return 'أي رابط';
   return a.slice(0, 2).join(', ') + (a.length > 2 ? ' +' + (a.length - 2) : '');
@@ -1417,6 +1440,17 @@ async function testProv(id, btn) {
   const {d} = await api('/providers/' + id + '/test', {method: 'POST'});
   btn.textContent = d.ok ? '✅ شغال' : '❌ فشل';
   if (!d.ok && d.error) alert(d.error);
+}
+async function loadStremio() {
+  const box = $('stremioBox');
+  box.innerHTML = pend('جاري التحميل...');
+  try {
+    const {d} = await api('/stremio-link');
+    if (d.error) return box.innerHTML = warn(d.error);
+    box.innerHTML = '<input class="search-input ltr" readonly value="' + esc(d.https) + '" onclick="this.select()">' +
+      '<div class="row"><button class="search-btn" data-u="' + esc(d.https) + '" onclick="copyText(this.dataset.u)">📋 نسخ</button>' +
+      '<a class="search-btn btn-blue" style="display:block;text-decoration:none;text-align:center" href="' + esc(d.app) + '">📲 تثبيت في Stremio</a></div>';
+  } catch (e) { box.innerHTML = ERR; }
 }
 </script>
 </body>
