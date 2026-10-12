@@ -172,11 +172,6 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <input id="provKey" class="search-input ltr" placeholder="API Key">
 <button class="search-btn" onclick="addProv()">➕ إضافة مزوّد</button>
 <p style="color:var(--mut);font-size:12px">الرابط بيجرّب المزوّد اللي دومينه بيطابقه أولاً، وبعدين باقي المزوّدين بالترتيب.</p>
-<hr style="border:0;border-top:1px solid #334155;margin:18px 0">
-<h3 class="sec" style="margin-top:0">📺 إضافة Stremio</h3>
-<p style="color:var(--mut);font-size:13px;line-height:1.8;margin-top:0">بتضيف في Stremio نسخ ⚡ الفورية من TorBox والترجمة العربي. الرابط سري، متشاركوش.</p>
-<button class="search-btn btn-blue" onclick="loadStremio()">جيب رابط الإضافة</button>
-<div id="stremioBox" style="margin-top:10px"></div>
 </details>
 </div>
 
@@ -189,7 +184,8 @@ let qf = 'all', showAll = false, lastQ = '', autoPick = false, altQ = [];
 let seq = 0, pullId = 0, sReq = 0;
 let pack = null, packBase = null, curSrc = '', links = [];
 let PLAY = null, subs = [], subSel = null, cdTimer = null, nextShown = false;
-let TREND = null, manage = false, editId = null, form = {emoji: '😎', color: '#3b82f6'};
+let ROWS = null, showCfg = false;
+let manage = false, editId = null, form = {emoji: '😎', color: '#3b82f6'};
 let pq = {}, pushT = null, lastSave = 0;
 const $ = id => document.getElementById(id);
 const ERR = '<div class="warn" style="color:#ef4444">❌ مش قادر أوصل للسيرفر.</div>';
@@ -460,10 +456,11 @@ function enterProfile(id) {
   $('torrentPanel').style.display = 'none';
   PLAY = null;
   pack = null;
+  showCfg = false;
   closeDetails();
   const p = prof();
   $('pchip').innerHTML = '<span class="av sm" style="background:' + esc(p.color) + '">' + esc(p.emoji) + '</span> ' + esc(p.name);
-  loadTrending();
+  loadRows();
   loadProviders();
 }
 function setAuto(b) {
@@ -473,11 +470,11 @@ function setAuto(b) {
   saveProfileObj(p);
 }
 
-// ================= الصفحة الرئيسية (كمّل المشاهدة / قائمتي / الأكثر مشاهدة) =================
-async function loadTrending() {
-  if (!TREND) {
-    try { const {d} = await api('/trending'); TREND = d.results || []; }
-    catch (e) { TREND = []; }
+// ================= الصفحة الرئيسية (كمّل المشاهدة / قائمتي / صفوف الجديد) =================
+async function loadRows() {
+  if (!ROWS) {
+    try { const {d} = await api('/rows'); ROWS = d.rows || []; }
+    catch (e) { ROWS = []; }
   }
   renderShelves();
 }
@@ -514,6 +511,22 @@ function hideCw(key) {
   setItem(Object.assign({}, it, {hide: true}));
   renderShelves();
 }
+function rowsCfgHTML() {
+  const p = prof(), hr = (p && p.hr) || [];
+  return '<div class="action-box" style="text-align:right">' + (ROWS || []).map(r =>
+    '<label style="display:block;margin:10px 0"><input type="checkbox" ' + (hr.includes(r.id) ? '' : 'checked ') +
+    'onchange="toggleRow(\'' + r.id + '\', this.checked)"> ' + esc(r.title) + '</label>').join('') + '</div>';
+}
+function toggleCfg() { showCfg = !showCfg; renderShelves(); }
+function toggleRow(id, on) {
+  const p = prof();
+  if (!p) return;
+  const hr = (p.hr || []).filter(x => x !== id);
+  if (!on) hr.push(id);
+  p.hr = hr;
+  saveProfileObj(p);
+  renderShelves();
+}
 function renderShelves() {
   const el = $('shelves');
   if (!PID) { el.innerHTML = ''; return; }
@@ -527,10 +540,15 @@ function renderShelves() {
   const cw = [...groups.values()].filter(cwOK).sort((a, b) => b.t - a.t).slice(0, 20);
   const lst = its.filter(x => x.key[0] === 'l').sort((a, b) => b.t - a.t)
     .map(x => ({id: x.tmdb, type: x.type, poster: x.poster, title: x.title, year: x.year}));
+  const p = prof(), hr = (p && p.hr) || [];
   let h = '';
   if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
   if (lst.length) h += row('❤️ قائمتي', lst);
-  if (TREND && TREND.length) h += row('🔥 الأكثر مشاهدة', TREND);
+  (ROWS || []).forEach(r => { if (!hr.includes(r.id)) h += row(r.title, r.items); });
+  if (ROWS && ROWS.length) {
+    h += '<button class="fc" style="margin:6px 0 14px" onclick="toggleCfg()">⚙️ تخصيص الصفوف</button>';
+    if (showCfg) h += rowsCfgHTML();
+  }
   el.innerHTML = h;
 }
 function latestOf(tmdb) {
@@ -1388,7 +1406,7 @@ async function dlSub(i) {
   a.click();
 }
 
-// ================= المزوّدين + Stremio =================
+// ================= المزوّدين =================
 function domTxt(a) {
   if (!a || !a.length) return 'أي رابط';
   return a.slice(0, 2).join(', ') + (a.length > 2 ? ' +' + (a.length - 2) : '');
@@ -1440,17 +1458,6 @@ async function testProv(id, btn) {
   const {d} = await api('/providers/' + id + '/test', {method: 'POST'});
   btn.textContent = d.ok ? '✅ شغال' : '❌ فشل';
   if (!d.ok && d.error) alert(d.error);
-}
-async function loadStremio() {
-  const box = $('stremioBox');
-  box.innerHTML = pend('جاري التحميل...');
-  try {
-    const {d} = await api('/stremio-link');
-    if (d.error) return box.innerHTML = warn(d.error);
-    box.innerHTML = '<input class="search-input ltr" readonly value="' + esc(d.https) + '" onclick="this.select()">' +
-      '<div class="row"><button class="search-btn" data-u="' + esc(d.https) + '" onclick="copyText(this.dataset.u)">📋 نسخ</button>' +
-      '<a class="search-btn btn-blue" style="display:block;text-decoration:none;text-align:center" href="' + esc(d.app) + '">📲 تثبيت في Stremio</a></div>';
-  } catch (e) { box.innerHTML = ERR; }
 }
 </script>
 </body>
