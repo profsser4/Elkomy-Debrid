@@ -90,6 +90,7 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 .eb{width:40px;height:40px;border-radius:8px;border:2px solid transparent;background:var(--bg);font-size:22px;cursor:pointer}
 .cb{width:34px;height:34px;border-radius:50%;border:3px solid transparent;cursor:pointer}
 .eb.on,.cb.on{border-color:#fff}
+.btn-st{background:#7c3aed !important;color:#fff !important;margin-inline-start:6px}
 </style>
 </head>
 <body>
@@ -147,7 +148,7 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <div id="shelves"></div>
 
 <div id="torrentPanel" style="display:none">
-<h3 class="sec">🧲 نسخ التورنت</h3>
+<h3 class="sec">🧲 النسخ المتاحة</h3>
 <div id="torrentHeader"></div>
 <input id="torrentQuery" class="search-input ltr" placeholder="الاسم + S01E01" onkeydown="if(event.key==='Enter')searchTorrents()">
 <button class="search-btn btn-blue" style="margin-bottom:6px" onclick="searchTorrents()">ابحث في التورنت</button>
@@ -162,6 +163,11 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 </div>
 
 <div id="results"></div>
+
+<details class="action-box" style="text-align:right;margin-top:18px">
+<summary>🧩 Stremio (حساب + إضافات)</summary>
+<div id="stBox" style="margin:14px 0"></div>
+</details>
 
 <details class="action-box" style="text-align:right;margin-top:18px">
 <summary>⚙️ المزوّدين (TorBox / Real-Debrid / ...)</summary>
@@ -187,6 +193,7 @@ let PLAY = null, subs = [], subSel = null, cdTimer = null, nextShown = false;
 let ROWS = null, showCfg = false;
 let manage = false, editId = null, form = {emoji: '😎', color: '#3b82f6'};
 let pq = {}, pushT = null, lastSave = 0;
+let ST = {logged: false, email: '', items: [], n: 0}, SLIB = [], stMode = false;
 const $ = id => document.getElementById(id);
 const ERR = '<div class="warn" style="color:#ef4444">❌ مش قادر أوصل للسيرفر.</div>';
 const warn = m => '<div class="warn">' + esc(m) + '</div>';
@@ -462,6 +469,7 @@ function enterProfile(id) {
   $('pchip').innerHTML = '<span class="av sm" style="background:' + esc(p.color) + '">' + esc(p.emoji) + '</span> ' + esc(p.name);
   loadRows();
   loadProviders();
+  loadStremio();
 }
 function setAuto(b) {
   const p = prof();
@@ -470,7 +478,7 @@ function setAuto(b) {
   saveProfileObj(p);
 }
 
-// ================= الصفحة الرئيسية (كمّل المشاهدة / قائمتي / صفوف الجديد) =================
+// ================= الصفحة الرئيسية (كمّل المشاهدة / قائمتي / مكتبة Stremio / صفوف الجديد) =================
 async function loadRows() {
   if (!ROWS) {
     try { const {d} = await api('/rows'); ROWS = d.rows || []; }
@@ -527,6 +535,20 @@ function toggleRow(id, on) {
   saveProfileObj(p);
   renderShelves();
 }
+function stRow() {
+  if (!SLIB.length) return '';
+  return '<h3 class="sec">📚 مكتبة Stremio</h3><div class="hrow">' + SLIB.map(t =>
+    '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">' +
+    (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">' : '<div class="noimg">🎬</div>') +
+    '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) + '</div></div></div>').join('') + '</div>';
+}
+async function openImdb(imdb, type) {
+  try {
+    const {d} = await api('/stremio/find?imdb=' + encodeURIComponent(imdb) + '&type=' + encodeURIComponent(type));
+    if (d.error || !d.id) return alert(d.error || 'مش لاقي العمل ده');
+    openDetails(d.type, d.id);
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
+}
 function renderShelves() {
   const el = $('shelves');
   if (!PID) { el.innerHTML = ''; return; }
@@ -544,6 +566,7 @@ function renderShelves() {
   let h = '';
   if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
   if (lst.length) h += row('❤️ قائمتي', lst);
+  h += stRow();
   (ROWS || []).forEach(r => { if (!hr.includes(r.id)) h += row(r.title, r.items); });
   if (ROWS && ROWS.length) {
     h += '<button class="fc" style="margin:6px 0 14px" onclick="toggleCfg()">⚙️ تخصيص الصفوف</button>';
@@ -607,6 +630,9 @@ async function searchTitles() {
 // ================= صفحة التفاصيل =================
 const chips = (a, sc) => '<div class="chips' + (sc ? ' scroll' : '') + '">' +
   a.map(x => '<span class="chip">' + esc(x) + '</span>').join('') + '</div>';
+const stOK = () => ST.n > 0 && !!cur && !!cur.imdb;
+const stBtn = (s, e) => stOK()
+  ? '<button class="btn-st" onclick="stGo(' + s + ',' + e + ')">🧩</button>' : '';
 
 async function openDetails(type, id) {
   autoPick = false;
@@ -636,6 +662,7 @@ async function openDetails(type, id) {
       '<div class="lbl">طاقم العمل</div>' + chips(d.cast, true) + cb +
       '<button class="search-btn" id="listBtn" style="background:#475569;margin-bottom:10px" onclick="toggleList()">' + listLabel() + '</button>';
     if (d.type === 'movie') {
+      if (stOK()) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
       h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
     } else {
       h += '<div class="tabs">' + d.seasons.map(s =>
@@ -666,6 +693,7 @@ async function loadSeason(n) {
         (e.still ? '<img loading="lazy" src="' + esc(e.still) + '" alt="">' : '') +
         '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) +
         (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + '</small></div>' +
+        stBtn(n, e.n) +
         '<button onclick="go(' + n + ',' + e.n + ')">🧲</button></div>').join('');
   } catch (e) { if (my === sReq) b.innerHTML = ERR; }
 }
@@ -686,7 +714,8 @@ function useAlt(n) {
   $('torrentQuery').value = buildQ(n);
   searchTorrents();
 }
-function go(s, e, auto) {
+function go(s, e, auto, skipSt) {
+  if (auto && !skipSt && ST.n > 0 && cur && cur.imdb) return stGo(s, e, true);
   want = s ? {s: s, e: e || null} : null;
   let nm = (cur.qname || cur.search_title || '').trim();
   altQ = (cur.alt || []).filter(x => x.toLowerCase() !== nm.toLowerCase()).slice(0, 3);
@@ -704,6 +733,42 @@ function go(s, e, auto) {
   }
   $('torrentQuery').value = buildQ(nm);
   searchTorrents();
+}
+
+// ================= نتايج إضافات Stremio =================
+async function stGo(s, e, auto) {
+  if (!cur || !cur.imdb) return;
+  want = s ? {s: s, e: e || null} : null;
+  autoPick = false;
+  altQ = [];
+  const my = ++seq;
+  const panel = $('torrentPanel'), box = $('torrentResults');
+  panel.style.display = 'block';
+  $('torrentHeader').innerHTML = torrentHeader();
+  box.innerHTML = pend('بجيب النتايج من إضافات Stremio...');
+  panel.scrollIntoView({behavior: 'smooth'});
+  let d;
+  try {
+    d = (await api('/stremio/streams?type=' + cur.type + '&imdb=' + encodeURIComponent(cur.imdb) +
+      (want ? '&s=' + want.s + '&e=' + (want.e || 1) : ''))).d;
+  } catch (x) { if (my === seq) box.innerHTML = ERR; return; }
+  if (my !== seq) return;
+  if (d.error || !(d.results || []).length) {
+    if (auto) return go(s, e, true, true);
+    return box.innerHTML = warn(d.error || 'الإضافات مرجعتش نتايج. جرّب 🧲 التورنت.');
+  }
+  torrents = d.results;
+  stMode = true;
+  qf = 'all';
+  showAll = false;
+  lastQ = '';
+  renderTorrents();
+  await markCached();
+  if (!auto || my !== seq) return;
+  const c = shown.filter(x => x.direct || x.cached);
+  const best = c.find(x => /1080p/i.test(x.title)) || c[0];
+  if (best) return pullTorrent(shown.indexOf(best));
+  go(s, e, true, true);
 }
 
 // ================= ذكاء البحث (فلترة النتايج) =================
@@ -764,15 +829,16 @@ function qOK(t) {
 function dedupe(list) {
   const m = new Map();
   list.forEach(t => {
-    const k = t.hash || hashOf(t.magnet) || t.magnet;
+    const k = t.hash || hashOf(t.magnet) || t.magnet || t.direct;
     const o = m.get(k);
     if (!o || t.seeders > o.seeders) m.set(k, t);
   });
   return [...m.values()];
 }
 function visible() {
-  const words = qWords(lastQ);
   const base = dedupe(torrents);
+  if (stMode) return {base, good: base};
+  const words = qWords(lastQ);
   const good = base.filter(t => titleOK(t, words) && yearOK(t) && wantOK(t) &&
     (t.seeders > 0 || t.cached));
   return {base, good};
@@ -800,6 +866,7 @@ function torrentHeader() {
 async function searchTorrents(retry, fromAlt) {
   let q = $('torrentQuery').value.trim();
   if (!q) return;
+  stMode = false;
   if (!retry && want && want.s && !/\bS\d{1,2}/i.test(q)) {
     q += ' S' + p2(want.s) + (want.e ? 'E' + p2(want.e) : '');
     $('torrentQuery').value = q;
@@ -874,7 +941,7 @@ function renderTorrents() {
       (t.cached ? '<span class="badge">⚡ فوري</span>' : '') + bd +
       (tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') +
       '<span>' + esc(t.indexer) + '</span></div>' +
-      '<button onclick="pullTorrent(' + i + ')">⬇️ سحب</button></div></div>';
+      '<button onclick="pullTorrent(' + i + ')">' + (t.direct ? '▶ تشغيل' : '⬇️ سحب') + '</button></div></div>';
   }).join('');
   $('torrentResults').innerHTML = h;
 }
@@ -890,7 +957,7 @@ async function markCached() {
       if (my !== seq) return;
       const c = new Set(d.cached || []);
       if (c.size) {
-        torrents.forEach(t => { t.cached = c.has(t.hash || hashOf(t.magnet)); });
+        torrents.forEach(t => { if (!t.direct) t.cached = c.has(t.hash || hashOf(t.magnet)); });
         renderTorrents();
       }
     }
@@ -912,11 +979,12 @@ function scrollToResults() { $('results').scrollIntoView({behavior: 'smooth'}); 
 function pullTorrent(i) {
   const t = shown[i];
   if (!t) return;
-  let base = {src: t.magnet, title: ''};
+  const src = t.direct || t.magnet;
+  let base = {src: src, title: '', dr: !!t.direct};
   if (selected && cur) {
     const qn = lastQ.replace(/\s*S\d{1,2}(E\d{1,3})?\s*$/i, '').replace(/\s+(19|20)\d{2}$/, '').trim();
-    base = {src: t.magnet, title: selected.title, poster: selected.poster, year: selected.year,
-            type: cur.type, tmdb: cur.id, qn: qn};
+    base = {src: src, title: selected.title, poster: selected.poster, year: selected.year,
+            type: cur.type, tmdb: cur.id, qn: qn, dr: !!t.direct};
     if (want) {
       base.s = want.s;
       base.e = want.e;
@@ -927,6 +995,14 @@ function pullTorrent(i) {
     }
   }
   scrollToResults();
+  if (t.direct) {
+    curSrc = src;
+    clearCd();
+    pullId++;
+    pack = null;
+    packBase = base;
+    return playData({direct_link: t.direct, provider: t.indexer, name: t.title, size: t.size}, base);
+  }
   pullSource(t.magnet, base, null);
 }
 function processDirectLink() {
@@ -1000,7 +1076,7 @@ async function pullSource(src, base, fid) {
 }
 function setPlay(o) {
   PLAY = Object.assign({title: '', poster: '', year: '', type: null, tmdb: null, s: null, e: null,
-    eps: null, ms: null, src: '', fid: null, fname: '', qn: '', resume: 0, sub: null}, o);
+    eps: null, ms: null, src: '', fid: null, fname: '', qn: '', resume: 0, sub: null, dr: false}, o);
   PLAY.key = keyOf(PLAY);
   const old = getItem(PLAY.key);
   if (old && !old.del) {
@@ -1064,7 +1140,7 @@ function saveProgress(v, ended) {
     key: c.key, title: c.title, poster: c.poster, year: c.year, type: c.type,
     tmdb: c.tmdb, s: c.s, e: c.e, eps: c.eps, ms: c.ms, src: c.src,
     fid: c.fid, fname: c.fname, qn: c.qn || '', pos: Math.floor(pos), dur: Math.floor(v.duration),
-    done: done, sub: c.sub || null,
+    done: done, sub: c.sub || null, dr: !!c.dr,
     next: (n && n.kind === 'pack')
       ? {fid: n.f.id, s: n.f.season, e: n.f.episode, name: n.f.name} : null
   });
@@ -1173,10 +1249,20 @@ async function playItem(key) {
   scrollToResults();
   if (it.done && it.type === 'tv') return playAfter(it);
   if (!it.src) return alert('مفيش مصدر محفوظ للعنصر ده');
+  if (it.dr) {
+    clearCd();
+    pullId++;
+    pack = null;
+    curSrc = it.src;
+    const b = baseOf(it);
+    packBase = b;
+    return playData({direct_link: it.src, provider: 'Stremio', name: it.fname || it.title}, b);
+  }
   await pullSource(it.src, baseOf(it), it.fid != null ? it.fid : null);
 }
 const baseOf = it => ({title: it.title, poster: it.poster, year: it.year, type: it.type, tmdb: it.tmdb,
-  s: it.s, e: it.e, eps: it.eps, ms: it.ms, fid: it.fid, fname: it.fname, src: it.src, qn: it.qn || ''});
+  s: it.s, e: it.e, eps: it.eps, ms: it.ms, fid: it.fid, fname: it.fname, src: it.src, qn: it.qn || '',
+  dr: !!it.dr});
 async function playAfter(it) {
   if (it.next && it.src) {
     const base = Object.assign(baseOf(it), {s: it.next.s, e: it.next.e, fid: it.next.fid, fname: it.next.name});
@@ -1404,6 +1490,93 @@ async function dlSub(i) {
   a.href = URL.createObjectURL(new Blob([r.text], {type: 'application/x-subrip'}));
   a.download = (subs[i].name || 'subtitle').replace(/[^\w.-]+/g, '_').slice(0, 80) + '.srt';
   a.click();
+}
+
+// ================= Stremio: حساب + إضافات + مكتبة =================
+async function loadStremio() {
+  try {
+    const {d} = await api('/stremio/addons');
+    const items = d.items || [];
+    ST = {logged: !!d.logged, email: d.email || '', items: items, n: items.filter(x => x.stream).length};
+  } catch (e) {}
+  renderSt();
+  loadStLib();
+}
+async function loadStLib() {
+  SLIB = [];
+  if (ST.logged) {
+    try { const {d} = await api('/stremio/library'); SLIB = d.items || []; } catch (e) {}
+  }
+  renderShelves();
+}
+function renderSt() {
+  const el = $('stBox');
+  if (!el) return;
+  let h = '';
+  if (ST.logged) {
+    h += '<div class="warn" style="color:var(--success);border-color:var(--success)">✅ متصل بحساب: <span class="fn" style="display:inline">' + esc(ST.email) + '</span></div>' +
+      '<div class="row" style="margin-bottom:12px">' +
+      '<button class="search-btn btn-blue" onclick="stSync(this)">🔄 مزامنة من حسابي</button>' +
+      '<button class="search-btn" style="background:var(--danger)" onclick="stLogout()">🚪 فصل الحساب</button></div>';
+  } else {
+    h += '<input id="stEmail" class="search-input ltr" placeholder="إيميل حساب Stremio" autocapitalize="off" autocorrect="off">' +
+      '<input id="stPass" type="password" class="search-input ltr" placeholder="باسورد Stremio">' +
+      '<button class="search-btn" onclick="stLogin(this)">🔑 تسجيل دخول واستيراد الإضافات</button>' +
+      '<p style="color:var(--mut);font-size:12px">الباسورد مش بيتخزّن. بنحفظ مفتاح الجلسة بس. الحسابات اللي مسجّلة بفيسبوك أو آبل مفيش ليها باسورد.</p>';
+  }
+  h += '<h3 class="sec" style="margin-top:16px">الإضافات (' + ST.items.length + ')</h3>' +
+    (ST.items.map(a =>
+      '<div class="ep"><div class="b">' + esc(a.name) + '<small>' + (a.stream ? '🎞 بتدي نتايج تشغيل' : 'معلومات / كتالوج بس') + '</small></div>' +
+      '<button style="background:var(--danger);color:#fff" onclick="stDel(\'' + esc(a.id) + '\')">🗑</button></div>').join('')
+      || warn('مفيش إضافات. سجّل دخول أو ضيف رابط إضافة.')) +
+    '<input id="stUrl" class="search-input ltr" style="margin-top:10px" placeholder="رابط إضافة: https://.../manifest.json أو stremio://...">' +
+    '<button class="search-btn btn-blue" onclick="stAdd(this)">➕ إضافة إضافة برابط</button>' +
+    '<p style="color:var(--mut);font-size:12px">الحذف هنا بيشيل الإضافة من موقعك بس، مش من حساب Stremio. ولو الإضافة فيها مفتاح دابريد (زي Torrentio) بيتضاف تلقائياً في المزوّدين.</p>';
+  el.innerHTML = h;
+}
+async function stCall(btn, path, body) {
+  const old = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    const {d} = await api(path, {method: 'POST', body: JSON.stringify(body || {})});
+    return d;
+  } catch (e) {
+    return {error: 'مش قادر أوصل للسيرفر'};
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = old; }
+  }
+}
+const stMsg = d => 'تم ✅ إضافات جديدة: ' + (d.added || 0) + (d.keys ? ' · مزوّدين اتضافوا: ' + d.keys : '');
+async function stLogin(btn) {
+  const d = await stCall(btn, '/stremio/login', {email: $('stEmail').value, password: $('stPass').value});
+  if (d.error) return alert(d.error);
+  alert(stMsg(d));
+  await loadStremio();
+  loadProviders();
+}
+async function stSync(btn) {
+  const d = await stCall(btn, '/stremio/sync');
+  if (d.error) return alert(d.error);
+  alert(stMsg(d));
+  await loadStremio();
+  loadProviders();
+}
+async function stLogout() {
+  if (!confirm('فصل حساب Stremio؟ الإضافات الحالية هتفضل.')) return;
+  await stCall(null, '/stremio/logout');
+  await loadStremio();
+}
+async function stAdd(btn) {
+  const d = await stCall(btn, '/stremio/addon', {url: $('stUrl').value});
+  if (d.error) return alert(d.error);
+  alert(d.added ? stMsg(d) : 'الإضافة دي موجودة بالفعل');
+  await loadStremio();
+  loadProviders();
+}
+async function stDel(id) {
+  if (!confirm('حذف الإضافة؟')) return;
+  await api('/stremio/addons/' + id, {method: 'DELETE'});
+  loadStremio();
 }
 
 // ================= المزوّدين =================
