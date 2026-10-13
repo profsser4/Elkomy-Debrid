@@ -192,7 +192,7 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <script>
 const API = "https://elkomy-server-production.up.railway.app";
 let TOK = sessionStorage.getItem('tok') || localStorage.getItem('rtok') || "";
-let UNAME = '', ROLE = 'user', USERS = [];
+let UNAME = '', ROLE = 'user', USERS = [], NOCHK = false;
 sessionStorage.removeItem('pass'); localStorage.removeItem('rpass');
 let UD = {profiles: {}, items: {}}, PID = null;
 let torrents = [], shown = [], selected = null, cur = null, want = null;
@@ -795,7 +795,8 @@ async function stGo(s, e, auto) {
   renderTorrents();
   await markCached();
   if (!auto || my !== seq) return;
-  const c = shown.filter(x => x.ref || x.cached);
+  let c = shown.filter(x => x.ref || x.cached);
+  if (!c.length && NOCHK) c = shown.slice();
   const best = c.find(x => /1080p/i.test(x.title)) || c[0];
   if (best) return pullTorrent(shown.indexOf(best));
   go(s, e, true, true);
@@ -958,6 +959,7 @@ function renderTorrents() {
   }
   if (none && showAll) h += warn('دي كل النتايج، وممكن تكون مش مطابقة للي بتدور عليه.');
   if (!list.length) h += warn('مفيش نتايج بالفلتر ده.');
+  if (NOCHK && list.length) h += '<p style="color:var(--mut);font-size:12px;margin:0 0 10px">المزوّد بتاعك مبيدعمش فحص "فوري"، فأي نسخة ممكن تاخد شوية وقت لحد ما تتحمّل.</p>';
   const pic = (selected && selected.poster)
     ? '<div class="pic"><img loading="lazy" src="' + esc(selected.poster) + '" alt=""></div>' : '';
   h += list.map((t, i) => {
@@ -980,11 +982,12 @@ function toggleAll() { showAll = !showAll; renderTorrents(); }
 
 async function markCached() {
   const my = seq;
-  const hs = [...new Set(torrents.map(t => t.hash || hashOf(t.magnet)).filter(Boolean))].slice(0, 60);
+  const hs = [...new Set(torrents.map(t => t.hash || hashOf(t.magnet)).filter(Boolean))].slice(0, 100);
   try {
     if (hs.length) {
       const {d} = await api('/cached?h=' + hs.join(','));
       if (my !== seq) return;
+      NOCHK = !!d.nocheck;
       const c = new Set(d.cached || []);
       if (c.size) {
         torrents.forEach(t => { if (!t.ref) t.cached = c.has(t.hash || hashOf(t.magnet)); });
@@ -995,7 +998,8 @@ async function markCached() {
   if (my !== seq) return;
   if (autoPick) {
     autoPick = false;
-    const g = visible().good.filter(t => t.cached).sort((a, b) => b.seeders - a.seeders)[0];
+    let g = visible().good.filter(t => t.cached).sort((a, b) => b.seeders - a.seeders)[0];
+    if (!g && NOCHK) g = visible().good.sort((a, b) => b.seeders - a.seeders)[0];
     if (g) {
       const i = shown.indexOf(g);
       if (i >= 0) pullTorrent(i);
