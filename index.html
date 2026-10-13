@@ -172,6 +172,16 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <div id="usBox" style="margin:14px 0"></div>
 </details>
 
+<details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadLayout()">
+<summary>🏠 ترتيب الصفحة الرئيسية</summary>
+<div id="layBox" style="margin:14px 0"></div>
+</details>
+
+<details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadActivity()">
+<summary>📊 نشاط المستخدمين</summary>
+<div id="actBox" style="margin:14px 0"></div>
+</details>
+
 <details class="action-box adm" style="text-align:right;margin-top:18px">
 <summary>🧩 Stremio (حساب + إضافات)</summary>
 <div id="stBox" style="margin:14px 0"></div>
@@ -632,7 +642,8 @@ function epMark(tmdb, s, e) {
 function row(title, list) {
   if (!list.length) return '';
   return '<h3 class="sec">' + title + '</h3><div class="hrow">' + list.map(t =>
-    '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">' +
+    (t.imdb ? '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">'
+            : '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">') +
     (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">'
               : '<div class="noimg">🎬</div>') +
     '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) +
@@ -1034,7 +1045,7 @@ function pullTorrent(i) {
     const id = ++pullId;
     pack = null;
     $('results').innerHTML = pend('جاري تجهيز الرابط...');
-    api('/stremio/resolve', {method: 'POST', body: JSON.stringify({ref: t.ref})}).then(({d}) => {
+    api('/stremio/resolve', {method: 'POST', body: JSON.stringify({ref: t.ref, name: t.title, size: t.size})}).then(({d}) => {
       if (id !== pullId) return;
       if (!d.url) { $('results').innerHTML = warn(d.error || 'حصل خطأ'); return; }
       base.src = d.url;
@@ -1657,6 +1668,126 @@ async function usDel(n) {
   if (!confirm('حذف المستخدم ' + n + ' وكل بياناته؟')) return;
   await api('/users/' + encodeURIComponent(n), {method: 'DELETE'});
   loadUsers();
+}
+
+// ================= ترتيب الصفحة الرئيسية (للأدمن) =================
+let LAY = [], LCATS = [];
+async function loadLayout() {
+  const el = $('layBox');
+  if (el) el.innerHTML = pend('جاري التحميل...');
+  try {
+    const [a, b] = await Promise.all([api('/home/layout'), api('/home/catalogs')]);
+    LAY = a.d.rows || [];
+    LCATS = b.d.items || [];
+  } catch (e) { if (el) el.innerHTML = ERR; return; }
+  renderLayout();
+}
+function renderLayout() {
+  const el = $('layBox');
+  if (!el) return;
+  const btn = 'style="margin-inline-start:4px;';
+  let h = LAY.map((r, i) =>
+    '<div class="ep"><input type="checkbox" ' + (r.on ? 'checked ' : '') + 'onchange="layOn(' + i + ',this.checked)">' +
+    '<div class="b">' + esc(r.t) + '</div>' +
+    '<button onclick="layMove(' + i + ',-1)">▲</button>' +
+    '<button ' + btn + '" onclick="layMove(' + i + ',1)">▼</button>' +
+    '<button ' + btn + 'background:#475569;color:#fff" onclick="layRename(' + i + ')">✏️</button>' +
+    '<button ' + btn + 'background:var(--danger);color:#fff" onclick="layDel(' + i + ')">🗑</button></div>').join('')
+    || warn('مفيش صفوف. ضيف إضافات فيها كتالوجات (زي Cinemeta) من قسم Stremio.');
+  h += '<button class="search-btn" style="margin-top:6px" onclick="laySave(this)">💾 حفظ الترتيب (يظهر للكل)</button>';
+  if (LCATS.length) {
+    h += '<h3 class="sec" style="margin-top:16px">➕ إضافة صف</h3>' +
+      '<select id="layCat" class="search-input" onchange="layGenres()">' + LCATS.map((c, i) =>
+        '<option value="' + i + '">' + esc(c.an + ' · ' + c.name + ' (' + (c.ty === 'movie' ? 'أفلام' : 'مسلسلات') + ')') + '</option>').join('') + '</select>' +
+      '<select id="layGen" class="search-input"></select>' +
+      '<button class="search-btn btn-blue" onclick="layAdd()">➕ إضافة الصف</button>';
+  }
+  el.innerHTML = h;
+  layGenres();
+}
+function layGenres() {
+  const s = $('layCat'), g = $('layGen');
+  if (!s || !g) return;
+  const c = LCATS[+s.value] || {genres: []};
+  g.innerHTML = '<option value="">بدون تصنيف</option>' + (c.genres || []).map(x =>
+    '<option value="' + esc(x) + '">' + esc(x) + '</option>').join('');
+  g.style.display = (c.genres || []).length ? '' : 'none';
+}
+function layOn(i, v) { LAY[i].on = !!v; }
+function layMove(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= LAY.length) return;
+  [LAY[i], LAY[j]] = [LAY[j], LAY[i]];
+  renderLayout();
+}
+function layRename(i) {
+  const t = prompt('اسم الصف', LAY[i].t);
+  if (t && t.trim()) { LAY[i].t = t.trim().slice(0, 60); renderLayout(); }
+}
+function layDel(i) { LAY.splice(i, 1); renderLayout(); }
+function layAdd() {
+  const c = LCATS[+$('layCat').value];
+  if (!c) return;
+  const g = $('layGen').value;
+  LAY.push({k: Math.random().toString(16).slice(2, 10), a: c.a, ty: c.ty, c: c.c, g: g,
+    t: (g ? g + ' · ' : '') + c.name + ' · ' + (c.ty === 'movie' ? 'أفلام' : 'مسلسلات'), on: true});
+  renderLayout();
+}
+async function laySave(btn) {
+  btn.disabled = true;
+  try {
+    const {d} = await api('/home/layout', {method: 'POST', body: JSON.stringify({rows: LAY})});
+    if (d.error) alert(d.error);
+    else { alert('تم الحفظ ✅'); ROWS = null; loadRows(); }
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
+  btn.disabled = false;
+}
+
+// ================= نشاط المستخدمين (للأدمن) =================
+let ACT = [];
+const fmtDate = t => t ? new Date(t).toLocaleString('ar-EG', {dateStyle: 'short', timeStyle: 'short'}) : '—';
+const fmtDur = s => {
+  s = Math.floor(s || 0);
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+  return h ? h + 'س ' + m + 'د' : m + 'د';
+};
+const KIND = {torrent: 'تورنت', link: 'رابط', zip: 'ZIP', all: 'كل الروابط', stremio: 'Stremio'};
+async function loadActivity() {
+  const el = $('actBox');
+  if (!el) return;
+  el.innerHTML = pend('جاري التحميل...');
+  try { const {d} = await api('/activity'); ACT = d.items || []; }
+  catch (e) { el.innerHTML = ERR; return; }
+  el.innerHTML = ACT.map(u =>
+    '<div class="action-box" style="text-align:right;margin-bottom:10px;padding:12px">' +
+    '<b>👤 ' + esc(u.name) + (u.role === 'admin' ? ' (أدمن)' : '') + '</b>' +
+    '<div style="color:var(--mut);font-size:13px;margin-top:6px;line-height:2">' +
+    '⬇️ سحب: ' + u.count + ' ملف · ' + (u.bytes ? fmtSize(u.bytes) : '0') + '<br>' +
+    '▶ مشاهدة تقريبية: ' + fmtDur(u.watch) + ' · ' + u.titles + ' عنوان<br>' +
+    '🕒 آخر نشاط: ' + fmtDate(u.last) + '</div>' +
+    '<button class="fc" style="margin-top:8px" data-n="' + esc(u.name) + '" onclick="actDetail(this)">📋 التفاصيل</button>' +
+    '<div class="actd"></div></div>').join('') || warn('مفيش بيانات.');
+}
+async function actDetail(btn) {
+  const box = btn.parentNode.querySelector('.actd');
+  if (box.innerHTML) { box.innerHTML = ''; return; }
+  box.innerHTML = pend('جاري التحميل...');
+  try {
+    const {d} = await api('/activity/' + encodeURIComponent(btn.dataset.n));
+    if (d.error) return box.innerHTML = warn(d.error);
+    const pulls = (d.pulls || []).map(p =>
+      '<div class="ep"><div class="b fn">' + esc(p.n) + '<small>' + (p.s ? fmtSize(p.s) : '—') + ' · ' +
+      esc(KIND[p.k] || p.k) + ' · ' + esc(p.p) + ' · ' + fmtDate(p.t) + '</small></div></div>').join('');
+    const seen = (d.watched || []).map(w => {
+      const pct = w.done ? '✓ خلّصه' : (w.dur ? Math.round(w.pos / w.dur * 100) + '%' : '');
+      const ep = (w.s != null && w.e != null) ? ' · S' + p2(w.s) + 'E' + p2(w.e) : '';
+      return '<div class="ep"><div class="b">' + esc(w.title) + esc(ep) + '<small>' + pct +
+        (w.profile ? ' · ' + esc(w.profile) : '') + ' · ' + fmtDate(w.t) + '</small></div></div>';
+    }).join('');
+    box.innerHTML = '<h3 class="sec" style="margin-top:12px">⬇️ آخر ما سحبه</h3>' + (pulls || warn('لسه مسحبش حاجة.')) +
+      '<h3 class="sec">▶ آخر ما شاهده</h3>' + (seen || warn('لسه مشاهدش حاجة.')) +
+      '<p style="color:var(--mut);font-size:12px">سجل المشاهدة بيعرض آخر 150 عنوان لكل بروفايل.</p>';
+  } catch (e) { box.innerHTML = ERR; }
 }
 
 // ================= المزوّدين =================
