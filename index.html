@@ -203,7 +203,7 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 const API = "https://elkomy-server-production.up.railway.app";
 let TOK = sessionStorage.getItem('tok') || localStorage.getItem('rtok') || "";
 let UNAME = '', ROLE = 'user', USERS = [], NOCHK = false;
-let VS = ['h'], PUSH_ON = false;
+let VS = ['h'], PUSH_ON = false, TX = null;
 try { history.replaceState({n: 1}, ''); } catch (e) {}
 sessionStorage.removeItem('pass'); localStorage.removeItem('rpass');
 let UD = {profiles: {}, items: {}}, PID = null;
@@ -257,6 +257,8 @@ function tags(t) {
   const m = t.match(re) || [];
   return [...new Set(m.map(x => x.toUpperCase()))].join(' · ');
 }
+const curPos = v => (TX && TX.active) ? TX.start + v.currentTime : v.currentTime;
+const curDur = v => (TX && TX.active) ? TX.dur : v.duration;
 const EG_RX = /(مصري|مصرى|المصرية|egypt)/i, DUB_RX = /(مدبلج|دبلج|dubbed|\bdub\b)/i;
 const isDub = t => t.dub !== undefined ? !!t.dub : DUB_RX.test(t.title || '');
 const isEgDub = t => isDub(t) && (t.eg !== undefined ? !!t.eg : EG_RX.test(t.title || ''));
@@ -784,6 +786,7 @@ function stopPlayer() {
   pullId++;
   pack = null;
   PLAY = null;
+  TX = null;
   $('results').innerHTML = '';
   window.scrollTo(0, 0);
 }
@@ -1297,6 +1300,8 @@ function playData(d, base) {
   base.fid = d.file_id != null ? d.file_id : (base.fid != null ? base.fid : null);
   base.fname = d.name || base.fname || '';
   setPlay(base);
+  PLAY.url = d.direct_link;
+  TX = null;
   const c = PLAY, p = prof();
   const ep = (c.s != null && c.e != null) ? ' · S' + p2(c.s) + 'E' + p2(c.e) : '';
   const chk = (c.type === 'tv' || pack)
@@ -1314,6 +1319,7 @@ function linkCard(d, video) {
     (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
     (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
     (video ? '<video controls playsinline preload="metadata" src="' + u + '"></video><div id="playErr" style="margin-top:8px"></div><div id="audSel"></div>' +
+      '<div id="txBox" style="margin-top:8px"><button class="fc" style="width:100%;white-space:normal" onclick="startTx()">🔊 الصوت مش شغال أو الفيديو مش بيفتح؟ شغّله بالوضع المتوافق</button></div>' +
       '<div class="row" style="margin-top:8px"><button class="fc" onclick="skip(-10)">⏪ 10ث</button>' +
       '<button class="fc" onclick="skip(10)">10ث ⏩</button>' +
       '<select class="fc" onchange="setSpeed(this.value)"><option value="1">1x</option><option value="0.75">0.75x</option>' +
@@ -1325,7 +1331,9 @@ function linkCard(d, video) {
 }
 function skip(n) {
   const v = document.querySelector('#results video');
-  if (v) v.currentTime = Math.max(0, v.currentTime + n);
+  if (!v) return;
+  if (TX && TX.active) return startTx(null, null, Math.max(0, curPos(v) + n));
+  v.currentTime = Math.max(0, v.currentTime + n);
 }
 function setSpeed(x) {
   const v = document.querySelector('#results video');
@@ -1334,15 +1342,16 @@ function setSpeed(x) {
 
 // ================= المشغّل: حفظ التقدم + الاستكمال + الحلقة التالية =================
 function saveProgress(v, ended) {
-  if (!PLAY || !PID || !v || !isFinite(v.duration) || v.duration < 60) return;
-  const pos = ended ? v.duration : v.currentTime;
+  const dur = v ? curDur(v) : 0;
+  if (!PLAY || !PID || !v || !isFinite(dur) || dur < 60) return;
+  const pos = ended ? dur : curPos(v);
   if (!ended && pos < 5) return;
-  const done = !!ended || pos / v.duration >= 0.92;
+  const done = !!ended || pos / dur >= 0.92;
   const c = PLAY, n = nextTarget();
   setItem({
     key: c.key, title: c.title, poster: c.poster, year: c.year, type: c.type,
     tmdb: c.tmdb, s: c.s, e: c.e, eps: c.eps, ms: c.ms, src: c.src,
-    fid: c.fid, fname: c.fname, qn: c.qn || '', pos: Math.floor(pos), dur: Math.floor(v.duration),
+    fid: c.fid, fname: c.fname, qn: c.qn || '', pos: Math.floor(pos), dur: Math.floor(dur),
     done: done, sub: c.sub || null, dr: !!c.dr,
     next: (n && n.kind === 'pack')
       ? {fid: n.f.id, s: n.f.season, e: n.f.episode, name: n.f.name} : null
@@ -1357,7 +1366,7 @@ function attachPlayer() {
   const r = PLAY.resume || 0;
   let seeked = false;
   const seek = () => {
-    if (!seeked && r > 0 && isFinite(v.duration)) {
+    if (!seeked && r > 0 && isFinite(v.duration) && !(TX && TX.active)) {
       seeked = true;
       v.currentTime = Math.max(0, Math.min(r, v.duration - 5));
     }
@@ -1368,12 +1377,28 @@ function attachPlayer() {
     const now = Date.now();
     if (now - lastSave > 10000) { lastSave = now; saveProgress(v); }
     checkNext(v);
+    if (TX && TX.active) {
+      const sk = $('txSeek'), tt = $('txT');
+      if (sk && document.activeElement !== sk) sk.value = Math.floor(curPos(v));
+      if (tt) tt.textContent = fmtTime(curPos(v));
+    }
   });
   v.addEventListener('pause', () => saveProgress(v));
-  v.addEventListener('ended', () => { saveProgress(v, true); onEnded(); });
+  v.addEventListener('ended', () => {
+    if (TX && TX.active && TX.dur - curPos(v) > 30) return startTx(null, null, curPos(v));   // الاتصال اتقطع في النص
+    saveProgress(v, true);
+    onEnded();
+  });
   v.addEventListener('error', () => {
     const b = $('playErr');
-    if (b) b.innerHTML = warn('المتصفح مش قادر يشغّل الملف ده. غالباً السبب الصوت (DD5.1 / AC3 / DTS) أو الفيديو HEVC أو الصيغة MKV. افتحه في VLC أو MX Player من الزرار اللي تحت، أو اختار نسخة بعلامة ✅ للمتصفح.');
+    if (!b) return;
+    if (TX && TX.active) {
+      b.innerHTML = warn('التشغيل المتوافق وقف. دوس حاول تاني، ولو فضل يقف افتحه في VLC.') +
+        '<button class="search-btn" style="margin-bottom:8px" onclick="startTx()">🔁 حاول تاني</button>';
+      return;
+    }
+    b.innerHTML = warn('المتصفح مش قادر يشغّل الملف ده. غالباً السبب الصوت (DD5.1 / AC3 / DTS) أو الفيديو HEVC أو الصيغة MKV.') +
+      '<button class="search-btn" style="background:#16a34a;margin-bottom:8px" onclick="startTx()">🔊 شغّله بالوضع المتوافق</button>';
   });
   v.addEventListener('loadedmetadata', () => {
     const at = v.audioTracks, box = $('audSel');
@@ -1408,8 +1433,8 @@ function nextTarget() {
 }
 const nextBtn = n => '<button class="search-btn btn-blue" style="margin-top:10px" onclick="playNext()">⏭ الحلقة التالية ' + esc(n.label) + '</button>';
 function checkNext(v) {
-  if (nextShown || cdTimer || !PLAY || !isFinite(v.duration)) return;
-  const left = v.duration - v.currentTime;
+  if (nextShown || cdTimer || !PLAY || !isFinite(curDur(v))) return;
+  const left = curDur(v) - curPos(v);
   if (left > 30 || left <= 0) return;
   const n = nextTarget(), box = $('nextUp');
   if (!n || !box) return;
@@ -1621,6 +1646,7 @@ function rankSubs(list) {
 function syncFirst() {
   const v = document.querySelector('#results video');
   if (!v || !subSel) return;
+  if (TX && TX.active) return alert('الضبط التلقائي شغال في التشغيل العادي بس. هنا استخدم أزرار + و - .');
   const tr = v.querySelector('track');
   const cues = tr && tr.track && tr.track.cues;
   if (!cues || !cues.length) return alert('الترجمة لسه بتتحمّل، جرّب بعد ثانية');
@@ -1671,7 +1697,8 @@ async function applySubItem(it, shift, quiet) {
   if (!v) return;
   const st = $('subState');
   if (st && !quiet) st.innerHTML = pend('جاري تحميل الترجمة...');
-  const r = await fetchText('/sub?' + subFetchQS(it, 'vtt', shift));
+  const off = (TX && TX.active) ? TX.start : 0;
+  const r = await fetchText('/sub?' + subFetchQS(it, 'vtt', Math.round((shift - off) * 10) / 10));
   if (r.error) { if (st && !quiet) st.innerHTML = warn(r.error); return; }
   v.querySelectorAll('track').forEach(x => x.remove());
   const tr = document.createElement('track');
@@ -1825,6 +1852,73 @@ async function stDel(id) {
   loadStremio();
 }
 
+// ================= التشغيل المتوافق (ffmpeg على السيرفر) =================
+async function startTx(mode, a, start) {
+  const v = document.querySelector('#results video');
+  if (!v || !PLAY || !PLAY.url) return;
+  const box = $('txBox');
+  if (!TX || TX.url !== PLAY.url) {
+    if (box) box.innerHTML = pend('بجهّز التشغيل المتوافق... (ممكن ياخد 10 ثواني)');
+    let r;
+    try {
+      r = await api('/media/open', {method: 'POST', body: JSON.stringify({url: PLAY.url, name: PLAY.title || PLAY.fname || ''})});
+    } catch (e) { if (box) box.innerHTML = ERR; return; }
+    if (r.d.error) {
+      if (box) box.innerHTML = warn(r.d.error);
+      return;
+    }
+    const ai = (r.d.audio || []).findIndex(x => /^(ara|arb|ar)/i.test(x.lang || ''));
+    TX = {url: PLAY.url, mid: r.d.mid, k: r.d.k, dur: r.d.dur || 0, audio: r.d.audio || [], video: r.d.video,
+          mode: 'copy', a: (dubFirst() && ai >= 0) ? ai : 0, start: 0, active: false};
+  }
+  const pos = start != null ? start : (TX.active ? curPos(v) : (v.currentTime || PLAY.resume || 0));
+  if (mode) TX.mode = mode;
+  if (a != null) TX.a = a;
+  TX.start = Math.max(0, Math.floor(pos));
+  TX.active = true;
+  v.src = API + '/media/stream/' + TX.mid + '?k=' + encodeURIComponent(TX.k) + '&a=' + TX.a + '&t=' + TX.start + '&v=' + TX.mode;
+  v.load();
+  v.play().catch(() => {});
+  const pe = $('playErr');
+  if (pe) pe.innerHTML = '';
+  renderTx();
+  if (subSel) applySubItem(subSel.it, subSel.shift, true);
+}
+function renderTx() {
+  const box = $('txBox');
+  if (!box || !TX) return;
+  const opt = (TX.audio || []).map((x, i) => '<option value="' + i + '"' + (i === TX.a ? ' selected' : '') + '>' +
+    esc((x.lang || ('صوت ' + (i + 1))) + (x.title ? ' · ' + x.title : '') + ' · ' + (x.codec || '') + (x.ch ? ' ' + x.ch + 'ch' : '')) + '</option>').join('');
+  box.innerHTML = '<div class="warn" style="color:var(--success);border-color:var(--success)">🔊 التشغيل المتوافق شغال: الصوت بيتحوّل على السيرفر (بيستهلك من رصيد الاستضافة)</div>' +
+    ((TX.audio || []).length > 1 ? '<div class="lbl">القناة الصوتية</div><select class="search-input" onchange="startTx(null, +this.value)">' + opt + '</select>' : '') +
+    '<div style="display:flex;gap:8px;align-items:center;direction:ltr;margin-bottom:8px"><span id="txT">' + fmtTime(TX.start) + '</span>' +
+    '<input id="txSeek" type="range" min="0" max="' + Math.max(1, Math.floor(TX.dur)) + '" value="' + TX.start + '" step="5" style="flex:1" oninput="txPreview(this.value)" onchange="startTx(null, null, +this.value)">' +
+    '<span>' + fmtTime(TX.dur) + '</span></div>' +
+    '<div class="row"><select class="fc" onchange="startTx(this.value)">' +
+    '<option value="copy"' + (TX.mode === 'copy' ? ' selected' : '') + '>فيديو: أصلي (أسرع)</option>' +
+    '<option value="h264"' + (TX.mode === 'h264' ? ' selected' : '') + '>فيديو: تحويل 720p (أبطأ)</option></select>' +
+    '<button class="fc" onclick="stopTx()">↩ التشغيل العادي</button></div>' +
+    '<p style="color:var(--mut);font-size:12px">لو الفيديو نفسه HEVC ومش بيشتغل، جرّب "تحويل 720p". وتقديم الفيلم بيتم بالسلايدر ده أو بأزرار 10ث.</p>';
+}
+function txPreview(val) {
+  const t = $('txT');
+  if (t) t.textContent = fmtTime(+val);
+}
+function stopTx() {
+  const v = document.querySelector('#results video');
+  if (!v || !TX || !PLAY) return;
+  const pos = TX.active ? curPos(v) : v.currentTime;
+  TX.active = false;
+  const seek = () => { v.currentTime = pos; v.removeEventListener('loadedmetadata', seek); };
+  v.addEventListener('loadedmetadata', seek);
+  v.src = PLAY.url;
+  v.load();
+  v.play().catch(() => {});
+  const box = $('txBox');
+  if (box) box.innerHTML = '<button class="fc" style="width:100%;white-space:normal" onclick="startTx()">🔊 الصوت مش شغال أو الفيديو مش بيفتح؟ شغّله بالوضع المتوافق</button>';
+  if (subSel) applySubItem(subSel.it, subSel.shift, true);
+}
+
 // ================= المستخدمين (للأدمن) =================
 async function loadUsers() {
   try { const {d} = await api('/users'); USERS = d.items || []; } catch (e) {}
@@ -1965,7 +2059,7 @@ const fmtDur = s => {
   const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
   return h ? h + 'س ' + m + 'د' : m + 'د';
 };
-const KIND = {torrent: 'تورنت', link: 'رابط', zip: 'ZIP', all: 'كل الروابط', stremio: 'Stremio'};
+const KIND = {torrent: 'تورنت', link: 'رابط', zip: 'ZIP', all: 'كل الروابط', stremio: 'Stremio', transcode: 'تحويل'};
 async function loadActivity() {
   const el = $('actBox');
   if (!el) return;
