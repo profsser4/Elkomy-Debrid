@@ -257,10 +257,29 @@ function tags(t) {
   const m = t.match(re) || [];
   return [...new Set(m.map(x => x.toUpperCase()))].join(' · ');
 }
+const EG_RX = /(مصري|مصرى|المصرية|egypt)/i, DUB_RX = /(مدبلج|دبلج|dubbed|\bdub\b)/i;
+const isDub = t => t.dub !== undefined ? !!t.dub : DUB_RX.test(t.title || '');
+const isEgDub = t => isDub(t) && (t.eg !== undefined ? !!t.eg : EG_RX.test(t.title || ''));
+const dubRank = t => isEgDub(t) ? 2 : (isDub(t) ? 1 : 0);
+const dubFirst = () => { const p = prof(); return !p || p.dubFirst !== false; };
+function setDubFirst(v) {
+  const p = prof();
+  if (!p) return;
+  p.dubFirst = !!v;
+  saveProfileObj(p);
+  renderTorrents();
+}
 const RISKY = /(?:\bDDP?\s?\d|\bDD\+|\bAC-?3\b|\bE-?AC-?3\b|\bDTS|\bTrueHD|\bAtmos|\bHEVC|\bx265|\bH[. ]?265|\b10-?bit|\.avi\b)/i;
 const risky = t => RISKY.test(String(t || '').replace(/_/g, ' '));
-const bestOf = list => list.find(x => /1080p/i.test(x.title) && !risky(x.title)) ||
-  list.find(x => !risky(x.title)) || list.find(x => /1080p/i.test(x.title)) || list[0];
+const bestOf = list => {
+  let pool = list;
+  if (dubFirst()) {
+    const e = list.filter(isEgDub), d = list.filter(isDub);
+    pool = e.length ? e : (d.length ? d : list);
+  }
+  return pool.find(x => /1080p/i.test(x.title) && !risky(x.title)) ||
+    pool.find(x => !risky(x.title)) || pool.find(x => /1080p/i.test(x.title)) || pool[0];
+};
 function intentUrl(u, pkg) {
   const m = /^(https?):\/\/(.*)$/i.exec(u || '');
   if (!m) return u;
@@ -603,6 +622,13 @@ function stRow() {
     (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">' : '<div class="noimg">🎬</div>') +
     '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) + '</div></div></div>').join('') + '</div>';
 }
+async function openLookup(el) {
+  try {
+    const {d} = await api('/stremio/lookup?q=' + encodeURIComponent(el.dataset.q) + '&type=' + encodeURIComponent(el.dataset.t) + '&year=' + encodeURIComponent(el.dataset.y || ''));
+    if (d.error || !d.id) return alert(d.error || 'مش لاقي العمل ده');
+    openDetails(d.type, d.id);
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
+}
 async function openImdb(imdb, type) {
   try {
     const {d} = await api('/stremio/find?imdb=' + encodeURIComponent(imdb) + '&type=' + encodeURIComponent(type));
@@ -666,7 +692,8 @@ function row(title, list) {
   if (!list.length) return '';
   return '<h3 class="sec">' + title + '</h3><div class="hrow">' + list.map(t =>
     (t.imdb ? '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">'
-            : '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">') +
+      : t.lk ? '<div class="poster" data-q="' + esc(t.title) + '" data-y="' + esc(t.year) + '" data-t="' + esc(t.type) + '" onclick="openLookup(this)">'
+      : '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">') +
     (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">'
               : '<div class="noimg">🎬</div>') +
     '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) +
@@ -980,6 +1007,8 @@ function qOK(t) {
   if (qf === 'all') return true;
   if (qf === 'fast') return !!t.cached;
   if (qf === 'safe') return !risky(t.title);
+  if (qf === 'eg') return isEgDub(t);
+  if (qf === 'dub') return isDub(t);
   if (qf === '4k') return /2160p|\b4K\b/i.test(t.title);
   if (qf === '1080') return /1080p/i.test(t.title);
   return /720p/i.test(t.title);
@@ -1065,11 +1094,12 @@ function renderTorrents() {
   const {base, good} = visible();
   const none = !good.length;
   const list = (showAll ? base : good).filter(qOK);
-  list.sort((a, b) => (!!b.cached - !!a.cached) || (b.seeders - a.seeders));
+  const df = dubFirst();
+  list.sort((a, b) => (df ? dubRank(b) - dubRank(a) : 0) || (!!b.cached - !!a.cached) || (b.seeders - a.seeders));
   shown = list;
   const hidden = base.length - good.length;
-  const fl = [['all', 'الكل'], ['safe', '✅ للمتصفح'], ['fast', '⚡ فوري'], ['4k', '4K'], ['1080', '1080p'], ['720', '720p']];
-  let h = '<div class="fbar">' + fl.map(f =>
+  const fl = [['all', 'الكل'], ['eg', '🇪🇬 مصري'], ['dub', '🎙 مدبلج'], ['safe', '✅ للمتصفح'], ['fast', '⚡ فوري'], ['4k', '4K'], ['1080', '1080p'], ['720', '720p']];
+  let h = '<label style="display:block;margin:0 0 10px;color:var(--mut);font-size:13px"><input type="checkbox" ' + (df ? 'checked ' : '') + 'onchange="setDubFirst(this.checked)"> 🇪🇬 المدبلج بالمصري أولاً</label><div class="fbar">' + fl.map(f =>
     '<button class="fc' + (qf === f[0] ? ' on' : '') + '" onclick="setQf(\'' + f[0] + '\')">' + f[1] + '</button>'
   ).join('');
   if ((!none && hidden > 0) || (none && showAll)) {
@@ -1098,6 +1128,7 @@ function renderTorrents() {
       '<div class="m"><span class="size">💾 ' + fmtSize(t.size) + '</span>' +
       '<span class="s ' + (t.seeders ? '' : 'zero') + '">🌱 ' + t.seeders + '</span>' +
       (t.cached ? '<span class="badge">⚡ فوري</span>' : '') +
+      (isEgDub(t) ? '<span class="badge" style="background:#16a34a;color:#fff">🇪🇬 مدبلج مصري</span>' : (isDub(t) ? '<span class="badge" style="background:#7c3aed;color:#fff">🎙 مدبلج</span>' : '')) +
       (risky(t.title) ? '<span class="badge" style="background:#ef4444;color:#fff">⚠️ ممكن مايشتغلش بالمتصفح</span>' : '') + bd +
       (tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') +
       '<span>' + esc(t.indexer) + '</span></div>' +
@@ -1833,16 +1864,36 @@ async function usDel(n) {
 }
 
 // ================= ترتيب الصفحة الرئيسية (للأدمن) =================
-let LAY = [], LCATS = [];
+let LAY = [], LCATS = [], DUBST = null;
 async function loadLayout() {
   const el = $('layBox');
   if (el) el.innerHTML = pend('جاري التحميل...');
   try {
     const [a, b] = await Promise.all([api('/home/layout'), api('/home/catalogs')]);
     LAY = a.d.rows || [];
+    DUBST = a.d.dub || null;
     LCATS = b.d.items || [];
   } catch (e) { if (el) el.innerHTML = ERR; return; }
   renderLayout();
+}
+function layStat(r) {
+  if (r.a === '_dub') {
+    if (!DUBST) return '';
+    return '<small>' + (DUBST.running ? '⏳ بيفحص دلوقتي...' : DUBST.n + ' فيلم · آخر فحص ' + (DUBST.t ? fmtDate(DUBST.t * 1000) : 'لسه') ) + '</small>';
+  }
+  const s = r.stat;
+  if (!s) return '';
+  if (s.err) return '<small style="color:#ef4444">❌ ' + esc(s.err) + '</small>';
+  return '<small' + (s.n ? '' : ' style="color:#f59e0b"') + '>' + s.n + ' عنصر' + (s.lk ? ' · ' + s.lk + ' بالبحث بالاسم' : '') + '</small>';
+}
+async function dubRefresh(btn) {
+  btn.disabled = true;
+  try {
+    const {d} = await api('/home/dub-refresh', {method: 'POST'});
+    alert(d.started ? 'بدأ الفحص. هياخد كام دقيقة، وبعدها حدّث الصفحة وهيظهر القسم.' : 'الفحص شغال بالفعل، استنى شوية.');
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
+  btn.disabled = false;
+  loadLayout();
 }
 function renderLayout() {
   const el = $('layBox');
@@ -1850,13 +1901,14 @@ function renderLayout() {
   const btn = 'style="margin-inline-start:4px;';
   let h = LAY.map((r, i) =>
     '<div class="ep"><input type="checkbox" ' + (r.on ? 'checked ' : '') + 'onchange="layOn(' + i + ',this.checked)">' +
-    '<div class="b">' + esc(r.t) + '</div>' +
+    '<div class="b">' + esc(r.t) + layStat(r) + '</div>' +
     '<button onclick="layMove(' + i + ',-1)">▲</button>' +
     '<button ' + btn + '" onclick="layMove(' + i + ',1)">▼</button>' +
     '<button ' + btn + 'background:#475569;color:#fff" onclick="layRename(' + i + ')">✏️</button>' +
     '<button ' + btn + 'background:var(--danger);color:#fff" onclick="layDel(' + i + ')">🗑</button></div>').join('')
     || warn('مفيش صفوف. ضيف إضافات فيها كتالوجات (زي Cinemeta) من قسم Stremio.');
-  h += '<button class="search-btn" style="margin-top:6px" onclick="laySave(this)">💾 حفظ الترتيب (يظهر للكل)</button>';
+  h += '<button class="search-btn" style="margin-top:6px" onclick="laySave(this)">💾 حفظ الترتيب (يظهر للكل)</button>' +
+    '<button class="search-btn btn-blue" style="margin-top:8px" onclick="dubRefresh(this)">🔄 فحص المدبلج بالمصري دلوقتي</button>';
   if (LCATS.length) {
     h += '<h3 class="sec" style="margin-top:16px">➕ إضافة صف</h3>' +
       '<select id="layCat" class="search-input" onchange="layGenres()">' + LCATS.map((c, i) =>
