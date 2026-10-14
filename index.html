@@ -6,7 +6,7 @@
 <title>Elkomy Debrid VIP</title>
 <style>
 :root{--bg:#0f172a;--panel:#1e293b;--primary:#38bdf8;--text:#f8fafc;--danger:#ef4444;--success:#22c55e;--mut:#94a3b8}
-{box-sizing:border-box;font-family:Tahoma}
+*{box-sizing:border-box;font-family:Tahoma}
 body{margin:0;background:var(--bg);color:var(--text)}
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
 .login-box{background:var(--panel);padding:2rem;border-radius:12px;width:90%;max-width:400px;text-align:center}
@@ -19,16 +19,18 @@ body{margin:0;background:var(--bg);color:var(--text)}
 .ltr{text-align:left;direction:ltr}
 .btn-blue{background:var(--primary);color:#000}
 .row{display:flex;gap:10px}
-.row>{flex:1}
+.row>*{flex:1}
 .result-card{background:var(--panel);padding:18px;border-radius:8px;margin-top:18px;border:1px solid var(--success);text-align:center}
 .btn-download{background:var(--success);color:#fff;padding:12px;border-radius:5px;text-decoration:none;display:block;margin-top:14px;font-weight:bold}
 .btn-vlc{background:#f97316;color:#fff;padding:12px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin-top:10px;width:100%}
+.btn-sub{background:#7c3aed}
 .pending,.warn{text-align:center;padding:16px;background:var(--panel);border-radius:8px;border:1px dashed var(--primary);color:var(--primary);font-weight:bold;margin-bottom:12px;line-height:1.9}
 .warn{color:#f59e0b;border-color:#f59e0b;font-weight:normal}
 video{width:100%;border-radius:8px;background:#000}
 h3.sec{margin:8px 0 10px;color:var(--primary)}
 .hrow{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;margin-bottom:8px}
 .poster,.cw{flex:0 0 108px;background:var(--panel);border-radius:10px;overflow:hidden;cursor:pointer;border:1px solid #334155;position:relative}
+.cw{flex-basis:124px}
 .poster img,.poster .noimg,.cw img,.cw .noimg{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#0b1220}
 .poster .noimg,.cw .noimg{display:flex;align-items:center;justify-content:center;font-size:30px}
 .poster .t,.cw .t{padding:6px;font-size:12px;text-align:center;line-height:1.4}
@@ -95,7 +97,8 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 </style>
 </head>
 <body>
-​<div id="login-screen">
+
+<div id="login-screen">
 <div class="login-box">
 <h2 style="color:var(--primary)">Elkomy VIP 🚀</h2>
 <input id="username" class="login-input" placeholder="اسم المستخدم" autocapitalize="off" autocorrect="off">
@@ -105,13 +108,15 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <p id="login-error" style="color:var(--danger);display:none;margin-top:10px">بيانات الدخول غير صحيحة!</p>
 </div>
 </div>
-​<div id="profile-screen">
+
+<div id="profile-screen">
 <h2 style="margin:0 0 22px">👤 مين بيشاهد؟</h2>
 <div id="pgrid" class="pgrid"></div>
 <button id="pmanage" class="fc" style="margin-top:26px;padding:10px 20px" onclick="toggleManage()">✏️ إدارة البروفايلات</button>
 <button class="fc" style="margin-top:12px" onclick="logout()">🚪 خروج</button>
 </div>
-​<div id="pform">
+
+<div id="pform">
 <div class="pbox">
 <div id="fPrev" class="av" style="margin-bottom:12px"></div>
 <input id="fName" class="search-input" placeholder="اسم البروفايل" maxlength="20">
@@ -125,12 +130,14 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <button id="fDel" class="search-btn" style="background:var(--danger);margin-top:10px;display:none" onclick="delForm()">🗑 حذف البروفايل</button>
 </div>
 </div>
-​<div id="main-content">
+
+<div id="main-content">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
 <h1 style="color:var(--primary);margin:0;font-size:20px">Elkomy VIP 🚀</h1>
 <div style="display:flex;gap:8px"><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
 </div>
-​<div class="action-box">
+
+<div class="action-box">
 <h2 style="margin-top:0">🔍 ابحث عن فيلم / مسلسل / أنمي</h2>
 <input id="searchInput" class="search-input" placeholder="اكتب الاسم (عربي أو إنجليزي)" onkeydown="if(event.key==='Enter')searchTitles()">
 <div class="row">
@@ -138,10 +145,12 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <button class="search-btn btn-blue" onclick="directTorrentSearch()">🧲 تورنت مباشر</button>
 </div>
 </div>
-​<div id="titles"></div>
+
+<div id="titles"></div>
 <div id="details"></div>
 <div id="shelves"></div>
-​<div id="torrentPanel" style="display:none">
+
+<div id="torrentPanel" style="display:none">
 <h3 class="sec">🧲 النسخ المتاحة</h3>
 <div id="torrentHeader"></div>
 <input id="torrentQuery" class="search-input ltr" placeholder="الاسم + S01E01" onkeydown="if(event.key==='Enter')searchTorrents()">
@@ -149,29 +158,36 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <p style="color:var(--mut);font-size:12px;margin:0 0 12px">لو العمل عربي اكتب اسمه بحروف إنجليزي زي ما بيبان على التورنت (مثلاً Khamsin).</p>
 <div id="torrentResults"></div>
 </div>
-​<div class="action-box">
+
+<div class="action-box">
 <h2 style="margin-top:0">🔗 فك الروابط المباشرة والتورنت</h2>
 <input id="linkInput" class="search-input ltr" placeholder="magnet:?xt=... أو https://...">
 <button class="search-btn" onclick="processDirectLink()">سحب الرابط الآن 🚀</button>
 </div>
-​<div id="results"></div>
-​<details class="action-box adm" style="text-align:right;margin-top:18px">
+
+<div id="results"></div>
+
+<details class="action-box adm" style="text-align:right;margin-top:18px">
 <summary>👥 المستخدمين</summary>
 <div id="usBox" style="margin:14px 0"></div>
 </details>
-​<details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadLayout()">
+
+<details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadLayout()">
 <summary>🏠 ترتيب الصفحة الرئيسية</summary>
 <div id="layBox" style="margin:14px 0"></div>
 </details>
-​<details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadActivity()">
+
+<details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadActivity()">
 <summary>📊 نشاط المستخدمين</summary>
 <div id="actBox" style="margin:14px 0"></div>
 </details>
-​<details class="action-box adm" style="text-align:right;margin-top:18px">
+
+<details class="action-box adm" style="text-align:right;margin-top:18px">
 <summary>🧩 Stremio (حساب + إضافات)</summary>
 <div id="stBox" style="margin:14px 0"></div>
 </details>
-​<details class="action-box adm" style="text-align:right;margin-top:18px">
+
+<details class="action-box adm" style="text-align:right;margin-top:18px">
 <summary>⚙️ المزوّدين (TorBox / Real-Debrid / ...)</summary>
 <div id="provList" style="margin:14px 0"></div>
 <select id="provType" class="search-input"></select>
@@ -182,7 +198,8 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <p style="color:var(--mut);font-size:12px">الرابط بيجرّب المزوّد اللي دومينه بيطابقه أولاً، وبعدين باقي المزوّدين بالترتيب.</p>
 </details>
 </div>
-​<script>
+
+<script>
 const API = "https://elkomy-server-production.up.railway.app";
 let TOK = sessionStorage.getItem('tok') || localStorage.getItem('rtok') || "";
 let UNAME = '', ROLE = 'user', USERS = [], NOCHK = false;
@@ -207,37 +224,38 @@ const p2 = n => String(n).padStart(2, '0');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const EMOJIS = ['😎','🦁','🐼','🦊','👧','👦','👩','👨','🐱','🐯','🎬','🍿','🚀','⭐','👑','🎮'];
 const COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899'];
-​function esc(s) {
-const m = {'&':'&','<':'<','>':'>','"':'"',"'":'''};
-return String(s ?? '').replace(/[&<>"']/g, c => m[c]);
+
+function esc(s) {
+  const m = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+  return String(s ?? '').replace(/[&<>"']/g, c => m[c]);
 }
 function hash(s) {
-let h = 5381;
-for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
-return (h >>> 0).toString(36);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
 }
 function fmtSize(b) {
-if (!b) return 'غير معروف';
-const u = ['B','KB','MB','GB','TB'];
-let i = 0;
-while (b >= 1024 && i < 4) { b /= 1024; i++; }
-return b.toFixed(i >= 3 ? 2 : 0) + ' ' + u[i];
+  if (!b) return 'غير معروف';
+  const u = ['B','KB','MB','GB','TB'];
+  let i = 0;
+  while (b >= 1024 && i < 4) { b /= 1024; i++; }
+  return b.toFixed(i >= 3 ? 2 : 0) + ' ' + u[i];
 }
 function fmtBytes(b) { return (!b || b < 0) ? '0 B' : fmtSize(b); }
 function fmtEta(s) {
-if (!s || s < 0) return '—';
-const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
-return h ? h + 'س ' + m + 'د' : m + 'د ' + (s % 60) + 'ث';
+  if (!s || s < 0) return '—';
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+  return h ? h + 'س ' + m + 'د' : m + 'د ' + (s % 60) + 'ث';
 }
 function fmtTime(s) {
-s = Math.floor(s || 0);
-const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
-return (h ? h + ':' + p2(m) : m) + ':' + p2(x);
+  s = Math.floor(s || 0);
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return (h ? h + ':' + p2(m) : m) + ':' + p2(x);
 }
 function tags(t) {
-const re = /2160p|4K|1080p|720p|480p|BluRay|WEB-?DL|WEBRip|HDTV|HDRip|CAM/gi;
-const m = t.match(re) || [];
-return [...new Set(m.map(x => x.toUpperCase()))].join(' · ');
+  const re = /2160p|4K|1080p|720p|480p|BluRay|WEB-?DL|WEBRip|HDTV|HDRip|CAM/gi;
+  const m = t.match(re) || [];
+  return [...new Set(m.map(x => x.toUpperCase()))].join(' · ');
 }
 const EG_RX = /(مصري|مصرى|المصرية|egypt)/i, DUB_RX = /(مدبلج|دبلج|dubbed|\bdub\b)/i;
 const isDub = t => t.dub !== undefined ? !!t.dub : DUB_RX.test(t.title || '');
@@ -245,1783 +263,1799 @@ const isEgDub = t => isDub(t) && (t.eg !== undefined ? !!t.eg : EG_RX.test(t.tit
 const dubRank = t => isEgDub(t) ? 2 : (isDub(t) ? 1 : 0);
 const dubFirst = () => { const p = prof(); return !p || p.dubFirst !== false; };
 function setDubFirst(v) {
-const p = prof();
-if (!p) return;
-p.dubFirst = !!v;
-saveProfileObj(p);
-renderTorrents();
+  const p = prof();
+  if (!p) return;
+  p.dubFirst = !!v;
+  saveProfileObj(p);
+  renderTorrents();
 }
-const RISKY = /(?:\bDDP?\s?\d|\bDD+|\bAC-?3\b|\bE-?AC-?3\b|\bDTS|\bTrueHD|\bAtmos|\bHEVC|\bx265|\bH[. ]?265|\b10-?bit|.avi\b)/i;
-const risky = t => RISKY.test(String(t || '').replace(//g, ' '));
+const RISKY = /(?:\bDDP?\s?\d|\bDD\+|\bAC-?3\b|\bE-?AC-?3\b|\bDTS|\bTrueHD|\bAtmos|\bHEVC|\bx265|\bH[. ]?265|\b10-?bit|\.avi\b)/i;
+const risky = t => RISKY.test(String(t || '').replace(/_/g, ' '));
 const bestOf = list => {
-let pool = list;
-if (dubFirst()) {
-const e = list.filter(isEgDub), d = list.filter(isDub);
-pool = e.length ? e : (d.length ? d : list);
-}
-return pool.find(x => /1080p/i.test(x.title) && !risky(x.title)) ||
-pool.find(x => !risky(x.title)) || pool.find(x => /1080p/i.test(x.title)) || pool[0];
+  let pool = list;
+  if (dubFirst()) {
+    const e = list.filter(isEgDub), d = list.filter(isDub);
+    pool = e.length ? e : (d.length ? d : list);
+  }
+  return pool.find(x => /1080p/i.test(x.title) && !risky(x.title)) ||
+    pool.find(x => !risky(x.title)) || pool.find(x => /1080p/i.test(x.title)) || pool[0];
 };
 function intentUrl(u, pkg) {
-const m = /^(https?)://(.)$/i.exec(u || '');
-if (!m) return u;
-return 'intent://' + m[2] + '#Intent;scheme=' + m[1].toLowerCase() + ';' + (pkg ? 'package=' + pkg + ';' : '') + 'type=video/;end';
+  const m = /^(https?):\/\/(.*)$/i.exec(u || '');
+  if (!m) return u;
+  return 'intent://' + m[2] + '#Intent;scheme=' + m[1].toLowerCase() + ';' + (pkg ? 'package=' + pkg + ';' : '') + 'type=video/*;end';
 }
 function setAudio(idx) {
-const v = document.querySelector('#results video');
-if (!v || !v.audioTracks) return;
-for (let i = 0; i < v.audioTracks.length; i++) v.audioTracks[i].enabled = (i === +idx);
+  const v = document.querySelector('#results video');
+  if (!v || !v.audioTracks) return;
+  for (let i = 0; i < v.audioTracks.length; i++) v.audioTracks[i].enabled = (i === +idx);
 }
 async function copyText(t) {
-try { await navigator.clipboard.writeText(t); alert('تم النسخ!'); }
-catch (e) { prompt('انسخ من هنا:', t); }
+  try { await navigator.clipboard.writeText(t); alert('تم النسخ!'); }
+  catch (e) { prompt('انسخ من هنا:', t); }
 }
 function cleanName(t) {
-return String(t || '').replace(/.[a-z0-9]{2,4}$/i, '').replace(/[.]/g, ' ')
-.split(/\b(?:19|20)\d{2}\b|\b(?:480|720|1080|2160)p\b|\bS\d{1,2}E\d{1,3}\b/i)[0].trim();
+  return String(t || '').replace(/\.[a-z0-9]{2,4}$/i, '').replace(/[._]/g, ' ')
+    .split(/\b(?:19|20)\d{2}\b|\b(?:480|720|1080|2160)p\b|\bS\d{1,2}E\d{1,3}\b/i)[0].trim();
 }
-​function authFail() {
-sessionStorage.removeItem('tok');
-localStorage.removeItem('rtok');
-location.reload();
+
+function authFail() {
+  sessionStorage.removeItem('tok');
+  localStorage.removeItem('rtok');
+  location.reload();
 }
 async function api(path, opt = {}) {
-const r = await fetch(API + path, {
-...opt,
-headers: {'Content-Type': 'application/json', 'X-Token': TOK}
-});
-if (r.status === 401) authFail();
-let d = {};
-try { d = await r.json(); } catch(e) {}
-return {r, d};
+  const r = await fetch(API + path, {
+    ...opt,
+    headers: {'Content-Type': 'application/json', 'X-Token': TOK}
+  });
+  if (r.status === 401) authFail();
+  return {r, d: await r.json().catch(() => ({}))};
 }
 async function fetchText(path) {
-const r = await fetch(API + path, {headers: {'X-Token': TOK}});
-if (r.status === 401) authFail();
-const t = await r.text();
-if (!r.ok) {
-let m = 'حصل خطأ';
-try { m = JSON.parse(t).error || m; } catch (e) {}
-return {error: m};
+  const r = await fetch(API + path, {headers: {'X-Token': TOK}});
+  if (r.status === 401) authFail();
+  const t = await r.text();
+  if (!r.ok) {
+    let m = 'حصل خطأ';
+    try { m = JSON.parse(t).error || m; } catch (e) {}
+    return {error: m};
+  }
+  return {text: t};
 }
-return {text: t};
-}
-​// ================= بيانات المستخدم (محلي + مزامنة) =================
+
+// ================= بيانات المستخدم (محلي + مزامنة) =================
 function loadLocal() {
-try {
-const x = JSON.parse(localStorage.getItem('ud:' + UNAME) || 'null');
-if (x && x.profiles) UD = {profiles: x.profiles, items: x.items || {}};
-} catch (e) {}
+  try {
+    const x = JSON.parse(localStorage.getItem('ud:' + UNAME) || 'null');
+    if (x && x.profiles) UD = {profiles: x.profiles, items: x.items || {}};
+  } catch (e) {}
 }
 function saveLocal() { try { localStorage.setItem('ud:' + UNAME, JSON.stringify(UD)); } catch (e) {} }
 function mergeInto(a, b) {
-Object.entries(b.profiles || {}).forEach(([id, p]) => {
-const o = a.profiles[id];
-if (!o || (p.t || 0) > (o.t || 0)) a.profiles[id] = p;
-});
-Object.entries(b.items || {}).forEach(([pid, its]) => {
-const dst = a.items[pid] = a.items[pid] || {};
-Object.entries(its || {}).forEach(([k, it]) => {
-const o = dst[k];
-if (!o || (it.t || 0) > (o.t || 0)) dst[k] = it;
-});
-});
+  Object.entries(b.profiles || {}).forEach(([id, p]) => {
+    const o = a.profiles[id];
+    if (!o || (p.t || 0) > (o.t || 0)) a.profiles[id] = p;
+  });
+  Object.entries(b.items || {}).forEach(([pid, its]) => {
+    const dst = a.items[pid] = a.items[pid] || {};
+    Object.entries(its || {}).forEach(([k, it]) => {
+      const o = dst[k];
+      if (!o || (it.t || 0) > (o.t || 0)) dst[k] = it;
+    });
+  });
 }
 async function syncUD() {
-try {
-const {r, d} = await api('/ud/merge', {method: 'POST', body: JSON.stringify(UD)});
-if (r.ok && d.profiles) { mergeInto(UD, d); saveLocal(); }
-} catch (e) {}
+  try {
+    const {r, d} = await api('/ud/merge', {method: 'POST', body: JSON.stringify(UD)});
+    if (r.ok && d.profiles) { mergeInto(UD, d); saveLocal(); }
+  } catch (e) {}
 }
 const prof = () => (PID && UD.profiles[PID] && !UD.profiles[PID].del) ? UD.profiles[PID] : null;
 const profList = () => Object.values(UD.profiles).filter(p => !p.del).sort((a, b) => (a.c || 0) - (b.c || 0));
 const getItem = k => (UD.items[PID] || {})[k];
 function setItem(it) {
-if (!PID) return;
-it.t = Date.now();
-(UD.items[PID] = UD.items[PID] || {})[it.key] = it;
-saveLocal();
-(pq[PID] = pq[PID] || {})[it.key] = it;
-clearTimeout(pushT);
-pushT = setTimeout(doPush, 2500);
+  if (!PID) return;
+  it.t = Date.now();
+  (UD.items[PID] = UD.items[PID] || {})[it.key] = it;
+  saveLocal();
+  (pq[PID] = pq[PID] || {})[it.key] = it;
+  clearTimeout(pushT);
+  pushT = setTimeout(doPush, 2500);
 }
 async function doPush() {
-const items = pq;
-pq = {};
-const profiles = {};
-Object.keys(items).forEach(pid => { if (UD.profiles[pid]) profiles[pid] = UD.profiles[pid]; });
-try { await api('/ud/merge?lite=1', {method: 'POST', body: JSON.stringify({profiles, items})}); } catch (e) {}
+  const items = pq;
+  pq = {};
+  const profiles = {};
+  Object.keys(items).forEach(pid => { if (UD.profiles[pid]) profiles[pid] = UD.profiles[pid]; });
+  try { await api('/ud/merge?lite=1', {method: 'POST', body: JSON.stringify({profiles, items})}); } catch (e) {}
 }
 function saveProfileObj(p) {
-p.t = Date.now();
-UD.profiles[p.id] = p;
-saveLocal();
-api('/ud/merge?lite=1', {method: 'POST', body: JSON.stringify({profiles: {[p.id]: p}, items: {}})}).catch(() => {});
+  p.t = Date.now();
+  UD.profiles[p.id] = p;
+  saveLocal();
+  api('/ud/merge?lite=1', {method: 'POST', body: JSON.stringify({profiles: {[p.id]: p}, items: {}})}).catch(() => {});
 }
 function flushBeacon() {
-const v = document.querySelector('#results video');
-if (!v || !PLAY || !PID) return;
-saveProgress(v);
-const it = getItem(PLAY.key);
-if (!it) return;
-const body = JSON.stringify({
-t: TOK,
-data: {profiles: {[PID]: UD.profiles[PID]}, items: {[PID]: {[it.key]: it}}}
-});
-try { navigator.sendBeacon(API + '/ud/beacon', new Blob([body], {type: 'text/plain'})); } catch (e) {}
+  const v = document.querySelector('#results video');
+  if (!v || !PLAY || !PID) return;
+  saveProgress(v);
+  const it = getItem(PLAY.key);
+  if (!it) return;
+  const body = JSON.stringify({
+    t: TOK,
+    data: {profiles: {[PID]: UD.profiles[PID]}, items: {[PID]: {[it.key]: it}}}
+  });
+  try { navigator.sendBeacon(API + '/ud/beacon', new Blob([body], {type: 'text/plain'})); } catch (e) {}
 }
 async function refreshHome() {
-if (!PID || !TOK) return;
-await syncUD();
-if ($('main-content').style.display !== 'none') renderShelves();
+  if (!PID || !TOK) return;
+  await syncUD();
+  if ($('main-content').style.display !== 'none') renderShelves();
 }
 window.addEventListener('pagehide', flushBeacon);
 document.addEventListener('visibilitychange', () => {
-if (document.hidden) flushBeacon();
-else refreshHome();
+  if (document.hidden) flushBeacon();
+  else refreshHome();
 });
-​// ================= دخول =================
+
+// ================= دخول =================
 window.onload = () => {
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
-if (TOK) showMain();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (TOK) showMain();
 };
 document.addEventListener('keydown', e => {
-if (e.key === 'Enter' && $('login-screen').style.display !== 'none') checkLogin();
+  if (e.key === 'Enter' && $('login-screen').style.display !== 'none') checkLogin();
 });
 async function checkLogin() {
-const u = $('username').value.trim(), p = ('password').value.trim();
-try {
-const r = await fetch(API + '/auth', {
-method: 'POST',
-headers: {'Content-Type': 'application/json'},
-body: JSON.stringify({u, p})
-});
-if (r.ok) {
-const j = await r.json();
-TOK = j.token;
-sessionStorage.setItem('tok', TOK);
-if (('remember').checked) localStorage.setItem('rtok', TOK);
-$('login-error').style.display = 'none';
-showMain();
-} else if (r.status === 429) alert('محاولات كتير غلط، استنى شوية وجرّب تاني');
-else $('login-error').style.display = 'block';
-} catch (e) { alert('مش قادر أوصل للسيرفر'); }
+  const u = $('username').value.trim(), p = $('password').value.trim();
+  try {
+    const r = await fetch(API + '/auth', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({u, p})
+    });
+    if (r.ok) {
+      const j = await r.json();
+      TOK = j.token;
+      sessionStorage.setItem('tok', TOK);
+      if ($('remember').checked) localStorage.setItem('rtok', TOK);
+      $('login-error').style.display = 'none';
+      showMain();
+    } else if (r.status === 429) alert('محاولات كتير غلط، استنى شوية وجرّب تاني');
+    else $('login-error').style.display = 'block';
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
 }
 function logout() {
-sessionStorage.removeItem('tok');
-localStorage.removeItem('rtok');
-location.reload();
+  sessionStorage.removeItem('tok');
+  localStorage.removeItem('rtok');
+  location.reload();
 }
 function eye(id, b) {
-const i = $(id), show = i.type === 'password';
-i.type = show ? 'text' : 'password';
-b.textContent = show ? '🙈' : '👁';
+  const i = $(id), show = i.type === 'password';
+  i.type = show ? 'text' : 'password';
+  b.textContent = show ? '🙈' : '👁';
 }
 function applyRole() {
-document.querySelectorAll('.adm').forEach(el => el.style.display = ROLE === 'admin' ? '' : 'none');
+  document.querySelectorAll('.adm').forEach(el => el.style.display = ROLE === 'admin' ? '' : 'none');
 }
 async function showMain() {
-$('login-screen').style.display = 'none';
-$('profile-screen').style.display = 'flex';
-$('pgrid').innerHTML = pend('جاري التحميل...');
-try {
-const {d} = await api('/me');
-UNAME = d.user || '';
-ROLE = d.role || 'user';
-} catch (e) { return alert('مش قادر أوصل للسيرفر'); }
-loadLocal();
-applyRole();
-await syncUD();
-const id = localStorage.getItem('pid:' + UNAME);
-if (id && UD.profiles[id] && !UD.profiles[id].del) enterProfile(id);
-else showProfiles();
+  $('login-screen').style.display = 'none';
+  $('profile-screen').style.display = 'flex';
+  $('pgrid').innerHTML = pend('جاري التحميل...');
+  try {
+    const {d} = await api('/me');
+    UNAME = d.user || '';
+    ROLE = d.role || 'user';
+  } catch (e) { return alert('مش قادر أوصل للسيرفر'); }
+  loadLocal();
+  applyRole();
+  await syncUD();
+  const id = localStorage.getItem('pid:' + UNAME);
+  if (id && UD.profiles[id] && !UD.profiles[id].del) enterProfile(id);
+  else showProfiles();
 }
-​// ================= البروفايلات =================
+
+// ================= البروفايلات =================
 function showProfiles() {
-flushBeacon();
-$('main-content').style.display = 'none';
-$('profile-screen').style.display = 'flex';
-manage = false;
-renderProfiles();
+  flushBeacon();
+  $('main-content').style.display = 'none';
+  $('profile-screen').style.display = 'flex';
+  manage = false;
+  renderProfiles();
 }
 function renderProfiles() {
-const list = profList();
-let h = list.map(p =>
-'<div class="pcard" onclick="pickProfile(\'' + p.id + '\')"><div class="av" style="background:' + esc(p.color) + '">' +
-esc(p.emoji) + (manage ? '<span class="edit">✏️</span>' : (p.pin ? '<span class="lock">🔒</span>' : '')) +
-'</div><div>' + esc(p.name) + '</div></div>').join('');
-if (list.length < 10) {
-h += '<div class="pcard" onclick="openForm()"><div class="av" style="background:#334155">➕</div><div>إضافة</div></div>';
-}
-$('pgrid').innerHTML = h;
-$('pmanage').textContent = manage ? '✔️ تم' : '✏️ إدارة البروفايلات';
+  const list = profList();
+  let h = list.map(p =>
+    '<div class="pcard" onclick="pickProfile(\'' + p.id + '\')"><div class="av" style="background:' + esc(p.color) + '">' +
+    esc(p.emoji) + (manage ? '<span class="edit">✏️</span>' : (p.pin ? '<span class="lock">🔒</span>' : '')) +
+    '</div><div>' + esc(p.name) + '</div></div>').join('');
+  if (list.length < 10) {
+    h += '<div class="pcard" onclick="openForm()"><div class="av" style="background:#334155">➕</div><div>إضافة</div></div>';
+  }
+  $('pgrid').innerHTML = h;
+  $('pmanage').textContent = manage ? '✔️ تم' : '✏️ إدارة البروفايلات';
 }
 function toggleManage() { manage = !manage; renderProfiles(); }
 function pickProfile(id) {
-const p = UD.profiles[id];
-if (!p) return;
-if (manage) return openForm(id);
-if (p.pin) {
-const x = prompt('الرقم السري للبروفايل');
-if (x === null) return;
-if (String(x).trim() !== p.pin) return alert('الرقم غلط');
-}
-enterProfile(id);
+  const p = UD.profiles[id];
+  if (!p) return;
+  if (manage) return openForm(id);
+  if (p.pin) {
+    const x = prompt('الرقم السري للبروفايل');
+    if (x === null) return;
+    if (String(x).trim() !== p.pin) return alert('الرقم غلط');
+  }
+  enterProfile(id);
 }
 function openForm(id) {
-editId = id || null;
-const p = id ? UD.profiles[id] : null;
-form = {
-emoji: p ? p.emoji : EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
-color: p ? p.color : COLORS[Math.floor(Math.random() * COLORS.length)]
-};
-$('fName').value = p ? p.name : '';
-$('fPin').value = p ? (p.pin || '') : '';
-$('fDel').style.display = p ? 'block' : 'none';
-drawForm();
-$('pform').style.display = 'flex';
+  editId = id || null;
+  const p = id ? UD.profiles[id] : null;
+  form = {
+    emoji: p ? p.emoji : EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
+    color: p ? p.color : COLORS[Math.floor(Math.random() * COLORS.length)]
+  };
+  $('fName').value = p ? p.name : '';
+  $('fPin').value = p ? (p.pin || '') : '';
+  $('fDel').style.display = p ? 'block' : 'none';
+  drawForm();
+  $('pform').style.display = 'flex';
 }
 function drawForm() {
-$('fEmoji').innerHTML = EMOJIS.map(e =>
-'<button class="eb' + (form.emoji === e ? ' on' : '') + '" onclick="form.emoji=\'' + e + '\';drawForm()">' + e + '</button>').join('');
-$('fColor').innerHTML = COLORS.map(c =>
-'<button class="cb' + (form.color === c ? ' on' : '') + '" style="background:' + c + '" onclick="form.color=\'' + c + '\';drawForm()"></button>').join('');
-$('fPrev').style.background = form.color;
-$('fPrev').textContent = form.emoji;
+  $('fEmoji').innerHTML = EMOJIS.map(e =>
+    '<button class="eb' + (form.emoji === e ? ' on' : '') + '" onclick="form.emoji=\'' + e + '\';drawForm()">' + e + '</button>').join('');
+  $('fColor').innerHTML = COLORS.map(c =>
+    '<button class="cb' + (form.color === c ? ' on' : '') + '" style="background:' + c + '" onclick="form.color=\'' + c + '\';drawForm()"></button>').join('');
+  $('fPrev').style.background = form.color;
+  $('fPrev').textContent = form.emoji;
 }
 function closeForm() { $('pform').style.display = 'none'; }
 function saveForm() {
-const name = $('fName').value.trim();
-if (!name) return alert('اكتب اسم البروفايل');
-const raw = $('fPin').value.trim();
-const pin = raw.replace(/\D/g, '').slice(0, 4);
-if (raw && pin.length !== 4) return alert('الرقم السري لازم يكون 4 أرقام');
-const base = editId ? UD.profiles[editId]
-: {id: Math.random().toString(36).slice(2, 10), c: Date.now(), auto: true, sl: 'AR'};
-saveProfileObj(Object.assign(base, {name: name.slice(0, 20), emoji: form.emoji, color: form.color, pin: pin}));
-closeForm();
-renderProfiles();
+  const name = $('fName').value.trim();
+  if (!name) return alert('اكتب اسم البروفايل');
+  const raw = $('fPin').value.trim();
+  const pin = raw.replace(/\D/g, '').slice(0, 4);
+  if (raw && pin.length !== 4) return alert('الرقم السري لازم يكون 4 أرقام');
+  const base = editId ? UD.profiles[editId]
+    : {id: Math.random().toString(36).slice(2, 10), c: Date.now(), auto: true, sl: 'AR'};
+  saveProfileObj(Object.assign(base, {name: name.slice(0, 20), emoji: form.emoji, color: form.color, pin: pin}));
+  closeForm();
+  renderProfiles();
 }
 function delForm() {
-if (!editId || !confirm('حذف البروفايل وكل بياناته؟')) return;
-saveProfileObj({id: editId, del: true});
-if (PID === editId) { PID = null; localStorage.removeItem('pid:' + UNAME); }
-closeForm();
-renderProfiles();
+  if (!editId || !confirm('حذف البروفايل وكل بياناته؟')) return;
+  saveProfileObj({id: editId, del: true});
+  if (PID === editId) { PID = null; localStorage.removeItem('pid:' + UNAME); }
+  closeForm();
+  renderProfiles();
 }
 function enterProfile(id) {
-PID = id;
-localStorage.setItem('pid:' + UNAME, id);
-$('profile-screen').style.display = 'none';
-$('main-content').style.display = 'block';
-$('results').innerHTML = '';
-$('titles').innerHTML = '';
-$('torrentPanel').style.display = 'none';
-PLAY = null;
-pack = null;
-showCfg = false;
-VS = ['h'];
-try { history.replaceState({n: 1}, ''); } catch (e) {}
-closeDetails();
-const p = prof();
-$('pchip').innerHTML = '<span class="av sm" style="background:' + esc(p.color) + '">' + esc(p.emoji) + '</span> ' + esc(p.name);
-loadRows();
-loadStremio();
-if (ROLE === 'admin') { loadProviders(); loadUsers(); }
-pushState();
-handleDeepLink();
+  PID = id;
+  localStorage.setItem('pid:' + UNAME, id);
+  $('profile-screen').style.display = 'none';
+  $('main-content').style.display = 'block';
+  $('results').innerHTML = '';
+  $('titles').innerHTML = '';
+  $('torrentPanel').style.display = 'none';
+  PLAY = null;
+  pack = null;
+  showCfg = false;
+  VS = ['h'];
+  try { history.replaceState({n: 1}, ''); } catch (e) {}
+  closeDetails();
+  const p = prof();
+  $('pchip').innerHTML = '<span class="av sm" style="background:' + esc(p.color) + '">' + esc(p.emoji) + '</span> ' + esc(p.name);
+  loadRows();
+  loadStremio();
+  if (ROLE === 'admin') { loadProviders(); loadUsers(); }
+  pushState();
+  handleDeepLink();
 }
 function setAuto(b) {
-const p = prof();
-if (!p) return;
-p.auto = !!b;
-saveProfileObj(p);
+  const p = prof();
+  if (!p) return;
+  p.auto = !!b;
+  saveProfileObj(p);
 }
-​// ================= الصفحة الرئيسية (كمّل المشاهدة / قائمتي / مكتبة Stremio / صفوف الجديد) =================
+
+// ================= الصفحة الرئيسية (كمّل المشاهدة / قائمتي / مكتبة Stremio / صفوف الجديد) =================
 async function loadRows() {
-if (!ROWS) {
-try { const {d} = await api('/rows'); ROWS = d.rows || []; }
-catch (e) { ROWS = []; }
-}
-renderShelves();
+  if (!ROWS) {
+    try { const {d} = await api('/rows'); ROWS = d.rows || []; }
+    catch (e) { ROWS = []; }
+  }
+  renderShelves();
 }
 function nextEpOf(c) {
-if (!c || c.type !== 'tv' || c.s == null || c.e == null) return null;
-if (c.eps && c.e >= c.eps) return (c.ms && c.s < c.ms) ? {s: c.s + 1, e: 1} : null;
-return {s: c.s, e: c.e + 1};
+  if (!c || c.type !== 'tv' || c.s == null || c.e == null) return null;
+  if (c.eps && c.e >= c.eps) return (c.ms && c.s < c.ms) ? {s: c.s + 1, e: 1} : null;
+  return {s: c.s, e: c.e + 1};
 }
 function cwOK(x) {
-if (x.hide) return false;
-if (!x.done) return true;
-return x.type === 'tv' && !!(x.next || nextEpOf(x));
+  if (x.hide) return false;
+  if (!x.done) return true;
+  return x.type === 'tv' && !!(x.next || nextEpOf(x));
 }
 function cwHTML(x) {
-const doneTv = x.done && x.type === 'tv';
-const pct = (!x.done && x.dur) ? Math.min(100, x.pos / x.dur * 100) : 0;
-let lbl = '';
-if (x.type === 'tv' && x.s != null) {
-if (doneTv) {
-const n = x.next || nextEpOf(x);
-lbl = (n && n.s != null) ? '⏭ S' + p2(n.s) + 'E' + p2(n.e) : '⏭ التالي';
-} else lbl = 'S' + p2(x.s) + 'E' + p2(x.e) + ' · ' + fmtTime(x.pos);
-} else if (doneTv) lbl = '⏭ التالي';
-else lbl = fmtTime(x.pos);
-return '<div class="cw" data-k="' + esc(x.key) + '" onclick="playItem(this.dataset.k)">' +
-'<button class="cwx" onclick="event.stopPropagation();hideCw(this.parentNode.dataset.k)">✕</button>' +
-(x.poster ? '<img loading="lazy" src="' + esc(x.poster) + '" alt="">' : '<div class="noimg">🎬</div>') +
-'<div class="cwb"><i style="width:' + pct.toFixed(0) + '%"></i></div>' +
-'<div class="t">' + esc(x.title) + '<div class="y">' + esc(lbl) + '</div></div></div>';
+  const doneTv = x.done && x.type === 'tv';
+  const pct = (!x.done && x.dur) ? Math.min(100, x.pos / x.dur * 100) : 0;
+  let lbl = '';
+  if (x.type === 'tv' && x.s != null) {
+    if (doneTv) {
+      const n = x.next || nextEpOf(x);
+      lbl = (n && n.s != null) ? '⏭ S' + p2(n.s) + 'E' + p2(n.e) : '⏭ التالي';
+    } else lbl = 'S' + p2(x.s) + 'E' + p2(x.e) + ' · ' + fmtTime(x.pos);
+  } else if (doneTv) lbl = '⏭ التالي';
+  else lbl = fmtTime(x.pos);
+  return '<div class="cw" data-k="' + esc(x.key) + '" onclick="playItem(this.dataset.k)">' +
+    '<button class="cwx" onclick="event.stopPropagation();hideCw(this.parentNode.dataset.k)">✕</button>' +
+    (x.poster ? '<img loading="lazy" src="' + esc(x.poster) + '" alt="">' : '<div class="noimg">🎬</div>') +
+    '<div class="cwb"><i style="width:' + pct.toFixed(0) + '%"></i></div>' +
+    '<div class="t">' + esc(x.title) + '<div class="y">' + esc(lbl) + '</div></div></div>';
 }
 function hideCw(key) {
-const it = getItem(key);
-if (!it) return;
-setItem(Object.assign({}, it, {hide: true}));
-renderShelves();
+  const it = getItem(key);
+  if (!it) return;
+  setItem(Object.assign({}, it, {hide: true}));
+  renderShelves();
 }
 function rowsCfgHTML() {
-const p = prof(), hr = (p && p.hr) || [];
-return '<div class="action-box" style="text-align:right">' + (ROWS || []).map(r =>
-'<label style="display:block;margin:10px 0"><input type="checkbox" ' + (hr.includes(r.id) ? '' : 'checked ') +
-'onchange="toggleRow('' + r.id + '', this.checked)"> ' + esc(r.title) + '</label>').join('') + '</div>';
+  const p = prof(), hr = (p && p.hr) || [];
+  return '<div class="action-box" style="text-align:right">' + (ROWS || []).map(r =>
+    '<label style="display:block;margin:10px 0"><input type="checkbox" ' + (hr.includes(r.id) ? '' : 'checked ') +
+    'onchange="toggleRow(\'' + r.id + '\', this.checked)"> ' + esc(r.title) + '</label>').join('') + '</div>';
 }
 function toggleCfg() { showCfg = !showCfg; renderShelves(); }
 function toggleRow(id, on) {
-const p = prof();
-if (!p) return;
-const hr = (p.hr || []).filter(x => x !== id);
-if (!on) hr.push(id);
-p.hr = hr;
-saveProfileObj(p);
-renderShelves();
+  const p = prof();
+  if (!p) return;
+  const hr = (p.hr || []).filter(x => x !== id);
+  if (!on) hr.push(id);
+  p.hr = hr;
+  saveProfileObj(p);
+  renderShelves();
 }
 function stRow() {
-if (!SLIB.length) return '';
-return '<h3 class="sec">📚 مكتبة Stremio</h3><div class="hrow">' + SLIB.map(t =>
-'<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">' +
-(t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">' : '<div class="noimg">🎬</div>') +
-'<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) + '</div></div></div>').join('') + '</div>';
+  if (!SLIB.length) return '';
+  return '<h3 class="sec">📚 مكتبة Stremio</h3><div class="hrow">' + SLIB.map(t =>
+    '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">' +
+    (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">' : '<div class="noimg">🎬</div>') +
+    '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) + '</div></div></div>').join('') + '</div>';
 }
 async function openLookup(el) {
-try {
-const {d} = await api('/stremio/lookup?q=' + encodeURIComponent(el.dataset.q) + '&type=' + encodeURIComponent(el.dataset.t) + '&year=' + encodeURIComponent(el.dataset.y || ''));
-if (d.error || !d.id) return alert(d.error || 'مش لاقي العمل ده');
-openDetails(d.type, d.id);
-} catch (e) { alert('مش قادر أوصل للسيرفر'); }
+  try {
+    const {d} = await api('/stremio/lookup?q=' + encodeURIComponent(el.dataset.q) + '&type=' + encodeURIComponent(el.dataset.t) + '&year=' + encodeURIComponent(el.dataset.y || ''));
+    if (d.error || !d.id) return alert(d.error || 'مش لاقي العمل ده');
+    openDetails(d.type, d.id);
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
 }
 async function openImdb(imdb, type) {
-try {
-const {d} = await api('/stremio/find?imdb=' + encodeURIComponent(imdb) + '&type=' + encodeURIComponent(type));
-if (d.error || !d.id) return alert(d.error || 'مش لاقي العمل ده');
-openDetails(d.type, d.id);
-} catch (e) { alert('مش قادر أوصل للسيرفر'); }
+  try {
+    const {d} = await api('/stremio/find?imdb=' + encodeURIComponent(imdb) + '&type=' + encodeURIComponent(type));
+    if (d.error || !d.id) return alert(d.error || 'مش لاقي العمل ده');
+    openDetails(d.type, d.id);
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
 }
 function renderShelves() {
-const el = $('shelves');
-if (!PID) { el.innerHTML = ''; return; }
-const its = Object.values(UD.items[PID] || {}).filter(x => !x.del && x.key);
-const groups = new Map();
-its.filter(x => x.key[0] !== 'l').forEach(x => {
-const g = (x.type === 'tv' && x.tmdb) ? 'tv' + x.tmdb : x.key;
-const o = groups.get(g);
-if (!o || x.t > o.t) groups.set(g, x);
-});
-const cw = [...groups.values()].filter(cwOK).sort((a, b) => b.t - a.t).slice(0, 20);
-const lst = its.filter(x => x.key[0] === 'l').sort((a, b) => b.t - a.t)
-.map(x => ({id: x.tmdb, type: x.type, poster: x.poster, title: x.title, year: x.year}));
-const p = prof(), hr = (p && p.hr) || [];
-let h = '';
-if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
-if (lst.length) h += row('❤️ قائمتي', lst);
-h += stRow();
-(ROWS || []).forEach(r => { if (!hr.includes(r.id)) h += row(r.title, r.items); });
-if (ROWS && ROWS.length) {
-h += '<button class="fc" style="margin:6px 0 14px" onclick="toggleCfg()">⚙️ تخصيص الصفوف</button>';
-if (showCfg) h += rowsCfgHTML();
-}
-el.innerHTML = h;
+  const el = $('shelves');
+  if (!PID) { el.innerHTML = ''; return; }
+  const its = Object.values(UD.items[PID] || {}).filter(x => !x.del && x.key);
+  const groups = new Map();
+  its.filter(x => x.key[0] !== 'l').forEach(x => {
+    const g = (x.type === 'tv' && x.tmdb) ? 'tv' + x.tmdb : x.key;
+    const o = groups.get(g);
+    if (!o || x.t > o.t) groups.set(g, x);
+  });
+  const cw = [...groups.values()].filter(cwOK).sort((a, b) => b.t - a.t).slice(0, 20);
+  const lst = its.filter(x => x.key[0] === 'l').sort((a, b) => b.t - a.t)
+    .map(x => ({id: x.tmdb, type: x.type, poster: x.poster, title: x.title, year: x.year}));
+  const p = prof(), hr = (p && p.hr) || [];
+  let h = '';
+  if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
+  if (lst.length) h += row('❤️ قائمتي', lst);
+  h += stRow();
+  (ROWS || []).forEach(r => { if (!hr.includes(r.id)) h += row(r.title, r.items); });
+  if (ROWS && ROWS.length) {
+    h += '<button class="fc" style="margin:6px 0 14px" onclick="toggleCfg()">⚙️ تخصيص الصفوف</button>';
+    if (showCfg) h += rowsCfgHTML();
+  }
+  el.innerHTML = h;
 }
 function latestOf(tmdb) {
-let best = null;
-Object.values(UD.items[PID] || {}).forEach(x => {
-if (x.del || x.hide || !x.key || x.key[0] === 'l' || x.tmdb !== tmdb) return;
-if (!best || x.t > best.t) best = x;
-});
-return best;
+  let best = null;
+  Object.values(UD.items[PID] || {}).forEach(x => {
+    if (x.del || x.hide || !x.key || x.key[0] === 'l' || x.tmdb !== tmdb) return;
+    if (!best || x.t > best.t) best = x;
+  });
+  return best;
 }
 function listLabel() {
-const o = getItem('l:' + cur.type + ':' + cur.id);
-return (o && !o.del) ? '✔️ في قائمتي' + (cur.type === 'tv' ? ' 🔔' : '') : '➕ أضف لقائمتي';
+  const o = getItem('l:' + cur.type + ':' + cur.id);
+  return (o && !o.del) ? '✔️ في قائمتي' + (cur.type === 'tv' ? ' 🔔' : '') : '➕ أضف لقائمتي';
 }
 function toggleList() {
-const key = 'l:' + cur.type + ':' + cur.id, o = getItem(key);
-if (o && !o.del) setItem({key: key, del: true});
-else setItem({key: key, type: cur.type, tmdb: cur.id, title: cur.title, poster: cur.poster, year: cur.year});
-$('listBtn').textContent = listLabel();
-renderShelves();
+  const key = 'l:' + cur.type + ':' + cur.id, o = getItem(key);
+  if (o && !o.del) setItem({key: key, del: true});
+  else setItem({key: key, type: cur.type, tmdb: cur.id, title: cur.title, poster: cur.poster, year: cur.year});
+  $('listBtn').textContent = listLabel();
+  renderShelves();
 }
 function epMark(tmdb, s, e) {
-const it = getItem('e:' + tmdb + ':' + s + ':' + e);
-if (!it || it.del) return '';
-if (it.done) return ' <span style="color:var(--success)">✓ شوهدت</span>';
-return ' <span style="color:#f59e0b">▶ ' + Math.round(it.pos / (it.dur || 1) * 100) + '%</span>';
+  const it = getItem('e:' + tmdb + ':' + s + ':' + e);
+  if (!it || it.del) return '';
+  if (it.done) return ' <span style="color:var(--success)">✓ شوهدت</span>';
+  return ' <span style="color:#f59e0b">▶ ' + Math.round(it.pos / (it.dur || 1) * 100) + '%</span>';
 }
-​// ================= البحث: أفلام / مسلسلات =================
+
+// ================= البحث: أفلام / مسلسلات =================
 function row(title, list) {
-if (!list.length) return '';
-return '<h3 class="sec">' + title + '</h3><div class="hrow">' + list.map(t =>
-(t.imdb ? '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">'
-: t.lk ? '<div class="poster" data-q="' + esc(t.title) + '" data-y="' + esc(t.year) + '" data-t="' + esc(t.type) + '" onclick="openLookup(this)">'
-: '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">') +
-(t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">'
-: '<div class="noimg">🎬</div>') +
-'<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) +
-'</div></div></div>').join('') + '</div>';
+  if (!list.length) return '';
+  return '<h3 class="sec">' + title + '</h3><div class="hrow">' + list.map(t =>
+    (t.imdb ? '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">'
+      : t.lk ? '<div class="poster" data-q="' + esc(t.title) + '" data-y="' + esc(t.year) + '" data-t="' + esc(t.type) + '" onclick="openLookup(this)">'
+      : '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">') +
+    (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">'
+              : '<div class="noimg">🎬</div>') +
+    '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) +
+    '</div></div></div>').join('') + '</div>';
 }
 async function searchTitles() {
-const q = $('searchInput').value.trim();
-if (!q) return alert("اكتب اسم الفيلم أو المسلسل");
-autoPick = false;
-closeDetails();
-const box = $('titles');
-box.innerHTML = pend('جاري البحث...');
-try {
-const {d} = await api('/tmdb?q=' + encodeURIComponent(q));
-if (d.error) return box.innerHTML = warn(d.error);
-const r = d.results || [];
-if (!r.length) return box.innerHTML = warn('مفيش نتايج. جرب اسم تاني أو التورنت المباشر.');
-box.innerHTML = row('🎬 الأفلام', r.filter(x => x.type === 'movie')) +
-row('📺 المسلسلات', r.filter(x => x.type === 'tv'));
-} catch (e) { box.innerHTML = ERR; }
+  const q = $('searchInput').value.trim();
+  if (!q) return alert("اكتب اسم الفيلم أو المسلسل");
+  autoPick = false;
+  closeDetails();
+  const box = $('titles');
+  box.innerHTML = pend('جاري البحث...');
+  try {
+    const {d} = await api('/tmdb?q=' + encodeURIComponent(q));
+    if (d.error) return box.innerHTML = warn(d.error);
+    const r = d.results || [];
+    if (!r.length) return box.innerHTML = warn('مفيش نتايج. جرب اسم تاني أو التورنت المباشر.');
+    box.innerHTML = row('🎬 الأفلام', r.filter(x => x.type === 'movie')) +
+                    row('📺 المسلسلات', r.filter(x => x.type === 'tv'));
+  } catch (e) { box.innerHTML = ERR; }
 }
-​// ================= صفحة التفاصيل =================
+
+// ================= صفحة التفاصيل =================
 const chips = (a, sc) => '<div class="chips' + (sc ? ' scroll' : '') + '">' +
-a.map(x => '<span class="chip">' + esc(x) + '</span>').join('') + '</div>';
+  a.map(x => '<span class="chip">' + esc(x) + '</span>').join('') + '</div>';
 const stOK = () => ST.n > 0 && !!cur && !!cur.imdb;
 const stBtn = (s, e) => stOK()
-? '<button class="btn-st" onclick="stGo(' + s + ',' + e + ')">🧩</button>' : '';
-​async function openDetails(type, id) {
-if (!VS.includes('d')) pushView('d');
-autoPick = false;
-$('titles').style.display = 'none';
-$('shelves').style.display = 'none';
-$('torrentPanel').style.display = 'none';
-const box = $('details');
-box.style.display = 'block';
-box.innerHTML = pend('جاري التحميل...');
-window.scrollTo(0, 0);
-try {
-const {d} = await api('/details?type=' + type + '&id=' + id);
-if (d.error) return box.innerHTML = warn(d.error);
-const last = latestOf(d.id);
-if (last && last.qn) d.qname = last.qn;
-cur = d;
-selected = {title: d.title, year: d.year, type: d.type, poster: d.poster};
-const bg = esc(d.backdrop || d.poster || '');
-const cb = (last && !last.done)
-? '<button class="search-btn" style="margin-bottom:10px" data-k="' + esc(last.key) + '" onclick="playItem(this.dataset.k)">▶ كمّل ' +
-(last.s != null ? 'S' + p2(last.s) + 'E' + p2(last.e) + ' · ' : '') + fmtTime(last.pos) + '</button>' : '';
-let h = '<div class="hero" style="background-image:linear-gradient(transparent 30%,#0f172a),url(\'' + bg + '\')">' +
-'<button class="back" onclick="goBack()">➡️</button><h2>' + esc(d.title) + '</h2></div>' +
-'<div class="meta">⭐ ' + d.rating + ' · ' + esc(d.year) +
-(d.runtime ? ' · ' + d.runtime + ' د' : '') + '</div>' +
-'<p class="ov">' + esc(d.overview) + '</p>' + chips(d.genres) +
-'<div class="lbl">طاقم العمل</div>' + chips(d.cast, true) + cb +
-'<button class="search-btn" id="listBtn" style="background:#475569;margin-bottom:10px" onclick="toggleList()">' + listLabel() + '</button>' +
-(d.type === 'tv' ? '<p style="color:var(--mut);font-size:12px;margin:-4px 0 10px">لو ضفته لقائمتي بيجيلك إشعار لما ينزل منه حلقة جديدة (فعّل 🔔 من فوق).</p>' : '');
-if (d.type === 'movie') {
-if (stOK()) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
-h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
-} else {
-h += '<div class="tabs">' + d.seasons.map(s =>
-'<button class="tab" id="tab' + s.n + '" onclick="loadSeason(' + s.n + ')">الموسم ' + s.n + '</button>'
-).join('') + '</div><div id="eps"></div>';
-}
-box.innerHTML = h;
-if (d.type === 'tv' && d.seasons.length) loadSeason(d.seasons[0].n);
-} catch (e) { box.innerHTML = ERR; }
+  ? '<button class="btn-st" onclick="stGo(' + s + ',' + e + ')">🧩</button>' : '';
+
+async function openDetails(type, id) {
+  if (!VS.includes('d')) pushView('d');
+  autoPick = false;
+  $('titles').style.display = 'none';
+  $('shelves').style.display = 'none';
+  $('torrentPanel').style.display = 'none';
+  const box = $('details');
+  box.style.display = 'block';
+  box.innerHTML = pend('جاري التحميل...');
+  window.scrollTo(0, 0);
+  try {
+    const {d} = await api('/details?type=' + type + '&id=' + id);
+    if (d.error) return box.innerHTML = warn(d.error);
+    const last = latestOf(d.id);
+    if (last && last.qn) d.qname = last.qn;
+    cur = d;
+    selected = {title: d.title, year: d.year, type: d.type, poster: d.poster};
+    const bg = esc(d.backdrop || d.poster || '');
+    const cb = (last && !last.done)
+      ? '<button class="search-btn" style="margin-bottom:10px" data-k="' + esc(last.key) + '" onclick="playItem(this.dataset.k)">▶ كمّل ' +
+        (last.s != null ? 'S' + p2(last.s) + 'E' + p2(last.e) + ' · ' : '') + fmtTime(last.pos) + '</button>' : '';
+    let h = '<div class="hero" style="background-image:linear-gradient(transparent 30%,#0f172a),url(\'' + bg + '\')">' +
+      '<button class="back" onclick="goBack()">➡️</button><h2>' + esc(d.title) + '</h2></div>' +
+      '<div class="meta">⭐ ' + d.rating + ' · ' + esc(d.year) +
+      (d.runtime ? ' · ' + d.runtime + ' د' : '') + '</div>' +
+      '<p class="ov">' + esc(d.overview) + '</p>' + chips(d.genres) +
+      '<div class="lbl">طاقم العمل</div>' + chips(d.cast, true) + cb +
+      '<button class="search-btn" id="listBtn" style="background:#475569;margin-bottom:10px" onclick="toggleList()">' + listLabel() + '</button>' +
+      (d.type === 'tv' ? '<p style="color:var(--mut);font-size:12px;margin:-4px 0 10px">لو ضفته لقائمتي بيجيلك إشعار لما ينزل منه حلقة جديدة (فعّل 🔔 من فوق).</p>' : '');
+    if (d.type === 'movie') {
+      if (stOK()) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
+      h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
+    } else {
+      h += '<div class="tabs">' + d.seasons.map(s =>
+        '<button class="tab" id="tab' + s.n + '" onclick="loadSeason(' + s.n + ')">الموسم ' + s.n + '</button>'
+      ).join('') + '</div><div id="eps"></div>';
+    }
+    box.innerHTML = h;
+    if (d.type === 'tv' && d.seasons.length) loadSeason(d.seasons[0].n);
+  } catch (e) { box.innerHTML = ERR; }
 }
 function closeDetails() {
-$('details').style.display = 'none';
-$('torrentPanel').style.display = 'none';
-$('titles').style.display = 'block';
-$('shelves').style.display = 'block';
-renderShelves();
+  $('details').style.display = 'none';
+  $('torrentPanel').style.display = 'none';
+  $('titles').style.display = 'block';
+  $('shelves').style.display = 'block';
+  renderShelves();
 }
 // ================= زرار الرجوع (history) =================
 function pushView(v) {
-VS.push(v);
-try { history.pushState({n: VS.length}, ''); } catch (e) {}
+  VS.push(v);
+  try { history.pushState({n: VS.length}, ''); } catch (e) {}
 }
 function stopPlayer() {
-flushBeacon();
-const v = document.querySelector('#results video');
-if (v) { try { v.pause(); } catch (e) {} }
-clearCd();
-pullId++;
-pack = null;
-PLAY = null;
-('results').innerHTML = '';
-window.scrollTo(0, 0);
+  flushBeacon();
+  const v = document.querySelector('#results video');
+  if (v) { try { v.pause(); } catch (e) {} }
+  clearCd();
+  pullId++;
+  pack = null;
+  PLAY = null;
+  $('results').innerHTML = '';
+  window.scrollTo(0, 0);
 }
 function goBack() {
-const i = VS.indexOf('d');
-if (i > 0) history.go(-(VS.length - i));
-else closeDetails();
+  const i = VS.indexOf('d');
+  if (i > 0) history.go(-(VS.length - i));
+  else closeDetails();
 }
 window.addEventListener('popstate', e => {
-const n = (e.state && e.state.n) || 1;
-if (n > VS.length) { history.go(VS.length - n); return; }
-while (VS.length > n) {
-const top = VS.pop();
-if (top === 'p') stopPlayer();
-else if (top === 'd') closeDetails();
-}
+  const n = (e.state && e.state.n) || 1;
+  if (n > VS.length) { history.go(VS.length - n); return; }
+  while (VS.length > n) {
+    const top = VS.pop();
+    if (top === 'p') stopPlayer();
+    else if (top === 'd') closeDetails();
+  }
 });
 function handleDeepLink() {
-const m = /^#open=(tv|movie):(\d+)/.exec(location.hash);
-if (!m || !PID) return;
-try { history.replaceState({n: (history.state && history.state.n) || 1}, '', location.pathname + location.search); } catch (e) {}
-openDetails(m[1], +m[2]);
+  const m = /^#open=(tv|movie):(\d+)$/.exec(location.hash);
+  if (!m || !PID) return;
+  try { history.replaceState({n: (history.state && history.state.n) || 1}, '', location.pathname + location.search); } catch (e) {}
+  openDetails(m[1], +m[2]);
 }
 window.addEventListener('hashchange', handleDeepLink);
-​// ================= إشعارات الحلقات الجديدة =================
+
+// ================= إشعارات الحلقات الجديدة =================
 const b64u = s => {
-const r = atob((s + '='.repeat((4 - s.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
-return Uint8Array.from([...r].map(c => c.charCodeAt(0)));
+  const r = atob((s + '='.repeat((4 - s.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...r].map(c => c.charCodeAt(0)));
 };
 async function pushState() {
-const b = $('bell');
-if (!b) return;
-if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) { b.style.display = 'none'; return; }
-b.style.display = '';
-try {
-const reg = await navigator.serviceWorker.getRegistration();
-const sub = reg && await reg.pushManager.getSubscription();
-PUSH_ON = !!sub && Notification.permission === 'granted';
-} catch (e) { PUSH_ON = false; }
-b.textContent = PUSH_ON ? '🔔' : '🔕';
+  const b = $('bell');
+  if (!b) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) { b.style.display = 'none'; return; }
+  b.style.display = '';
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && await reg.pushManager.getSubscription();
+    PUSH_ON = !!sub && Notification.permission === 'granted';
+  } catch (e) { PUSH_ON = false; }
+  b.textContent = PUSH_ON ? '🔔' : '🔕';
 }
 async function bellClick() {
-if (!PUSH_ON) return enablePush();
-if (confirm('الإشعارات شغالة على الجهاز ده. تبعت إشعار تجريبي؟')) {
-const {d} = await api('/push/test', {method: 'POST'});
-return alert(d.sent ? 'اتبعت ✅ (لو مجاش اقفل وافتح التطبيق)' : (d.error || 'مفيش اشتراك محفوظ، جرّب تطفي الإشعارات وتفعّلها تاني'));
-}
-if (confirm('إيقاف الإشعارات على الجهاز ده؟')) disablePush();
+  if (!PUSH_ON) return enablePush();
+  if (confirm('الإشعارات شغالة على الجهاز ده. تبعت إشعار تجريبي؟')) {
+    const {d} = await api('/push/test', {method: 'POST'});
+    return alert(d.sent ? 'اتبعت ✅ (لو مجاش اقفل وافتح التطبيق)' : (d.error || 'مفيش اشتراك محفوظ، جرّب تطفي الإشعارات وتفعّلها تاني'));
+  }
+  if (confirm('إيقاف الإشعارات على الجهاز ده؟')) disablePush();
 }
 async function enablePush() {
-try {
-const reg = await navigator.serviceWorker.ready;
-const {d} = await api('/push/key');
-if (!d.enabled) return alert(d.error || 'الإشعارات مش متاحة على السيرفر');
-if (await Notification.requestPermission() !== 'granted') return alert('لازم تسمح بالإشعارات من إعدادات المتصفح للموقع ده');
-const old = await reg.pushManager.getSubscription();
-if (old) await old.unsubscribe();
-const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64u(d.key)});
-const r = await api('/push/subscribe', {method: 'POST', body: JSON.stringify({subscription: sub.toJSON()})});
-if (r.d.error) return alert(r.d.error);
-alert('تم تفعيل الإشعارات ✅');
-} catch (e) { alert('مش قادر أفعّل الإشعارات: ' + (e.message || e)); }
-pushState();
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const {d} = await api('/push/key');
+    if (!d.enabled) return alert(d.error || 'الإشعارات مش متاحة على السيرفر');
+    if (await Notification.requestPermission() !== 'granted') return alert('لازم تسمح بالإشعارات من إعدادات المتصفح للموقع ده');
+    const old = await reg.pushManager.getSubscription();
+    if (old) await old.unsubscribe();
+    const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64u(d.key)});
+    const r = await api('/push/subscribe', {method: 'POST', body: JSON.stringify({subscription: sub.toJSON()})});
+    if (r.d.error) return alert(r.d.error);
+    alert('تم تفعيل الإشعارات ✅');
+  } catch (e) { alert('مش قادر أفعّل الإشعارات: ' + (e.message || e)); }
+  pushState();
 }
 async function disablePush() {
-try {
-const reg = await navigator.serviceWorker.getRegistration();
-const sub = reg && await reg.pushManager.getSubscription();
-if (sub) {
-await api('/push/unsubscribe', {method: 'POST', body: JSON.stringify({endpoint: sub.endpoint})});
-await sub.unsubscribe();
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && await reg.pushManager.getSubscription();
+    if (sub) {
+      await api('/push/unsubscribe', {method: 'POST', body: JSON.stringify({endpoint: sub.endpoint})});
+      await sub.unsubscribe();
+    }
+  } catch (e) {}
+  pushState();
 }
-} catch (e) {}
-pushState();
-}
-​async function loadSeason(n) {
-document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab' + n));
-const b = $('eps'), my = ++sReq;
-b.innerHTML = pend('جاري تحميل الحلقات...');
-try {
-const {d} = await api('/season?id=' + cur.id + '&n=' + n);
-if (my !== sReq) return;
-if (d.error) return b.innerHTML = warn(d.error);
-b.innerHTML = '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' +
-d.episodes.map(e => '<div class="ep">' +
-(e.still ? '<img loading="lazy" src="' + esc(e.still) + '" alt="">' : '') +
-'<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) +
-(e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + '</small></div>' +
-stBtn(n, e.n) +
-'<button onclick="go(' + n + ',' + e.n + ')">🧲</button></div>').join('');
-} catch (e) { if (my === sReq) b.innerHTML = ERR; }
+
+async function loadSeason(n) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab' + n));
+  const b = $('eps'), my = ++sReq;
+  b.innerHTML = pend('جاري تحميل الحلقات...');
+  try {
+    const {d} = await api('/season?id=' + cur.id + '&n=' + n);
+    if (my !== sReq) return;
+    if (d.error) return b.innerHTML = warn(d.error);
+    b.innerHTML = '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' +
+      d.episodes.map(e => '<div class="ep">' +
+        (e.still ? '<img loading="lazy" src="' + esc(e.still) + '" alt="">' : '') +
+        '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) +
+        (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + '</small></div>' +
+        stBtn(n, e.n) +
+        '<button onclick="go(' + n + ',' + e.n + ')">🧲</button></div>').join('');
+  } catch (e) { if (my === sReq) b.innerHTML = ERR; }
 }
 function altChips() {
-const a = (cur && selected && cur.alt) ? cur.alt : [];
-if (!a.length) return '';
-return '<div class="lbl">جرّب اسم تاني:</div><div class="chips">' + a.map(x =>
-'<button class="fc" data-n="' + esc(x) + '" onclick="useAlt(this.dataset.n)">' + esc(x) + '</button>').join('') + '</div>';
+  const a = (cur && selected && cur.alt) ? cur.alt : [];
+  if (!a.length) return '';
+  return '<div class="lbl">جرّب اسم تاني:</div><div class="chips">' + a.map(x =>
+    '<button class="fc" data-n="' + esc(x) + '" onclick="useAlt(this.dataset.n)">' + esc(x) + '</button>').join('') + '</div>';
 }
 function buildQ(name) {
-let q = name.replace(/[:'"!?,.&]/g, ' ').replace(/\s+/g, ' ').trim();
-if (cur.type === 'movie' && cur.year) q += ' ' + cur.year;
-if (want && want.s) q += ' S' + p2(want.s) + (want.e ? 'E' + p2(want.e) : '');
-return q;
+  let q = name.replace(/[:'"!?,.&]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (cur.type === 'movie' && cur.year) q += ' ' + cur.year;
+  if (want && want.s) q += ' S' + p2(want.s) + (want.e ? 'E' + p2(want.e) : '');
+  return q;
 }
 function useAlt(n) {
-altQ = [];
-$('torrentQuery').value = buildQ(n);
-searchTorrents();
+  altQ = [];
+  $('torrentQuery').value = buildQ(n);
+  searchTorrents();
 }
 function go(s, e, auto, skipSt) {
-if (auto && !skipSt && ST.n > 0 && cur && cur.imdb) return stGo(s, e, true);
-want = s ? {s: s, e: e || null} : null;
-let nm = (cur.qname || cur.search_title || '').trim();
-altQ = (cur.alt || []).filter(x => x.toLowerCase() !== nm.toLowerCase()).slice(0, 3);
-if (!nm && altQ.length) nm = altQ.shift();
-autoPick = !!auto && !!nm;
-if (!nm) {
-const panel = $('torrentPanel');
-panel.style.display = 'block';
-$('torrentQuery').value = '';
-$('torrentHeader').innerHTML = torrentHeader();
-$('torrentResults').innerHTML = warn('الاسم ده عربي ومالوش اسم إنجليزي معروف. اكتب اسمه بحروف إنجليزي زي ما بيبان على التورنت (مثلاً Khamsin) وبعدين دوس "ابحث في التورنت".') + altChips();
-panel.scrollIntoView({behavior: 'smooth'});
-$('torrentQuery').focus();
-return;
+  if (auto && !skipSt && ST.n > 0 && cur && cur.imdb) return stGo(s, e, true);
+  want = s ? {s: s, e: e || null} : null;
+  let nm = (cur.qname || cur.search_title || '').trim();
+  altQ = (cur.alt || []).filter(x => x.toLowerCase() !== nm.toLowerCase()).slice(0, 3);
+  if (!nm && altQ.length) nm = altQ.shift();
+  autoPick = !!auto && !!nm;
+  if (!nm) {
+    const panel = $('torrentPanel');
+    panel.style.display = 'block';
+    $('torrentQuery').value = '';
+    $('torrentHeader').innerHTML = torrentHeader();
+    $('torrentResults').innerHTML = warn('الاسم ده عربي ومالوش اسم إنجليزي معروف. اكتب اسمه بحروف إنجليزي زي ما بيبان على التورنت (مثلاً Khamsin) وبعدين دوس "ابحث في التورنت".') + altChips();
+    panel.scrollIntoView({behavior: 'smooth'});
+    $('torrentQuery').focus();
+    return;
+  }
+  $('torrentQuery').value = buildQ(nm);
+  searchTorrents();
 }
-$('torrentQuery').value = buildQ(nm);
-searchTorrents();
-}
-​// ================= نتايج إضافات Stremio =================
+
+// ================= نتايج إضافات Stremio =================
 async function stGo(s, e, auto) {
-if (!cur || !cur.imdb) return;
-want = s ? {s: s, e: e || null} : null;
-autoPick = false;
-altQ = [];
-const my = ++seq;
-const panel = $('torrentPanel'), box = $('torrentResults');
-panel.style.display = 'block';
-$('torrentHeader').innerHTML = torrentHeader();
-box.innerHTML = pend('بجيب النتايج من إضافات Stremio...');
-panel.scrollIntoView({behavior: 'smooth'});
-let d;
-try {
-d = (await api('/stremio/streams?type=' + cur.type + '&imdb=' + encodeURIComponent(cur.imdb) +
-(want ? '&s=' + want.s + '&e=' + (want.e || 1) : ''))).d;
-} catch (x) { if (my === seq) box.innerHTML = ERR; return; }
-if (my !== seq) return;
-if (d.error || !(d.results || []).length) {
-if (auto) return go(s, e, true, true);
-const nt = (d.notes || []).map(x => '• ' + esc(x)).join('
-');
-return box.innerHTML = warn(d.error || 'الإضافات مرجعتش نتايج.') +
-(nt ? '<div style="font-size:12px;color:var(--mut);direction:ltr;text-align:left">' + nt + '</div>' : '');
+  if (!cur || !cur.imdb) return;
+  want = s ? {s: s, e: e || null} : null;
+  autoPick = false;
+  altQ = [];
+  const my = ++seq;
+  const panel = $('torrentPanel'), box = $('torrentResults');
+  panel.style.display = 'block';
+  $('torrentHeader').innerHTML = torrentHeader();
+  box.innerHTML = pend('بجيب النتايج من إضافات Stremio...');
+  panel.scrollIntoView({behavior: 'smooth'});
+  let d;
+  try {
+    d = (await api('/stremio/streams?type=' + cur.type + '&imdb=' + encodeURIComponent(cur.imdb) +
+      (want ? '&s=' + want.s + '&e=' + (want.e || 1) : ''))).d;
+  } catch (x) { if (my === seq) box.innerHTML = ERR; return; }
+  if (my !== seq) return;
+  if (d.error || !(d.results || []).length) {
+    if (auto) return go(s, e, true, true);
+    const nt = (d.notes || []).map(x => '• ' + esc(x)).join('<br>');
+    return box.innerHTML = warn(d.error || 'الإضافات مرجعتش نتايج.') +
+      (nt ? '<div style="font-size:12px;color:var(--mut);direction:ltr;text-align:left">' + nt + '</div>' : '');
+  }
+  torrents = d.results;
+  stMode = true;
+  qf = 'all';
+  showAll = false;
+  lastQ = '';
+  renderTorrents();
+  await markCached();
+  if (!auto || my !== seq) return;
+  let c = shown.filter(x => x.ref || x.cached);
+  if (!c.length && NOCHK) c = shown.slice();
+  const best = bestOf(c);
+  if (best) return pullTorrent(shown.indexOf(best));
+  go(s, e, true, true);
 }
-torrents = d.results;
-stMode = true;
-qf = 'all';
-showAll = false;
-lastQ = '';
-renderTorrents();
-await markCached();
-if (!auto || my !== seq) return;
-let c = shown.filter(x => x.ref || x.cached);
-if (!c.length && NOCHK) c = shown.slice();
-const best = bestOf(c);
-if (best) return pullTorrent(shown.indexOf(best));
-go(s, e, true, true);
-}
-​// ================= ذكاء البحث (فلترة النتايج) =================
+
+// ================= ذكاء البحث (فلترة النتايج) =================
 const STOP = new Set(['the', 'of', 'a', 'an', 'and', 'in', 'on', 'to']);
 const hashOf = m => { const x = /btih:([a-f0-9]{40})/i.exec(m || ''); return x ? x[1].toLowerCase() : ''; };
 const tok = s => String(s || '').toLowerCase().split(/[^\p{L}\p{N}\p{M}]+/u).filter(Boolean);
-​function info(title) {
-const t = title.replace(/[._]/g, ' ');
-let m = /\bS(\d{1,2})\s*[- ]?\sE(\d{1,3})\b/i.exec(t) || /\b(\d{1,2})x(\d{2,3})\b/i.exec(t);
-if (m) return {s: +m[1], e: +m[2]};
-m = /\bS(\d{1,2})\s(?:-|to)\sS?(\d{1,2})\b/i.exec(t);
-if (m) return {s: +m[1], s2: +m[2], pack: true};
-m = /\bS(\d{1,2})\b/i.exec(t) || /\bSeason\s(\d{1,2})\b/i.exec(t);
-if (m) return {s: +m[1], pack: true};
-if (/\b(complete|collection)\b/i.test(t)) return {s: null, pack: true, all: true};
-m = /(?:^|[^A-Za-z0-9])(?:Episode|EP|E)[ -]?(\d{1,3})(?!\d)/i.exec(t) || /الحلقة\s*(\d{1,3})/.exec(t);
-if (m) return {s: null, e: +m[1]};
-return {};
+
+function info(title) {
+  const t = title.replace(/[._]/g, ' ');
+  let m = /\bS(\d{1,2})\s*[- ]?\s*E(\d{1,3})\b/i.exec(t) || /\b(\d{1,2})x(\d{2,3})\b/i.exec(t);
+  if (m) return {s: +m[1], e: +m[2]};
+  m = /\bS(\d{1,2})\s*(?:-|to)\s*S?(\d{1,2})\b/i.exec(t);
+  if (m) return {s: +m[1], s2: +m[2], pack: true};
+  m = /\bS(\d{1,2})\b/i.exec(t) || /\bSeason\s*(\d{1,2})\b/i.exec(t);
+  if (m) return {s: +m[1], pack: true};
+  if (/\b(complete|collection)\b/i.test(t)) return {s: null, pack: true, all: true};
+  m = /(?:^|[^A-Za-z0-9])(?:Episode|EP|E)[ -]?(\d{1,3})(?!\d)/i.exec(t) || /الحلقة\s*(\d{1,3})/.exec(t);
+  if (m) return {s: null, e: +m[1]};
+  return {};
 }
 function qWords(q) {
-const x = q.toLowerCase()
-.replace(/\bs\d{1,2}(e\d{1,3})?\b/g, ' ')
-.replace(/\b(19|20)\d{2}\b/g, ' ');
-return tok(x).filter(w => !STOP.has(w) && (w.length > 1 || /\d/.test(w)));
+  const x = q.toLowerCase()
+    .replace(/\bs\d{1,2}(e\d{1,3})?\b/g, ' ')
+    .replace(/\b(19|20)\d{2}\b/g, ' ');
+  return tok(x).filter(w => !STOP.has(w) && (w.length > 1 || /\d/.test(w)));
 }
 function titleOK(t, words) {
-if (!words.length) return true;
-const set = new Set(tok(t.title));
-const hit = words.filter(w => set.has(w)).length;
-const need = words.length >= 4 ? words.length - 1 : words.length;
-return hit >= need;
+  if (!words.length) return true;
+  const set = new Set(tok(t.title));
+  const hit = words.filter(w => set.has(w)).length;
+  const need = words.length >= 4 ? words.length - 1 : words.length;
+  return hit >= need;
 }
 function yearOK(t) {
-if (!(selected && selected.type === 'movie' && selected.year)) return true;
-const ys = t.title.match(/\b(19|20)\d{2}\b/g);
-if (!ys) return true;
-const y = +selected.year;
-return ys.some(v => Math.abs(+v - y) <= 1);
+  if (!(selected && selected.type === 'movie' && selected.year)) return true;
+  const ys = t.title.match(/\b(19|20)\d{2}\b/g);
+  if (!ys) return true;
+  const y = +selected.year;
+  return ys.some(v => Math.abs(+v - y) <= 1);
 }
 function wantOK(t) {
-if (!want || !want.s) return true;
-const i = info(t.title);
-if (i.all) return true;
-if (i.s == null && i.e != null) return !!want.e && i.e === want.e;
-if (i.s == null) return false;
-if (!(i.s <= want.s && want.s <= (i.s2 || i.s))) return false;
-if (want.e) return i.e == null ? !!i.pack : i.e === want.e;
-return !!i.pack;
+  if (!want || !want.s) return true;
+  const i = info(t.title);
+  if (i.all) return true;
+  if (i.s == null && i.e != null) return !!want.e && i.e === want.e;
+  if (i.s == null) return false;
+  if (!(i.s <= want.s && want.s <= (i.s2 || i.s))) return false;
+  if (want.e) return i.e == null ? !!i.pack : i.e === want.e;
+  return !!i.pack;
 }
 function qOK(t) {
-if (qf === 'all') return true;
-if (qf === 'fast') return !!t.cached;
-if (qf === 'safe') return !risky(t.title);
-if (qf === 'eg') return isEgDub(t);
-if (qf === 'dub') return isDub(t);
-if (qf === '4k') return /2160p|\b4K\b/i.test(t.title);
-if (qf === '1080') return /1080p/i.test(t.title);
-return /720p/i.test(t.title);
+  if (qf === 'all') return true;
+  if (qf === 'fast') return !!t.cached;
+  if (qf === 'safe') return !risky(t.title);
+  if (qf === 'eg') return isEgDub(t);
+  if (qf === 'dub') return isDub(t);
+  if (qf === '4k') return /2160p|\b4K\b/i.test(t.title);
+  if (qf === '1080') return /1080p/i.test(t.title);
+  return /720p/i.test(t.title);
 }
 function dedupe(list) {
-const m = new Map();
-list.forEach(t => {
-const k = t.hash || hashOf(t.magnet) || t.magnet || t.ref;
-const o = m.get(k);
-if (!o || t.seeders > o.seeders) m.set(k, t);
-});
-return [...m.values()];
+  const m = new Map();
+  list.forEach(t => {
+    const k = t.hash || hashOf(t.magnet) || t.magnet || t.ref;
+    const o = m.get(k);
+    if (!o || t.seeders > o.seeders) m.set(k, t);
+  });
+  return [...m.values()];
 }
 function visible() {
-const base = dedupe(torrents);
-if (stMode) return {base, good: base};
-const words = qWords(lastQ);
-const good = base.filter(t => titleOK(t, words) && yearOK(t) && wantOK(t) &&
-(t.seeders > 0 || t.cached));
-return {base, good};
+  const base = dedupe(torrents);
+  if (stMode) return {base, good: base};
+  const words = qWords(lastQ);
+  const good = base.filter(t => titleOK(t, words) && yearOK(t) && wantOK(t) &&
+    (t.seeders > 0 || t.cached));
+  return {base, good};
 }
-​// ================= التورنت =================
+
+// ================= التورنت =================
 function directTorrentSearch() {
-const q = $('searchInput').value.trim();
-if (!q) return alert("اكتب الاسم الأول");
-selected = null;
-want = null;
-autoPick = false;
-altQ = [];
-$('torrentQuery').value = q;
-searchTorrents();
+  const q = $('searchInput').value.trim();
+  if (!q) return alert("اكتب الاسم الأول");
+  selected = null;
+  want = null;
+  autoPick = false;
+  altQ = [];
+  $('torrentQuery').value = q;
+  searchTorrents();
 }
 function torrentHeader() {
-if (!selected) return '';
-const lbl = want ? ' · S' + p2(want.s) + (want.e ? 'E' + p2(want.e) : ' (الموسم كامل)') : '';
-return '<div class="selbox">' +
-(selected.poster ? '<img src="' + esc(selected.poster) + '" alt="">' : '') +
-'<div><b>' + esc(selected.title) + '</b><div style="color:var(--mut);font-size:13px">' +
-esc(selected.year) + esc(lbl) + '</div></div></div>';
+  if (!selected) return '';
+  const lbl = want ? ' · S' + p2(want.s) + (want.e ? 'E' + p2(want.e) : ' (الموسم كامل)') : '';
+  return '<div class="selbox">' +
+    (selected.poster ? '<img src="' + esc(selected.poster) + '" alt="">' : '') +
+    '<div><b>' + esc(selected.title) + '</b><div style="color:var(--mut);font-size:13px">' +
+    esc(selected.year) + esc(lbl) + '</div></div></div>';
 }
 async function searchTorrents(retry, fromAlt) {
-let q = $('torrentQuery').value.trim();
-if (!q) return;
-stMode = false;
-if (!retry && want && want.s && !/\bS\d{1,2}/i.test(q)) {
-q += ' S' + p2(want.s) + (want.e ? 'E' + p2(want.e) : '');
-$('torrentQuery').value = q;
-}
-const my = ++seq;
-lastQ = q;
-if (!retry) { qf = 'all'; showAll = false; }
-const panel = $('torrentPanel'), box = $('torrentResults');
-panel.style.display = 'block';
-('torrentHeader').innerHTML = torrentHeader();
-box.innerHTML = pend(retry ? 'مفيش الحلقة لوحدها، بدوّر على باك الموسم...'
-: (fromAlt ? 'بجرّب اسم تاني: ' + q : 'جاري البحث في المصادر... (قد ياخد نص دقيقة)'));
-panel.scrollIntoView({behavior: 'smooth'});
-try {
-const {d} = await api('/search?q=' + encodeURIComponent(q));
-if (my !== seq) return;
-if (d.error) return box.innerHTML = warn(d.error);
-torrents = d.results || [];
-const poor = !torrents.length || !visible().good.length;
-if (poor && !retry && want && want.e && /E\d+/i.test(q)) {
-('torrentQuery').value = q.replace(/\s*E\d+/i, '');
-return searchTorrents(true, fromAlt);
-}
-if (poor && altQ.length && selected && cur) {
-const nm = altQ.shift();
-$('torrentQuery').value = buildQ(nm);
-return searchTorrents(false, true);
-}
-if (!torrents.length) {
-autoPick = false;
-return box.innerHTML = warn('مفيش نتايج. جرب تعدّل الاسم (بدون سنة، أو بالإنجليزي).') + altChips();
-}
-renderTorrents();
-markCached();
-} catch (e) { if (my === seq) box.innerHTML = ERR; }
+  let q = $('torrentQuery').value.trim();
+  if (!q) return;
+  stMode = false;
+  if (!retry && want && want.s && !/\bS\d{1,2}/i.test(q)) {
+    q += ' S' + p2(want.s) + (want.e ? 'E' + p2(want.e) : '');
+    $('torrentQuery').value = q;
+  }
+  const my = ++seq;
+  lastQ = q;
+  if (!retry) { qf = 'all'; showAll = false; }
+  const panel = $('torrentPanel'), box = $('torrentResults');
+  panel.style.display = 'block';
+  $('torrentHeader').innerHTML = torrentHeader();
+  box.innerHTML = pend(retry ? 'مفيش الحلقة لوحدها، بدوّر على باك الموسم...'
+    : (fromAlt ? 'بجرّب اسم تاني: ' + q : 'جاري البحث في المصادر... (قد ياخد نص دقيقة)'));
+  panel.scrollIntoView({behavior: 'smooth'});
+  try {
+    const {d} = await api('/search?q=' + encodeURIComponent(q));
+    if (my !== seq) return;
+    if (d.error) return box.innerHTML = warn(d.error);
+    torrents = d.results || [];
+    const poor = !torrents.length || !visible().good.length;
+    if (poor && !retry && want && want.e && /E\d+$/i.test(q)) {
+      $('torrentQuery').value = q.replace(/\s*E\d+$/i, '');
+      return searchTorrents(true, fromAlt);
+    }
+    if (poor && altQ.length && selected && cur) {
+      const nm = altQ.shift();
+      $('torrentQuery').value = buildQ(nm);
+      return searchTorrents(false, true);
+    }
+    if (!torrents.length) {
+      autoPick = false;
+      return box.innerHTML = warn('مفيش نتايج. جرب تعدّل الاسم (بدون سنة، أو بالإنجليزي).') + altChips();
+    }
+    renderTorrents();
+    markCached();
+  } catch (e) { if (my === seq) box.innerHTML = ERR; }
 }
 function renderTorrents() {
-const {base, good} = visible();
-const none = !good.length;
-const list = (showAll ? base : good).filter(qOK);
-const df = dubFirst();
-list.sort((a, b) => (df ? dubRank(b) - dubRank(a) : 0) || (!!b.cached - !!a.cached) || (b.seeders - a.seeders));
-shown = list;
-const hidden = base.length - good.length;
-const fl = [['all', 'الكل'], ['eg', '🇪🇬 مصري'], ['dub', '🎙 مدبلج'], ['safe', '✅ للمتصفح'], ['fast', '⚡ فوري'], ['4k', '4K'], ['1080', '1080p'], ['720', '720p']];
-let h = '<label style="display:block;margin:0 0 10px;color:var(--mut);font-size:13px"><input type="checkbox" ' + (df ? 'checked ' : '') + 'onchange="setDubFirst(this.checked)"> 🇪🇬 المدبلج بالمصري أولاً</label><div class="fbar">' + fl.map(f =>
-'<button class="fc' + (qf === f[0] ? ' on' : '') + '" onclick="setQf(\'' + f[0] + '\')">' + f[1] + '</button>'
-).join('');
-if ((!none && hidden > 0) || (none && showAll)) {
-h += '<button class="fc' + (showAll ? ' on' : '') + '" onclick="toggleAll()">' +
-(showAll ? 'إخفاء غير المطابق' : 'عرض الكل (+' + hidden + ')') + '</button>';
-}
-h += '</div>';
-if (none && !showAll) {
-shown = [];
-h += warn('مفيش نتايج مطابقة للاسم ده بالظبط.') + altChips() +
-'<button class="fc" style="margin-top:8px" onclick="toggleAll()">عرض كل النتايج (' + base.length + ') حتى لو مش مطابقة</button>';
-$('torrentResults').innerHTML = h;
-return;
-}
-if (none && showAll) h += warn('دي كل النتايج، وممكن تكون مش مطابقة للي بتدور عليه.');
-if (!list.length) h += warn('مفيش نتايج بالفلتر ده.');
-if (NOCHK && list.length) h += '<p style="color:var(--mut);font-size:12px;margin:0 0 10px">المزوّد بتاعك مبيدعمش فحص "فوري"، فأي نسخة ممكن تاخد شوية وقت لحد ما تتحمّل.</p>';
-const pic = (selected && selected.poster)
-? '<div class="pic"><img loading="lazy" src="' + esc(selected.poster) + '" alt=""></div>' : '';
-h += list.map((t, i) => {
-const tg = tags(t.title), inf = info(t.title);
-let bd = '';
-if (inf.pack) bd = '<span class="badge b2">📦 ' + (inf.all ? 'كامل' : 'باك S' + p2(inf.s)) + '</span>';
-else if (inf.e != null) bd = '<span>' + (inf.s != null ? 'S' + p2(inf.s) : '') + 'E' + p2(inf.e) + '</span>';
-return '<div class="tor">' + pic + '<div class="body"><div class="n">' + esc(t.title) + '</div>' +
-'<div class="m"><span class="size">💾 ' + fmtSize(t.size) + '</span>' +
-'<span class="s ' + (t.seeders ? '' : 'zero') + '">🌱 ' + t.seeders + '</span>' +
-(t.cached ? '<span class="badge">⚡ فوري</span>' : '') +
-(isEgDub(t) ? '<span class="badge" style="background:#16a34a;color:#fff">🇪🇬 مدبلج مصري</span>' : (isDub(t) ? '<span class="badge" style="background:#7c3aed;color:#fff">🎙 مدبلج</span>' : '')) +
-(risky(t.title) ? '<span class="badge" style="background:#ef4444;color:#fff">⚠️ ممكن مايشتغلش بالمتصفح</span>' : '') + bd +
-(tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') +
-'<span>' + esc(t.indexer) + '</span></div>' +
-'<button onclick="pullTorrent(' + i + ')">' + (t.ref ? '▶ تشغيل' : '⬇️ سحب') + '</button></div></div>';
-}).join('');
-$('torrentResults').innerHTML = h;
+  const {base, good} = visible();
+  const none = !good.length;
+  const list = (showAll ? base : good).filter(qOK);
+  const df = dubFirst();
+  list.sort((a, b) => (df ? dubRank(b) - dubRank(a) : 0) || (!!b.cached - !!a.cached) || (b.seeders - a.seeders));
+  shown = list;
+  const hidden = base.length - good.length;
+  const fl = [['all', 'الكل'], ['eg', '🇪🇬 مصري'], ['dub', '🎙 مدبلج'], ['safe', '✅ للمتصفح'], ['fast', '⚡ فوري'], ['4k', '4K'], ['1080', '1080p'], ['720', '720p']];
+  let h = '<label style="display:block;margin:0 0 10px;color:var(--mut);font-size:13px"><input type="checkbox" ' + (df ? 'checked ' : '') + 'onchange="setDubFirst(this.checked)"> 🇪🇬 المدبلج بالمصري أولاً</label><div class="fbar">' + fl.map(f =>
+    '<button class="fc' + (qf === f[0] ? ' on' : '') + '" onclick="setQf(\'' + f[0] + '\')">' + f[1] + '</button>'
+  ).join('');
+  if ((!none && hidden > 0) || (none && showAll)) {
+    h += '<button class="fc' + (showAll ? ' on' : '') + '" onclick="toggleAll()">' +
+      (showAll ? 'إخفاء غير المطابق' : 'عرض الكل (+' + hidden + ')') + '</button>';
+  }
+  h += '</div>';
+  if (none && !showAll) {
+    shown = [];
+    h += warn('مفيش نتايج مطابقة للاسم ده بالظبط.') + altChips() +
+      '<button class="fc" style="margin-top:8px" onclick="toggleAll()">عرض كل النتايج (' + base.length + ') حتى لو مش مطابقة</button>';
+    $('torrentResults').innerHTML = h;
+    return;
+  }
+  if (none && showAll) h += warn('دي كل النتايج، وممكن تكون مش مطابقة للي بتدور عليه.');
+  if (!list.length) h += warn('مفيش نتايج بالفلتر ده.');
+  if (NOCHK && list.length) h += '<p style="color:var(--mut);font-size:12px;margin:0 0 10px">المزوّد بتاعك مبيدعمش فحص "فوري"، فأي نسخة ممكن تاخد شوية وقت لحد ما تتحمّل.</p>';
+  const pic = (selected && selected.poster)
+    ? '<div class="pic"><img loading="lazy" src="' + esc(selected.poster) + '" alt=""></div>' : '';
+  h += list.map((t, i) => {
+    const tg = tags(t.title), inf = info(t.title);
+    let bd = '';
+    if (inf.pack) bd = '<span class="badge b2">📦 ' + (inf.all ? 'كامل' : 'باك S' + p2(inf.s)) + '</span>';
+    else if (inf.e != null) bd = '<span>' + (inf.s != null ? 'S' + p2(inf.s) : '') + 'E' + p2(inf.e) + '</span>';
+    return '<div class="tor">' + pic + '<div class="body"><div class="n">' + esc(t.title) + '</div>' +
+      '<div class="m"><span class="size">💾 ' + fmtSize(t.size) + '</span>' +
+      '<span class="s ' + (t.seeders ? '' : 'zero') + '">🌱 ' + t.seeders + '</span>' +
+      (t.cached ? '<span class="badge">⚡ فوري</span>' : '') +
+      (isEgDub(t) ? '<span class="badge" style="background:#16a34a;color:#fff">🇪🇬 مدبلج مصري</span>' : (isDub(t) ? '<span class="badge" style="background:#7c3aed;color:#fff">🎙 مدبلج</span>' : '')) +
+      (risky(t.title) ? '<span class="badge" style="background:#ef4444;color:#fff">⚠️ ممكن مايشتغلش بالمتصفح</span>' : '') + bd +
+      (tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') +
+      '<span>' + esc(t.indexer) + '</span></div>' +
+      '<button onclick="pullTorrent(' + i + ')">' + (t.ref ? '▶ تشغيل' : '⬇️ سحب') + '</button></div></div>';
+  }).join('');
+  $('torrentResults').innerHTML = h;
 }
 function setQf(v) { qf = v; renderTorrents(); }
 function toggleAll() { showAll = !showAll; renderTorrents(); }
-​async function markCached() {
-const my = seq;
-const hs = [...new Set(torrents.map(t => t.hash || hashOf(t.magnet)).filter(Boolean))].slice(0, 100);
-try {
-if (hs.length) {
-const {d} = await api('/cached?h=' + hs.join(','));
-if (my !== seq) return;
-NOCHK = !!d.nocheck;
-const c = new Set(d.cached || []);
-if (c.size) {
-torrents.forEach(t => { if (!t.ref) t.cached = c.has(t.hash || hashOf(t.magnet)); });
-renderTorrents();
-}
-}
-} catch (e) {}
-if (my !== seq) return;
-if (autoPick) {
-autoPick = false;
-let g = bestOf(visible().good.filter(t => t.cached).sort((a, b) => b.seeders - a.seeders));
-if (!g && NOCHK) g = bestOf(visible().good.sort((a, b) => b.seeders - a.seeders));
-if (g) {
-const i = shown.indexOf(g);
-if (i >= 0) pullTorrent(i);
-} else {
-$('torrentResults').insertAdjacentHTML('afterbegin', warn('مفيش نسخة فورية للحلقة التالية، اختار نسخة بنفسك.'));
-}
-}
+
+async function markCached() {
+  const my = seq;
+  const hs = [...new Set(torrents.map(t => t.hash || hashOf(t.magnet)).filter(Boolean))].slice(0, 100);
+  try {
+    if (hs.length) {
+      const {d} = await api('/cached?h=' + hs.join(','));
+      if (my !== seq) return;
+      NOCHK = !!d.nocheck;
+      const c = new Set(d.cached || []);
+      if (c.size) {
+        torrents.forEach(t => { if (!t.ref) t.cached = c.has(t.hash || hashOf(t.magnet)); });
+        renderTorrents();
+      }
+    }
+  } catch (e) {}
+  if (my !== seq) return;
+  if (autoPick) {
+    autoPick = false;
+    let g = bestOf(visible().good.filter(t => t.cached).sort((a, b) => b.seeders - a.seeders));
+    if (!g && NOCHK) g = bestOf(visible().good.sort((a, b) => b.seeders - a.seeders));
+    if (g) {
+      const i = shown.indexOf(g);
+      if (i >= 0) pullTorrent(i);
+    } else {
+      $('torrentResults').insertAdjacentHTML('afterbegin', warn('مفيش نسخة فورية للحلقة التالية، اختار نسخة بنفسك.'));
+    }
+  }
 }
 function scrollToResults() { $('results').scrollIntoView({behavior: 'smooth'}); }
-​function pullTorrent(i) {
-const t = shown[i];
-if (!t) return;
-const src = t.magnet;
-let base = {src: src, title: '', dr: !!t.ref};
-if (selected && cur) {
-const qn = lastQ.replace(/\sS\d{1,2}(E\d{1,3})?\s/i, '').replace(/\s+(19|20)\d{2}/, '').trim();
-base = {src: src, title: selected.title, poster: selected.poster, year: selected.year,
-type: cur.type, tmdb: cur.id, qn: qn, dr: !!t.ref};
-if (want) {
-base.s = want.s;
-base.e = want.e;
-const ss = cur.seasons || [];
-const sx = ss.find(x => x.n === want.s);
-base.eps = sx ? sx.eps : null;
-base.ms = ss.length ? Math.max(...ss.map(x => x.n)) : null;
-}
-}
-scrollToResults();
-if (t.ref) {
-clearCd();
-const id = ++pullId;
-pack = null;
-$('results').innerHTML = pend('جاري تجهيز الرابط...');
-api('/stremio/resolve', {method: 'POST', body: JSON.stringify({ref: t.ref, name: t.title, size: t.size})}).then(({d}) => {
-if (id !== pullId) return;
-if (!d.url) { $('results').innerHTML = warn(d.error || 'حصل خطأ'); return; }
-base.src = d.url;
-base.dr = true;
-curSrc = d.url;
-packBase = base;
-playData({direct_link: d.url, provider: 'Stremio', name: t.title, size: t.size}, base);
-}).catch(() => { if (id === pullId) $('results').innerHTML = ERR; });
-return;
-}
-pullSource(t.magnet, base, null);
+
+function pullTorrent(i) {
+  const t = shown[i];
+  if (!t) return;
+  const src = t.magnet;
+  let base = {src: src, title: '', dr: !!t.ref};
+  if (selected && cur) {
+    const qn = lastQ.replace(/\s*S\d{1,2}(E\d{1,3})?\s*$/i, '').replace(/\s+(19|20)\d{2}$/, '').trim();
+    base = {src: src, title: selected.title, poster: selected.poster, year: selected.year,
+            type: cur.type, tmdb: cur.id, qn: qn, dr: !!t.ref};
+    if (want) {
+      base.s = want.s;
+      base.e = want.e;
+      const ss = cur.seasons || [];
+      const sx = ss.find(x => x.n === want.s);
+      base.eps = sx ? sx.eps : null;
+      base.ms = ss.length ? Math.max(...ss.map(x => x.n)) : null;
+    }
+  }
+  scrollToResults();
+  if (t.ref) {
+    clearCd();
+    const id = ++pullId;
+    pack = null;
+    $('results').innerHTML = pend('جاري تجهيز الرابط...');
+    api('/stremio/resolve', {method: 'POST', body: JSON.stringify({ref: t.ref, name: t.title, size: t.size})}).then(({d}) => {
+      if (id !== pullId) return;
+      if (!d.url) { $('results').innerHTML = warn(d.error || 'حصل خطأ'); return; }
+      base.src = d.url;
+      base.dr = true;
+      curSrc = d.url;
+      packBase = base;
+      playData({direct_link: d.url, provider: 'Stremio', name: t.title, size: t.size}, base);
+    }).catch(() => { if (id === pullId) $('results').innerHTML = ERR; });
+    return;
+  }
+  pullSource(t.magnet, base, null);
 }
 function processDirectLink() {
-let link = $('linkInput').value.trim();
-if (!link) return alert("الرجاء لصق الرابط أولاً");
-if (!link.startsWith('http') && !link.startsWith('magnet:')) link = 'https://' + link;
-scrollToResults();
-pullSource(link, {src: link, title: ''}, null);
+  let link = $('linkInput').value.trim();
+  if (!link) return alert("الرجاء لصق الرابط أولاً");
+  if (!link.startsWith('http') && !link.startsWith('magnet:')) link = 'https://' + link;
+  scrollToResults();
+  pullSource(link, {src: link, title: ''}, null);
 }
-​// ================= السحب + التقدم =================
+
+// ================= السحب + التقدم =================
 function progHTML(d) {
-const p = d.progress || 0, size = d.size || 0;
-return '<div class="pending">⏳ ' + esc(d.provider || '') + ' — ' + esc(d.status || 'جاري التجهيز') +
-'<div class="bar"><i style="width:' + (p * 100).toFixed(1) + '%"></i></div>' +
-(p * 100).toFixed(1) + '%' + (size ? ' · ' + fmtBytes(p * size) + ' / ' + fmtBytes(size) : '') +
-'
-⚡ ' + (d.speed ? fmtBytes(d.speed) + '/s' : '—') + ' · ⏱ ' + fmtEta(d.eta) +
-' · 🌱 ' + (d.seeds || 0) + ' · 👥 ' + (d.peers || 0) +
-(d.file ? '
-<small class="fn" style="display:block">' + esc(d.file) + '</small>' : '') +
-'
-<small style="color:var(--mut)">متقفلش الصفحة</small></div>';
+  const p = d.progress || 0, size = d.size || 0;
+  return '<div class="pending">⏳ ' + esc(d.provider || '') + ' — ' + esc(d.status || 'جاري التجهيز') +
+    '<div class="bar"><i style="width:' + (p * 100).toFixed(1) + '%"></i></div>' +
+    (p * 100).toFixed(1) + '%' + (size ? ' · ' + fmtBytes(p * size) + ' / ' + fmtBytes(size) : '') +
+    '<br>⚡ ' + (d.speed ? fmtBytes(d.speed) + '/s' : '—') + ' · ⏱ ' + fmtEta(d.eta) +
+    ' · 🌱 ' + (d.seeds || 0) + ' · 👥 ' + (d.peers || 0) +
+    (d.file ? '<br><small class="fn" style="display:block">' + esc(d.file) + '</small>' : '') +
+    '<br><small style="color:var(--mut)">متقفلش الصفحة</small></div>';
 }
 const triedHTML = a => (a && a.length)
-? '<div style="font-size:12px;color:var(--mut);margin-top:10px;text-align:right">' +
-a.map(x => '• ' + esc(x)).join('
-') + '</div>' : '';
-​async function getLink(body, id) {
-let tid = body.torrent_id || null, tries = 0;
-while (true) {
-let res;
-try {
-res = await api('/generate', {method: 'POST', body: JSON.stringify({...body, torrent_id: tid})});
-} catch (e) {
-return {r: {status: 0}, d: {error: 'مش قادر أوصل للسيرفر.'}};
-}
-if (id !== pullId) return null;
-if (res.r.status === 202 && tries < 400) {
-$('results').innerHTML = progHTML(res.d) + triedHTML(res.d.tried);
-tid = res.d.torrent_id || tid;
-tries++;
-await sleep(3000);
-if (id !== pullId) return null;
-continue;
-}
-return res;
-}
+  ? '<div style="font-size:12px;color:var(--mut);margin-top:10px;text-align:right">' +
+    a.map(x => '• ' + esc(x)).join('<br>') + '</div>' : '';
+
+async function getLink(body, id) {
+  let tid = body.torrent_id || null, tries = 0;
+  while (true) {
+    let res;
+    try {
+      res = await api('/generate', {method: 'POST', body: JSON.stringify({...body, torrent_id: tid})});
+    } catch (e) {
+      return {r: {status: 0}, d: {error: 'مش قادر أوصل للسيرفر.'}};
+    }
+    if (id !== pullId) return null;
+    if (res.r.status === 202 && tries < 400) {
+      $('results').innerHTML = progHTML(res.d) + triedHTML(res.d.tried);
+      tid = res.d.torrent_id || tid;
+      tries++;
+      await sleep(3000);
+      if (id !== pullId) return null;
+      continue;
+    }
+    return res;
+  }
 }
 async function pullSource(src, base, fid) {
-curSrc = src;
-clearCd();
-const id = ++pullId;
-$('results').innerHTML = pend('جاري سحب الرابط...');
-const body = {query: src};
-if (fid != null) body.file_id = fid;
-const res = await getLink(body, id);
-if (!res) return;
-const d = res.d;
-if (!d.direct_link) {
-$('results').innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(d.tried);
-return;
-}
-base.src = src;
-packBase = base;
-if (d.pack && fid == null && d.files && base.type !== 'movie') {
-pack = d;
-const f = base.e != null
-? d.files.find(x => x.episode === base.e && (base.s == null || x.season == null || x.season === base.s)) : null;
-if (f) return playPackFile(f);
-return showPack(d);
-}
-playData(d, base);
+  curSrc = src;
+  clearCd();
+  const id = ++pullId;
+  $('results').innerHTML = pend('جاري سحب الرابط...');
+  const body = {query: src};
+  if (fid != null) body.file_id = fid;
+  const res = await getLink(body, id);
+  if (!res) return;
+  const d = res.d;
+  if (!d.direct_link) {
+    $('results').innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(d.tried);
+    return;
+  }
+  base.src = src;
+  packBase = base;
+  if (d.pack && fid == null && d.files && base.type !== 'movie') {
+    pack = d;
+    const f = base.e != null
+      ? d.files.find(x => x.episode === base.e && (base.s == null || x.season == null || x.season === base.s)) : null;
+    if (f) return playPackFile(f);
+    return showPack(d);
+  }
+  playData(d, base);
 }
 function setPlay(o) {
-PLAY = Object.assign({title: '', poster: '', year: '', type: null, tmdb: null, s: null, e: null,
-eps: null, ms: null, src: '', fid: null, fname: '', qn: '', resume: 0, sub: null, dr: false}, o);
-PLAY.key = keyOf(PLAY);
-const old = getItem(PLAY.key);
-if (old && !old.del) {
-if (!old.done && old.pos > 10) PLAY.resume = old.pos;
-if (old.sub && !PLAY.sub) PLAY.sub = old.sub;
-}
+  PLAY = Object.assign({title: '', poster: '', year: '', type: null, tmdb: null, s: null, e: null,
+    eps: null, ms: null, src: '', fid: null, fname: '', qn: '', resume: 0, sub: null, dr: false}, o);
+  PLAY.key = keyOf(PLAY);
+  const old = getItem(PLAY.key);
+  if (old && !old.del) {
+    if (!old.done && old.pos > 10) PLAY.resume = old.pos;
+    if (old.sub && !PLAY.sub) PLAY.sub = old.sub;
+  }
 }
 function keyOf(c) {
-if (c.tmdb && c.type === 'tv' && c.s != null && c.e != null) return 'e:' + c.tmdb + ':' + c.s + ':' + c.e;
-if (c.tmdb && c.type === 'movie') return 'm:' + c.tmdb;
-return 'u:' + hash(c.src || c.title || '') + (c.fid != null ? ':' + c.fid : '');
+  if (c.tmdb && c.type === 'tv' && c.s != null && c.e != null) return 'e:' + c.tmdb + ':' + c.s + ':' + c.e;
+  if (c.tmdb && c.type === 'movie') return 'm:' + c.tmdb;
+  return 'u:' + hash(c.src || c.title || '') + (c.fid != null ? ':' + c.fid : '');
 }
 function playData(d, base) {
-if (VS[VS.length - 1] !== 'p') pushView('p');
-pack = (d.files && base.type !== 'movie') ? d : null;
-if (!base.title) base.title = d.name || '';
-base.fid = d.file_id != null ? d.file_id : (base.fid != null ? base.fid : null);
-base.fname = d.name || base.fname || '';
-setPlay(base);
-const c = PLAY, p = prof();
-const ep = (c.s != null && c.e != null) ? ' · S' + p2(c.s) + 'E' + p2(c.e) : '';
-const chk = (c.type === 'tv' || pack)
-? '<label style="display:block;margin-top:10px;color:var(--mut);font-size:13px"><input type="checkbox" ' +
-((!p || p.auto !== false) ? 'checked ' : '') + 'onchange="setAuto(this.checked)"> تشغيل تلقائي للحلقة التالية</label>' : '';
-$('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">✅ ' +
-esc(c.title || 'الملف جاهز') + esc(ep) + '</h3>' +
-(c.resume ? '<p style="margin:0 0 8px;color:var(--mut)">▶ هيكمّل من ' + fmtTime(c.resume) + '</p>' : '') +
-linkCard(d, true) + '<div id="nextUp"></div>' + chk + '</div>' + (pack ? packListHTML() : '');
-attachPlayer();
+  if (VS[VS.length - 1] !== 'p') pushView('p');
+  pack = (d.files && base.type !== 'movie') ? d : null;
+  if (!base.title) base.title = d.name || '';
+  base.fid = d.file_id != null ? d.file_id : (base.fid != null ? base.fid : null);
+  base.fname = d.name || base.fname || '';
+  setPlay(base);
+  const c = PLAY, p = prof();
+  const ep = (c.s != null && c.e != null) ? ' · S' + p2(c.s) + 'E' + p2(c.e) : '';
+  const chk = (c.type === 'tv' || pack)
+    ? '<label style="display:block;margin-top:10px;color:var(--mut);font-size:13px"><input type="checkbox" ' +
+      ((!p || p.auto !== false) ? 'checked ' : '') + 'onchange="setAuto(this.checked)"> تشغيل تلقائي للحلقة التالية</label>' : '';
+  $('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">✅ ' +
+    esc(c.title || 'الملف جاهز') + esc(ep) + '</h3>' +
+    (c.resume ? '<p style="margin:0 0 8px;color:var(--mut)">▶ هيكمّل من ' + fmtTime(c.resume) + '</p>' : '') +
+    linkCard(d, true) + '<div id="nextUp"></div>' + chk + '</div>' + (pack ? packListHTML() : '');
+  attachPlayer();
 }
 function linkCard(d, video) {
-const u = esc(d.direct_link);
-return '<p style="margin:0 0 10px">📡 المصدر: <b>' + esc(d.provider || '') + '</b>' +
-(d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
-(d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
-(video ? '<video controls playsinline preload="metadata" src="' + u + '"></video><div id="playErr" style="margin-top:8px"></div><div id="audSel"></div>' +
-'<div class="row" style="margin-top:8px"><button class="fc" onclick="skip(-10)">⏪ 10ث</button>' +
-'<button class="fc" onclick="skip(10)">10ث ⏩</button>' +
-'<select class="fc" onchange="setSpeed(this.value)"><option value="1">1x</option><option value="0.75">0.75x</option>' +
-'<option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2">2x</option></select></div>' : '') +
-'<a href="' + u + '" target="_blank" rel="noopener" class="btn-download">⬇️ فتح / تحميل مباشر</a>' +
-'<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في VLC)</button>' +
-(video ? '<a class="btn-vlc" style="display:block;text-align:center;text-decoration:none;background:#0ea5e9" href="' + esc(intentUrl(d.direct_link, '')) + '">▶ فتح في مشغّل خارجي (VLC / MX Player)</a>' : '') +
-(video ? '<button class="btn-vlc btn-sub" onclick="openSubs()">💬 ترجمة</button><div id="subBox"></div>' : '');
+  const u = esc(d.direct_link);
+  return '<p style="margin:0 0 10px">📡 المصدر: <b>' + esc(d.provider || '') + '</b>' +
+    (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
+    (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
+    (video ? '<video controls playsinline preload="metadata" src="' + u + '"></video><div id="playErr" style="margin-top:8px"></div><div id="audSel"></div>' +
+      '<div class="row" style="margin-top:8px"><button class="fc" onclick="skip(-10)">⏪ 10ث</button>' +
+      '<button class="fc" onclick="skip(10)">10ث ⏩</button>' +
+      '<select class="fc" onchange="setSpeed(this.value)"><option value="1">1x</option><option value="0.75">0.75x</option>' +
+      '<option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2">2x</option></select></div>' : '') +
+    '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download">⬇️ فتح / تحميل مباشر</a>' +
+    '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في VLC)</button>' +
+    (video ? '<a class="btn-vlc" style="display:block;text-align:center;text-decoration:none;background:#0ea5e9" href="' + esc(intentUrl(d.direct_link, '')) + '">▶ فتح في مشغّل خارجي (VLC / MX Player)</a>' : '') +
+    (video ? '<button class="btn-vlc btn-sub" onclick="openSubs()">💬 ترجمة</button><div id="subBox"></div>' : '');
 }
 function skip(n) {
-const v = document.querySelector('#results video');
-if (v) v.currentTime = Math.max(0, v.currentTime + n);
+  const v = document.querySelector('#results video');
+  if (v) v.currentTime = Math.max(0, v.currentTime + n);
 }
 function setSpeed(x) {
-const v = document.querySelector('#results video');
-if (v) v.playbackRate = +x;
+  const v = document.querySelector('#results video');
+  if (v) v.playbackRate = +x;
 }
-​// ================= المشغّل: حفظ التقدم + الاستكمال + الحلقة التالية =================
+
+// ================= المشغّل: حفظ التقدم + الاستكمال + الحلقة التالية =================
 function saveProgress(v, ended) {
-if (!PLAY || !PID || !v || !isFinite(v.duration) || v.duration < 60) return;
-const pos = ended ? v.duration : v.currentTime;
-if (!ended && pos < 5) return;
-const done = !!ended || pos / v.duration >= 0.92;
-const c = PLAY, n = nextTarget();
-setItem({
-key: c.key, title: c.title, poster: c.poster, year: c.year, type: c.type,
-tmdb: c.tmdb, s: c.s, e: c.e, eps: c.eps, ms: c.ms, src: c.src,
-fid: c.fid, fname: c.fname, qn: c.qn || '', pos: Math.floor(pos), dur: Math.floor(v.duration),
-done: done, sub: c.sub || null, dr: !!c.dr,
-next: (n && n.kind === 'pack')
-? {fid: n.f.id, s: n.f.season, e: n.f.episode, name: n.f.name} : null
-});
+  if (!PLAY || !PID || !v || !isFinite(v.duration) || v.duration < 60) return;
+  const pos = ended ? v.duration : v.currentTime;
+  if (!ended && pos < 5) return;
+  const done = !!ended || pos / v.duration >= 0.92;
+  const c = PLAY, n = nextTarget();
+  setItem({
+    key: c.key, title: c.title, poster: c.poster, year: c.year, type: c.type,
+    tmdb: c.tmdb, s: c.s, e: c.e, eps: c.eps, ms: c.ms, src: c.src,
+    fid: c.fid, fname: c.fname, qn: c.qn || '', pos: Math.floor(pos), dur: Math.floor(v.duration),
+    done: done, sub: c.sub || null, dr: !!c.dr,
+    next: (n && n.kind === 'pack')
+      ? {fid: n.f.id, s: n.f.season, e: n.f.episode, name: n.f.name} : null
+  });
 }
 function attachPlayer() {
-const v = document.querySelector('#results video');
-if (!v || !PLAY) return;
-clearCd();
-nextShown = false;
-lastSave = 0;
-const r = PLAY.resume || 0;
-let seeked = false;
-const seek = () => {
-if (!seeked && r > 0 && isFinite(v.duration)) {
-seeked = true;
-v.currentTime = Math.max(0, Math.min(r, v.duration - 5));
-}
-};
-v.addEventListener('loadedmetadata', seek);
-v.addEventListener('canplay', seek);
-v.addEventListener('timeupdate', () => {
-const now = Date.now();
-if (now - lastSave > 10000) { lastSave = now; saveProgress(v); }
-checkNext(v);
-});
-v.addEventListener('pause', () => saveProgress(v));
-v.addEventListener('ended', () => { saveProgress(v, true); onEnded(); });
-v.addEventListener('error', () => {
-const b = $('playErr');
-if (b) b.innerHTML = warn('المتصفح مش قادر يشغّل الملف ده. غالباً السبب الصوت (DD5.1 / AC3 / DTS) أو الفيديو HEVC أو الصيغة MKV. افتحه في VLC أو MX Player من الزرار اللي تحت، أو اختار نسخة بعلامة ✅ للمتصفح.');
-});
-v.addEventListener('loadedmetadata', () => {
-const at = v.audioTracks, box = $('audSel');
-if (!at || at.length < 2 || !box) return;
-let o = '';
-for (let i = 0; i < at.length; i++) {
-o += '<option value="' + i + '"' + (at[i].enabled ? ' selected' : '') + '>' +
-esc(at[i].label || at[i].language || ('صوت ' + (i + 1))) + '</option>';
-}
-box.innerHTML = '<select class="search-input" style="margin-top:8px" onchange="setAudio(this.value)">' + o + '</select>';
-});
-v.play().catch(() => {});
-if (PLAY.sub) applySubItem(PLAY.sub, PLAY.sub.shift || 0, true);
-else autoSub();
+  const v = document.querySelector('#results video');
+  if (!v || !PLAY) return;
+  clearCd();
+  nextShown = false;
+  lastSave = 0;
+  const r = PLAY.resume || 0;
+  let seeked = false;
+  const seek = () => {
+    if (!seeked && r > 0 && isFinite(v.duration)) {
+      seeked = true;
+      v.currentTime = Math.max(0, Math.min(r, v.duration - 5));
+    }
+  };
+  v.addEventListener('loadedmetadata', seek);
+  v.addEventListener('canplay', seek);
+  v.addEventListener('timeupdate', () => {
+    const now = Date.now();
+    if (now - lastSave > 10000) { lastSave = now; saveProgress(v); }
+    checkNext(v);
+  });
+  v.addEventListener('pause', () => saveProgress(v));
+  v.addEventListener('ended', () => { saveProgress(v, true); onEnded(); });
+  v.addEventListener('error', () => {
+    const b = $('playErr');
+    if (b) b.innerHTML = warn('المتصفح مش قادر يشغّل الملف ده. غالباً السبب الصوت (DD5.1 / AC3 / DTS) أو الفيديو HEVC أو الصيغة MKV. افتحه في VLC أو MX Player من الزرار اللي تحت، أو اختار نسخة بعلامة ✅ للمتصفح.');
+  });
+  v.addEventListener('loadedmetadata', () => {
+    const at = v.audioTracks, box = $('audSel');
+    if (!at || at.length < 2 || !box) return;
+    let o = '';
+    for (let i = 0; i < at.length; i++) {
+      o += '<option value="' + i + '"' + (at[i].enabled ? ' selected' : '') + '>' +
+        esc(at[i].label || at[i].language || ('صوت ' + (i + 1))) + '</option>';
+    }
+    box.innerHTML = '<select class="search-input" style="margin-top:8px" onchange="setAudio(this.value)">' + o + '</select>';
+  });
+  v.play().catch(() => {});
+  if (PLAY.sub) applySubItem(PLAY.sub, PLAY.sub.shift || 0, true);
+  else autoSub();
 }
 function nextTarget() {
-const c = PLAY;
-if (!c || c.type === 'movie') return null;
-if (pack && pack.files && c.fid != null) {
-const i = pack.files.findIndex(f => f.id === c.fid);
-if (i >= 0) {
-const f = pack.files[i + 1];
-if (!f) return null;
-if (c.e != null && f.episode == null) return null;
-return {kind: 'pack', f: f,
-label: f.season != null ? 'S' + p2(f.season) + 'E' + p2(f.episode) : f.name};
-}
-}
-const n = nextEpOf(c);
-if (n) return {kind: 'search', s: n.s, e: n.e, label: 'S' + p2(n.s) + 'E' + p2(n.e)};
-return null;
+  const c = PLAY;
+  if (!c || c.type === 'movie') return null;
+  if (pack && pack.files && c.fid != null) {
+    const i = pack.files.findIndex(f => f.id === c.fid);
+    if (i >= 0) {
+      const f = pack.files[i + 1];
+      if (!f) return null;
+      if (c.e != null && f.episode == null) return null;
+      return {kind: 'pack', f: f,
+        label: f.season != null ? 'S' + p2(f.season) + 'E' + p2(f.episode) : f.name};
+    }
+  }
+  const n = nextEpOf(c);
+  if (n) return {kind: 'search', s: n.s, e: n.e, label: 'S' + p2(n.s) + 'E' + p2(n.e)};
+  return null;
 }
 const nextBtn = n => '<button class="search-btn btn-blue" style="margin-top:10px" onclick="playNext()">⏭ الحلقة التالية ' + esc(n.label) + '</button>';
 function checkNext(v) {
-if (nextShown || cdTimer || !PLAY || !isFinite(v.duration)) return;
-const left = v.duration - v.currentTime;
-if (left > 30 || left <= 0) return;
-const n = nextTarget(), box = $('nextUp');
-if (!n || !box) return;
-nextShown = true;
-box.innerHTML = nextBtn(n);
+  if (nextShown || cdTimer || !PLAY || !isFinite(v.duration)) return;
+  const left = v.duration - v.currentTime;
+  if (left > 30 || left <= 0) return;
+  const n = nextTarget(), box = $('nextUp');
+  if (!n || !box) return;
+  nextShown = true;
+  box.innerHTML = nextBtn(n);
 }
 function onEnded() {
-const n = nextTarget(), box = $('nextUp'), p = prof();
-if (!n || !box) return;
-if (p && p.auto === false) { box.innerHTML = nextBtn(n); return; }
-let c = 10;
-const draw = () => {
-box.innerHTML = '<div class="pending" style="margin-top:10px">⏭ الحلقة التالية ' + esc(n.label) +
-' بعد ' + c + ' ث<div class="row" style="margin-top:8px">' +
-'<button class="search-btn" onclick="playNext()">▶ شغّل الآن</button>' +
-'<button class="search-btn" style="background:var(--danger)" onclick="cancelNext()">✖ إلغاء</button></div></div>';
-};
-draw();
-cdTimer = setInterval(() => {
-c--;
-if (c <= 0) playNext(); else draw();
-}, 1000);
+  const n = nextTarget(), box = $('nextUp'), p = prof();
+  if (!n || !box) return;
+  if (p && p.auto === false) { box.innerHTML = nextBtn(n); return; }
+  let c = 10;
+  const draw = () => {
+    box.innerHTML = '<div class="pending" style="margin-top:10px">⏭ الحلقة التالية ' + esc(n.label) +
+      ' بعد ' + c + ' ث<div class="row" style="margin-top:8px">' +
+      '<button class="search-btn" onclick="playNext()">▶ شغّل الآن</button>' +
+      '<button class="search-btn" style="background:var(--danger)" onclick="cancelNext()">✖ إلغاء</button></div></div>';
+  };
+  draw();
+  cdTimer = setInterval(() => {
+    c--;
+    if (c <= 0) playNext(); else draw();
+  }, 1000);
 }
 function clearCd() { if (cdTimer) { clearInterval(cdTimer); cdTimer = null; } }
 function cancelNext() {
-clearCd();
-const n = nextTarget(), box = $('nextUp');
-if (n && box) box.innerHTML = nextBtn(n);
+  clearCd();
+  const n = nextTarget(), box = $('nextUp');
+  if (n && box) box.innerHTML = nextBtn(n);
 }
 async function ensureCur(id, type, qn) {
-if (cur && cur.id === id && cur.type === type) {
-if (qn && !cur.qname) cur.qname = qn;
-return;
-}
-const {d} = await api('/details?type=' + type + '&id=' + id);
-if (d.error) return;
-if (qn) d.qname = qn;
-cur = d;
-selected = {title: d.title, year: d.year, type: d.type, poster: d.poster};
+  if (cur && cur.id === id && cur.type === type) {
+    if (qn && !cur.qname) cur.qname = qn;
+    return;
+  }
+  const {d} = await api('/details?type=' + type + '&id=' + id);
+  if (d.error) return;
+  if (qn) d.qname = qn;
+  cur = d;
+  selected = {title: d.title, year: d.year, type: d.type, poster: d.poster};
 }
 async function playNext() {
-clearCd();
-const n = nextTarget();
-if (!n) return;
-if (n.kind === 'pack') return playPackFile(n.f);
-await ensureCur(PLAY.tmdb, PLAY.type, PLAY.qn);
-if (!cur || cur.id !== PLAY.tmdb) return alert('مش قادر أجيب بيانات المسلسل');
-want = {s: n.s, e: n.e};
-go(n.s, n.e, true);
+  clearCd();
+  const n = nextTarget();
+  if (!n) return;
+  if (n.kind === 'pack') return playPackFile(n.f);
+  await ensureCur(PLAY.tmdb, PLAY.type, PLAY.qn);
+  if (!cur || cur.id !== PLAY.tmdb) return alert('مش قادر أجيب بيانات المسلسل');
+  want = {s: n.s, e: n.e};
+  go(n.s, n.e, true);
 }
 async function playItem(key) {
-const it = getItem(key);
-if (!it || it.del) return;
-scrollToResults();
-if (it.done && it.type === 'tv') return playAfter(it);
-if (!it.src) return alert('مفيش مصدر محفوظ للعنصر ده');
-if (it.dr) {
-clearCd();
-pullId++;
-pack = null;
-curSrc = it.src;
-const b = baseOf(it);
-packBase = b;
-return playData({direct_link: it.src, provider: 'Stremio', name: it.fname || it.title}, b);
-}
-await pullSource(it.src, baseOf(it), it.fid != null ? it.fid : null);
+  const it = getItem(key);
+  if (!it || it.del) return;
+  scrollToResults();
+  if (it.done && it.type === 'tv') return playAfter(it);
+  if (!it.src) return alert('مفيش مصدر محفوظ للعنصر ده');
+  if (it.dr) {
+    clearCd();
+    pullId++;
+    pack = null;
+    curSrc = it.src;
+    const b = baseOf(it);
+    packBase = b;
+    return playData({direct_link: it.src, provider: 'Stremio', name: it.fname || it.title}, b);
+  }
+  await pullSource(it.src, baseOf(it), it.fid != null ? it.fid : null);
 }
 const baseOf = it => ({title: it.title, poster: it.poster, year: it.year, type: it.type, tmdb: it.tmdb,
-s: it.s, e: it.e, eps: it.eps, ms: it.ms, fid: it.fid, fname: it.fname, src: it.src, qn: it.qn || '',
-dr: !!it.dr});
+  s: it.s, e: it.e, eps: it.eps, ms: it.ms, fid: it.fid, fname: it.fname, src: it.src, qn: it.qn || '',
+  dr: !!it.dr});
 async function playAfter(it) {
-if (it.next && it.src) {
-const base = Object.assign(baseOf(it), {s: it.next.s, e: it.next.e, fid: it.next.fid, fname: it.next.name});
-return pullSource(it.src, base, it.next.fid);
+  if (it.next && it.src) {
+    const base = Object.assign(baseOf(it), {s: it.next.s, e: it.next.e, fid: it.next.fid, fname: it.next.name});
+    return pullSource(it.src, base, it.next.fid);
+  }
+  const n = nextEpOf(it);
+  if (!n) return alert('خلصت كل الحلقات المتاحة 🎉');
+  await ensureCur(it.tmdb, it.type, it.qn);
+  if (!cur || cur.id !== it.tmdb) return alert('مش قادر أجيب بيانات المسلسل');
+  want = {s: n.s, e: n.e};
+  go(n.s, n.e, true);
 }
-const n = nextEpOf(it);
-if (!n) return alert('خلصت كل الحلقات المتاحة 🎉');
-await ensureCur(it.tmdb, it.type, it.qn);
-if (!cur || cur.id !== it.tmdb) return alert('مش قادر أجيب بيانات المسلسل');
-want = {s: n.s, e: n.e};
-go(n.s, n.e, true);
-}
-​// ================= باك المسلسل (حلقات كتير) =================
+
+// ================= باك المسلسل (حلقات كتير) =================
 function fileRow(f) {
-const tag = (f.season != null && f.episode != null) ? 'S' + p2(f.season) + 'E' + p2(f.episode) + ' · '
-: (f.episode != null ? 'E' + p2(f.episode) + ' · ' : '');
-const now = !!(PLAY && $('nextUp') && PLAY.fid === f.id);
-const hi = now || !!(want && want.e && f.episode === want.e && (f.season == null || f.season === want.s));
-const mark = (packBase && packBase.tmdb && f.season != null && f.episode != null)
-? epMark(packBase.tmdb, f.season, f.episode) : '';
-return '<div class="ep' + (hi ? ' hi' : '') + '"><div class="b">' + (now ? '▶ ' : '') + tag + esc(f.name) +
-'<small>💾 ' + fmtSize(f.size) + mark + '</small></div>' +
-'<button onclick="packFile(' + f.id + ')">▶ شغّل</button></div>';
+  const tag = (f.season != null && f.episode != null) ? 'S' + p2(f.season) + 'E' + p2(f.episode) + ' · '
+    : (f.episode != null ? 'E' + p2(f.episode) + ' · ' : '');
+  const now = !!(PLAY && $('nextUp') && PLAY.fid === f.id);
+  const hi = now || !!(want && want.e && f.episode === want.e && (f.season == null || f.season === want.s));
+  const mark = (packBase && packBase.tmdb && f.season != null && f.episode != null)
+    ? epMark(packBase.tmdb, f.season, f.episode) : '';
+  return '<div class="ep' + (hi ? ' hi' : '') + '"><div class="b">' + (now ? '▶ ' : '') + tag + esc(f.name) +
+    '<small>💾 ' + fmtSize(f.size) + mark + '</small></div>' +
+    '<button onclick="packFile(' + f.id + ')">▶ شغّل</button></div>';
 }
 function packListHTML() {
-return '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">📦 الباك (' +
-pack.files.length + ' حلقة)</h3>' +
-'<p style="margin:0 0 12px">📡 ' + esc(pack.provider || '') + ' · 💾 ' + fmtSize(pack.total_size) + '</p>' +
-'<div class="row"><button class="search-btn btn-blue" onclick="packZip()">📦 الموسم ZIP</button>' +
-'<button class="search-btn" onclick="packAll()">📋 كل الروابط</button></div>' +
-'<div id="packOut" style="margin-top:12px"></div>' +
-'<div style="text-align:right;margin-top:12px">' + pack.files.map(fileRow).join('') + '</div></div>';
+  return '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">📦 الباك (' +
+    pack.files.length + ' حلقة)</h3>' +
+    '<p style="margin:0 0 12px">📡 ' + esc(pack.provider || '') + ' · 💾 ' + fmtSize(pack.total_size) + '</p>' +
+    '<div class="row"><button class="search-btn btn-blue" onclick="packZip()">📦 الموسم ZIP</button>' +
+    '<button class="search-btn" onclick="packAll()">📋 كل الروابط</button></div>' +
+    '<div id="packOut" style="margin-top:12px"></div>' +
+    '<div style="text-align:right;margin-top:12px">' + pack.files.map(fileRow).join('') + '</div></div>';
 }
 function showPack(d) {
-if (VS[VS.length - 1] !== 'p') pushView('p');
-pack = d;
-links = [];
-$('results').innerHTML = packListHTML();
+  if (VS[VS.length - 1] !== 'p') pushView('p');
+  pack = d;
+  links = [];
+  $('results').innerHTML = packListHTML();
 }
 function packFile(fid) {
-const f = pack && pack.files.find(x => x.id === fid);
-if (f) playPackFile(f);
+  const f = pack && pack.files.find(x => x.id === fid);
+  if (f) playPackFile(f);
 }
 async function playPackFile(f) {
-clearCd();
-const id = ++pullId;
-$('results').innerHTML = pend('جاري تجهيز الحلقة...');
-const res = await getLink({query: '', torrent_id: pack.torrent_id, file_id: f.id}, id);
-if (!res) return;
-const d = res.d;
-if (!d.direct_link) { $('results').innerHTML = warn(d.error || 'حصل خطأ'); return; }
-const base = Object.assign({}, packBase || {}, {s: f.season, e: f.episode, fid: f.id, fname: f.name});
-if (packBase && packBase.type === 'tv') {
-if (f.season == null && packBase.s != null) base.s = packBase.s;
-if (f.episode == null && packBase.e != null && packBase.fid === f.id) base.e = packBase.e;
-}
-if (!base.src) base.src = curSrc;
-playData(d, base);
-scrollToResults();
+  clearCd();
+  const id = ++pullId;
+  $('results').innerHTML = pend('جاري تجهيز الحلقة...');
+  const res = await getLink({query: '', torrent_id: pack.torrent_id, file_id: f.id}, id);
+  if (!res) return;
+  const d = res.d;
+  if (!d.direct_link) { $('results').innerHTML = warn(d.error || 'حصل خطأ'); return; }
+  const base = Object.assign({}, packBase || {}, {s: f.season, e: f.episode, fid: f.id, fname: f.name});
+  if (packBase && packBase.type === 'tv') {
+    if (f.season == null && packBase.s != null) base.s = packBase.s;
+    if (f.episode == null && packBase.e != null && packBase.fid === f.id) base.e = packBase.e;
+  }
+  if (!base.src) base.src = curSrc;
+  playData(d, base);
+  scrollToResults();
 }
 async function packCall(body, label) {
-const out = $('packOut');
-out.innerHTML = pend(label);
-const {d} = await api('/generate', {
-method: 'POST',
-body: JSON.stringify({query: '', torrent_id: pack.torrent_id, ...body})
-});
-return d;
+  const out = $('packOut');
+  out.innerHTML = pend(label);
+  const {d} = await api('/generate', {
+    method: 'POST',
+    body: JSON.stringify({query: '', torrent_id: pack.torrent_id, ...body})
+  });
+  return d;
 }
 async function packZip() {
-try {
-const d = await packCall({zip: true}, 'جاري تجهيز ملف ZIP...');
-$('packOut').innerHTML = d.direct_link ? linkCard(d, false) : warn(d.error || 'ZIP مش متاح لهذا الباك');
-} catch (e) { $('packOut').innerHTML = ERR; }
+  try {
+    const d = await packCall({zip: true}, 'جاري تجهيز ملف ZIP...');
+    $('packOut').innerHTML = d.direct_link ? linkCard(d, false) : warn(d.error || 'ZIP مش متاح لهذا الباك');
+  } catch (e) { $('packOut').innerHTML = ERR; }
 }
 async function packAll() {
-try {
-const d = await packCall({all: true}, 'جاري تجهيز كل الروابط...');
-if (!d.links) return $('packOut').innerHTML = warn(d.error || 'حصل خطأ');
-links = d.links.filter(x => x.url);
-$('packOut').innerHTML = '<p style="margin:0 0 8px">✅ ' + links.length + ' رابط' +
-(links.length < d.links.length ? ' (' + (d.links.length - links.length) + ' فشلوا)' : '') + '</p>' +
-'<div class="row"><button class="search-btn" onclick="copyText(links.map(x => x.url).join(\'\\n\'))">📋 نسخ الكل</button>' +
-'<button class="search-btn btn-blue" onclick="dlM3U()">🎞 ملف M3U</button></div>' +
-'<div style="text-align:right;margin-top:10px;font-size:13px">' + links.map(x =>
-'<div class="ep"><div class="b">' + (x.season != null ? 'S' + p2(x.season) + 'E' + p2(x.episode) + ' · ' : '') +
-esc(x.name) + '</div><a href="' + esc(x.url) + '" target="_blank" rel="noopener" style="color:var(--primary)">⬇️</a></div>'
-).join('') + '</div>';
-} catch (e) { $('packOut').innerHTML = ERR; }
+  try {
+    const d = await packCall({all: true}, 'جاري تجهيز كل الروابط...');
+    if (!d.links) return $('packOut').innerHTML = warn(d.error || 'حصل خطأ');
+    links = d.links.filter(x => x.url);
+    $('packOut').innerHTML = '<p style="margin:0 0 8px">✅ ' + links.length + ' رابط' +
+      (links.length < d.links.length ? ' (' + (d.links.length - links.length) + ' فشلوا)' : '') + '</p>' +
+      '<div class="row"><button class="search-btn" onclick="copyText(links.map(x => x.url).join(\'\\n\'))">📋 نسخ الكل</button>' +
+      '<button class="search-btn btn-blue" onclick="dlM3U()">🎞 ملف M3U</button></div>' +
+      '<div style="text-align:right;margin-top:10px;font-size:13px">' + links.map(x =>
+        '<div class="ep"><div class="b">' + (x.season != null ? 'S' + p2(x.season) + 'E' + p2(x.episode) + ' · ' : '') +
+        esc(x.name) + '</div><a href="' + esc(x.url) + '" target="_blank" rel="noopener" style="color:var(--primary)">⬇️</a></div>'
+      ).join('') + '</div>';
+  } catch (e) { $('packOut').innerHTML = ERR; }
 }
 function dlM3U() {
-const body = '#EXTM3U\n' + links.map(x => '#EXTINF:-1,' + x.name + '\n' + x.url).join('\n');
-const a = document.createElement('a');
-a.href = URL.createObjectURL(new Blob([body], {type: 'audio/x-mpegurl'}));
-a.download = 'playlist.m3u';
-a.click();
+  const body = '#EXTM3U\n' + links.map(x => '#EXTINF:-1,' + x.name + '\n' + x.url).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([body], {type: 'audio/x-mpegurl'}));
+  a.download = 'playlist.m3u';
+  a.click();
 }
-​// ================= الترجمة =================
+
+// ================= الترجمة =================
 function subQ(lang, forAuto) {
-const c = PLAY || {};
-let q = 'lang=' + encodeURIComponent(lang);
-if (c.tmdb && c.type) {
-q += '&type=' + c.type + '&id=' + c.tmdb;
-} else {
-const t = forAuto ? '' : ((('subQ') || {}).value || '').trim();
-if (!t) return null;
-q += '&q=' + encodeURIComponent(t);
-if (c.s != null) q += '&type=tv';
-}
-if (c.s != null) q += '&s=' + c.s;
-if (c.e != null) q += '&e=' + c.e;
-return q;
+  const c = PLAY || {};
+  let q = 'lang=' + encodeURIComponent(lang);
+  if (c.tmdb && c.type) {
+    q += '&type=' + c.type + '&id=' + c.tmdb;
+  } else {
+    const t = forAuto ? '' : (($('subQ') || {}).value || '').trim();
+    if (!t) return null;
+    q += '&q=' + encodeURIComponent(t);
+    if (c.s != null) q += '&type=tv';
+  }
+  if (c.s != null) q += '&s=' + c.s;
+  if (c.e != null) q += '&e=' + c.e;
+  return q;
 }
 function subFetchQS(it, fmt, shift) {
-let q = 'u=' + encodeURIComponent(it.u) + '&fmt=' + fmt + '&shift=' + shift +
-'&lang=' + encodeURIComponent(it.lang || '');
-if (PLAY && PLAY.e != null) q += '&e=' + PLAY.e;
-if (PLAY && PLAY.s != null) q += '&s=' + PLAY.s;
-return q;
+  let q = 'u=' + encodeURIComponent(it.u) + '&fmt=' + fmt + '&shift=' + shift +
+          '&lang=' + encodeURIComponent(it.lang || '');
+  if (PLAY && PLAY.e != null) q += '&e=' + PLAY.e;
+  if (PLAY && PLAY.s != null) q += '&s=' + PLAY.s;
+  return q;
 }
-const relTok = s => String(s || '').toLowerCase().replace(/\.[a-z0-9]{2,4}/i, '').split(/[^a-z0-9]+/).filter(Boolean);
+const relTok = s => String(s || '').toLowerCase().replace(/\.[a-z0-9]{2,4}$/i, '').split(/[^a-z0-9]+/).filter(Boolean);
 function rankSubs(list) {
-const fname = (PLAY && (PLAY.fname || PLAY.title)) || '';
-const have = new Set(relTok(fname));
-const gm = /-([a-z0-9]+)(?:.[a-z0-9]{2,4})?$/i.exec(String(fname).trim());
-const grp = gm ? gm[1].toLowerCase() : '';
-list.forEach(it => {
-const toks = relTok(it.name);
-let sc = 0;
-toks.forEach(t => { if (have.has(t)) sc += t.length > 3 ? 2 : 1; });
-if (grp && toks.includes(grp)) sc += 6;
-if (it.full) sc -= 3;
-it._sc = sc;
-});
-return list.map((it, i) => [it, i]).sort((a, b) => (b[0]._sc - a[0]._sc) || (a[1] - b[1])).map(x => x[0]);
+  const fname = (PLAY && (PLAY.fname || PLAY.title)) || '';
+  const have = new Set(relTok(fname));
+  const gm = /-([a-z0-9]+)(?:\.[a-z0-9]{2,4})?$/i.exec(String(fname).trim());
+  const grp = gm ? gm[1].toLowerCase() : '';
+  list.forEach(it => {
+    const toks = relTok(it.name);
+    let sc = 0;
+    toks.forEach(t => { if (have.has(t)) sc += t.length > 3 ? 2 : 1; });
+    if (grp && toks.includes(grp)) sc += 6;
+    if (it.full) sc -= 3;
+    it._sc = sc;
+  });
+  return list.map((it, i) => [it, i]).sort((a, b) => (b[0]._sc - a[0]._sc) || (a[1] - b[1])).map(x => x[0]);
 }
 function syncFirst() {
-const v = document.querySelector('#results video');
-if (!v || !subSel) return;
-const tr = v.querySelector('track');
-const cues = tr && tr.track && tr.track.cues;
-if (!cues || !cues.length) return alert('الترجمة لسه بتتحمّل، جرّب بعد ثانية');
-const delta = v.currentTime - cues[0].startTime;
-if (Math.abs(delta) > 900) return alert('الفرق كبير زيادة. ارجع لأول الفيلم وجرّب تاني، أو اختار ترجمة تانية.');
-applySubItem(subSel.it, Math.round((subSel.shift + delta - 0.3) * 10) / 10, false);
+  const v = document.querySelector('#results video');
+  if (!v || !subSel) return;
+  const tr = v.querySelector('track');
+  const cues = tr && tr.track && tr.track.cues;
+  if (!cues || !cues.length) return alert('الترجمة لسه بتتحمّل، جرّب بعد ثانية');
+  const delta = v.currentTime - cues[0].startTime;
+  if (Math.abs(delta) > 900) return alert('الفرق كبير زيادة. ارجع لأول الفيلم وجرّب تاني، أو اختار ترجمة تانية.');
+  applySubItem(subSel.it, Math.round((subSel.shift + delta - 0.3) * 10) / 10, false);
 }
 function openSubs() {
-const box = $('subBox');
-if (!box) return;
-if (box.innerHTML) { box.innerHTML = ''; return; }
-const p = prof(), sl = (p && p.sl) ? p.sl : 'AR';
-const opt = (v, t) => '<option value="' + v + '"' + (sl === v ? ' selected' : '') + '>' + t + '</option>';
-const hasId = PLAY && PLAY.tmdb && PLAY.type;
-box.innerHTML = '<div style="margin-top:10px;text-align:right">' +
-'<select id="subLang" class="search-input">' + opt('AR', 'العربية') + opt('EN', 'English') + opt('AR,EN', 'عربي + English') + '</select>' +
-(hasId ? '' : '<input id="subQ" class="search-input ltr" placeholder="اسم الفيلم أو المسلسل بالإنجليزي" value="' +
-esc(cleanName(PLAY ? (PLAY.title || PLAY.fname) : '')) + '">') +
-'<div class="row"><button class="search-btn" onclick="findSubs()">🔍 ابحث عن ترجمة</button>' +
-'<button class="search-btn" style="background:#475569" onclick="subOff()">🚫 إيقاف</button></div>' +
-'<div id="subState"></div><div id="subList" class="subs"></div></div>';
-if (hasId) findSubs();
+  const box = $('subBox');
+  if (!box) return;
+  if (box.innerHTML) { box.innerHTML = ''; return; }
+  const p = prof(), sl = (p && p.sl) ? p.sl : 'AR';
+  const opt = (v, t) => '<option value="' + v + '"' + (sl === v ? ' selected' : '') + '>' + t + '</option>';
+  const hasId = PLAY && PLAY.tmdb && PLAY.type;
+  box.innerHTML = '<div style="margin-top:10px;text-align:right">' +
+    '<select id="subLang" class="search-input">' + opt('AR', 'العربية') + opt('EN', 'English') + opt('AR,EN', 'عربي + English') + '</select>' +
+    (hasId ? '' : '<input id="subQ" class="search-input ltr" placeholder="اسم الفيلم أو المسلسل بالإنجليزي" value="' +
+      esc(cleanName(PLAY ? (PLAY.title || PLAY.fname) : '')) + '">') +
+    '<div class="row"><button class="search-btn" onclick="findSubs()">🔍 ابحث عن ترجمة</button>' +
+    '<button class="search-btn" style="background:#475569" onclick="subOff()">🚫 إيقاف</button></div>' +
+    '<div id="subState"></div><div id="subList" class="subs"></div></div>';
+  if (hasId) findSubs();
 }
 async function findSubs() {
-const out = ('subList');
-const q = subQ(('subLang').value, false);
-if (!q) return out.innerHTML = warn('اكتب اسم الفيلم أو المسلسل');
-out.innerHTML = pend('جاري البحث عن ترجمة...');
-try {
-const {d} = await api('/subs?' + q);
-if (d.error) return out.innerHTML = warn(d.error);
-subs = rankSubs(d.items || []);
-if (!subs.length) {
-return out.innerHTML = warn('مفيش ترجمة بالمواصفات دي. جرّب لغة تانية أو اسم تاني.');
-}
-const note = d.mode === 'exact' ? '' :
-'<p style="font-size:12px;color:var(--mut);margin:0 0 8px">دي ترجمات للموسم أو المسلسل بشكل عام، هنختار الحلقة تلقائياً من جوه الملف.</p>';
-out.innerHTML = note + subs.map((it, i) =>
-'<div class="ep"><div class="b fn">' + (i === 0 && it.sc > 0 ? '⭐ ' : '') + esc(it.name) + '<small>' + esc(it.author) +
-(it.full ? ' · موسم كامل' : '') + '</small></div>' +
-'<button onclick="applySub(' + i + ')">▶</button>' +
-'<button style="margin-right:6px" onclick="dlSub(' + i + ')">⬇️</button></div>'
-).join('');
-} catch (e) { out.innerHTML = ERR; }
+  const out = $('subList');
+  const q = subQ($('subLang').value, false);
+  if (!q) return out.innerHTML = warn('اكتب اسم الفيلم أو المسلسل');
+  out.innerHTML = pend('جاري البحث عن ترجمة...');
+  try {
+    const {d} = await api('/subs?' + q);
+    if (d.error) return out.innerHTML = warn(d.error);
+    subs = rankSubs(d.items || []);
+    if (!subs.length) {
+      return out.innerHTML = warn('مفيش ترجمة بالمواصفات دي. جرّب لغة تانية أو اسم تاني.');
+    }
+    const note = d.mode === 'exact' ? '' :
+      '<p style="font-size:12px;color:var(--mut);margin:0 0 8px">دي ترجمات للموسم أو المسلسل بشكل عام، هنختار الحلقة تلقائياً من جوه الملف.</p>';
+    out.innerHTML = note + subs.map((it, i) =>
+      '<div class="ep"><div class="b fn">' + (i === 0 && it._sc > 0 ? '⭐ ' : '') + esc(it.name) + '<small>' + esc(it.author) +
+      (it.full ? ' · موسم كامل' : '') + '</small></div>' +
+      '<button onclick="applySub(' + i + ')">▶</button>' +
+      '<button style="margin-right:6px" onclick="dlSub(' + i + ')">⬇️</button></div>'
+    ).join('');
+  } catch (e) { out.innerHTML = ERR; }
 }
 async function applySubItem(it, shift, quiet) {
-const v = document.querySelector('#results video');
-if (!v) return;
-const st = $('subState');
-if (st && !quiet) st.innerHTML = pend('جاري تحميل الترجمة...');
-const r = await fetchText('/sub?' + subFetchQS(it, 'vtt', shift));
-if (r.error) { if (st && !quiet) st.innerHTML = warn(r.error); return; }
-v.querySelectorAll('track').forEach(x => x.remove());
-const tr = document.createElement('track');
-tr.kind = 'subtitles';
-tr.label = 'ترجمة';
-tr.default = true;
-tr.src = URL.createObjectURL(new Blob([r.text], {type: 'text/vtt'}));
-v.appendChild(tr);
-tr.track.mode = 'showing';
-subSel = {it: it, shift: shift};
-if (PLAY) PLAY.sub = {u: it.u, lang: it.lang, name: it.name, shift: shift};
-saveProgress(v);
-const stn = $('subState');
-if (stn) {
-stn.innerHTML = '<div style="margin:8px 0;color:var(--success)">✅ الترجمة شغالة · التوقيت: ' +
-(shift > 0 ? '+' : '') + shift + ' ث</div>' +
-'<button class="search-btn" style="background:#0ea5e9;margin-bottom:8px" onclick="syncFirst()">🎯 ضبط تلقائي: دوس أول ما تسمع أول جملة كلام</button>' +
-'<div class="row" style="margin-bottom:8px"><button class="search-btn" onclick="shiftSub(-5)">-5</button><button class="search-btn" onclick="shiftSub(5)">+5</button></div>' +
-'<div class="row"><button class="search-btn" onclick="shiftSub(-1)">-1</button>' +
-'<button class="search-btn" onclick="shiftSub(-0.5)">-0.5</button>' +
-'<button class="search-btn" onclick="shiftSub(0.5)">+0.5</button>' +
-'<button class="search-btn" onclick="shiftSub(1)">+1</button></div>' +
-'<p style="font-size:12px;color:var(--mut)">لو الترجمة بتسبق الصوت اضغط +، ولو متأخرة عنه اضغط -.</p>';
-}
+  const v = document.querySelector('#results video');
+  if (!v) return;
+  const st = $('subState');
+  if (st && !quiet) st.innerHTML = pend('جاري تحميل الترجمة...');
+  const r = await fetchText('/sub?' + subFetchQS(it, 'vtt', shift));
+  if (r.error) { if (st && !quiet) st.innerHTML = warn(r.error); return; }
+  v.querySelectorAll('track').forEach(x => x.remove());
+  const tr = document.createElement('track');
+  tr.kind = 'subtitles';
+  tr.label = 'ترجمة';
+  tr.default = true;
+  tr.src = URL.createObjectURL(new Blob([r.text], {type: 'text/vtt'}));
+  v.appendChild(tr);
+  tr.track.mode = 'showing';
+  subSel = {it: it, shift: shift};
+  if (PLAY) PLAY.sub = {u: it.u, lang: it.lang, name: it.name, shift: shift};
+  saveProgress(v);
+  const stn = $('subState');
+  if (stn) {
+    stn.innerHTML = '<div style="margin:8px 0;color:var(--success)">✅ الترجمة شغالة · التوقيت: ' +
+      (shift > 0 ? '+' : '') + shift + ' ث</div>' +
+      '<button class="search-btn" style="background:#0ea5e9;margin-bottom:8px" onclick="syncFirst()">🎯 ضبط تلقائي: دوس أول ما تسمع أول جملة كلام</button>' +
+      '<div class="row" style="margin-bottom:8px"><button class="search-btn" onclick="shiftSub(-5)">-5</button><button class="search-btn" onclick="shiftSub(5)">+5</button></div>' +
+      '<div class="row"><button class="search-btn" onclick="shiftSub(-1)">-1</button>' +
+      '<button class="search-btn" onclick="shiftSub(-0.5)">-0.5</button>' +
+      '<button class="search-btn" onclick="shiftSub(0.5)">+0.5</button>' +
+      '<button class="search-btn" onclick="shiftSub(1)">+1</button></div>' +
+      '<p style="font-size:12px;color:var(--mut)">لو الترجمة بتسبق الصوت اضغط +، ولو متأخرة عنه اضغط -.</p>';
+  }
 }
 function applySub(i) {
-const it = subs[i];
-if (!it) return;
-const p = prof(), sel = $('subLang');
-if (p && sel) { p.sl = sel.value; saveProfileObj(p); }
-applySubItem(it, 0, false);
+  const it = subs[i];
+  if (!it) return;
+  const p = prof(), sel = $('subLang');
+  if (p && sel) { p.sl = sel.value; saveProfileObj(p); }
+  applySubItem(it, 0, false);
 }
 function shiftSub(d) {
-if (!subSel) return;
-applySubItem(subSel.it, Math.round((subSel.shift + d) * 10) / 10, false);
+  if (!subSel) return;
+  applySubItem(subSel.it, Math.round((subSel.shift + d) * 10) / 10, false);
 }
 function subOff() {
-const v = document.querySelector('#results video');
-if (v) v.querySelectorAll('track').forEach(x => x.remove());
-subSel = null;
-if (PLAY) PLAY.sub = null;
-const p = prof();
-if (p) { p.sl = ''; saveProgress(v); saveProfileObj(p); }
-const st = $('subState');
-if (st) st.innerHTML = '<p style="color:var(--mut)">اتقفلت الترجمة التلقائية.</p>';
+  const v = document.querySelector('#results video');
+  if (v) v.querySelectorAll('track').forEach(x => x.remove());
+  subSel = null;
+  if (PLAY) PLAY.sub = null;
+  const p = prof();
+  if (p) { p.sl = ''; saveProgress(v); saveProfileObj(p); }
+  const st = $('subState');
+  if (st) st.innerHTML = '<p style="color:var(--mut)">اتقفلت الترجمة التلقائية.</p>';
 }
 async function autoSub() {
-const p = prof();
-if (!p || !p.sl || !PLAY || !PLAY.tmdb) return;
-const q = subQ(p.sl, true);
-if (!q) return;
-try {
-const {d} = await api('/subs?' + q);
-const list = rankSubs(d.items || []);
-if (list[0]) { subs = list; await applySubItem(list[0], 0, true); }
-} catch (e) {}
+  const p = prof();
+  if (!p || !p.sl || !PLAY || !PLAY.tmdb) return;
+  const q = subQ(p.sl, true);
+  if (!q) return;
+  try {
+    const {d} = await api('/subs?' + q);
+    const list = rankSubs(d.items || []);
+    if (list[0]) { subs = list; await applySubItem(list[0], 0, true); }
+  } catch (e) {}
 }
 async function dlSub(i) {
-const r = await fetchText('/sub?' + subFetchQS(subs[i], 'srt', 0));
-if (r.error) return alert(r.error);
-const a = document.createElement('a');
-a.href = URL.createObjectURL(new Blob([r.text], {type: 'application/x-subrip'}));
-a.download = (subs[i].name || 'subtitle').replace(/[^\w.-]+/g, '').slice(0, 80) + '.srt';
-a.click();
+  const r = await fetchText('/sub?' + subFetchQS(subs[i], 'srt', 0));
+  if (r.error) return alert(r.error);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([r.text], {type: 'application/x-subrip'}));
+  a.download = (subs[i].name || 'subtitle').replace(/[^\w.-]+/g, '_').slice(0, 80) + '.srt';
+  a.click();
 }
-​// ================= Stremio: حساب + إضافات + مكتبة =================
+
+// ================= Stremio: حساب + إضافات + مكتبة =================
 async function loadStremio() {
-try {
-const {d} = await api('/stremio/addons');
-const items = d.items || [];
-ST = {logged: !!d.logged, email: d.email || '', items: items, n: d.n != null ? d.n : items.filter(x => x.stream).length};
-} catch (e) {}
-renderSt();
-loadStLib();
+  try {
+    const {d} = await api('/stremio/addons');
+    const items = d.items || [];
+    ST = {logged: !!d.logged, email: d.email || '', items: items, n: d.n != null ? d.n : items.filter(x => x.stream).length};
+  } catch (e) {}
+  renderSt();
+  loadStLib();
 }
 async function loadStLib() {
-SLIB = [];
-if (ST.logged) {
-try { const {d} = await api('/stremio/library'); SLIB = d.items || []; } catch (e) {}
-}
-renderShelves();
+  SLIB = [];
+  if (ST.logged) {
+    try { const {d} = await api('/stremio/library'); SLIB = d.items || []; } catch (e) {}
+  }
+  renderShelves();
 }
 function renderSt() {
-const el = $('stBox');
-if (!el) return;
-let h = '';
-if (ST.logged) {
-h += '<div class="warn" style="color:var(--success);border-color:var(--success)">✅ متصل بحساب: <span class="fn" style="display:inline">' + esc(ST.email) + '</span></div>' +
-'<div class="row" style="margin-bottom:12px">' +
-'<button class="search-btn btn-blue" onclick="stSync(this)">🔄 مزامنة من حسابي</button>' +
-'<button class="search-btn" style="background:var(--danger)" onclick="stLogout()">🚪 فصل الحساب</button></div>';
-} else {
-h += '<input id="stEmail" class="search-input ltr" placeholder="إيميل حساب Stremio" autocapitalize="off" autocorrect="off">' +
-'<div class="pw"><input id="stPass" type="password" class="search-input ltr" placeholder="باسورد Stremio"><button type="button" class="eye" onclick="eye(\'stPass\',this)">👁</button></div>' +
-'<button class="search-btn" onclick="stLogin(this)">🔑 تسجيل دخول واستيراد الإضافات</button>' +
-'<p style="color:var(--mut);font-size:12px">الباسورد مش بيتخزّن. بنحفظ مفتاح الجلسة بس. الحسابات اللي مسجّلة بفيسبوك أو آبل مفيش ليها باسورد.</p>';
-}
-h += '<h3 class="sec" style="margin-top:16px">الإضافات (' + ST.items.length + ')</h3>' +
-(ST.items.map(a =>
-'<div class="ep"><div class="b">' + esc(a.name) + '<small>' + (a.stream ? '🎞 بتدي نتايج تشغيل' : 'معلومات / كتالوج بس') + '</small></div>' +
-'<button style="background:var(--danger);color:#fff" onclick="stDel(\'' + esc(a.id) + '\')">🗑</button></div>').join('')
-|| warn('مفيش إضافات. سجّل دخول أو ضيف رابط إضافة.')) +
-'<input id="stUrl" class="search-input ltr" style="margin-top:10px" placeholder="رابط إضافة: https://.../manifest.json أو stremio://...">' +
-'<button class="search-btn btn-blue" onclick="stAdd(this)">➕ إضافة إضافة برابط</button>' +
-'<p style="color:var(--mut);font-size:12px">الحذف هنا بيشيل الإضافة من موقعك بس، مش من حساب Stremio. ولو الإضافة فيها مفتاح دابريد (زي Torrentio) بيتضاف تلقائياً في المزوّدين.</p>';
-el.innerHTML = h;
+  const el = $('stBox');
+  if (!el) return;
+  let h = '';
+  if (ST.logged) {
+    h += '<div class="warn" style="color:var(--success);border-color:var(--success)">✅ متصل بحساب: <span class="fn" style="display:inline">' + esc(ST.email) + '</span></div>' +
+      '<div class="row" style="margin-bottom:12px">' +
+      '<button class="search-btn btn-blue" onclick="stSync(this)">🔄 مزامنة من حسابي</button>' +
+      '<button class="search-btn" style="background:var(--danger)" onclick="stLogout()">🚪 فصل الحساب</button></div>';
+  } else {
+    h += '<input id="stEmail" class="search-input ltr" placeholder="إيميل حساب Stremio" autocapitalize="off" autocorrect="off">' +
+      '<div class="pw"><input id="stPass" type="password" class="search-input ltr" placeholder="باسورد Stremio"><button type="button" class="eye" onclick="eye(\'stPass\',this)">👁</button></div>' +
+      '<button class="search-btn" onclick="stLogin(this)">🔑 تسجيل دخول واستيراد الإضافات</button>' +
+      '<p style="color:var(--mut);font-size:12px">الباسورد مش بيتخزّن. بنحفظ مفتاح الجلسة بس. الحسابات اللي مسجّلة بفيسبوك أو آبل مفيش ليها باسورد.</p>';
+  }
+  h += '<h3 class="sec" style="margin-top:16px">الإضافات (' + ST.items.length + ')</h3>' +
+    (ST.items.map(a =>
+      '<div class="ep"><div class="b">' + esc(a.name) + '<small>' + (a.stream ? '🎞 بتدي نتايج تشغيل' : 'معلومات / كتالوج بس') + '</small></div>' +
+      '<button style="background:var(--danger);color:#fff" onclick="stDel(\'' + esc(a.id) + '\')">🗑</button></div>').join('')
+      || warn('مفيش إضافات. سجّل دخول أو ضيف رابط إضافة.')) +
+    '<input id="stUrl" class="search-input ltr" style="margin-top:10px" placeholder="رابط إضافة: https://.../manifest.json أو stremio://...">' +
+    '<button class="search-btn btn-blue" onclick="stAdd(this)">➕ إضافة إضافة برابط</button>' +
+    '<p style="color:var(--mut);font-size:12px">الحذف هنا بيشيل الإضافة من موقعك بس، مش من حساب Stremio. ولو الإضافة فيها مفتاح دابريد (زي Torrentio) بيتضاف تلقائياً في المزوّدين.</p>';
+  el.innerHTML = h;
 }
 async function stCall(btn, path, body) {
-const old = btn ? btn.textContent : '';
-if (btn) { btn.disabled = true; btn.textContent = '...'; }
-try {
-const {r, d} = await api(path, {method: 'POST', body: JSON.stringify(body || {})});
-if (!r.ok || d.error) return {error: d.error || 'حصل خطأ في الاتصال بالسيرفر'};
-return d;
-} catch (e) {
-return {error: 'مش قادر أوصل للسيرفر'};
-} finally {
-if (btn) { btn.disabled = false; btn.textContent = old; }
-}
+  const old = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    const {d} = await api(path, {method: 'POST', body: JSON.stringify(body || {})});
+    return d;
+  } catch (e) {
+    return {error: 'مش قادر أوصل للسيرفر'};
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = old; }
+  }
 }
 const stMsg = d => 'تم ✅ إضافات جديدة: ' + (d.added || 0) + (d.keys ? ' · مزوّدين اتضافوا: ' + d.keys : '');
 async function stLogin(btn) {
-const d = await stCall(btn, '/stremio/login', {email: $('stEmail').value, password: $('stPass').value});
-if (d.error) return alert(d.error);
-alert(stMsg(d));
-await loadStremio();
-loadProviders();
+  const d = await stCall(btn, '/stremio/login', {email: $('stEmail').value, password: $('stPass').value});
+  if (d.error) return alert(d.error);
+  alert(stMsg(d));
+  await loadStremio();
+  loadProviders();
 }
 async function stSync(btn) {
-const d = await stCall(btn, '/stremio/sync');
-if (d.error) return alert(d.error);
-alert(stMsg(d));
-await loadStremio();
-loadProviders();
+  const d = await stCall(btn, '/stremio/sync');
+  if (d.error) return alert(d.error);
+  alert(stMsg(d));
+  await loadStremio();
+  loadProviders();
 }
 async function stLogout() {
-if (!confirm('فصل حساب Stremio؟ الإضافات الحالية هتفضل.')) return;
-await stCall(null, '/stremio/logout');
-await loadStremio();
+  if (!confirm('فصل حساب Stremio؟ الإضافات الحالية هتفضل.')) return;
+  await stCall(null, '/stremio/logout');
+  await loadStremio();
 }
 async function stAdd(btn) {
-const d = await stCall(btn, '/stremio/addon', {url: $('stUrl').value});
-if (d.error) return alert(d.error);
-alert(d.added ? stMsg(d) : 'الإضافة دي موجودة بالفعل');
-await loadStremio();
-loadProviders();
+  const d = await stCall(btn, '/stremio/addon', {url: $('stUrl').value});
+  if (d.error) return alert(d.error);
+  alert(d.added ? stMsg(d) : 'الإضافة دي موجودة بالفعل');
+  await loadStremio();
+  loadProviders();
 }
 async function stDel(id) {
-if (!confirm('حذف الإضافة؟')) return;
-await api('/stremio/addons/' + id, {method: 'DELETE'});
-loadStremio();
+  if (!confirm('حذف الإضافة؟')) return;
+  await api('/stremio/addons/' + id, {method: 'DELETE'});
+  loadStremio();
 }
-​// ================= المستخدمين (للأدمن) =================
+
+// ================= المستخدمين (للأدمن) =================
 async function loadUsers() {
-try { const {d} = await api('/users'); USERS = d.items || []; } catch (e) {}
-renderUsers();
+  try { const {d} = await api('/users'); USERS = d.items || []; } catch (e) {}
+  renderUsers();
 }
 function renderUsers() {
-const el = $('usBox');
-if (!el) return;
-el.innerHTML = (USERS.map(u =>
-'<div class="ep"><div class="b">👤 ' + esc(u.name) + '</div>' +
-'<button style="background:#475569;color:#fff" data-n="' + esc(u.name) + '" onclick="usPass(this.dataset.n)">🔑</button>' +
-'<button style="background:var(--danger);color:#fff;margin-inline-start:6px" data-n="' + esc(u.name) + '" onclick="usDel(this.dataset.n)">🗑</button></div>').join('')
-|| warn('مفيش مستخدمين. ضيف أول واحد.')) +
-'<input id="usName" class="search-input ltr" style="margin-top:10px" placeholder="اسم المستخدم (إنجليزي وأرقام)" autocapitalize="off" autocorrect="off">' +
-'<div class="pw"><input id="usPass" type="password" class="search-input ltr" placeholder="الباسورد"><button type="button" class="eye" onclick="eye(\'usPass\',this)">👁</button></div>' +
-'<button class="search-btn" onclick="usAdd(this)">➕ إضافة مستخدم</button>' +
-'<p style="color:var(--mut);font-size:12px">المستخدم بيدخل ويشاهد بحساباتك من غير ما يشوف المزوّدين أو مفاتيح الـ API أو إضافات Stremio. وكل مستخدم ليه بروفايلات وسجل مشاهدته الخاص.</p>';
+  const el = $('usBox');
+  if (!el) return;
+  el.innerHTML = (USERS.map(u =>
+    '<div class="ep"><div class="b">👤 ' + esc(u.name) + '</div>' +
+    '<button style="background:#475569;color:#fff" data-n="' + esc(u.name) + '" onclick="usPass(this.dataset.n)">🔑</button>' +
+    '<button style="background:var(--danger);color:#fff;margin-inline-start:6px" data-n="' + esc(u.name) + '" onclick="usDel(this.dataset.n)">🗑</button></div>').join('')
+    || warn('مفيش مستخدمين. ضيف أول واحد.')) +
+    '<input id="usName" class="search-input ltr" style="margin-top:10px" placeholder="اسم المستخدم (إنجليزي وأرقام)" autocapitalize="off" autocorrect="off">' +
+    '<div class="pw"><input id="usPass" type="password" class="search-input ltr" placeholder="الباسورد"><button type="button" class="eye" onclick="eye(\'usPass\',this)">👁</button></div>' +
+    '<button class="search-btn" onclick="usAdd(this)">➕ إضافة مستخدم</button>' +
+    '<p style="color:var(--mut);font-size:12px">المستخدم بيدخل ويشاهد بحساباتك من غير ما يشوف المزوّدين أو مفاتيح الـ API أو إضافات Stremio. وكل مستخدم ليه بروفايلاته وسجل مشاهدته الخاص.</p>';
 }
 async function usAdd(btn) {
-btn.disabled = true;
-try {
-const {d} = await api('/users', {method: 'POST', body: JSON.stringify({username: $('usName').value, password: $('usPass').value})});
-if (d.error) alert(d.error);
-} catch (e) { alert('مش قادر أوصل للسيرفر'); }
-loadUsers();
+  btn.disabled = true;
+  try {
+    const {d} = await api('/users', {method: 'POST', body: JSON.stringify({username: $('usName').value, password: $('usPass').value})});
+    if (d.error) alert(d.error);
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
+  loadUsers();
 }
 async function usPass(n) {
-const p = prompt('باسورد جديد للمستخدم ' + n);
-if (!p) return;
-const {d} = await api('/users/' + encodeURIComponent(n) + '/password', {method: 'POST', body: JSON.stringify({password: p})});
-alert(d.error || 'تم تغيير الباسورد ✅ (المستخدم هيدخل تاني بالباسورد الجديد)');
+  const p = prompt('باسورد جديد للمستخدم ' + n);
+  if (!p) return;
+  const {d} = await api('/users/' + encodeURIComponent(n) + '/password', {method: 'POST', body: JSON.stringify({password: p})});
+  alert(d.error || 'تم تغيير الباسورد ✅ (المستخدم هيدخل تاني بالباسورد الجديد)');
 }
 async function usDel(n) {
-if (!confirm('حذف المستخدم ' + n + ' وكل بياناته؟')) return;
-await api('/users/' + encodeURIComponent(n), {method: 'DELETE'});
-loadUsers();
+  if (!confirm('حذف المستخدم ' + n + ' وكل بياناته؟')) return;
+  await api('/users/' + encodeURIComponent(n), {method: 'DELETE'});
+  loadUsers();
 }
-​// ================= ترتيب الصفحة الرئيسية (للأدمن) =================
+
+// ================= ترتيب الصفحة الرئيسية (للأدمن) =================
 let LAY = [], LCATS = [], DUBST = null;
 async function loadLayout() {
-const el = $('layBox');
-if (el) el.innerHTML = pend('جاري التحميل...');
-try {
-const [a, b] = await Promise.all([api('/home/layout'), api('/home/catalogs')]);
-LAY = a.d.rows || [];
-DUBST = a.d.dub || null;
-LCATS = b.d.items || [];
-} catch (e) { if (el) el.innerHTML = ERR; return; }
-renderLayout();
+  const el = $('layBox');
+  if (el) el.innerHTML = pend('جاري التحميل...');
+  try {
+    const [a, b] = await Promise.all([api('/home/layout'), api('/home/catalogs')]);
+    LAY = a.d.rows || [];
+    DUBST = a.d.dub || null;
+    LCATS = b.d.items || [];
+  } catch (e) { if (el) el.innerHTML = ERR; return; }
+  renderLayout();
 }
 function layStat(r) {
-if (r.a === '_dub') {
-if (!DUBST) return '';
-return '<small>' + (DUBST.running ? '⏳ بيفحص دلوقتي...' : DUBST.n + ' فيلم · آخر فحص ' + (DUBST.t ? fmtDate(DUBST.t * 1000) : 'لسه') ) + '</small>';
-}
-const s = r.stat;
-if (!s) return '';
-if (s.err) return '<small style="color:#ef4444">❌ ' + esc(s.err) + '</small>';
-return '<small' + (s.n ? '' : ' style="color:#f59e0b"') + '>' + s.n + ' عنصر' + (s.lk ? ' · ' + s.lk + ' بالبحث بالاسم' : '') + '</small>';
+  if (r.a === '_dub') {
+    if (!DUBST) return '';
+    return '<small>' + (DUBST.running ? '⏳ بيفحص دلوقتي...' : DUBST.n + ' فيلم · آخر فحص ' + (DUBST.t ? fmtDate(DUBST.t * 1000) : 'لسه') ) + '</small>';
+  }
+  const s = r.stat;
+  if (!s) return '';
+  if (s.err) return '<small style="color:#ef4444">❌ ' + esc(s.err) + '</small>';
+  return '<small' + (s.n ? '' : ' style="color:#f59e0b"') + '>' + s.n + ' عنصر' + (s.lk ? ' · ' + s.lk + ' بالبحث بالاسم' : '') + '</small>';
 }
 async function dubRefresh(btn) {
-btn.disabled = true;
-try {
-const {d} = await api('/home/dub-refresh', {method: 'POST'});
-alert(d.started ? 'بدأ الفحص. هياخد كام دقيقة، وبعدها حدّث الصفحة وهيظهر القسم.' : 'الفحص شغال بالفعل، استنى شوية.');
-} catch (e) { alert('مش قادر أوصل للسيرفر'); }
-btn.disabled = false;
-loadLayout();
+  btn.disabled = true;
+  try {
+    const {d} = await api('/home/dub-refresh', {method: 'POST'});
+    alert(d.started ? 'بدأ الفحص. هياخد كام دقيقة، وبعدها حدّث الصفحة وهيظهر القسم.' : 'الفحص شغال بالفعل، استنى شوية.');
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
+  btn.disabled = false;
+  loadLayout();
 }
 function renderLayout() {
-const el = $('layBox');
-if (!el) return;
-const btn = 'style="margin-inline-start:4px;';
-let h = LAY.map((r, i) =>
-'<div class="ep"><input type="checkbox" ' + (r.on ? 'checked ' : '') + 'onchange="layOn(' + i + ',this.checked)">' +
-'<div class="b">' + esc(r.t) + layStat(r) + '</div>' +
-'<button onclick="layMove(' + i + ',-1)">▲</button>' +
-'<button ' + btn + '" onclick="layMove(' + i + ',1)">▼</button>' +
-'<button ' + btn + 'background:#475569;color:#fff" onclick="layRename(' + i + ')">✏️</button>' +
-'<button ' + btn + 'background:var(--danger);color:#fff" onclick="layDel(' + i + ')">🗑</button></div>').join('')
-|| warn('مفيش صفوف. ضيف إضافات فيها كتالوجات (زي Cinemeta) من قسم Stremio.');
-h += '<button class="search-btn" style="margin-top:6px" onclick="laySave(this)">💾 حفظ الترتيب (يظهر للكل)</button>' +
-'<button class="search-btn btn-blue" style="margin-top:8px" onclick="dubRefresh(this)">🔄 فحص المدبلج بالمصري دلوقتي</button>';
-if (LCATS.length) {
-h += '<h3 class="sec" style="margin-top:16px">➕ إضافة صف</h3>' +
-'<select id="layCat" class="search-input" onchange="layGenres()">' + LCATS.map((c, i) =>
-'<option value="' + i + '">' + esc(c.an + ' · ' + c.name + ' (' + (c.ty === 'movie' ? 'أفلام' : 'مسلسلات') + ')') + '</option>').join('') + '</select>' +
-'<select id="layGen" class="search-input"></select>' +
-'<button class="search-btn btn-blue" onclick="layAdd()">➕ إضافة الصف</button>';
-}
-el.innerHTML = h;
-layGenres();
+  const el = $('layBox');
+  if (!el) return;
+  const btn = 'style="margin-inline-start:4px;';
+  let h = LAY.map((r, i) =>
+    '<div class="ep"><input type="checkbox" ' + (r.on ? 'checked ' : '') + 'onchange="layOn(' + i + ',this.checked)">' +
+    '<div class="b">' + esc(r.t) + layStat(r) + '</div>' +
+    '<button onclick="layMove(' + i + ',-1)">▲</button>' +
+    '<button ' + btn + '" onclick="layMove(' + i + ',1)">▼</button>' +
+    '<button ' + btn + 'background:#475569;color:#fff" onclick="layRename(' + i + ')">✏️</button>' +
+    '<button ' + btn + 'background:var(--danger);color:#fff" onclick="layDel(' + i + ')">🗑</button></div>').join('')
+    || warn('مفيش صفوف. ضيف إضافات فيها كتالوجات (زي Cinemeta) من قسم Stremio.');
+  h += '<button class="search-btn" style="margin-top:6px" onclick="laySave(this)">💾 حفظ الترتيب (يظهر للكل)</button>' +
+    '<button class="search-btn btn-blue" style="margin-top:8px" onclick="dubRefresh(this)">🔄 فحص المدبلج بالمصري دلوقتي</button>';
+  if (LCATS.length) {
+    h += '<h3 class="sec" style="margin-top:16px">➕ إضافة صف</h3>' +
+      '<select id="layCat" class="search-input" onchange="layGenres()">' + LCATS.map((c, i) =>
+        '<option value="' + i + '">' + esc(c.an + ' · ' + c.name + ' (' + (c.ty === 'movie' ? 'أفلام' : 'مسلسلات') + ')') + '</option>').join('') + '</select>' +
+      '<select id="layGen" class="search-input"></select>' +
+      '<button class="search-btn btn-blue" onclick="layAdd()">➕ إضافة الصف</button>';
+  }
+  el.innerHTML = h;
+  layGenres();
 }
 function layGenres() {
-const s = $('layCat'), g = ('layGen');
-if (!s || !g) return;
-const c = LCATS[+s.value] || {genres: []};
-g.innerHTML = '<option value="">بدون تصنيف</option>' + (c.genres || []).map(x =>
-'<option value="' + esc(x) + '">' + esc(x) + '</option>').join('');
-g.style.display = (c.genres || []).length ? '' : 'none';
+  const s = $('layCat'), g = $('layGen');
+  if (!s || !g) return;
+  const c = LCATS[+s.value] || {genres: []};
+  g.innerHTML = '<option value="">بدون تصنيف</option>' + (c.genres || []).map(x =>
+    '<option value="' + esc(x) + '">' + esc(x) + '</option>').join('');
+  g.style.display = (c.genres || []).length ? '' : 'none';
 }
 function layOn(i, v) { LAY[i].on = !!v; }
 function layMove(i, d) {
-const j = i + d;
-if (j < 0 || j >= LAY.length) return;
-[LAY[i], LAY[j]] = [LAY[j], LAY[i]];
-renderLayout();
+  const j = i + d;
+  if (j < 0 || j >= LAY.length) return;
+  [LAY[i], LAY[j]] = [LAY[j], LAY[i]];
+  renderLayout();
 }
 function layRename(i) {
-const t = prompt('اسم الصف', LAY[i].t);
-if (t && t.trim()) { LAY[i].t = t.trim().slice(0, 60); renderLayout(); }
+  const t = prompt('اسم الصف', LAY[i].t);
+  if (t && t.trim()) { LAY[i].t = t.trim().slice(0, 60); renderLayout(); }
 }
 function layDel(i) { LAY.splice(i, 1); renderLayout(); }
 function layAdd() {
-const c = LCATS[+('layCat'].value];
-if (!c) return;
-const g = $('layGen').value;
-LAY.push({k: Math.random().toString(16).slice(2, 10), a: c.a, ty: c.ty, c: c.c, g: g,
-t: (g ? g + ' · ' : '') + c.name + ' · ' + (c.ty === 'movie' ? 'أفلام' : 'مسلسلات'), on: true});
-renderLayout();
+  const c = LCATS[+$('layCat').value];
+  if (!c) return;
+  const g = $('layGen').value;
+  LAY.push({k: Math.random().toString(16).slice(2, 10), a: c.a, ty: c.ty, c: c.c, g: g,
+    t: (g ? g + ' · ' : '') + c.name + ' · ' + (c.ty === 'movie' ? 'أفلام' : 'مسلسلات'), on: true});
+  renderLayout();
 }
 async function laySave(btn) {
-btn.disabled = true;
-try {
-const {d} = await api('/home/layout', {method: 'POST', body: JSON.stringify({rows: LAY})});
-if (d.error) alert(d.error);
-else { alert('تم الحفظ ✅'); ROWS = null; loadRows(); }
-} catch (e) { alert('مش قادر أوصل للسيرفر'); }
-btn.disabled = false;
+  btn.disabled = true;
+  try {
+    const {d} = await api('/home/layout', {method: 'POST', body: JSON.stringify({rows: LAY})});
+    if (d.error) alert(d.error);
+    else { alert('تم الحفظ ✅'); ROWS = null; loadRows(); }
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
+  btn.disabled = false;
 }
-​// ================= نشاط المستخدمين (للأدمن) =================
+
+// ================= نشاط المستخدمين (للأدمن) =================
 let ACT = [];
 const fmtDate = t => t ? new Date(t).toLocaleString('ar-EG', {dateStyle: 'short', timeStyle: 'short'}) : '—';
 const fmtDur = s => {
-s = Math.floor(s || 0);
-const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
-return h ? h + 'س ' + m + 'د' : m + 'د';
+  s = Math.floor(s || 0);
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+  return h ? h + 'س ' + m + 'د' : m + 'د';
 };
 const KIND = {torrent: 'تورنت', link: 'رابط', zip: 'ZIP', all: 'كل الروابط', stremio: 'Stremio'};
 async function loadActivity() {
-const el = $('actBox');
-if (!el) return;
-el.innerHTML = pend('جاري التحميل...');
-try { const {d} = await api('/activity'); ACT = d.items || []; }
-catch (e) { el.innerHTML = ERR; return; }
-el.innerHTML = ACT.map(u =>
-'<div class="action-box" style="text-align:right;margin-bottom:10px;padding:12px">' +
-'<b>👤 ' + esc(u.name) + (u.role === 'admin' ? ' (أدمن)' : '') + '</b>' +
-'<div style="color:var(--mut);font-size:13px;margin-top:6px;line-height:2">' +
-'⬇️ سحب: ' + u.count + ' ملف · ' + (u.bytes ? fmtSize(u.bytes) : '0') + '
-' +
-'▶ مشاهدة تقريبية: ' + fmtDur(u.watch) + ' · ' + u.titles + ' عنوان
-' +
-'🕒 آخر نشاط: ' + fmtDate(u.last) + '</div>' +
-'<button class="fc" style="margin-top:8px" data-n="' + esc(u.name) + '" onclick="actDetail(this)">📋 التفاصيل</button>' +
-'<div class="actd"></div></div>').join('') || warn('مفيش بيانات.');
+  const el = $('actBox');
+  if (!el) return;
+  el.innerHTML = pend('جاري التحميل...');
+  try { const {d} = await api('/activity'); ACT = d.items || []; }
+  catch (e) { el.innerHTML = ERR; return; }
+  el.innerHTML = ACT.map(u =>
+    '<div class="action-box" style="text-align:right;margin-bottom:10px;padding:12px">' +
+    '<b>👤 ' + esc(u.name) + (u.role === 'admin' ? ' (أدمن)' : '') + '</b>' +
+    '<div style="color:var(--mut);font-size:13px;margin-top:6px;line-height:2">' +
+    '⬇️ سحب: ' + u.count + ' ملف · ' + (u.bytes ? fmtSize(u.bytes) : '0') + '<br>' +
+    '▶ مشاهدة تقريبية: ' + fmtDur(u.watch) + ' · ' + u.titles + ' عنوان<br>' +
+    '🕒 آخر نشاط: ' + fmtDate(u.last) + '</div>' +
+    '<button class="fc" style="margin-top:8px" data-n="' + esc(u.name) + '" onclick="actDetail(this)">📋 التفاصيل</button>' +
+    '<div class="actd"></div></div>').join('') || warn('مفيش بيانات.');
 }
 async function actDetail(btn) {
-const box = btn.parentNode.querySelector('.actd');
-if (box.innerHTML) { box.innerHTML = ''; return; }
-box.innerHTML = pend('جاري التحميل...');
-try {
-const {d} = await api('/activity/' + encodeURIComponent(btn.dataset.n));
-if (d.error) return box.innerHTML = warn(d.error);
-const pulls = (d.pulls || []).map(p =>
-'<div class="ep"><div class="b fn">' + esc(p.n) + '<small>' + (p.s ? fmtSize(p.s) : '—') + ' · ' +
-esc(KIND[p.k] || p.k) + ' · ' + esc(p.p) + ' · ' + fmtDate(p.t) + '</small></div></div>').join('');
-const seen = (d.watched || []).map(w => {
-const pct = w.done ? '✓ خلّصه' : (w.dur ? Math.round(w.pos / w.dur * 100) + '%' : '');
-const ep = (w.s != null && w.e != null) ? ' · S' + p2(w.s) + 'E' + p2(w.e) : '';
-return '<div class="ep"><div class="b">' + esc(w.title) + esc(ep) + '<small>' + pct +
-(w.profile ? ' · ' + esc(w.profile) : '') + ' · ' + fmtDate(w.t) + '</small></div></div>';
-}).join('');
-box.innerHTML = '<h3 class="sec" style="margin-top:12px">⬇️ آخر ما سحبه</h3>' + (pulls || warn('لسه مسحبش حاجة.')) +
-'<h3 class="sec">▶ آخر ما شاهده</h3>' + (seen || warn('لسه مشاهدش حاجة.')) +
-'<p style="color:var(--mut);font-size:12px">سجل المشاهدة بيعرض آخر 150 عنوان لكل بروفايل.</p>';
-} catch (e) { box.innerHTML = ERR; }
+  const box = btn.parentNode.querySelector('.actd');
+  if (box.innerHTML) { box.innerHTML = ''; return; }
+  box.innerHTML = pend('جاري التحميل...');
+  try {
+    const {d} = await api('/activity/' + encodeURIComponent(btn.dataset.n));
+    if (d.error) return box.innerHTML = warn(d.error);
+    const pulls = (d.pulls || []).map(p =>
+      '<div class="ep"><div class="b fn">' + esc(p.n) + '<small>' + (p.s ? fmtSize(p.s) : '—') + ' · ' +
+      esc(KIND[p.k] || p.k) + ' · ' + esc(p.p) + ' · ' + fmtDate(p.t) + '</small></div></div>').join('');
+    const seen = (d.watched || []).map(w => {
+      const pct = w.done ? '✓ خلّصه' : (w.dur ? Math.round(w.pos / w.dur * 100) + '%' : '');
+      const ep = (w.s != null && w.e != null) ? ' · S' + p2(w.s) + 'E' + p2(w.e) : '';
+      return '<div class="ep"><div class="b">' + esc(w.title) + esc(ep) + '<small>' + pct +
+        (w.profile ? ' · ' + esc(w.profile) : '') + ' · ' + fmtDate(w.t) + '</small></div></div>';
+    }).join('');
+    box.innerHTML = '<h3 class="sec" style="margin-top:12px">⬇️ آخر ما سحبه</h3>' + (pulls || warn('لسه مسحبش حاجة.')) +
+      '<h3 class="sec">▶ آخر ما شاهده</h3>' + (seen || warn('لسه مشاهدش حاجة.')) +
+      '<p style="color:var(--mut);font-size:12px">سجل المشاهدة بيعرض آخر 150 عنوان لكل بروفايل.</p>';
+  } catch (e) { box.innerHTML = ERR; }
 }
-​// ================= المزوّدين =================
+
+// ================= المزوّدين =================
 function domTxt(a) {
-if (!a || !a.length) return 'أي رابط';
-return a.slice(0, 2).join(', ') + (a.length > 2 ? ' +' + (a.length - 2) : '');
+  if (!a || !a.length) return 'أي رابط';
+  return a.slice(0, 2).join(', ') + (a.length > 2 ? ' +' + (a.length - 2) : '');
 }
 async function loadProviders() {
-try {
-let {d} = await api('/providers');
-if (!(d.items || []).length) {
-const bk = localStorage.getItem('provBackup');
-if (bk) {
-await api('/providers/import', {method: 'POST', body: bk});
-({d} = await api('/providers'));
-}
-}
-$('provType').innerHTML = Object.entries(d.types || {}).map(([k, v]) =>
-'<option value="' + k + '">' + esc(v) + '</option>').join('');
-$('provList').innerHTML = (d.items || []).map(p =>
-'<div class="ep"><div class="b">' + esc(p.name) + '<small>' + esc(p.type) + ' · ' +
-esc(domTxt(p.domains)) + ' · ' + esc(p.key) + '</small></div>' +
-'<button style="background:var(--danger);color:#fff" onclick="delProv(\'' + p.id + '\')">🗑</button>' +
-'<button style="margin-right:6px" onclick="testProv(\'' + p.id + '\',this)">اختبار</button></div>'
-).join('') || warn('مفيش مزوّدين. ضيف أول واحد (TorBox مطلوب للتورنت).');
-saveBackup();
-} catch (e) {}
+  try {
+    let {d} = await api('/providers');
+    if (!(d.items || []).length) {
+      const bk = localStorage.getItem('provBackup');
+      if (bk) {
+        await api('/providers/import', {method: 'POST', body: bk});
+        ({d} = await api('/providers'));
+      }
+    }
+    $('provType').innerHTML = Object.entries(d.types || {}).map(([k, v]) =>
+      '<option value="' + k + '">' + esc(v) + '</option>').join('');
+    $('provList').innerHTML = (d.items || []).map(p =>
+      '<div class="ep"><div class="b">' + esc(p.name) + '<small>' + esc(p.type) + ' · ' +
+      esc(domTxt(p.domains)) + ' · ' + esc(p.key) + '</small></div>' +
+      '<button style="background:var(--danger);color:#fff" onclick="delProv(\'' + p.id + '\')">🗑</button>' +
+      '<button style="margin-right:6px" onclick="testProv(\'' + p.id + '\',this)">اختبار</button></div>'
+    ).join('') || warn('مفيش مزوّدين. ضيف أول واحد (TorBox مطلوب للتورنت).');
+    saveBackup();
+  } catch (e) {}
 }
 async function saveBackup() {
-const ex = await api('/providers/export');
-if ((ex.d.items || []).length) localStorage.setItem('provBackup', JSON.stringify({items: ex.d.items}));
-else localStorage.removeItem('provBackup');
+  const ex = await api('/providers/export');
+  if ((ex.d.items || []).length) localStorage.setItem('provBackup', JSON.stringify({items: ex.d.items}));
+  else localStorage.removeItem('provBackup');
 }
 async function addProv() {
-const body = {
-type: $('provType').value, name: $('provName').value,
-domains: $('provDomains').value, key: $('provKey').value
-};
-const {d} = await api('/providers', {method: 'POST', body: JSON.stringify(body)});
-if (d.error) return alert(d.error);
-['provName', 'provDomains', 'provKey'].forEach(i => $(i).value = '');
-loadProviders();
+  const body = {
+    type: $('provType').value, name: $('provName').value,
+    domains: $('provDomains').value, key: $('provKey').value
+  };
+  const {d} = await api('/providers', {method: 'POST', body: JSON.stringify(body)});
+  if (d.error) return alert(d.error);
+  ['provName', 'provDomains', 'provKey'].forEach(i => $(i).value = '');
+  loadProviders();
 }
 async function delProv(id) {
-if (!confirm('حذف المزوّد؟')) return;
-await api('/providers/' + id, {method: 'DELETE'});
-await saveBackup();
-loadProviders();
+  if (!confirm('حذف المزوّد؟')) return;
+  await api('/providers/' + id, {method: 'DELETE'});
+  await saveBackup();
+  loadProviders();
 }
 async function testProv(id, btn) {
-btn.textContent = '...';
-const {d} = await api('/providers/' + id + '/test', {method: 'POST'});
-btn.textContent = d.ok ? '✅ شغال' : '❌ فشل';
-if (!d.ok && d.error) alert(d.error);
+  btn.textContent = '...';
+  const {d} = await api('/providers/' + id + '/test', {method: 'POST'});
+  btn.textContent = d.ok ? '✅ شغال' : '❌ فشل';
+  if (!d.ok && d.error) alert(d.error);
 }
 </script>
 </body>
