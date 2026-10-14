@@ -134,7 +134,7 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 <div id="main-content">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
 <h1 style="color:var(--primary);margin:0;font-size:20px">Elkomy VIP 🚀</h1>
-<button id="pchip" class="fc" onclick="showProfiles()"></button>
+<div style="display:flex;gap:8px"><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
 </div>
 
 <div class="action-box">
@@ -203,6 +203,8 @@ summary{cursor:pointer;font-weight:bold;font-size:16px}
 const API = "https://elkomy-server-production.up.railway.app";
 let TOK = sessionStorage.getItem('tok') || localStorage.getItem('rtok') || "";
 let UNAME = '', ROLE = 'user', USERS = [], NOCHK = false;
+let VS = ['h'], PUSH_ON = false;
+try { history.replaceState({n: 1}, ''); } catch (e) {}
 sessionStorage.removeItem('pass'); localStorage.removeItem('rpass');
 let UD = {profiles: {}, items: {}}, PID = null;
 let torrents = [], shown = [], selected = null, cur = null, want = null;
@@ -254,6 +256,20 @@ function tags(t) {
   const re = /2160p|4K|1080p|720p|480p|BluRay|WEB-?DL|WEBRip|HDTV|HDRip|CAM/gi;
   const m = t.match(re) || [];
   return [...new Set(m.map(x => x.toUpperCase()))].join(' · ');
+}
+const RISKY = /(?:\bDDP?\s?\d|\bDD\+|\bAC-?3\b|\bE-?AC-?3\b|\bDTS|\bTrueHD|\bAtmos|\bHEVC|\bx265|\bH[. ]?265|\b10-?bit|\.avi\b)/i;
+const risky = t => RISKY.test(String(t || '').replace(/_/g, ' '));
+const bestOf = list => list.find(x => /1080p/i.test(x.title) && !risky(x.title)) ||
+  list.find(x => !risky(x.title)) || list.find(x => /1080p/i.test(x.title)) || list[0];
+function intentUrl(u, pkg) {
+  const m = /^(https?):\/\/(.*)$/i.exec(u || '');
+  if (!m) return u;
+  return 'intent://' + m[2] + '#Intent;scheme=' + m[1].toLowerCase() + ';' + (pkg ? 'package=' + pkg + ';' : '') + 'type=video/*;end';
+}
+function setAudio(idx) {
+  const v = document.querySelector('#results video');
+  if (!v || !v.audioTracks) return;
+  for (let i = 0; i < v.audioTracks.length; i++) v.audioTracks[i].enabled = (i === +idx);
 }
 async function copyText(t) {
   try { await navigator.clipboard.writeText(t); alert('تم النسخ!'); }
@@ -365,7 +381,10 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ================= دخول =================
-window.onload = () => { if (TOK) showMain(); };
+window.onload = () => {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (TOK) showMain();
+};
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && $('login-screen').style.display !== 'none') checkLogin();
 });
@@ -502,12 +521,16 @@ function enterProfile(id) {
   PLAY = null;
   pack = null;
   showCfg = false;
+  VS = ['h'];
+  try { history.replaceState({n: 1}, ''); } catch (e) {}
   closeDetails();
   const p = prof();
   $('pchip').innerHTML = '<span class="av sm" style="background:' + esc(p.color) + '">' + esc(p.emoji) + '</span> ' + esc(p.name);
   loadRows();
   loadStremio();
   if (ROLE === 'admin') { loadProviders(); loadUsers(); }
+  pushState();
+  handleDeepLink();
 }
 function setAuto(b) {
   const p = prof();
@@ -622,7 +645,7 @@ function latestOf(tmdb) {
 }
 function listLabel() {
   const o = getItem('l:' + cur.type + ':' + cur.id);
-  return (o && !o.del) ? '✔️ في قائمتي' : '➕ أضف لقائمتي';
+  return (o && !o.del) ? '✔️ في قائمتي' + (cur.type === 'tv' ? ' 🔔' : '') : '➕ أضف لقائمتي';
 }
 function toggleList() {
   const key = 'l:' + cur.type + ':' + cur.id, o = getItem(key);
@@ -674,6 +697,7 @@ const stBtn = (s, e) => stOK()
   ? '<button class="btn-st" onclick="stGo(' + s + ',' + e + ')">🧩</button>' : '';
 
 async function openDetails(type, id) {
+  if (!VS.includes('d')) pushView('d');
   autoPick = false;
   $('titles').style.display = 'none';
   $('shelves').style.display = 'none';
@@ -694,12 +718,13 @@ async function openDetails(type, id) {
       ? '<button class="search-btn" style="margin-bottom:10px" data-k="' + esc(last.key) + '" onclick="playItem(this.dataset.k)">▶ كمّل ' +
         (last.s != null ? 'S' + p2(last.s) + 'E' + p2(last.e) + ' · ' : '') + fmtTime(last.pos) + '</button>' : '';
     let h = '<div class="hero" style="background-image:linear-gradient(transparent 30%,#0f172a),url(\'' + bg + '\')">' +
-      '<button class="back" onclick="closeDetails()">➡️</button><h2>' + esc(d.title) + '</h2></div>' +
+      '<button class="back" onclick="goBack()">➡️</button><h2>' + esc(d.title) + '</h2></div>' +
       '<div class="meta">⭐ ' + d.rating + ' · ' + esc(d.year) +
       (d.runtime ? ' · ' + d.runtime + ' د' : '') + '</div>' +
       '<p class="ov">' + esc(d.overview) + '</p>' + chips(d.genres) +
       '<div class="lbl">طاقم العمل</div>' + chips(d.cast, true) + cb +
-      '<button class="search-btn" id="listBtn" style="background:#475569;margin-bottom:10px" onclick="toggleList()">' + listLabel() + '</button>';
+      '<button class="search-btn" id="listBtn" style="background:#475569;margin-bottom:10px" onclick="toggleList()">' + listLabel() + '</button>' +
+      (d.type === 'tv' ? '<p style="color:var(--mut);font-size:12px;margin:-4px 0 10px">لو ضفته لقائمتي بيجيلك إشعار لما ينزل منه حلقة جديدة (فعّل 🔔 من فوق).</p>' : '');
     if (d.type === 'movie') {
       if (stOK()) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
       h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
@@ -719,6 +744,96 @@ function closeDetails() {
   $('shelves').style.display = 'block';
   renderShelves();
 }
+// ================= زرار الرجوع (history) =================
+function pushView(v) {
+  VS.push(v);
+  try { history.pushState({n: VS.length}, ''); } catch (e) {}
+}
+function stopPlayer() {
+  flushBeacon();
+  const v = document.querySelector('#results video');
+  if (v) { try { v.pause(); } catch (e) {} }
+  clearCd();
+  pullId++;
+  pack = null;
+  PLAY = null;
+  $('results').innerHTML = '';
+  window.scrollTo(0, 0);
+}
+function goBack() {
+  const i = VS.indexOf('d');
+  if (i > 0) history.go(-(VS.length - i));
+  else closeDetails();
+}
+window.addEventListener('popstate', e => {
+  const n = (e.state && e.state.n) || 1;
+  if (n > VS.length) { history.go(VS.length - n); return; }
+  while (VS.length > n) {
+    const top = VS.pop();
+    if (top === 'p') stopPlayer();
+    else if (top === 'd') closeDetails();
+  }
+});
+function handleDeepLink() {
+  const m = /^#open=(tv|movie):(\d+)$/.exec(location.hash);
+  if (!m || !PID) return;
+  try { history.replaceState({n: (history.state && history.state.n) || 1}, '', location.pathname + location.search); } catch (e) {}
+  openDetails(m[1], +m[2]);
+}
+window.addEventListener('hashchange', handleDeepLink);
+
+// ================= إشعارات الحلقات الجديدة =================
+const b64u = s => {
+  const r = atob((s + '='.repeat((4 - s.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...r].map(c => c.charCodeAt(0)));
+};
+async function pushState() {
+  const b = $('bell');
+  if (!b) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) { b.style.display = 'none'; return; }
+  b.style.display = '';
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && await reg.pushManager.getSubscription();
+    PUSH_ON = !!sub && Notification.permission === 'granted';
+  } catch (e) { PUSH_ON = false; }
+  b.textContent = PUSH_ON ? '🔔' : '🔕';
+}
+async function bellClick() {
+  if (!PUSH_ON) return enablePush();
+  if (confirm('الإشعارات شغالة على الجهاز ده. تبعت إشعار تجريبي؟')) {
+    const {d} = await api('/push/test', {method: 'POST'});
+    return alert(d.sent ? 'اتبعت ✅ (لو مجاش اقفل وافتح التطبيق)' : (d.error || 'مفيش اشتراك محفوظ، جرّب تطفي الإشعارات وتفعّلها تاني'));
+  }
+  if (confirm('إيقاف الإشعارات على الجهاز ده؟')) disablePush();
+}
+async function enablePush() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const {d} = await api('/push/key');
+    if (!d.enabled) return alert(d.error || 'الإشعارات مش متاحة على السيرفر');
+    if (await Notification.requestPermission() !== 'granted') return alert('لازم تسمح بالإشعارات من إعدادات المتصفح للموقع ده');
+    const old = await reg.pushManager.getSubscription();
+    if (old) await old.unsubscribe();
+    const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64u(d.key)});
+    const r = await api('/push/subscribe', {method: 'POST', body: JSON.stringify({subscription: sub.toJSON()})});
+    if (r.d.error) return alert(r.d.error);
+    alert('تم تفعيل الإشعارات ✅');
+  } catch (e) { alert('مش قادر أفعّل الإشعارات: ' + (e.message || e)); }
+  pushState();
+}
+async function disablePush() {
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && await reg.pushManager.getSubscription();
+    if (sub) {
+      await api('/push/unsubscribe', {method: 'POST', body: JSON.stringify({endpoint: sub.endpoint})});
+      await sub.unsubscribe();
+    }
+  } catch (e) {}
+  pushState();
+}
+
 async function loadSeason(n) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab' + n));
   const b = $('eps'), my = ++sReq;
@@ -808,7 +923,7 @@ async function stGo(s, e, auto) {
   if (!auto || my !== seq) return;
   let c = shown.filter(x => x.ref || x.cached);
   if (!c.length && NOCHK) c = shown.slice();
-  const best = c.find(x => /1080p/i.test(x.title)) || c[0];
+  const best = bestOf(c);
   if (best) return pullTorrent(shown.indexOf(best));
   go(s, e, true, true);
 }
@@ -864,6 +979,7 @@ function wantOK(t) {
 function qOK(t) {
   if (qf === 'all') return true;
   if (qf === 'fast') return !!t.cached;
+  if (qf === 'safe') return !risky(t.title);
   if (qf === '4k') return /2160p|\b4K\b/i.test(t.title);
   if (qf === '1080') return /1080p/i.test(t.title);
   return /720p/i.test(t.title);
@@ -952,7 +1068,7 @@ function renderTorrents() {
   list.sort((a, b) => (!!b.cached - !!a.cached) || (b.seeders - a.seeders));
   shown = list;
   const hidden = base.length - good.length;
-  const fl = [['all', 'الكل'], ['fast', '⚡ فوري'], ['4k', '4K'], ['1080', '1080p'], ['720', '720p']];
+  const fl = [['all', 'الكل'], ['safe', '✅ للمتصفح'], ['fast', '⚡ فوري'], ['4k', '4K'], ['1080', '1080p'], ['720', '720p']];
   let h = '<div class="fbar">' + fl.map(f =>
     '<button class="fc' + (qf === f[0] ? ' on' : '') + '" onclick="setQf(\'' + f[0] + '\')">' + f[1] + '</button>'
   ).join('');
@@ -981,7 +1097,8 @@ function renderTorrents() {
     return '<div class="tor">' + pic + '<div class="body"><div class="n">' + esc(t.title) + '</div>' +
       '<div class="m"><span class="size">💾 ' + fmtSize(t.size) + '</span>' +
       '<span class="s ' + (t.seeders ? '' : 'zero') + '">🌱 ' + t.seeders + '</span>' +
-      (t.cached ? '<span class="badge">⚡ فوري</span>' : '') + bd +
+      (t.cached ? '<span class="badge">⚡ فوري</span>' : '') +
+      (risky(t.title) ? '<span class="badge" style="background:#ef4444;color:#fff">⚠️ ممكن مايشتغلش بالمتصفح</span>' : '') + bd +
       (tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') +
       '<span>' + esc(t.indexer) + '</span></div>' +
       '<button onclick="pullTorrent(' + i + ')">' + (t.ref ? '▶ تشغيل' : '⬇️ سحب') + '</button></div></div>';
@@ -1009,8 +1126,8 @@ async function markCached() {
   if (my !== seq) return;
   if (autoPick) {
     autoPick = false;
-    let g = visible().good.filter(t => t.cached).sort((a, b) => b.seeders - a.seeders)[0];
-    if (!g && NOCHK) g = visible().good.sort((a, b) => b.seeders - a.seeders)[0];
+    let g = bestOf(visible().good.filter(t => t.cached).sort((a, b) => b.seeders - a.seeders));
+    if (!g && NOCHK) g = bestOf(visible().good.sort((a, b) => b.seeders - a.seeders));
     if (g) {
       const i = shown.indexOf(g);
       if (i >= 0) pullTorrent(i);
@@ -1143,6 +1260,7 @@ function keyOf(c) {
   return 'u:' + hash(c.src || c.title || '') + (c.fid != null ? ':' + c.fid : '');
 }
 function playData(d, base) {
+  if (VS[VS.length - 1] !== 'p') pushView('p');
   pack = (d.files && base.type !== 'movie') ? d : null;
   if (!base.title) base.title = d.name || '';
   base.fid = d.file_id != null ? d.file_id : (base.fid != null ? base.fid : null);
@@ -1164,13 +1282,14 @@ function linkCard(d, video) {
   return '<p style="margin:0 0 10px">📡 المصدر: <b>' + esc(d.provider || '') + '</b>' +
     (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
     (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
-    (video ? '<video controls playsinline preload="metadata" src="' + u + '"></video>' +
+    (video ? '<video controls playsinline preload="metadata" src="' + u + '"></video><div id="playErr" style="margin-top:8px"></div><div id="audSel"></div>' +
       '<div class="row" style="margin-top:8px"><button class="fc" onclick="skip(-10)">⏪ 10ث</button>' +
       '<button class="fc" onclick="skip(10)">10ث ⏩</button>' +
       '<select class="fc" onchange="setSpeed(this.value)"><option value="1">1x</option><option value="0.75">0.75x</option>' +
       '<option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2">2x</option></select></div>' : '') +
     '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download">⬇️ فتح / تحميل مباشر</a>' +
     '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في VLC)</button>' +
+    (video ? '<a class="btn-vlc" style="display:block;text-align:center;text-decoration:none;background:#0ea5e9" href="' + esc(intentUrl(d.direct_link, '')) + '">▶ فتح في مشغّل خارجي (VLC / MX Player)</a>' : '') +
     (video ? '<button class="btn-vlc btn-sub" onclick="openSubs()">💬 ترجمة</button><div id="subBox"></div>' : '');
 }
 function skip(n) {
@@ -1221,6 +1340,20 @@ function attachPlayer() {
   });
   v.addEventListener('pause', () => saveProgress(v));
   v.addEventListener('ended', () => { saveProgress(v, true); onEnded(); });
+  v.addEventListener('error', () => {
+    const b = $('playErr');
+    if (b) b.innerHTML = warn('المتصفح مش قادر يشغّل الملف ده. غالباً السبب الصوت (DD5.1 / AC3 / DTS) أو الفيديو HEVC أو الصيغة MKV. افتحه في VLC أو MX Player من الزرار اللي تحت، أو اختار نسخة بعلامة ✅ للمتصفح.');
+  });
+  v.addEventListener('loadedmetadata', () => {
+    const at = v.audioTracks, box = $('audSel');
+    if (!at || at.length < 2 || !box) return;
+    let o = '';
+    for (let i = 0; i < at.length; i++) {
+      o += '<option value="' + i + '"' + (at[i].enabled ? ' selected' : '') + '>' +
+        esc(at[i].label || at[i].language || ('صوت ' + (i + 1))) + '</option>';
+    }
+    box.innerHTML = '<select class="search-input" style="margin-top:8px" onchange="setAudio(this.value)">' + o + '</select>';
+  });
   v.play().catch(() => {});
   if (PLAY.sub) applySubItem(PLAY.sub, PLAY.sub.shift || 0, true);
   else autoSub();
@@ -1351,6 +1484,7 @@ function packListHTML() {
     '<div style="text-align:right;margin-top:12px">' + pack.files.map(fileRow).join('') + '</div></div>';
 }
 function showPack(d) {
+  if (VS[VS.length - 1] !== 'p') pushView('p');
   pack = d;
   links = [];
   $('results').innerHTML = packListHTML();
@@ -1437,6 +1571,32 @@ function subFetchQS(it, fmt, shift) {
   if (PLAY && PLAY.s != null) q += '&s=' + PLAY.s;
   return q;
 }
+const relTok = s => String(s || '').toLowerCase().replace(/\.[a-z0-9]{2,4}$/i, '').split(/[^a-z0-9]+/).filter(Boolean);
+function rankSubs(list) {
+  const fname = (PLAY && (PLAY.fname || PLAY.title)) || '';
+  const have = new Set(relTok(fname));
+  const gm = /-([a-z0-9]+)(?:\.[a-z0-9]{2,4})?$/i.exec(String(fname).trim());
+  const grp = gm ? gm[1].toLowerCase() : '';
+  list.forEach(it => {
+    const toks = relTok(it.name);
+    let sc = 0;
+    toks.forEach(t => { if (have.has(t)) sc += t.length > 3 ? 2 : 1; });
+    if (grp && toks.includes(grp)) sc += 6;
+    if (it.full) sc -= 3;
+    it._sc = sc;
+  });
+  return list.map((it, i) => [it, i]).sort((a, b) => (b[0]._sc - a[0]._sc) || (a[1] - b[1])).map(x => x[0]);
+}
+function syncFirst() {
+  const v = document.querySelector('#results video');
+  if (!v || !subSel) return;
+  const tr = v.querySelector('track');
+  const cues = tr && tr.track && tr.track.cues;
+  if (!cues || !cues.length) return alert('الترجمة لسه بتتحمّل، جرّب بعد ثانية');
+  const delta = v.currentTime - cues[0].startTime;
+  if (Math.abs(delta) > 900) return alert('الفرق كبير زيادة. ارجع لأول الفيلم وجرّب تاني، أو اختار ترجمة تانية.');
+  applySubItem(subSel.it, Math.round((subSel.shift + delta - 0.3) * 10) / 10, false);
+}
 function openSubs() {
   const box = $('subBox');
   if (!box) return;
@@ -1461,14 +1621,14 @@ async function findSubs() {
   try {
     const {d} = await api('/subs?' + q);
     if (d.error) return out.innerHTML = warn(d.error);
-    subs = d.items || [];
+    subs = rankSubs(d.items || []);
     if (!subs.length) {
       return out.innerHTML = warn('مفيش ترجمة بالمواصفات دي. جرّب لغة تانية أو اسم تاني.');
     }
     const note = d.mode === 'exact' ? '' :
       '<p style="font-size:12px;color:var(--mut);margin:0 0 8px">دي ترجمات للموسم أو المسلسل بشكل عام، هنختار الحلقة تلقائياً من جوه الملف.</p>';
     out.innerHTML = note + subs.map((it, i) =>
-      '<div class="ep"><div class="b fn">' + esc(it.name) + '<small>' + esc(it.author) +
+      '<div class="ep"><div class="b fn">' + (i === 0 && it._sc > 0 ? '⭐ ' : '') + esc(it.name) + '<small>' + esc(it.author) +
       (it.full ? ' · موسم كامل' : '') + '</small></div>' +
       '<button onclick="applySub(' + i + ')">▶</button>' +
       '<button style="margin-right:6px" onclick="dlSub(' + i + ')">⬇️</button></div>'
@@ -1497,6 +1657,8 @@ async function applySubItem(it, shift, quiet) {
   if (stn) {
     stn.innerHTML = '<div style="margin:8px 0;color:var(--success)">✅ الترجمة شغالة · التوقيت: ' +
       (shift > 0 ? '+' : '') + shift + ' ث</div>' +
+      '<button class="search-btn" style="background:#0ea5e9;margin-bottom:8px" onclick="syncFirst()">🎯 ضبط تلقائي: دوس أول ما تسمع أول جملة كلام</button>' +
+      '<div class="row" style="margin-bottom:8px"><button class="search-btn" onclick="shiftSub(-5)">-5</button><button class="search-btn" onclick="shiftSub(5)">+5</button></div>' +
       '<div class="row"><button class="search-btn" onclick="shiftSub(-1)">-1</button>' +
       '<button class="search-btn" onclick="shiftSub(-0.5)">-0.5</button>' +
       '<button class="search-btn" onclick="shiftSub(0.5)">+0.5</button>' +
@@ -1532,8 +1694,8 @@ async function autoSub() {
   if (!q) return;
   try {
     const {d} = await api('/subs?' + q);
-    const it = (d.items || [])[0];
-    if (it) { subs = d.items; await applySubItem(it, 0, true); }
+    const list = rankSubs(d.items || []);
+    if (list[0]) { subs = list; await applySubItem(list[0], 0, true); }
   } catch (e) {}
 }
 async function dlSub(i) {
