@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Elkomy Debrid VIP</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0f172a;--panel:#1e293b;--primary:#38bdf8;--text:#f8fafc;--danger:#ef4444;--success:#22c55e;--mut:#94a3b8}
 *{box-sizing:border-box;font-family:Tahoma}
@@ -125,6 +126,33 @@ body.m-tv button:focus-visible,body.m-tv .pl:focus-visible,body.m-tv summary:foc
 .vbox .vx{float:left;background:#0009;color:#fff;border:0;border-radius:50%;width:34px;height:34px;cursor:pointer}
 .btn-pl2{background:var(--success) !important;color:#fff !important;margin-inline-start:6px}
 body.m-desktop .vbox,body.m-tv .vbox{max-width:900px}
+
+:root{--bg:#0a0a0f;--panel:#15151d;--primary:#ff4d6d;--mut:#9a9aab}
+*{font-family:Cairo,Tahoma,sans-serif}
+.login-btn,.btn-blue{color:#fff}
+#hz{margin-bottom:18px}
+.hz{position:relative;border-radius:18px;overflow:hidden;min-height:300px;background:#000 center/cover;display:flex;align-items:flex-end}
+.hz:before{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#0a0a0f 4%,#0a0a0f00 70%),linear-gradient(270deg,#0a0a0fd0,#0a0a0f00 75%)}
+.hz .hc{position:relative;padding:20px 18px 34px;max-width:640px}
+.hz h2{margin:0 0 6px;font-size:clamp(24px,5vw,44px);font-weight:800;text-shadow:0 2px 12px #000}
+.hz .hm{color:#d1d5db;font-size:13px;margin-bottom:8px}
+.hz p{margin:0 0 14px;line-height:1.8;color:#e5e7eb;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.hz .hb{display:flex;gap:10px;flex-wrap:wrap}
+.hz .hb button{border:0;border-radius:99px;padding:11px 22px;font-weight:700;cursor:pointer}
+.hz .hb .p{background:#fff;color:#000}
+.hz .hb .i{background:#ffffff33;color:#fff;backdrop-filter:blur(8px)}
+.hz .dots{position:absolute;bottom:12px;left:18px;display:flex;gap:6px}
+.hz .dots i{width:8px;height:8px;border-radius:50%;background:#ffffff55;cursor:pointer}
+.hz .dots i.on{background:#fff}
+h3.sec{font-size:20px;color:#fff;margin:16px 0 10px}
+.poster{border-radius:12px;transition:transform .2s}
+.poster:hover,.poster:focus-visible{transform:scale(1.06)}
+.poster.mtile{display:flex;align-items:center;justify-content:center;aspect-ratio:2/3;font-weight:800;text-align:center;padding:8px;background:linear-gradient(160deg,#2a2a3d,#15151d)}
+#browse{display:none}
+.bhead{display:flex;align-items:center;gap:12px;margin:6px 0 14px}
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:12px}
+body.m-desktop .bgrid,body.m-tv .bgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+body.m-desktop .hz,body.m-tv .hz{min-height:420px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
@@ -192,6 +220,8 @@ body.m-desktop .vbox,body.m-tv .vbox{max-width:900px}
 
 <div id="titles"></div>
 <div id="details"></div>
+<div id="browse"></div>
+<div id="hz"></div>
 <div id="shelves"></div>
 
 <div id="torrentPanel" style="display:none">
@@ -762,6 +792,7 @@ async function loadRows() {
     try { const {d} = await api('/rows'); ROWS = d.rows || []; }
     catch (e) { ROWS = []; }
   }
+  loadHero();
   renderShelves();
 }
 function nextEpOf(c) {
@@ -852,7 +883,7 @@ function renderShelves() {
   if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
   if (lst.length) h += row('❤️ قائمتي', lst);
   h += stRow();
-  (ROWS || []).forEach(r => { if (!hr.includes(r.id)) h += row(r.title, r.items); });
+  (ROWS || []).forEach(r => { if (!hr.includes(r.id)) h += row(r.title, r.items, r.id); });
   if (ROWS && ROWS.length) {
     h += '<button class="fc" style="margin:6px 0 14px" onclick="toggleCfg()">⚙️ تخصيص الصفوف</button>';
     if (showCfg) h += rowsCfgHTML();
@@ -886,7 +917,7 @@ function epMark(tmdb, s, e) {
 }
 
 // ================= البحث: أفلام / مسلسلات =================
-function row(title, list) {
+function row(title, list, rid) {
   if (!list.length) return '';
   return '<h3 class="sec">' + title + '</h3><div class="hrow">' + list.map(t =>
     (t.imdb ? '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">'
@@ -895,12 +926,13 @@ function row(title, list) {
     (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">'
               : '<div class="noimg">🎬</div>') +
     '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) +
-    '</div></div></div>').join('') + '</div>';
+    '</div></div></div>').join('') + (rid ? '<div class="poster mtile" data-k="' + esc(rid) + '" data-t="' + esc(title) + '" onclick="openMore(this.dataset.k,this.dataset.t)">المزيد ‹</div>' : '') + '</div>';
 }
 async function searchTitles() {
   const q = $('searchInput').value.trim();
   if (!q) return alert("اكتب اسم الفيلم أو المسلسل");
   autoPick = false;
+  BR.on = false;
   closeDetails();
   const box = $('titles');
   box.innerHTML = pend('جاري البحث...');
@@ -928,6 +960,8 @@ async function openDetails(type, id) {
   autoPick = false;
   $('titles').style.display = 'none';
   $('shelves').style.display = 'none';
+  $('hz').style.display = 'none';
+  $('browse').style.display = 'none';
   $('torrentPanel').style.display = 'none';
   const box = $('details');
   box.style.display = 'block';
@@ -968,8 +1002,10 @@ async function openDetails(type, id) {
 function closeDetails() {
   $('details').style.display = 'none';
   $('torrentPanel').style.display = 'none';
-  $('titles').style.display = 'block';
-  $('shelves').style.display = 'block';
+  $('titles').style.display = BR.on ? 'none' : 'block';
+  $('shelves').style.display = BR.on ? 'none' : 'block';
+  $('hz').style.display = BR.on ? 'none' : 'block';
+  $('browse').style.display = BR.on ? 'block' : 'none';
   renderShelves();
 }
 // ================= زرار الرجوع (history) =================
@@ -1000,6 +1036,7 @@ window.addEventListener('popstate', e => {
     const top = VS.pop();
     if (top === 'p') stopPlayer();
     else if (top === 'd') closeDetails();
+    else if (top === 'b') closeBrowse();
   }
 });
 function handleDeepLink() {
@@ -2533,6 +2570,80 @@ function setupHls(v) {
     fallback('المتصفح مش بيدعم HLS');
   }
 }
+
+// ================= الشكل الجديد: بانر + "المزيد" =================
+let HERO = [], heroI = 0, heroT = null;
+const BR = {on: false, k: '', title: '', items: [], skip: 0, more: false, busy: false, err: ''};
+async function loadHero() {
+  if (!HERO.length) {
+    try { const {d} = await api('/hero'); HERO = d.items || []; } catch (e) {}
+  }
+  renderHero();
+}
+function renderHero() {
+  const el = $('hz');
+  clearInterval(heroT);
+  if (!el) return;
+  if (!HERO.length) { el.innerHTML = ''; return; }
+  const i = heroI % HERO.length, x = HERO[i];
+  el.innerHTML = '<div class="hz" style="background-image:url(\'' + esc(x.backdrop) + '\')"><div class="hc"><h2>' + esc(x.title) +
+    '</h2><div class="hm">' + esc((x.type === 'tv' ? 'مسلسل' : 'فيلم') + ' · ' + x.year + ' · ⭐ ' + x.rating) + '</div><p>' + esc(x.overview) +
+    '</p><div class="hb"><button class="p" onclick="heroGo(' + i + ',1)">▶ عرض</button><button class="i" onclick="heroGo(' + i +
+    ')">المزيد من المعلومات</button></div></div><div class="dots">' +
+    HERO.map((_, j) => '<i class="' + (j === i ? 'on' : '') + '" onclick="heroI=' + j + ';renderHero()"></i>').join('') + '</div></div>';
+  heroT = setInterval(() => { if ($('hz').style.display !== 'none') { heroI++; renderHero(); } }, 8000);
+}
+async function heroGo(i, play) {
+  const x = HERO[i];
+  if (!x) return;
+  await openDetails(x.type, x.id);
+  if (play && x.type === 'movie') playOpen();
+}
+async function openMore(k, title) {
+  Object.assign(BR, {on: true, k: k, title: title, items: [], skip: 0, more: true, busy: false, err: ''});
+  pushView('b');
+  $('hz').style.display = 'none';
+  $('shelves').style.display = 'none';
+  $('titles').style.display = 'none';
+  $('browse').style.display = 'block';
+  window.scrollTo(0, 0);
+  await brLoad();
+}
+async function brLoad() {
+  if (BR.busy || !BR.more) return;
+  BR.busy = true;
+  brRender();
+  try {
+    const {d} = await api('/browse?k=' + encodeURIComponent(BR.k) + '&skip=' + BR.skip);
+    if (d.error) { BR.more = false; BR.err = d.error; }
+    else {
+      const key = x => x.imdb || x.id || x.title, seen = new Set(BR.items.map(key));
+      (d.items || []).forEach(x => { if (!seen.has(key(x))) { seen.add(key(x)); BR.items.push(x); } });
+      BR.skip = d.skip;
+      BR.more = !!d.more;
+    }
+  } catch (e) { BR.err = 'مش قادر أوصل للسيرفر'; BR.more = false; }
+  BR.busy = false;
+  brRender();
+}
+function brRender() {
+  if (!BR.on) return;
+  $('browse').innerHTML = '<div class="bhead"><button class="fc" onclick="brBack()">➡️ رجوع</button><h3 class="sec" style="margin:0">' + esc(BR.title) +
+    '</h3></div>' + (BR.err ? warn(BR.err) : '') +
+    row('', BR.items).replace('<h3 class="sec"></h3><div class="hrow">', '<div class="bgrid">') +
+    (BR.busy ? pend('جاري التحميل...') : (BR.more ? '<button class="search-btn" style="margin:14px 0" onclick="brLoad()">تحميل المزيد</button>' : ''));
+}
+function closeBrowse() {
+  BR.on = false;
+  $('browse').style.display = 'none';
+  $('hz').style.display = 'block';
+  $('shelves').style.display = 'block';
+  $('titles').style.display = 'block';
+}
+function brBack() { if (VS.includes('b')) history.back(); else closeBrowse(); }
+window.addEventListener('scroll', () => {
+  if (BR.on && !BR.busy && BR.more && window.innerHeight + window.scrollY > document.body.scrollHeight - 700) brLoad();
+});
 </script>
 </body>
 </html>
