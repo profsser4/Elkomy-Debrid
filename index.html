@@ -153,6 +153,11 @@ h3.sec{font-size:20px;color:#fff;margin:16px 0 10px}
 .bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:12px}
 body.m-desktop .bgrid,body.m-tv .bgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 body.m-desktop .hz,body.m-tv .hz{min-height:420px}
+.tr{position:relative;aspect-ratio:16/9;margin-top:10px}
+.tr iframe{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px}
+.hero{height:clamp(240px,48vw,440px);border-radius:16px}
+#details .search-btn,.result-card{border-radius:14px}
+video{border-radius:14px}
 .gtile{flex:0 0 auto;min-width:110px;padding:18px 22px;border:1px solid #ffffff1f;border-radius:14px;background:linear-gradient(160deg,#2a2a3d,#15151d);color:#fff;font-weight:800;font-size:15px;cursor:pointer;transition:transform .2s}
 .gtile:hover,.gtile:focus-visible{transform:scale(1.05);background:linear-gradient(160deg,#3b3b57,#1c1c28)}
 #gtiles{margin-bottom:6px}
@@ -798,6 +803,7 @@ async function loadRows() {
   loadHero();
   renderGenres();
   loadLatest();
+  loadFresh();
   loadInterestRows();
   renderShelves();
   if (prof() && prof().int === undefined) openInterests();
@@ -889,7 +895,8 @@ function renderShelves() {
   let h = '';
   if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
   if (lst.length) h += row('❤️ قائمتي', lst);
-  if (LATEST.length) h += row('🆕 آخر الإضافات', LATEST);
+  if (LATEST.length) h += row('🔔 جديد في قائمتي', LATEST);
+  FRESH.forEach(r => { h += row(r.title, r.items, r.id); });
   IROWS.forEach(r => { h += row(r.title, r.items, r.id); });
   h += stRow();
   (ROWS || []).forEach(r => { if (!hr.includes(r.id)) h += row(r.title, r.items, r.id); });
@@ -993,6 +1000,7 @@ async function openDetails(type, id) {
       (d.runtime ? ' · ' + d.runtime + ' د' : '') + '</div>' +
       '<p class="ov">' + esc(d.overview) + '</p>' + chips(d.genres) +
       '<div class="lbl">طاقم العمل</div>' + chips(d.cast, true) + cb +
+      '<button class="search-btn" style="background:#334155;margin-bottom:10px" onclick="openTrailer(\'' + d.type + '\',' + d.id + ')">🎬 التريلر</button>' +
       '<button class="search-btn" id="listBtn" style="background:#475569;margin-bottom:10px" onclick="toggleList()">' + listLabel() + '</button>' +
       (d.type === 'tv' ? '<p style="color:var(--mut);font-size:12px;margin:-4px 0 10px">لو ضفته لقائمتي بيجيلك إشعار لما ينزل منه حلقة جديدة (فعّل 🔔 من فوق).</p>' : '');
     if (d.type === 'movie') {
@@ -1630,7 +1638,7 @@ function attachPlayer() {
   v.addEventListener('ended', () => { saveProgress(v, true); onEnded(); });
   v.addEventListener('error', () => {
     const b = $('playErr');
-    if (b) b.innerHTML = warn('المتصفح مش قادر يشغّل الملف ده. غالباً السبب الصوت (DD5.1 / AC3 / DTS) أو الفيديو HEVC أو الصيغة MKV. افتحه من المشغّلات الخارجية تحت (VLC أو MX أو Stremio)، أو اختار نسخة بعلامة ✅ للمتصفح.');
+    if (b) b.innerHTML = warn('المتصفح مش قادر يشغّل الملف ده. غالباً السبب الصوت (DD5.1 / AC3 / DTS) أو الفيديو HEVC أو الصيغة MKV. افتحه من المشغّلات الخارجية تحت (VLC أو MX أو Stremio)، أو اختار نسخة بعلامة ✅ للمتصفح.') + retryBtn();
     const pm = document.querySelector('details.pm');
     if (pm) pm.open = true;
   });
@@ -1726,7 +1734,8 @@ async function playItem(key) {
   if (!it || it.del) return;
   scrollToResults();
   if (it.done && it.type === 'tv') return playAfter(it);
-  if (it.vh) return playByHash(it);
+  const h0 = it.vh || ((/btih:([a-fA-F0-9]{40})/.exec(it.src || '') || [])[1] || '').toLowerCase();
+  if (h0) return playByHash(Object.assign({}, it, {vh: h0}));
   if (!it.src) return alert('مفيش مصدر محفوظ للعنصر ده');
   if (it.dr) {
     clearCd();
@@ -2335,7 +2344,7 @@ function vpEl() {
 }
 function closeVP() {
   const el = $('vpanel');
-  if (el) el.style.display = 'none';
+  if (el) { el.style.display = 'none'; if (el.innerHTML.indexOf('<iframe') >= 0) el.innerHTML = ''; }
   if (INT_OPEN) {
     INT_OPEN = false;
     const p = prof();
@@ -2442,6 +2451,7 @@ function baseFromCur(spec) {
 }
 async function startPlay(spec, mode, baseOver) {
   const my = ++pullId;
+  LAST_PULL = my;
   clearCd();
   scrollToResults();
   $('results').innerHTML = pend('جاري تجهيز النسخة...');
@@ -2489,14 +2499,20 @@ async function playBest(s, e) {
   VER.e = s ? (e || 1) : null;
   let list = [];
   try { list = await fetchVersions(VER.s, VER.e); } catch (x) {}
-  const best = list.find(v => v.instant);
-  if (!best) return go(s, e, true, true, true);
-  return startPlay(specOf(best), 'watch');
+  const cands = list.filter(v => v.instant && !FAILED.has(v.hash || v.ref)).slice(0, 3);
+  for (const v of cands) {
+    const d = await startPlay(specOf(v), 'watch');
+    if (d || pullId !== LAST_PULL) return d;
+    FAILED.add(v.hash || v.ref);
+  }
+  return go(s, e, true, true, true);
 }
-function playByHash(it) {
+async function playByHash(it) {
   scrollToResults();
-  return startPlay({hash: it.vh, name: it.fname || it.title,
-    s: it.s != null ? it.s : null, e: it.e != null ? it.e : null, slow: true}, 'watch', baseOf(it));
+  const d = await startPlay({hash: it.vh, name: it.fname || it.title,
+    s: it.s != null ? it.s : null, e: it.e != null ? it.e : null}, 'watch', baseOf(it));
+  if (!d && pullId === LAST_PULL) return resumeFallback(it);
+  return d;
 }
 async function diagVersion(i) {
   const v = VER.list[i];
@@ -2537,7 +2553,7 @@ function setupHls(v) {
     v.play().catch(() => {});
     const b = $('playErr');
     if (b) b.innerHTML = warn('البث المحوَّل مشتغلش' + (ROLE === 'admin' ? ' (' + why + ')' : '') +
-      '، شغّلت الملف الأصلي. لو الصوت مش شغال افتحه من المشغّلات الخارجية تحت.');
+      '، شغّلت الملف الأصلي. لو الصوت مش شغال افتحه من المشغّلات الخارجية تحت.') + retryBtn();
     const pm = document.querySelector('details.pm');
     if (pm) pm.open = true;
   };
@@ -2583,7 +2599,7 @@ function renderHero() {
   el.innerHTML = '<div class="hz" style="background-image:url(\'' + esc(x.backdrop) + '\')"><div class="hc"><h2>' + esc(x.title) +
     '</h2><div class="hm">' + esc((x.type === 'tv' ? 'مسلسل' : 'فيلم') + ' · ' + x.year + ' · ⭐ ' + x.rating) + '</div><p>' + esc(x.overview) +
     '</p><div class="hb"><button class="p" onclick="heroGo(' + i + ',1)">▶ عرض</button><button class="i" onclick="heroGo(' + i +
-    ')">المزيد من المعلومات</button></div></div><div class="dots">' +
+    ')">المزيد من المعلومات</button><button class="i" onclick="openTrailer(\'' + x.type + '\',' + x.id + ')">🎬 تريلر</button></div></div><div class="dots">' +
     HERO.map((_, j) => '<i class="' + (j === i ? 'on' : '') + '" onclick="heroI=' + j + ';renderHero()"></i>').join('') + '</div></div>';
   heroT = setInterval(() => { if ($('hz').style.display !== 'none') { heroI++; renderHero(); } }, 8000);
 }
@@ -2594,7 +2610,7 @@ async function heroGo(i, play) {
   if (play && x.type === 'movie') playOpen();
 }
 function openMore(k, title) {
-  return openBrowse(k.indexOf('int:') === 0 ? 'int=' + encodeURIComponent(k.slice(4)) : 'k=' + encodeURIComponent(k), title);
+  return openBrowse(k.indexOf('int:') === 0 ? 'int=' + encodeURIComponent(k.slice(4)) : k.indexOf('fresh:') === 0 ? 'fresh=' + encodeURIComponent(k.slice(6)) : 'k=' + encodeURIComponent(k), title);
 }
 async function openBrowse(q, title) {
   Object.assign(BR, {on: true, q: q, title: title, items: [], skip: 0, more: true, busy: false, err: ''});
@@ -2725,6 +2741,57 @@ function renderLayout() {
   }
   el.innerHTML = h;
   layGenres();
+}
+
+// ================= أحدث الإضافات + تكملة المشاهدة بنفس النسخة + التريلر =================
+let FRESH = [], FRESH_T = 0, LAST_PULL = 0;
+const FAILED = new Set();
+async function loadFresh() {
+  try { const {d} = await api('/fresh'); FRESH = d.rows || []; FRESH_T = Date.now(); } catch (e) {}
+  renderShelves();
+}
+setInterval(() => { if (PID && !document.hidden) { loadFresh(); loadLatest(); } }, 20 * 60 * 1000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && PID && Date.now() - FRESH_T > 10 * 60 * 1000) { loadFresh(); loadLatest(); }
+});
+const retryBtn = () => (PLAY && PLAY.tmdb)
+  ? '<button class="search-btn" style="margin-top:8px" onclick="tryNextVersion()">🔁 جرّب نسخة تانية</button>' : '';
+async function altVersion(info, failedKey) {
+  if (failedKey) FAILED.add(failedKey);
+  VER.s = info.s != null ? info.s : null;
+  VER.e = info.s != null ? (info.e || 1) : null;
+  VER.key = '';
+  await ensureCur(info.tmdb, info.type, info.qn);
+  if (!cur || !cur.imdb) return null;
+  const list = await fetchVersions(VER.s, VER.e);
+  return list.find(x => x.instant && !FAILED.has(x.hash || x.ref)) || null;
+}
+async function resumeFallback(it) {
+  $('results').innerHTML = pend('النسخة الأصلية مش شغالة دلوقتي، بجرّب نسخة تانية...');
+  let v = null;
+  try { v = await altVersion(it, it.vh); } catch (x) {}
+  if (!v) { $('results').innerHTML = warn('مفيش نسخة بديلة فورية دلوقتي. افتح الفيلم واختار نسخة بنفسك.'); return null; }
+  return startPlay(specOf(v), 'watch');
+}
+async function tryNextVersion() {
+  if (!PLAY || !PLAY.tmdb) return;
+  const vid = document.querySelector('#results video');
+  if (vid) saveProgress(vid);
+  const info = {tmdb: PLAY.tmdb, type: PLAY.type, s: PLAY.s, e: PLAY.e, qn: PLAY.qn};
+  let v = null;
+  try { v = await altVersion(info, PLAY.vh || PLAY.src); } catch (x) {}
+  if (!v) return playOpen(info.s || undefined, info.e || undefined);
+  return startPlay(specOf(v), 'watch');
+}
+async function openTrailer(type, id) {
+  const el = vpEl();
+  el.style.display = 'flex';
+  el.innerHTML = '<div class="vbox"><button class="vx" onclick="closeVP()">✕</button>' + pend('بدوّر على التريلر...') + '</div>';
+  let key = '';
+  try { const {d} = await api('/trailer?type=' + type + '&id=' + id); key = d.key || ''; } catch (e) {}
+  el.innerHTML = '<div class="vbox"><button class="vx" onclick="closeVP()">✕</button>' + (key
+    ? '<div class="tr"><iframe src="https://www.youtube.com/embed/' + encodeURIComponent(key) + '?autoplay=1&rel=0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>'
+    : warn('مفيش تريلر متاح للعمل ده.')) + '</div>';
 }
 </script>
 </body>
