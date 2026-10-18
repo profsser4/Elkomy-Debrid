@@ -271,6 +271,7 @@ video{border-radius:14px}
 
 <details class="action-box adm" style="text-align:right;margin-top:18px">
 <summary>⚙️ المزوّدين (TorBox / Real-Debrid / ...)</summary>
+<label style="display:block;margin:10px 0;color:var(--mut);font-size:13px"><input type="checkbox" id="advChk" onchange="setAdv(this.checked)"> إظهار الأزرار القديمة (بحث التورنت وStremio القديم)</label>
 <div id="provList" style="margin:14px 0"></div>
 <select id="provType" class="search-input"></select>
 <input id="provName" class="search-input" placeholder="الاسم (اختياري)">
@@ -674,6 +675,8 @@ function eye(id, b) {
 }
 function applyRole() {
   document.querySelectorAll('.adm').forEach(el => el.style.display = ROLE === 'admin' ? '' : 'none');
+  const ac = $('advChk');
+  if (ac) ac.checked = ADV();
 }
 async function showMain() {
   $('login-screen').style.display = 'none';
@@ -1005,8 +1008,8 @@ async function openDetails(type, id) {
       (d.type === 'tv' ? '<p style="color:var(--mut);font-size:12px;margin:-4px 0 10px">لو ضفته لقائمتي بيجيلك إشعار لما ينزل منه حلقة جديدة (فعّل 🔔 من فوق).</p>' : '');
     if (d.type === 'movie') {
       if (d.imdb) h += '<button class="search-btn" style="margin-bottom:10px" onclick="playOpen()">▶ تشغيل / اختيار نسخة</button>';
-      if (stOK()) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
-      h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
+      if (stOK() && (ADV() || !d.imdb)) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
+      if (ADV() || !d.imdb) h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
     } else {
       h += '<div class="tabs">' + d.seasons.map(s =>
         '<button class="tab" id="tab' + s.n + '" onclick="loadSeason(' + s.n + ')">الموسم ' + s.n + '</button>'
@@ -1124,13 +1127,13 @@ async function loadSeason(n) {
     const {d} = await api('/season?id=' + cur.id + '&n=' + n);
     if (my !== sReq) return;
     if (d.error) return b.innerHTML = warn(d.error);
-    b.innerHTML = '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' +
+    b.innerHTML = (ADV() || !cur.imdb ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
       d.episodes.map(e => '<div class="ep">' +
         (e.still ? '<img loading="lazy" src="' + esc(e.still) + '" alt="">' : '') +
         '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) +
         (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + '</small></div>' +
-        playBtn(n, e.n) + stBtn(n, e.n) +
-        '<button onclick="go(' + n + ',' + e.n + ')">🧲</button></div>').join('');
+        playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
+        (ADV() || !cur.imdb ? '<button onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div>').join('');
   } catch (e) { if (my === sReq) b.innerHTML = ERR; }
 }
 function altChips() {
@@ -2792,6 +2795,13 @@ async function openTrailer(type, id) {
   el.innerHTML = '<div class="vbox"><button class="vx" onclick="closeVP()">✕</button>' + (key
     ? '<div class="tr"><iframe src="https://www.youtube.com/embed/' + encodeURIComponent(key) + '?autoplay=1&rel=0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>'
     : warn('مفيش تريلر متاح للعمل ده.')) + '</div>';
+}
+
+// ================= الأزرار القديمة (متخبّية افتراضياً) =================
+const ADV = () => localStorage.getItem('adv') === '1';
+function setAdv(v) {
+  localStorage.setItem('adv', v ? '1' : '0');
+  if (cur && $('details').style.display === 'block') openDetails(cur.type, cur.id);
 }
 </script>
 </body>
