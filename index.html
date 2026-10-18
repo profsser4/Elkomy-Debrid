@@ -495,7 +495,7 @@ function stremioLink(web) {
 }
 function dlM3U1() {
   if (!PLAY || !PLAY.url) return;
-  const body = '#EXTM3U\n#EXTINF:-1,' + (PLAY.title || PLAY.fname || 'video') + '\n' + PLAY.url + '\n';
+  const body = '#EXTM3U\n#EXTINF:-1,' + (PLAY.title || PLAY.fname || 'video') + '\n' + (PLAY.hls || PLAY.url) + '\n';
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([body], {type: 'audio/x-mpegurl'}));
   a.download = 'video.m3u';
@@ -1577,6 +1577,7 @@ function playData(d, base) {
 }
 function linkCard(d, video) {
   const u = esc(d.direct_link);
+  const hu = (video && PLAY && PLAY.hls) ? esc(PLAY.hls) : '';   // رابط التشغيل المحوَّل (صوته شغّال)
   return '<p style="margin:0 0 10px">📡 المصدر: <b>' + esc(d.provider || '') + '</b>' +
     (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
     (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
@@ -1587,8 +1588,10 @@ function linkCard(d, video) {
       '<select class="fc" onchange="setSpeed(this.value)"><option value="1">1x</option><option value="0.75">0.75x</option>' +
       '<option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2">2x</option></select></div>' : '') +
     '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download">⬇️ فتح / تحميل مباشر</a>' +
-    '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في VLC)</button>' +
-    (video ? playerMenu(d.direct_link) : '') +
+    (hu ? '<button class="btn-vlc" data-u="' + hu + '" onclick="copyText(this.dataset.u)">📋 نسخ رابط التشغيل (بصوت شغّال)</button>' +
+      '<button class="btn-vlc" style="background:#475569" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ رابط التحميل الأصلي</button>'
+      : '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في VLC)</button>') +
+    (video ? playerMenu((PLAY && PLAY.hls) ? PLAY.hls : d.direct_link) : '') +
     (video ? '<button class="btn-vlc btn-sub" onclick="openSubs()">💬 ترجمة</button><div id="subBox"></div>' : '');
 }
 function skip(n) {
