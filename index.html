@@ -153,6 +153,9 @@ h3.sec{font-size:20px;color:#fff;margin:16px 0 10px}
 .bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:12px}
 body.m-desktop .bgrid,body.m-tv .bgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 body.m-desktop .hz,body.m-tv .hz{min-height:420px}
+.gtile{flex:0 0 auto;min-width:110px;padding:18px 22px;border:1px solid #ffffff1f;border-radius:14px;background:linear-gradient(160deg,#2a2a3d,#15151d);color:#fff;font-weight:800;font-size:15px;cursor:pointer;transition:transform .2s}
+.gtile:hover,.gtile:focus-visible{transform:scale(1.05);background:linear-gradient(160deg,#3b3b57,#1c1c28)}
+#gtiles{margin-bottom:6px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
@@ -206,7 +209,7 @@ body.m-desktop .hz,body.m-tv .hz{min-height:420px}
 <div id="main-content">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
 <h1 style="color:var(--primary);margin:0;font-size:20px">Elkomy VIP 🚀</h1>
-<div style="display:flex;gap:8px"><button class="fc" onclick="openView()">🖥</button><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
+<div style="display:flex;gap:8px"><button class="fc" onclick="openView()">🖥</button><button class="fc" onclick="openInterests()">⭐</button><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
 </div>
 
 <div class="action-box">
@@ -221,7 +224,7 @@ body.m-desktop .hz,body.m-tv .hz{min-height:420px}
 <div id="titles"></div>
 <div id="details"></div>
 <div id="browse"></div>
-<div id="hz"></div>
+<div id="hz"><div id="hzb"></div><div id="gtiles"></div></div>
 <div id="shelves"></div>
 
 <div id="torrentPanel" style="display:none">
@@ -793,7 +796,11 @@ async function loadRows() {
     catch (e) { ROWS = []; }
   }
   loadHero();
+  renderGenres();
+  loadLatest();
+  loadInterestRows();
   renderShelves();
+  if (prof() && prof().int === undefined) openInterests();
 }
 function nextEpOf(c) {
   if (!c || c.type !== 'tv' || c.s == null || c.e == null) return null;
@@ -882,6 +889,8 @@ function renderShelves() {
   let h = '';
   if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
   if (lst.length) h += row('❤️ قائمتي', lst);
+  if (LATEST.length) h += row('🆕 آخر الإضافات', LATEST);
+  IROWS.forEach(r => { h += row(r.title, r.items, r.id); });
   h += stRow();
   (ROWS || []).forEach(r => { if (!hr.includes(r.id)) h += row(r.title, r.items, r.id); });
   if (ROWS && ROWS.length) {
@@ -925,7 +934,7 @@ function row(title, list, rid) {
       : '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">') +
     (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">'
               : '<div class="noimg">🎬</div>') +
-    '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) +
+    '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) + (t.badge ? ' · ' + esc(t.badge) : '') +
     '</div></div></div>').join('') + (rid ? '<div class="poster mtile" data-k="' + esc(rid) + '" data-t="' + esc(title) + '" onclick="openMore(this.dataset.k,this.dataset.t)">المزيد ‹</div>' : '') + '</div>';
 }
 async function searchTitles() {
@@ -2148,30 +2157,6 @@ async function dubRefresh(btn) {
   btn.disabled = false;
   loadLayout();
 }
-function renderLayout() {
-  const el = $('layBox');
-  if (!el) return;
-  const btn = 'style="margin-inline-start:4px;';
-  let h = LAY.map((r, i) =>
-    '<div class="ep"><input type="checkbox" ' + (r.on ? 'checked ' : '') + 'onchange="layOn(' + i + ',this.checked)">' +
-    '<div class="b">' + esc(r.t) + layStat(r) + '</div>' +
-    '<button onclick="layMove(' + i + ',-1)">▲</button>' +
-    '<button ' + btn + '" onclick="layMove(' + i + ',1)">▼</button>' +
-    '<button ' + btn + 'background:#475569;color:#fff" onclick="layRename(' + i + ')">✏️</button>' +
-    '<button ' + btn + 'background:var(--danger);color:#fff" onclick="layDel(' + i + ')">🗑</button></div>').join('')
-    || warn('مفيش صفوف. ضيف إضافات فيها كتالوجات (زي Cinemeta) من قسم Stremio.');
-  h += '<button class="search-btn" style="margin-top:6px" onclick="laySave(this)">💾 حفظ الترتيب (يظهر للكل)</button>' +
-    '<button class="search-btn btn-blue" style="margin-top:8px" onclick="dubRefresh(this)">🔄 فحص المدبلج بالمصري دلوقتي</button>';
-  if (LCATS.length) {
-    h += '<h3 class="sec" style="margin-top:16px">➕ إضافة صف</h3>' +
-      '<select id="layCat" class="search-input" onchange="layGenres()">' + LCATS.map((c, i) =>
-        '<option value="' + i + '">' + esc(c.an + ' · ' + c.name + ' (' + (c.ty === 'movie' ? 'أفلام' : 'مسلسلات') + ')') + '</option>').join('') + '</select>' +
-      '<select id="layGen" class="search-input"></select>' +
-      '<button class="search-btn btn-blue" onclick="layAdd()">➕ إضافة الصف</button>';
-  }
-  el.innerHTML = h;
-  layGenres();
-}
 function layGenres() {
   const s = $('layCat'), g = $('layGen');
   if (!s || !g) return;
@@ -2348,7 +2333,16 @@ function vpEl() {
   }
   return el;
 }
-function closeVP() { const el = $('vpanel'); if (el) el.style.display = 'none'; }
+function closeVP() {
+  const el = $('vpanel');
+  if (el) el.style.display = 'none';
+  if (INT_OPEN) {
+    INT_OPEN = false;
+    const p = prof();
+    if (p) { p.int = [...IPICK]; saveProfileObj(p); }
+    loadInterestRows();
+  }
+}
 async function playOpen(s, e) {
   if (!cur || !cur.imdb) return alert('العمل ده مالوش بيانات كافية للتشغيل');
   want = s ? {s: s, e: e || null} : null;
@@ -2581,7 +2575,7 @@ async function loadHero() {
   renderHero();
 }
 function renderHero() {
-  const el = $('hz');
+  const el = $('hzb');
   clearInterval(heroT);
   if (!el) return;
   if (!HERO.length) { el.innerHTML = ''; return; }
@@ -2599,8 +2593,11 @@ async function heroGo(i, play) {
   await openDetails(x.type, x.id);
   if (play && x.type === 'movie') playOpen();
 }
-async function openMore(k, title) {
-  Object.assign(BR, {on: true, k: k, title: title, items: [], skip: 0, more: true, busy: false, err: ''});
+function openMore(k, title) {
+  return openBrowse(k.indexOf('int:') === 0 ? 'int=' + encodeURIComponent(k.slice(4)) : 'k=' + encodeURIComponent(k), title);
+}
+async function openBrowse(q, title) {
+  Object.assign(BR, {on: true, q: q, title: title, items: [], skip: 0, more: true, busy: false, err: ''});
   pushView('b');
   $('hz').style.display = 'none';
   $('shelves').style.display = 'none';
@@ -2614,7 +2611,7 @@ async function brLoad() {
   BR.busy = true;
   brRender();
   try {
-    const {d} = await api('/browse?k=' + encodeURIComponent(BR.k) + '&skip=' + BR.skip);
+    const {d} = await api('/browse?' + BR.q + '&skip=' + encodeURIComponent(BR.skip));
     if (d.error) { BR.more = false; BR.err = d.error; }
     else {
       const key = x => x.imdb || x.id || x.title, seen = new Set(BR.items.map(key));
@@ -2644,6 +2641,91 @@ function brBack() { if (VS.includes('b')) history.back(); else closeBrowse(); }
 window.addEventListener('scroll', () => {
   if (BR.on && !BR.busy && BR.more && window.innerHeight + window.scrollY > document.body.scrollHeight - 700) brLoad();
 });
+
+// ================= بلاطات التصنيفات + الاهتمامات + دمج الصفوف =================
+const GTILES = [['action', 'أكشن'], ['drama', 'دراما'], ['comedy', 'كوميديا'], ['crime', 'جريمة'], ['scifi', 'خيال علمي'],
+  ['horror', 'رعب'], ['romance', 'رومانسي'], ['cartoon', 'كرتون'], ['family', 'عائلي'], ['doc', 'وثائقي']];
+function renderGenres() {
+  const el = $('gtiles');
+  if (el) el.innerHTML = '<div class="hrow">' + GTILES.map(g => '<button class="gtile" data-g="' + g[0] + '" data-n="' + g[1] +
+    '" onclick="openBrowse(\'genre=\' + this.dataset.g, this.dataset.n)">' + g[1] + '</button>').join('') + '</div>';
+}
+let IALL = [], IROWS = [], LATEST = [], IPICK = new Set(), INT_OPEN = false;
+async function loadLatest() {
+  try { const {d} = await api('/latest'); LATEST = d.items || []; } catch (e) {}
+  renderShelves();
+}
+async function loadInterestRows() {
+  const p = prof(), ks = (p && p.int) || [];
+  IROWS = [];
+  if (ks.length) { try { const {d} = await api('/interest?k=' + ks.join(',')); IROWS = d.rows || []; } catch (e) {} }
+  renderShelves();
+}
+function drawInterests() {
+  vpEl().innerHTML = '<div class="vbox"><button class="vx" onclick="closeVP()">✕</button><h3 style="margin:0 0 6px;color:var(--primary)">⭐ اهتماماتي</h3>' +
+    '<p style="color:var(--mut);font-size:13px;margin:0 0 12px">اختار اللي بتحبه وهنظهر لك منه صفوف في الرئيسية.</p><div class="chips">' +
+    IALL.map(x => '<button class="fc' + (IPICK.has(x.k) ? ' on' : '') + '" data-k="' + esc(x.k) + '" onclick="toggleInterest(this.dataset.k)">' + esc(x.name) + '</button>').join('') +
+    '</div><button class="search-btn" style="margin-top:14px" onclick="closeVP()">تمام</button></div>';
+}
+async function openInterests() {
+  const p = prof();
+  if (!p) return;
+  if (!IALL.length) { try { const {d} = await api('/interest/list'); IALL = d.items || []; } catch (e) {} }
+  IPICK = new Set(p.int || []);
+  INT_OPEN = true;
+  vpEl().style.display = 'flex';
+  drawInterests();
+}
+function toggleInterest(k) { if (IPICK.has(k)) IPICK.delete(k); else IPICK.add(k); drawInterests(); }
+function layMerge() {
+  const sel = LAY.map((r, i) => i).filter(i => LAY[i]._sel);
+  if (sel.length < 2) return alert('علّم صفّين على الأقل (خانة "دمج")');
+  const t = prompt('اسم الصف المدمج', LAY[sel[0]].t);
+  if (!t) return;
+  const first = LAY[sel[0]], m = (first.m || []).slice();
+  sel.slice(1).forEach(i => [{a: LAY[i].a, ty: LAY[i].ty, c: LAY[i].c, g: LAY[i].g || ''}].concat(LAY[i].m || []).forEach(s => {
+    if (!m.some(x => x.a === s.a && x.c === s.c && (x.g || '') === (s.g || ''))) m.push(s);
+  }));
+  first.m = m.slice(0, 8);
+  first.t = t.trim().slice(0, 60);
+  first.on = true;
+  first._sel = false;
+  LAY = LAY.filter((r, i) => i === sel[0] || !sel.includes(i));
+  renderLayout();
+}
+function laySplit(i) {
+  const r = LAY[i], m = r.m || [];
+  delete r.m;
+  LAY.splice(i + 1, 0, ...m.map(s => ({k: Math.random().toString(16).slice(2, 10), a: s.a, ty: s.ty, c: s.c, g: s.g || '', t: r.t + ' · ' + s.c, on: true})));
+  renderLayout();
+}
+function renderLayout() {
+  const el = $('layBox');
+  if (!el) return;
+  const btn = 'style="margin-inline-start:4px;';
+  let h = LAY.map((r, i) =>
+    '<div class="ep"><input type="checkbox" ' + (r.on ? 'checked ' : '') + 'onchange="layOn(' + i + ',this.checked)">' +
+    '<div class="b">' + esc(r.t) + ((r.m || []).length ? ' <span class="badge b2">🔗 ' + (r.m.length + 1) + '</span>' : '') + layStat(r) + '</div>' +
+    '<label style="font-size:12px;color:var(--mut)"><input type="checkbox" ' + (r._sel ? 'checked ' : '') + 'onchange="LAY[' + i + ']._sel=this.checked"> دمج</label>' +
+    '<button onclick="layMove(' + i + ',-1)">▲</button>' +
+    '<button ' + btn + '" onclick="layMove(' + i + ',1)">▼</button>' +
+    ((r.m || []).length ? '<button ' + btn + 'background:#7c3aed;color:#fff" onclick="laySplit(' + i + ')">فك</button>' : '') +
+    '<button ' + btn + 'background:#475569;color:#fff" onclick="layRename(' + i + ')">✏️</button>' +
+    '<button ' + btn + 'background:var(--danger);color:#fff" onclick="layDel(' + i + ')">🗑</button></div>').join('')
+    || warn('مفيش صفوف. ضيف إضافات فيها كتالوجات (زي Cinemeta) من قسم Stremio.');
+  h += '<button class="search-btn" style="margin-top:6px;background:#7c3aed" onclick="layMerge()">🔗 دمج الصفوف المعلّمة في صف واحد</button>' +
+    '<button class="search-btn" style="margin-top:8px" onclick="laySave(this)">💾 حفظ الترتيب (يظهر للكل)</button>' +
+    '<button class="search-btn btn-blue" style="margin-top:8px" onclick="dubRefresh(this)">🔄 فحص المدبلج بالمصري دلوقتي</button>';
+  if (LCATS.length) {
+    h += '<h3 class="sec" style="margin-top:16px">➕ إضافة صف</h3>' +
+      '<select id="layCat" class="search-input" onchange="layGenres()">' + LCATS.map((c, i) =>
+        '<option value="' + i + '">' + esc(c.an + ' · ' + c.name + ' (' + (c.ty === 'movie' ? 'أفلام' : 'مسلسلات') + ')') + '</option>').join('') + '</select>' +
+      '<select id="layGen" class="search-input"></select>' +
+      '<button class="search-btn btn-blue" onclick="layAdd()">➕ إضافة الصف</button>';
+  }
+  el.innerHTML = h;
+  layGenres();
+}
 </script>
 </body>
 </html>
