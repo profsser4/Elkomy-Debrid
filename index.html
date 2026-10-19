@@ -543,10 +543,45 @@ new MutationObserver(() => {
   }), 150);
 }).observe(document.body, {childList: true, subtree: true});
 
-const EG_RX = /(مصري|مصرى|المصرية|egypt)/i, DUB_RX = /(مدبلج|دبلج|dubbed|\bdub\b)/i;
-const isDub = t => t.dub !== undefined ? !!t.dub : DUB_RX.test(t.title || '');
-const isEgDub = t => isDub(t) && (t.eg !== undefined ? !!t.eg : EG_RX.test(t.title || ''));
-const dubRank = t => isEgDub(t) ? 2 : (isDub(t) ? 1 : 0);
+const EG_RX = /(مصري|مصرى|المصرية|egypt|🇪🇬)/i, DUB_RX = /(مدبلج|دبلج|dubbed|dubbing|\bdub\b)/i;
+const T_AR_SCRIPT = /[\u0600-\u06FF]/, T_CYR = /[\u0400-\u04FF]/;
+const T_DUB = /(مدبلج|دبلج|dubbed|dubbing|\bdub\b|\bmvo\b|\bdvo\b|\bavo\b|lostfilm|дубляж|многоголос|закадров)/i;
+const T_AR = /(عربي|عربى|العربية|arabic|\barab\b|\bara\b|\bar\b|🇪🇬|🇸🇦|🇦🇪)/i;
+const T_ARSUB = /(مترجم|ترجمة|ترجمه|hard.?sub|(?:arabic|\bara\b|\bar\b|عرب\w*)[ .\-]{0,3}subs?(?:titles?)?|subs?(?:titles?)?[ .\-:(\[]{0,3}(?:arabic|\bara\b|\bar\b|عرب\w*))/i;
+const T_SUB = /(multi.?subs?|\bmsubs?\b|\besubs?\b|\bsubbed\b|\bsubs?\b|subtitles?)/i;
+const T_FOREIGN = /(\b(?:russian|rus|polish|german|ger|deu|french|fre|fra|vff|vfq|vostfr|italian|ita|spanish|spa|latino|castellano|portuguese|ptbr|hindi|hin|tamil|telugu|turkish|tur|ukrainian|ukr|czech|korean|kor|japanese|jpn|thai|dutch|swedish)\b|🇷🇺|🇵🇱|🇩🇪|🇫🇷|🇮🇹|🇪🇸|🇹🇷|🇮🇳|🇺🇦)/i;
+const _LC = new Map();
+// الترتيب: 6 مدبلج مصري ← 5 مدبلج عربي ← 4 مترجم عربي (مدمج) ← 3.5 موقع عربي ← 3 ترجمات ← 2 الأصلي ← 1 لغة تانية ← 0 دبلجة أجنبية
+function verLang(t) {
+  const s = String(typeof t === 'string' ? t : ((t && t.title) || '')).replace(/_/g, ' ');
+  let r = _LC.get(s);
+  if (r) return r;
+  const dub = T_DUB.test(s), ar = T_AR.test(s) || T_AR_SCRIPT.test(s), cyr = T_CYR.test(s);
+  if (dub && ar && !cyr) r = EG_RX.test(s) ? {k: 'eg', r: 6} : {k: 'ar', r: 5};
+  else if (dub) r = {k: 'fdub', r: 0};
+  else if (T_ARSUB.test(s)) r = {k: 'asub', r: 4};
+  else if (T_AR_SCRIPT.test(s)) r = {k: 'arsite', r: 3.5};
+  else if (T_SUB.test(s)) r = {k: 'sub', r: 3};
+  else if (cyr || (T_FOREIGN.test(s) && !/(\beng(?:lish)?\b|original|multi|dual)/i.test(s))) r = {k: 'foreign', r: 1};
+  else r = {k: 'orig', r: 2};
+  _LC.set(s, r);
+  return r;
+}
+const isDub = t => { const k = verLang(t).k; return k === 'eg' || k === 'ar'; };
+const isEgDub = t => verLang(t).k === 'eg';
+const isSubbed = t => { const k = verLang(t).k; return k === 'asub' || k === 'sub'; };
+const dubRank = t => verLang(t).r;
+function langBadge(t) {
+  const k = verLang(t).k;
+  const b = (bg, txt) => '<span class="badge" style="background:' + bg + ';color:#fff">' + txt + '</span>';
+  if (k === 'eg') return b('#16a34a', '🇪🇬 مدبلج مصري');
+  if (k === 'ar') return b('#7c3aed', '🎙 مدبلج عربي');
+  if (k === 'asub') return b('#0284c7', '💬 ترجمة عربي مدمجة');
+  if (k === 'sub') return b('#475569', '💬 فيها ترجمات');
+  if (k === 'fdub') return b('#6b7280', '🎙 دبلجة أجنبية');
+  if (k === 'foreign') return b('#6b7280', '🌐 لغة تانية');
+  return '';
+}
 const dubFirst = () => { const p = prof(); return !p || p.dubFirst !== false; };
 function setDubFirst(v) {
   const p = prof();
@@ -560,8 +595,8 @@ const risky = t => RISKY.test(String(t || '').replace(/_/g, ' '));
 const bestOf = list => {
   let pool = list;
   if (dubFirst()) {
-    const e = list.filter(isEgDub), d = list.filter(isDub);
-    pool = e.length ? e : (d.length ? d : list);
+    const top = Math.max.apply(null, list.map(dubRank));
+    pool = list.filter(x => dubRank(x) === top);
   }
   return pool.find(x => /1080p/i.test(x.title) && !risky(x.title)) ||
     pool.find(x => !risky(x.title)) || pool.find(x => /1080p/i.test(x.title)) || pool[0];
@@ -1373,6 +1408,7 @@ function qOK(t) {
   if (qf === 'safe') return !risky(t.title);
   if (qf === 'eg') return isEgDub(t);
   if (qf === 'dub') return isDub(t);
+  if (qf === 'sub') return isSubbed(t);
   if (qf === '4k') return /2160p|\b4K\b/i.test(t.title);
   if (qf === '1080') return /1080p/i.test(t.title);
   return /720p/i.test(t.title);
@@ -1462,8 +1498,8 @@ function renderTorrents() {
   list.sort((a, b) => (df ? dubRank(b) - dubRank(a) : 0) || (!!b.cached - !!a.cached) || (b.seeders - a.seeders));
   shown = list;
   const hidden = base.length - good.length;
-  const fl = [['all', 'الكل'], ['eg', '🇪🇬 مصري'], ['dub', '🎙 مدبلج'], ['safe', '✅ للمتصفح'], ['fast', '⚡ فوري'], ['4k', '4K'], ['1080', '1080p'], ['720', '720p']];
-  let h = '<label style="display:block;margin:0 0 10px;color:var(--mut);font-size:13px"><input type="checkbox" ' + (df ? 'checked ' : '') + 'onchange="setDubFirst(this.checked)"> 🇪🇬 المدبلج بالمصري أولاً</label><div class="fbar">' + fl.map(f =>
+  const fl = [['all', 'الكل'], ['eg', '🇪🇬 مصري'], ['dub', '🎙 مدبلج عربي'], ['sub', '💬 مترجم'], ['safe', '✅ للمتصفح'], ['fast', '⚡ فوري'], ['4k', '4K'], ['1080', '1080p'], ['720', '720p']];
+  let h = '<label style="display:block;margin:0 0 10px;color:var(--mut);font-size:13px"><input type="checkbox" ' + (df ? 'checked ' : '') + 'onchange="setDubFirst(this.checked)"> 🇪🇬 العربي أولاً (مدبلج ← مترجم ← الأصلي)</label><div class="fbar">' + fl.map(f =>
     '<button class="fc' + (qf === f[0] ? ' on' : '') + '" onclick="setQf(\'' + f[0] + '\')">' + f[1] + '</button>'
   ).join('');
   if ((!none && hidden > 0) || (none && showAll)) {
@@ -1492,7 +1528,7 @@ function renderTorrents() {
       '<div class="m"><span class="size">💾 ' + fmtSize(t.size) + '</span>' +
       '<span class="s ' + (t.seeders ? '' : 'zero') + '">🌱 ' + t.seeders + '</span>' +
       (t.cached ? '<span class="badge">⚡ فوري</span>' : '') +
-      (isEgDub(t) ? '<span class="badge" style="background:#16a34a;color:#fff">🇪🇬 مدبلج مصري</span>' : (isDub(t) ? '<span class="badge" style="background:#7c3aed;color:#fff">🎙 مدبلج</span>' : '')) +
+      langBadge(t) +
       (risky(t.title) ? '<span class="badge" style="background:#ef4444;color:#fff">⚠️ ممكن مايشتغلش بالمتصفح</span>' : '') + bd +
       (tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') +
       '<span>' + esc(t.indexer) + '</span></div>' +
@@ -1747,12 +1783,18 @@ function attachPlayer() {
   v.addEventListener('pause', () => saveProgress(v));
   v.addEventListener('ended', () => { saveProgress(v, true); onEnded(); });
   v.addEventListener('error', () => {
+    if (v.dataset.cors === '1' && !v._hls) return;   // محاولة CORS لسه هتتعاد من غيرها، مش خطأ حقيقي
     const b = $('playErr');
+    if (b) b.dataset.err = 'media';
     if (b) b.innerHTML = warn('المتصفح مش قادر يشغّل الملف ده. غالباً السبب الصوت (DD5.1 / AC3 / DTS) أو الفيديو HEVC أو الصيغة MKV. افتحه من المشغّلات الخارجية تحت (VLC أو MX أو Stremio)، أو اختار نسخة بعلامة ✅ للمتصفح.') +
       (PLAY && !PLAY.hls && PLAY.note ? '<p style="color:var(--mut);font-size:12px">سبب إن البث المحوَّل ماتعملش: ' + esc(PLAY.note) + '</p>' : '') +
       (PLAY && PLAY.vh && !PLAY.hls ? '<button class="search-btn" style="margin-top:8px;background:#0ea5e9" onclick="retryStream()">🔄 جرّب البث المحوَّل تاني (نفس النسخة)</button>' : '') + retryBtn();
     const pm = document.querySelector('details.pm');
     if (pm) pm.open = true;
+  });
+  v.addEventListener('playing', () => {
+    const b = $('playErr');
+    if (b && b.dataset.err === 'media') { b.innerHTML = ''; b.dataset.err = ''; }   // الفيديو اشتغل: شيل رسالة الخطأ
   });
   v.addEventListener('loadedmetadata', () => {
     const at = v.audioTracks, box = $('audSel');
@@ -2797,8 +2839,8 @@ const qRank = q => ({'1080P': 0, '2160P': 1, '4K': 1, '720P': 2, '480P': 3}[q] ?
 function verSort(list) {
   const df = dubFirst();
   return list.slice().sort((a, b) =>
+    (df ? dubRank(b) - dubRank(a) : 0) ||     // الأول اللغة: عربي مدبلج ← مترجم ← الأصلي
     (b.instant - a.instant) ||
-    (df ? dubRank(b) - dubRank(a) : 0) ||
     (qRank(a.q) - qRank(b.q)) ||
     (a.risky - b.risky) ||
     (b.seeders - a.seeders));
@@ -2855,8 +2897,7 @@ async function playOpen(s, e) {
   }
 }
 function verRow(v, i, best) {
-  const dub = v.eg ? '<span class="badge" style="background:#16a34a;color:#fff">🇪🇬 مدبلج مصري</span>'
-    : (v.dub ? '<span class="badge" style="background:#7c3aed;color:#fff">🎙 مدبلج</span>' : '');
+  const dub = langBadge(v);
   return '<div class="vrow' + (best ? ' best' : '') + '"><div class="vt">' + esc(v.title) + '</div><div class="vm">' +
     '<b>💾 ' + fmtSize(v.size) + '</b>' + (v.q ? '<span class="badge">' + esc(v.q) + '</span>' : '') +
     (v.instant ? '<span class="badge">⚡ فوري</span>' : '<span class="badge" style="background:#475569;color:#fff">⏳ بطيء</span>') + dub +
