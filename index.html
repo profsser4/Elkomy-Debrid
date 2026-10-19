@@ -970,7 +970,11 @@ function stRow() {
 async function openLookup(el) {
   try {
     const {d} = await api('/stremio/lookup?q=' + encodeURIComponent(el.dataset.q) + '&type=' + encodeURIComponent(el.dataset.t) + '&year=' + encodeURIComponent(el.dataset.y || ''));
-    if (d.error || !d.id) return alert(d.error || 'مش لاقي العمل ده');
+    if (d.error || !d.id) {
+      const si = $('searchInput');
+      if (si) { si.value = el.dataset.q || ''; scrollTo({top: 0, behavior: 'smooth'}); searchTitles(); }
+      return;
+    }
     openDetails(d.type, d.id);
   } catch (e) { alert('مش قادر أوصل للسيرفر'); }
 }
