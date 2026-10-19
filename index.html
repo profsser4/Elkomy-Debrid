@@ -1714,7 +1714,7 @@ function saveProgress(v, ended) {
     key: c.key, title: c.title, poster: c.poster, year: c.year, type: c.type,
     tmdb: c.tmdb, s: c.s, e: c.e, eps: c.eps, ms: c.ms, src: c.src,
     fid: c.fid, fname: c.fname, qn: c.qn || '', pos: Math.floor(pos), dur: Math.floor(v.duration),
-    done: done, sub: c.sub || null, dr: !!c.dr, imdb: c.imdb || '', vh: c.vh || '',
+    done: done, sub: c.sub || null, dr: !!c.dr, imdb: c.imdb || '', vh: c.vh || '', ref: c.ref || '',
     next: (n && n.kind === 'pack')
       ? {fid: n.f.id, s: n.f.season, e: n.f.episode, name: n.f.name} : null
   });
@@ -1843,6 +1843,7 @@ async function playItem(key) {
   if (it.done && it.type === 'tv') return playAfter(it);
   const h0 = it.vh || ((/btih:([a-fA-F0-9]{40})/.exec(it.src || '') || [])[1] || '').toLowerCase();
   if (h0) return playByHash(Object.assign({}, it, {vh: h0}));
+  if (it.ref) return playByRef(it);
   if (!it.src) return alert('مفيش مصدر محفوظ للعنصر ده');
   if (it.dr) {
     clearCd();
@@ -1857,7 +1858,7 @@ async function playItem(key) {
 }
 const baseOf = it => ({title: it.title, poster: it.poster, year: it.year, type: it.type, tmdb: it.tmdb,
   s: it.s, e: it.e, eps: it.eps, ms: it.ms, fid: it.fid, fname: it.fname, src: it.src, qn: it.qn || '',
-  dr: !!it.dr, imdb: it.imdb || '', vh: it.vh || ''});
+  dr: !!it.dr, imdb: it.imdb || '', vh: it.vh || '', ref: it.ref || ''});
 async function playAfter(it) {
   if (it.next && it.src) {
     const base = Object.assign(baseOf(it), {s: it.next.s, e: it.next.e, fid: it.next.fid, fname: it.next.name});
@@ -2959,6 +2960,7 @@ async function startPlay(spec, mode, baseOver) {
   const base = baseOver ? Object.assign({}, baseOver) : baseFromCur(spec);
   base.hls = d.hls || '';
   base.vh = spec.hash || '';
+  base.ref = spec.ref || '';
   base.src = spec.hash ? 'v:' + spec.hash : d.direct;
   base.dr = !spec.hash;
   base.nw = false;
@@ -2988,7 +2990,15 @@ async function playBest(s, e) {
 }
 async function playByHash(it) {
   scrollToResults();
-  const d = await startPlay({hash: it.vh, name: it.fname || it.title,
+  // slow:true => نفس النسخة حتى لو مش "فورية" دلوقتي (بتتسحب وتظهر نسبة التقدم) بدل ما يبدّلها
+  const d = await startPlay({hash: it.vh, name: it.fname || it.title, slow: true,
+    s: it.s != null ? it.s : null, e: it.e != null ? it.e : null}, 'watch', baseOf(it));
+  if (!d && pullId === LAST_PULL) return resumeFallback(it);
+  return d;
+}
+async function playByRef(it) {
+  scrollToResults();
+  const d = await startPlay({ref: it.ref, name: it.fname || it.title,
     s: it.s != null ? it.s : null, e: it.e != null ? it.e : null}, 'watch', baseOf(it));
   if (!d && pullId === LAST_PULL) return resumeFallback(it);
   return d;
@@ -3252,9 +3262,19 @@ async function altVersion(info, failedKey) {
   return list.find(x => x.instant && !FAILED.has(x.hash || x.ref)) || null;
 }
 async function resumeFallback(it) {
-  $('results').innerHTML = pend('النسخة الأصلية مش شغالة دلوقتي، بجرّب نسخة تانية...');
+  // مفيش تبديل تلقائي للنسخة: النسخة اللي اخترتها هي اللي بتكمّل، أو أنت اللي تقرر
+  const k = esc(it.key);
+  $('results').innerHTML = warn('النسخة اللي كنت بتشاهدها مش شغالة دلوقتي. مش هغيّرها من نفسي.') +
+    '<button class="search-btn" style="margin-top:8px" data-k="' + k + '" onclick="playItem(this.dataset.k)">↻ حاول تاني بنفس النسخة</button>' +
+    '<button class="search-btn" style="margin-top:8px;background:#444" data-k="' + k + '" onclick="resumeAlt(this.dataset.k)">🔁 جرّب نسخة تانية (من نفس المكان)</button>';
+  return null;
+}
+async function resumeAlt(key) {
+  const it = getItem(key);
+  if (!it) return;
+  $('results').innerHTML = pend('بدوّر على نسخة بديلة...');
   let v = null;
-  try { v = await altVersion(it, it.vh); } catch (x) {}
+  try { v = await altVersion(it, it.vh || it.ref); } catch (x) {}
   if (!v) { $('results').innerHTML = warn('مفيش نسخة بديلة فورية دلوقتي. افتح الفيلم واختار نسخة بنفسك.'); return null; }
   return startPlay(specOf(v), 'watch');
 }
