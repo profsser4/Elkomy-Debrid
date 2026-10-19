@@ -1748,7 +1748,9 @@ function attachPlayer() {
   v.addEventListener('ended', () => { saveProgress(v, true); onEnded(); });
   v.addEventListener('error', () => {
     const b = $('playErr');
-    if (b) b.innerHTML = warn('المتصفح مش قادر يشغّل الملف ده. غالباً السبب الصوت (DD5.1 / AC3 / DTS) أو الفيديو HEVC أو الصيغة MKV. افتحه من المشغّلات الخارجية تحت (VLC أو MX أو Stremio)، أو اختار نسخة بعلامة ✅ للمتصفح.') + retryBtn();
+    if (b) b.innerHTML = warn('المتصفح مش قادر يشغّل الملف ده. غالباً السبب الصوت (DD5.1 / AC3 / DTS) أو الفيديو HEVC أو الصيغة MKV. افتحه من المشغّلات الخارجية تحت (VLC أو MX أو Stremio)، أو اختار نسخة بعلامة ✅ للمتصفح.') +
+      (PLAY && !PLAY.hls && PLAY.note ? '<p style="color:var(--mut);font-size:12px">سبب إن البث المحوَّل ماتعملش: ' + esc(PLAY.note) + '</p>' : '') +
+      (PLAY && PLAY.vh && !PLAY.hls ? '<button class="search-btn" style="margin-top:8px;background:#0ea5e9" onclick="retryStream()">🔄 جرّب البث المحوَّل تاني (نفس النسخة)</button>' : '') + retryBtn();
     const pm = document.querySelector('details.pm');
     if (pm) pm.open = true;
   });
@@ -2955,14 +2957,28 @@ async function startPlay(spec, mode, baseOver) {
     }
     break;
   }
-  const d = res.d;
+  let d = res.d;
   if (!res.r.ok || d.error || !d.direct) {
     $('results').innerHTML = warn(d.error || 'حصل خطأ في التجهيز');
     return null;
   }
+  // البث المحوَّل (اللي بيشتغل في المتصفح) ساعات بيتأخر: جرّبه كام مرة قبل ما نرجع للرابط الأصلي
+  if (mode === 'watch' && !d.hls && spec.hash && d.stream_note && !/مش متضاف/.test(d.stream_note)) {
+    for (let k = 0; k < 2 && my === pullId && !d.hls; k++) {
+      $('results').innerHTML = pend('جاري تجهيز البث المحوَّل... (' + (k + 1) + '/2)');
+      await sleep(3500);
+      if (my !== pullId) return null;
+      try {
+        const r2 = await api('/play/start', {method: 'POST',
+          body: JSON.stringify(Object.assign({}, spec, {mode: mode, torrent_id: d.torrent_id || tid}))});
+        if (r2.r.ok && r2.d && r2.d.direct) { if (r2.d.hls) d = r2.d; else d.stream_note = r2.d.stream_note || d.stream_note; }
+      } catch (x) {}
+    }
+  }
   if (mode === 'download') { $('results').innerHTML = ''; return d; }
   const base = baseOver ? Object.assign({}, baseOver) : baseFromCur(spec);
   base.hls = d.hls || '';
+  base.note = d.stream_note || '';
   base.vh = spec.hash || '';
   base.ref = spec.ref || '';
   base.src = spec.hash ? 'v:' + spec.hash : d.direct;
@@ -2999,6 +3015,11 @@ async function playByHash(it) {
     s: it.s != null ? it.s : null, e: it.e != null ? it.e : null}, 'watch', baseOf(it));
   if (!d && pullId === LAST_PULL) return resumeFallback(it);
   return d;
+}
+function retryStream() {
+  const v = document.querySelector('#results video');
+  if (v) saveProgress(v);
+  if (PLAY && PLAY.vh) playByHash(Object.assign({}, PLAY));
 }
 async function playByRef(it) {
   scrollToResults();
