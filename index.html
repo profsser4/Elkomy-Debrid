@@ -22,6 +22,7 @@ body{margin:0;background:var(--bg);color:var(--text)}
 .row{display:flex;gap:10px}
 .row>*{flex:1}
 .result-card{background:var(--panel);padding:18px;border-radius:8px;margin-top:18px;border:1px solid var(--success);text-align:center}
+.astoast{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:8px 14px;border-radius:10px;font-size:13px;z-index:40;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90%;text-align:center}.astoast.on{opacity:1}
 .btn-download{background:var(--success);color:#fff;padding:12px;border-radius:5px;text-decoration:none;display:block;margin-top:14px;font-weight:bold}
 .btn-vlc{background:#f97316;color:#fff;padding:12px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin-top:10px;width:100%}
 .btn-sub{background:#7c3aed}
@@ -574,6 +575,15 @@ function setAudio(idx) {
   const v = document.querySelector('#results video');
   if (!v || !v.audioTracks) return;
   for (let i = 0; i < v.audioTracks.length; i++) v.audioTracks[i].enabled = (i === +idx);
+}
+function audPicked(i, hls) {
+  const v = document.querySelector('#results video');
+  if (!v) return;
+  let t = null;
+  if (hls && v._hls) t = (v._hls.audioTracks || [])[+i];
+  else if (v.audioTracks && v.audioTracks[+i]) t = {lang: v.audioTracks[+i].language, name: v.audioTracks[+i].label};
+  const ar = audIsAr(t || {}) || !!(PLAY && PLAY.arDub && !t);
+  audDecide(ar);
 }
 function stremioLink(web) {
   const c = PLAY;
@@ -1751,8 +1761,8 @@ function attachPlayer() {
   v.play().catch(() => {});
   if (PLAY.hls) setupHls(v);
   if (isTv()) { try { v.focus(); } catch (e) {} }
-  if (PLAY.sub) applySubItem(PLAY.sub, PLAY.sub.shift || 0, true);
-  else autoSub();
+  asStop();
+  audGate(v);
   try { nfxInit(v); } catch (e) { console.error('nfx', e); }
 }
 function nextTarget() {
@@ -1947,6 +1957,357 @@ function dlM3U() {
   a.click();
 }
 
+// ================= صوت عربي مدبلج أولاً + ضبط الترجمة تلقائياً =================
+const AR_AUD = /(^|[^a-z])(ar|ara|arb|arz)([^a-z]|$)|arab|عرب|مصر|egypt/i;
+const LANG_AR = {ar: 'عربي', ara: 'عربي', en: 'English', eng: 'English', fr: 'Français', fre: 'Français', fra: 'Français',
+  ja: 'يابانى', jpn: 'يابانى', hi: 'هندي', hin: 'هندي', tr: 'تركي', tur: 'تركي', ko: 'كوري', kor: 'كوري',
+  es: 'Español', spa: 'Español', de: 'Deutsch', ger: 'Deutsch', deu: 'Deutsch', ru: 'Русский', rus: 'Русский',
+  it: 'Italiano', ita: 'Italiano', zh: '中文', chi: '中文', zho: '中文'};
+const isArDubTitle = t => /(مدبلج|دبلج|مصري|arab.{0,8}dub|dub.{0,8}arab)/i.test(String(t || ''));
+const audIsAr = t => AR_AUD.test(((t && t.lang) || '') + ' ' + ((t && t.name) || ''));
+function audLabel(t, i) {
+  const l = String((t && t.lang) || '').toLowerCase();
+  const base = (t && t.name) || LANG_AR[l] || (t && t.lang) || ('صوت ' + (i + 1));
+  return (audIsAr(t) ? '🇪🇬 ' : '') + base + (audIsAr(t) ? ' (مدبلج/عربي)' : '');
+}
+// بيختار: صوت عربي لو موجود، وإلا الأصلي (اللي عليه default أو أول مسار)
+function pickAudio(list) {
+  const ar = list.findIndex(audIsAr);
+  if (ar >= 0) return {idx: ar, ar: true};
+  const d = list.findIndex(t => t.def);
+  return {idx: d >= 0 ? d : 0, ar: false};
+}
+let AUD = {ar: false, decided: false};
+function subHide() {
+  const v = document.querySelector('#results video');
+  if (v) v.querySelectorAll('track').forEach(x => x.remove());
+  subSel = null;
+}
+function subsStart() {
+  if (!PLAY || AUD.ar) return;
+  if (subSel) { asArm(); return; }
+  const go = PLAY.sub ? applySubItem(PLAY.sub, PLAY.sub.shift || 0, true, PLAY.sub.scale || 1) : autoSub();
+  Promise.resolve(go).then(asArm, () => {});
+}
+function audDecide(isAr) {
+  isAr = !!isAr;
+  if (AUD.decided && AUD.ar === isAr) return;
+  AUD = {ar: isAr, decided: true};
+  if (isAr) { subHide(); asStopCapture(); } else subsStart();
+}
+function audGate(v) {
+  AUD = {ar: false, decided: false};
+  const pre = !!(PLAY && PLAY.arDub);
+  if (PLAY.hls && window.Hls && Hls.isSupported()) {
+    setTimeout(() => { if (!AUD.decided) audDecide(pre); }, 7000);   // القرار بيتاخد في MANIFEST_PARSED
+    return;
+  }
+  const nat = () => {
+    const at = v.audioTracks;
+    if (at && at.length > 1) {
+      const L = [];
+      for (let i = 0; i < at.length; i++) L.push({lang: at[i].language, name: at[i].label});
+      const p = pickAudio(L);
+      setAudio(p.idx);
+      audDecide(p.ar || pre);
+    } else audDecide(pre);
+  };
+  if (v.readyState >= 1) nat();
+  else {
+    v.addEventListener('loadedmetadata', nat, {once: true});
+    setTimeout(() => { if (!AUD.decided) audDecide(pre); }, 4000);
+  }
+}
+
+// ---------- الضبط التلقائي للتوقيت (مطابقة الكلام في الصوت مع توقيتات الترجمة) ----------
+// الشبكة الزمنية: 10 خانات في الثانية (0.1 ث)
+function asParseCues(text) {
+  const rx = /(\d{1,2}):(\d{2}):(\d{2})[.,](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[.,](\d{1,3})/g;
+  const out = [];
+  let m;
+  while ((m = rx.exec(text))) {
+    const a = +m[1] * 3600 + +m[2] * 60 + +m[3] + +String(m[4]).padEnd(3, '0') / 1000;
+    const b = +m[5] * 3600 + +m[6] * 60 + +m[7] + +String(m[8]).padEnd(3, '0') / 1000;
+    if (b > a) out.push([a, b]);
+  }
+  return out;
+}
+
+function asPercentile(sorted, p) {
+  if (!sorted.length) return 0;
+  const i = Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * p)));
+  return sorted[i];
+}
+
+// x: مستوى طاقة الكلام (dB) لكل خانة (NaN = مفيش عينة). بيرجّع احتمال كلام 0..1
+function asNormalize(x) {
+  const v = [];
+  for (let i = 0; i < x.length; i++) if (!isNaN(x[i])) v.push(x[i]);
+  if (v.length < 50) return null;
+  v.sort((a, b) => a - b);
+  const lo = asPercentile(v, 0.2), hi = asPercentile(v, 0.9);
+  if (hi - lo < 3) return null; // صوت ساكت أو مفيش إشارة
+  const a = new Float32Array(x.length);
+  for (let i = 0; i < x.length; i++) {
+    if (isNaN(x[i])) { a[i] = NaN; continue; }
+    const z = (x[i] - lo) / (hi - lo);
+    a[i] = z < 0 ? 0 : (z > 1 ? 1 : z);
+  }
+  return a;
+}
+
+// cues: [[s,e]] بالشكل الحالي (بعد أي إزاحة). A: Float32Array بخانات 0.1ث بتبدأ من t0.
+// بيرجّع {delta, r, r0, r2, n} أو null. delta = الزمن اللي لازم يتضاف لأوقات الترجمة.
+function asEstimate(cues, A, t0, maxOff) {
+  const n = A.length, M = Math.round(maxOff * 10);
+  const base = Math.round(t0 * 10) - M;
+  const L = n + 2 * M;
+  const S = new Uint8Array(L);
+  let inWin = 0;
+  const lo = t0 - 2, hi = t0 + n / 10 + 2;
+  for (let c = 0; c < cues.length; c++) {
+    const s = cues[c][0], e = cues[c][1];
+    if (e > lo && s < hi) inWin++;
+    const i0 = Math.max(0, Math.floor(s * 10) - base), i1 = Math.min(L, Math.ceil(e * 10) - base);
+    for (let i = i0; i < i1; i++) S[i] = 1;
+  }
+  const idx = [];
+  for (let k = 0; k < n; k++) if (!isNaN(A[k])) idx.push(k);
+  const N = idx.length;
+  if (N < 600) return null;                 // أقل من دقيقة صوت
+  let sa = 0, saa = 0;
+  for (let j = 0; j < N; j++) { const a = A[idx[j]]; sa += a; saa += a * a; }
+  const ma = sa / N, va = saa / N - ma * ma;
+  if (va < 1e-4) return null;
+  const sda = Math.sqrt(va);
+  const R = new Float32Array(2 * M + 1);
+  for (let d = -M; d <= M; d++) {
+    let ss = 0, sas = 0;
+    for (let j = 0; j < N; j++) {
+      const k = idx[j];
+      const si = S[k + M - d];
+      if (si) { ss++; sas += A[k]; }
+    }
+    const ms = ss / N, vs = ms - ms * ms;
+    R[d + M] = vs < 1e-4 ? 0 : (sas / N - ma * ms) / (sda * Math.sqrt(vs));
+  }
+  let bi = 0;
+  for (let i = 1; i < R.length; i++) if (R[i] > R[bi]) bi = i;
+  let r2 = -1;
+  for (let i = 0; i < R.length; i++) if (Math.abs(i - bi) > 20 && R[i] > r2) r2 = R[i];
+  // تدقيق القمة (باراابولا) لدقة أحسن من 0.1ث
+  let off = 0;
+  if (bi > 0 && bi < R.length - 1) {
+    const y0 = R[bi - 1], y1 = R[bi], y2 = R[bi + 1], den = y0 - 2 * y1 + y2;
+    if (den < -1e-6) off = 0.5 * (y0 - y2) / den;
+  }
+  return {
+    delta: (bi - M + off) / 10, r: R[bi], r0: R[M], r2: r2, cues: inWin, n: N
+  };
+}
+
+// هل النتيجة موثوقة؟ strict = تصحيح كبير أو أول مرة
+function asConfident(e, strict) {
+  if (!e || e.cues < 8) return false;
+  const big = Math.abs(e.delta) > 3;
+  const rMin = (strict || big) ? 0.2 : 0.12;
+  const mg = (strict || big) ? 0.07 : 0.04;
+  return e.r >= rMin && (e.r - e.r2) >= mg && (e.r - e.r0) >= (Math.abs(e.delta) < 0.25 ? -1 : 0.05);
+}
+
+const AS_RATIOS = [0.95904, 0.96, 1.04271, 1.04167, 0.999, 1.001, 1.2];
+// pts: [{c: وقت المحتوى الأصلي, D: الإزاحة المطلوبة عند c, w: وزن}] => {scale, shift, pts}
+// بيشيل القياسات الشاذة واحدة واحدة بدل ما يرجع لـ scale=1.
+function asFit(pts0) {
+  let pts = pts0.slice();
+  if (!pts.length) return null;
+  const W = p => (p.w == null ? 1 : p.w);
+  for (let guard = 0; guard < 8; guard++) {
+    const last = pts[pts.length - 1];
+    let sw = 0, mc = 0, md = 0, cmin = 1e12, cmax = -1e12;
+    pts.forEach(p => { sw += W(p); mc += W(p) * p.c; md += W(p) * p.D; cmin = Math.min(cmin, p.c); cmax = Math.max(cmax, p.c); });
+    mc /= sw; md /= sw;
+    if (pts.length < 2 || cmax - cmin < 900) return {scale: 1, shift: pts.length < 2 ? last.D : md, pts: pts};
+    let sxx = 0, sxy = 0;
+    pts.forEach(p => { sxx += W(p) * (p.c - mc) * (p.c - mc); sxy += W(p) * (p.c - mc) * (p.D - md); });
+    if (sxx < 1) return {scale: 1, shift: last.D, pts: pts};
+    let s = 1 + sxy / sxx;
+    if (s < 0.9 || s > 1.2) { s = 1; }
+    const near = AS_RATIOS.concat([1]).filter(r => Math.abs(s - r) < 0.0012);
+    if (near.length === 1) s = near[0];
+    const b = md - (s - 1) * mc;
+    let worst = null, wr = 0;
+    pts.forEach(p => { const r = Math.abs(p.D - ((s - 1) * p.c + b)); if (r > wr) { wr = r; worst = p; } });
+    if (wr <= 2.5 || pts.length <= 2) {
+      if (wr > 2.5) return {scale: 1, shift: last.D, pts: pts};
+      return {scale: s, shift: b, pts: pts};
+    }
+    pts = pts.filter(p => p !== worst);   // شيل أسوأ قياس وجرّب تاني
+  }
+  return {scale: 1, shift: pts[pts.length - 1].D, pts: pts};
+}
+
+const AS_HYP = [1, 0.95904, 1.04271, 1.04167, 0.96, 0.999, 1.001];
+// بيدوّر على أحسن (scale, offset) للقطعة الصوتية دي. st = {pts, a, b} الوضع الحالي.
+// raw = أوقات الترجمة الأصلية (من الملف قبل أي إزاحة). tm = منتصف نافذة الصوت.
+function asLock(raw, A, t0, tm, st) {
+  const pts = st.pts || [];
+  let hyps, anchorFor;
+  if (!pts.length) {
+    hyps = tm < 900 ? [1] : AS_HYP;
+    anchorFor = s => ({s: s, b0: 0, max: 45});
+  } else {
+    const last = pts.reduce((m, p) => Math.abs(p.c - st.cn) < Math.abs(m.c - st.cn) ? p : m, pts[0]);
+    const far = Math.abs(tm - (last.c + last.D)) > 600;
+    hyps = far ? AS_HYP : [st.a];
+    anchorFor = s => ({s: s, b0: last.c + last.D - s * last.c, max: far ? 10 : 15});
+  }
+  let best = null;
+  for (const h of hyps) {
+    const m = anchorFor(h);
+    const cues = raw.map(c => [c[0] * m.s + m.b0, c[1] * m.s + m.b0]);
+    const e = asEstimate(cues, A, t0, m.max);
+    if (!e) continue;
+    const score = e.r - (h === 1 || h === st.a ? 0 : 0.02);
+    if (!best || score > best.score) best = {est: e, s: m.s, b0: m.b0, score: score};
+  }
+  if (!best) return null;
+  const c = (tm - best.est.delta - best.b0) / best.s;       // الجملة اللي اتقالت عند tm
+  return {est: best.est, s: best.s, b0: best.b0, pt: {c: c, D: tm - c, w: Math.max(0.05, best.est.r * best.est.r)}};
+}
+
+
+const ASY = {v: null, ctx: null, an: null, src: null, f: null, P: null, N: null, timer: null, raw: null,
+  pts: [], a: 1, b: 0, cand: null, prev: null, nextAt: 0, msg: '', ticks: 0, sig: false, off: false};
+const asEnabled = () => { const p = prof(); return !(p && p.as === false) && !ASY.off; };
+function asReset() { ASY.pts = []; ASY.cand = null; ASY.prev = null; ASY.nextAt = 0; }
+function asStopCapture() {
+  if (ASY.timer) clearInterval(ASY.timer);
+  ASY.timer = null;
+  try { if (ASY.ctx) ASY.ctx.close(); } catch (e) {}
+  ASY.ctx = ASY.an = ASY.src = ASY.v = null;
+}
+function asStop() { asStopCapture(); ASY.P = ASY.N = null; ASY.msg = ''; ASY.ticks = 0; ASY.sig = false; ASY.off = false; asReset(); }
+function asToast(m) {
+  const host = $('nfx') || document.body;
+  let el = host.querySelector('.astoast');
+  if (!el) { el = document.createElement('div'); el.className = 'astoast'; host.appendChild(el); }
+  el.textContent = m;
+  el.classList.add('on');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('on'), 4500);
+}
+function asArm() {
+  const v = document.querySelector('#results video');
+  if (!v || !subSel || AUD.ar || !asEnabled() || !ASY.raw) return;
+  if (ASY.v === v && ASY.timer) return;
+  const cap = v.captureStream || v.mozCaptureStream, AC = window.AudioContext || window.webkitAudioContext;
+  if (!cap || !AC) { ASY.msg = 'الضبط التلقائي مش مدعوم في المتصفح ده. استخدم الضبط اليدوي.'; return; }
+  if (!(v._hls)) { ASY.msg = 'الضبط التلقائي بيشتغل مع البث المحوَّل بس. استخدم الضبط اليدوي.'; return; }
+  asStopCapture();
+  ASY.v = v;
+  if (!ASY.P) {
+    const n = Math.ceil((isFinite(v.duration) && v.duration > 0 ? v.duration : 14400) * 10) + 400;
+    ASY.P = new Float32Array(n); ASY.N = new Uint8Array(n);
+  }
+  let tries = 0;
+  const open = () => {
+    if (ASY.v !== v) return;
+    try {
+      const ms = cap.call(v);
+      if (!ms.getAudioTracks().length) {
+        if (++tries < 30) return setTimeout(open, 1000);
+        ASY.msg = 'مش قادر أقرا صوت الفيديو للضبط التلقائي.';
+        return;
+      }
+      const ctx = ASY.ctx = new AC();
+      const an = ASY.an = ctx.createAnalyser();
+      an.fftSize = 2048; an.smoothingTimeConstant = 0;
+      ASY.src = ctx.createMediaStreamSource(ms);
+      ASY.src.connect(an);
+      const hz = ctx.sampleRate / 2048;
+      ASY.i0 = Math.ceil(300 / hz); ASY.i1 = Math.floor(3400 / hz);
+      ASY.f = new Float32Array(an.frequencyBinCount);
+      ASY.msg = '🎯 الضبط التلقائي شغال: بيسمع الكلام ويطابقه مع الترجمة...';
+      ASY.timer = setInterval(asTick, 100);
+    } catch (e) { ASY.msg = 'الضبط التلقائي مش متاح هنا. استخدم الضبط اليدوي.'; }
+  };
+  open();
+}
+function asTick() {
+  const v = ASY.v;
+  if (!v || !ASY.an || document.hidden || v.paused || v.seeking || v.ended || v.playbackRate !== 1 || !subSel || AUD.ar) return;
+  if (ASY.ctx.state === 'suspended') { ASY.ctx.resume().catch(() => {}); return; }
+  const now = v.currentTime;
+  if (!isFinite(now)) return;
+  ASY.an.getFloatFrequencyData(ASY.f);
+  let pw = 0;
+  for (let i = ASY.i0; i <= ASY.i1; i++) pw += Math.pow(10, ASY.f[i] / 10);
+  const k = Math.floor(now * 10);
+  if (k < 0 || k >= ASY.P.length) return;
+  ASY.P[k] += pw;
+  if (ASY.N[k] < 250) ASY.N[k]++;
+  ASY.ticks++;
+  if (pw > 1e-12) ASY.sig = true;
+  if (!ASY.sig && ASY.ticks === 300) {
+    ASY.msg = 'مفيش إشارة صوت للتحليل (المصدر مش بيسمح). استخدم الضبط اليدوي.';
+    asStopCapture();
+    return;
+  }
+  if (now >= ASY.nextAt) {
+    let cov = 0;
+    for (let i = Math.max(0, k - 1500); i <= k; i++) if (ASY.N[i] > 0) cov++;
+    if (cov >= 900) asRun(now);
+  }
+}
+function asRun(now) {
+  ASY.nextAt = now + 30;
+  const n = 1500, t0 = Math.max(0, now - 150), k0 = Math.round(t0 * 10);
+  const x = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const k = k0 + i; x[i] = ASY.N[k] > 0 ? 10 * Math.log10(ASY.P[k] / ASY.N[k] + 1e-12) : NaN; }
+  const A = asNormalize(x);
+  if (!A || !ASY.raw) return;
+  const tm = t0 + n / 20;
+  const r = asLock(ASY.raw, A, t0, tm, {pts: ASY.pts, a: ASY.a, b: ASY.b, cn: (tm - ASY.b) / ASY.a});
+  if (!r || !asConfident(r.est, !ASY.pts.length)) return;
+  const e = r.est, strong = e.r >= 0.35 && e.r - e.r2 >= 0.12;
+  const same = ASY.cand && Math.abs(ASY.cand.D - r.pt.D) < 0.8 && Math.abs(ASY.cand.s - r.s) < 1e-6;
+  if (!ASY.pts.length && !strong && !same) { ASY.cand = {D: r.pt.D, s: r.s}; return; }
+  ASY.cand = null;
+  const pts = ASY.pts.filter(q => Math.abs(q.c - r.pt.c) > 120);
+  pts.push(r.pt);
+  const f = asFit(pts.slice(-8));
+  ASY.pts = f.pts;
+  const changed = Math.abs(f.shift - ASY.b) > 0.25 || Math.abs(f.scale - ASY.a) > 0.0002;
+  if (changed) { ASY.nextAt = now + 120; asApply(f.shift, f.scale); }
+  else { ASY.nextAt = now + 300; ASY.msg = '✅ الترجمة متظبطة (اتأكدت بالصوت)'; }
+}
+async function asApply(shift, scale) {
+  if (!subSel) return;
+  const keep = ASY.pts, prev = ASY.prev || {shift: subSel.shift, scale: subSel.scale || 1};
+  shift = Math.round(shift * 10) / 10;
+  await applySubItem(subSel.it, shift, true, scale, true);
+  ASY.pts = keep; ASY.prev = prev;
+  ASY.msg = '🎯 اتضبطت الترجمة تلقائياً (' + (shift > 0 ? '+' : '') + shift + ' ث' + (Math.abs(scale - 1) > 0.0002 ? ' + تصحيح السرعة' : '') + ')';
+  asToast(ASY.msg);
+}
+function asUndo() {
+  if (!subSel || !ASY.prev) return;
+  const p = ASY.prev;
+  ASY.off = true;                      // وقّف التلقائي في التشغيلة دي
+  asStopCapture();
+  applySubItem(subSel.it, p.shift, true, p.scale);
+  ASY.msg = '↩︎ رجّعت الترجمة زي ما كانت. الضبط التلقائي واقف.';
+}
+function asToggle() {
+  const p = prof();
+  if (!p) return;
+  p.as = (p.as === false);
+  saveProfileObj(p);
+  ASY.off = false;
+  if (p.as === false) { asStopCapture(); ASY.msg = ''; } else asArm();
+}
+
 // ================= الترجمة =================
 function subQ(lang, forAuto) {
   const c = PLAY || {};
@@ -1963,9 +2324,10 @@ function subQ(lang, forAuto) {
   if (c.e != null) q += '&e=' + c.e;
   return q;
 }
-function subFetchQS(it, fmt, shift) {
+function subFetchQS(it, fmt, shift, scale) {
   let q = 'u=' + encodeURIComponent(it.u) + '&fmt=' + fmt + '&shift=' + shift +
-          '&lang=' + encodeURIComponent(it.lang || '');
+          '&lang=' + encodeURIComponent(it.lang || '') +
+          (scale && Math.abs(scale - 1) > 1e-6 ? '&scale=' + scale.toFixed(6) : '');
   if (PLAY && PLAY.e != null) q += '&e=' + PLAY.e;
   if (PLAY && PLAY.s != null) q += '&s=' + PLAY.s;
   return q;
@@ -1994,7 +2356,7 @@ function syncFirst() {
   if (!cues || !cues.length) return alert('الترجمة لسه بتتحمّل، جرّب بعد ثانية');
   const delta = v.currentTime - cues[0].startTime;
   if (Math.abs(delta) > 900) return alert('الفرق كبير زيادة. ارجع لأول الفيلم وجرّب تاني، أو اختار ترجمة تانية.');
-  applySubItem(subSel.it, Math.round((subSel.shift + delta - 0.3) * 10) / 10, false);
+  applySubItem(subSel.it, Math.round((subSel.shift + delta - 0.3) * 10) / 10, false, subSel.scale || 1);
 }
 function openSubs() {
   const box = $('subBox');
@@ -2034,12 +2396,14 @@ async function findSubs() {
     ).join('');
   } catch (e) { out.innerHTML = ERR; }
 }
-async function applySubItem(it, shift, quiet) {
+async function applySubItem(it, shift, quiet, scale, keepAs) {
+  scale = scale || 1;
   const v = document.querySelector('#results video');
   if (!v) return;
+  if (quiet && !keepAs && AUD.ar) return;      // صوت عربي مدبلج: مفيش ترجمة تلقائية
   const st = $('subState');
   if (st && !quiet) st.innerHTML = pend('جاري تحميل الترجمة...');
-  const r = await fetchText('/sub?' + subFetchQS(it, 'vtt', shift));
+  const r = await fetchText('/sub?' + subFetchQS(it, 'vtt', shift, scale));
   if (r.error) { if (st && !quiet) st.innerHTML = warn(r.error); return; }
   v.querySelectorAll('track').forEach(x => x.remove());
   const tr = document.createElement('track');
@@ -2049,14 +2413,17 @@ async function applySubItem(it, shift, quiet) {
   tr.src = URL.createObjectURL(new Blob([r.text], {type: 'text/vtt'}));
   v.appendChild(tr);
   tr.track.mode = 'showing';
-  subSel = {it: it, shift: shift};
-  if (PLAY) PLAY.sub = {u: it.u, lang: it.lang, name: it.name, shift: shift};
+  subSel = {it: it, shift: shift, scale: scale};
+  if (PLAY) PLAY.sub = {u: it.u, lang: it.lang, name: it.name, shift: shift, scale: scale};
+  if (!keepAs) asReset();
+  ASY.a = scale; ASY.b = shift;
+  ASY.raw = asParseCues(r.text).map(c => [(c[0] - shift) / scale, (c[1] - shift) / scale]);
   saveProgress(v);
   const stn = $('subState');
   if (stn) {
     stn.innerHTML = '<div style="margin:8px 0;color:var(--success)">✅ الترجمة شغالة · التوقيت: ' +
       (shift > 0 ? '+' : '') + shift + ' ث</div>' +
-      '<button class="search-btn" style="background:#0ea5e9;margin-bottom:8px" onclick="syncFirst()">🎯 ضبط تلقائي: دوس أول ما تسمع أول جملة كلام</button>' +
+      '<button class="search-btn" style="background:#0ea5e9;margin-bottom:8px" onclick="syncFirst()">🎯 ضبط يدوي سريع: دوس أول ما تسمع أول جملة كلام</button>' +
       '<div class="row" style="margin-bottom:8px"><button class="search-btn" onclick="shiftSub(-5)">-5</button><button class="search-btn" onclick="shiftSub(5)">+5</button></div>' +
       '<div class="row"><button class="search-btn" onclick="shiftSub(-1)">-1</button>' +
       '<button class="search-btn" onclick="shiftSub(-0.5)">-0.5</button>' +
@@ -2074,12 +2441,13 @@ function applySub(i) {
 }
 function shiftSub(d) {
   if (!subSel) return;
-  applySubItem(subSel.it, Math.round((subSel.shift + d) * 10) / 10, false);
+  applySubItem(subSel.it, Math.round((subSel.shift + d) * 10) / 10, false, subSel.scale || 1);
 }
 function subOff() {
   const v = document.querySelector('#results video');
   if (v) v.querySelectorAll('track').forEach(x => x.remove());
   subSel = null;
+  asStopCapture();
   if (PLAY) PLAY.sub = null;
   const p = prof();
   if (p) { p.sl = ''; saveProgress(v); saveProfileObj(p); }
@@ -2088,8 +2456,9 @@ function subOff() {
 }
 async function autoSub() {
   const p = prof();
-  if (!p || !p.sl || !PLAY || !PLAY.tmdb) return;
-  const q = subQ(p.sl, true);
+  const sl = p ? (p.sl === undefined ? 'AR' : p.sl) : 'AR';   // الافتراضي: عربي
+  if (!sl || !PLAY || !PLAY.tmdb) return;
+  const q = subQ(sl, true);
   if (!q) return;
   try {
     const {d} = await api('/subs?' + q);
@@ -2581,6 +2950,7 @@ async function startPlay(spec, mode, baseOver) {
   base.src = spec.hash ? 'v:' + spec.hash : d.direct;
   base.dr = !spec.hash;
   base.nw = false;
+  base.arDub = isArDubTitle(spec.name);
   base.fname = d.name || base.fname || '';
   curSrc = base.src;
   packBase = base;
@@ -2637,12 +3007,13 @@ async function diagVersion(i) {
 }
 function hlsAudio(i) {
   const v = document.querySelector('#results video');
-  if (v && v._hls) v._hls.audioTrack = +i;
+  if (v && v._hls) { v._hls.audioTrack = +i; audPicked(i, true); }
 }
 function setupHls(v) {
   const url = PLAY && PLAY.hls;
   if (!url) return;
   const fallback = why => {
+    if (!AUD.decided) audDecide(!!(PLAY && PLAY.arDub));
     try { if (v._hls) { v._hls.destroy(); v._hls = null; } } catch (e) {}
     v.removeAttribute('src');
     v.src = PLAY.url;
@@ -2663,10 +3034,15 @@ function setupHls(v) {
     h.on(Hls.Events.MANIFEST_PARSED, () => {
       v.play().catch(() => {});
       const box = $('audSel'), at = h.audioTracks || [];
+      {
+        const pk = pickAudio(at.map(t => ({lang: t.lang, name: t.name, def: t.default})));
+        if (at.length > 1 && pk.idx >= 0 && pk.idx !== h.audioTrack) h.audioTrack = pk.idx;
+        audDecide((at.length > 1 && pk.ar) || !!(PLAY && PLAY.arDub));
+      }
       if (box && at.length > 1) {
         box.innerHTML = '<select class="search-input" style="margin-top:8px" onchange="hlsAudio(this.value)">' +
           at.map((t, i) => '<option value="' + i + '"' + (i === h.audioTrack ? ' selected' : '') + '>' +
-            esc(t.name || t.lang || ('صوت ' + (i + 1))) + '</option>').join('') + '</select>';
+            esc(audLabel(t, i)) + '</option>').join('') + '</select>';
       }
     });
     h.loadSource(url);
@@ -3115,12 +3491,12 @@ function nfxInit(v) {
   const closePanel = () => { S.panel = ''; S.panelEl.classList.remove('on'); S.panelEl.innerHTML = ''; show(); };
   const audioList = () => {
     if (v._hls && v._hls.audioTracks && v._hls.audioTracks.length > 1) {
-      return v._hls.audioTracks.map((t, i) => ({i: i, n: t.name || t.lang || ('صوت ' + (i + 1)), on: i === v._hls.audioTrack, h: 1}));
+      return v._hls.audioTracks.map((t, i) => ({i: i, n: audLabel(t, i), on: i === v._hls.audioTrack, h: 1}));
     }
     const at = v.audioTracks;
     if (at && at.length > 1) {
       const o = [];
-      for (let i = 0; i < at.length; i++) o.push({i: i, n: at[i].label || at[i].language || ('صوت ' + (i + 1)), on: !!at[i].enabled});
+      for (let i = 0; i < at.length; i++) o.push({i: i, n: audLabel({lang: at[i].language, name: at[i].label}, i), on: !!at[i].enabled});
       return o;
     }
     return [];
@@ -3143,6 +3519,11 @@ function nfxInit(v) {
       if (S.subMsg) h += '<div class="nfx-sm">' + S.subMsg + '</div>';
       if (subs && subs.length) {
         h += '<div class="nfx-sub">' + subs.slice(0, 12).map((it, i) => '<button class="nfx-it' + (subSel && subSel.it && subSel.it.u === it.u ? ' on' : '') + '" data-a="sub" data-i="' + i + '">' + esc(it.name) + '</button>').join('') + '</div>';
+      }
+      if (subSel) {
+        h += '<div class="nfx-chips" style="margin-top:8px"><button class="nfx-chip' + (asEnabled() ? ' on' : '') + '" data-a="asauto">🎯 ضبط تلقائي بالصوت</button>' +
+          (ASY.prev ? '<button class="nfx-chip" data-a="asundo">↩︎ تراجع</button>' : '') + '</div>';
+        if (ASY.msg) h += '<div class="nfx-sm">' + esc(ASY.msg) + '</div>';
       }
       if (subSel) {
         h += '<div class="nfx-sm">ضبط التوقيت (' + (subSel.shift > 0 ? '+' : '') + subSel.shift + ' ث)</div><div class="nfx-chips">' +
@@ -3208,8 +3589,11 @@ function nfxInit(v) {
       case 'aud':
         if (b.dataset.h === '1' && v._hls) v._hls.audioTrack = +b.dataset.i;
         else if (typeof setAudio === 'function') setAudio(+b.dataset.i);
+        audPicked(+b.dataset.i, b.dataset.h === '1');
         setTimeout(renderPanel, 150);
         break;
+      case 'asauto': asToggle(); renderPanel(); break;
+      case 'asundo': asUndo(); setTimeout(renderPanel, 600); break;
       case 'suboff': if (typeof subOff === 'function') subOff(); renderPanel(); break;
       case 'sublang': {
         const p = prof();
