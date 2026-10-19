@@ -1682,7 +1682,7 @@ function linkCard(d, video) {
     (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
     (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
     (video && PLAY && PLAY.nw ? warn('المصدر ده مش مناسب للمتصفح. شغّله من المشغّلات الخارجية أو Stremio.') : '') +
-    (video ? '<div class="nfx" id="nfx"><video controls playsinline tabindex="-1" preload="metadata"' + (PLAY && PLAY.hls ? '' : ' src="' + u + '"') + '></video></div><div id="playErr" style="margin-top:8px"></div><div id="audSel"></div>' +
+    (video ? '<div class="nfx" id="nfx"><video controls playsinline tabindex="-1" preload="metadata"' + (PLAY && PLAY.hls ? '' : ' crossorigin="anonymous" data-cors="1" src="' + u + '"') + '></video></div><div id="playErr" style="margin-top:8px"></div><div id="audSel"></div>' +
       '<div class="row oldctl" style="margin-top:8px"><button class="fc" onclick="skip(-10)">⏪ 10ث</button>' +
       '<button class="fc" onclick="skip(10)">10ث ⏩</button>' +
       '<select class="fc" onchange="setSpeed(this.value)"><option value="1">1x</option><option value="0.75">0.75x</option>' +
@@ -1997,6 +1997,18 @@ function audDecide(isAr) {
 }
 function audGate(v) {
   AUD = {ar: false, decided: false};
+  // لو سيرفر الفيديو مش بيدعم CORS: شيل الخاصية وكمّل التشغيل من نفس المكان
+  if (v.dataset.cors === '1' && !v._hls) {
+    v.addEventListener('error', () => {
+      if (v.dataset.cors !== '1') return;
+      v.dataset.cors = '0';
+      const t = v.currentTime, src = v.currentSrc || (PLAY && PLAY.url);
+      v.removeAttribute('crossorigin');
+      v.src = src;
+      v.load();
+      v.addEventListener('loadedmetadata', () => { try { v.currentTime = t; } catch (e) {} v.play().catch(() => {}); }, {once: true});
+    });
+  }
   const pre = !!(PLAY && PLAY.arDub);
   if (PLAY.hls && window.Hls && Hls.isSupported()) {
     setTimeout(() => { if (!AUD.decided) audDecide(pre); }, 7000);   // القرار بيتاخد في MANIFEST_PARSED
@@ -2203,7 +2215,7 @@ function asArm() {
   if (ASY.v === v && ASY.timer) return;
   const cap = v.captureStream || v.mozCaptureStream, AC = window.AudioContext || window.webkitAudioContext;
   if (!cap || !AC) { ASY.msg = 'الضبط التلقائي مش مدعوم في المتصفح ده. استخدم الضبط اليدوي.'; return; }
-  if (!(v._hls)) { ASY.msg = 'الضبط التلقائي بيشتغل مع البث المحوَّل بس. استخدم الضبط اليدوي.'; return; }
+  if (!(v._hls || (v.dataset.cors === '1' && v.getAttribute('crossorigin') === 'anonymous'))) { ASY.msg = 'المصدر ده مش بيسمح بقراءة الصوت للضبط التلقائي. استخدم الضبط اليدوي.'; return; }
   asStopCapture();
   ASY.v = v;
   if (!ASY.P) {
