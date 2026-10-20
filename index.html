@@ -3148,12 +3148,16 @@ async function playBest(s, e) {
   VER.e = s ? (e || 1) : null;
   let list = [];
   try { list = await fetchVersions(VER.s, VER.e); } catch (x) {}
-  const cands = list.filter(v => v.instant && !FAILED.has(v.hash || v.ref)).slice(0, 3);
-  for (const v of cands) {
-    const d = await startPlay(specOf(v), 'watch');
+  const cands = list.filter(v => v.instant && !FAILED.has(v.hash || v.ref)).slice(0, 6);
+  let firstErr = '';
+  for (let i = 0; i < cands.length; i++) {
+    if (i > 0) $('results').innerHTML = pend('النسخة اللي قبلها ما اشتغلتش، بجرّب النسخة ' + (i + 1) + ' من ' + cands.length + '...');
+    const d = await startPlay(specOf(cands[i]), 'watch');
     if (d || pullId !== LAST_PULL) return d;
-    FAILED.add(v.hash || v.ref);
+    FAILED.add(cands[i].hash || cands[i].ref);
+    if (!firstErr) firstErr = (($('results') || {}).textContent || '').trim().slice(0, 90);
   }
+  if (cands.length) $('results').innerHTML = warn('جرّبت ' + cands.length + ' نسخة ومفيش واحدة اشتغلت' + (firstErr ? ' (' + firstErr + ')' : '') + '. بدوّر في التورنت...');
   return go(s, e, true, true, true);
 }
 async function playByHash(it) {
