@@ -3649,7 +3649,7 @@ function nfxInit(v) {
   const show = () => {
     box.classList.add('show');
     clearTimeout(S.hideT);
-    if (!v.paused && !S.panel && !S.drag) S.hideT = setTimeout(() => hide(), 6000);
+    if (!v.paused && !S.panel && !S.drag) S.hideT = setTimeout(() => hide(), 10000);
   };
   const hide = force => {
     if (!force && (v.paused || S.panel || S.drag)) return;
@@ -3752,9 +3752,14 @@ function nfxInit(v) {
       return;
     }
     lastTap = now;
+    const yr = (e.clientY - r.top) / r.height;
+    // لمسة قريبة من أزرار التحكم (فوق/تحت): ما نخفّيش الشريط، بس نجدّد وقته
+    if (box.classList.contains('show') && !v.paused && (yr > 0.66 || yr < 0.22)) { show(); return; }
     tapT = setTimeout(() => { if (box.classList.contains('show') && !v.paused) hide(true); else show(); }, 280);
   });
   box.addEventListener('mousemove', show);
+  // أي لمسة على الشاشة والشريط ظاهر = عدّاد الاختفاء يبدأ من أول وجديد
+  box.addEventListener('pointerdown', () => { if (box.classList.contains('show')) show(); }, true);
   box.addEventListener('mouseleave', () => { if (!v.paused && !S.panel) hide(); });
 
   // ----- اللوحات (الصوت والترجمة / السرعة / الحلقات)
