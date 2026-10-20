@@ -378,6 +378,15 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <button class="search-btn" onclick="addProv()">➕ إضافة مزوّد</button>
 <p style="color:var(--mut);font-size:12px">الرابط بيجرّب المزوّد اللي دومينه بيطابقه أولاً، وبعدين باقي المزوّدين بالترتيب.</p>
 </details>
+
+<details class="action-box adm" style="text-align:right;margin-top:18px">
+<summary>🧪 فحص AllDebrid (تشخيص بس)</summary>
+<p style="color:var(--mut);font-size:12px">الطلب بيطلع من المتصفح بتاعك لـ AllDebrid مباشرة. المفتاح مابيتبعتش لسيرفرنا ولا بيتحفظ.</p>
+<input id="adKey" type="password" class="search-input ltr" placeholder="مفتاح AllDebrid" autocomplete="off">
+<input id="adLink" class="search-input ltr" placeholder="رابط الملف (اللي بيطلع من الإضافة أو من AllDebrid)">
+<button class="search-btn" onclick="adDiag()">🧪 افحص</button>
+<pre id="adOut" style="display:none;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;font-size:11px;color:#cbd5e1;background:#0b1220;padding:10px;border-radius:8px;margin-top:8px"></pre>
+</details>
 </div>
 
 <script>
@@ -3254,6 +3263,40 @@ async function diagVersion(i) {
   renderVP();
 }
 // فحص البث وقت التشغيل (للأدمن): نفس 🧪 بس من جوه صفحة التشغيل
+
+// ---- فحص AllDebrid من المتصفح (تشخيص للأدمن بس، مابيغيّر أي تشغيل) ----
+async function adDiag() {
+  const key = ($('adKey').value || '').trim(), link = ($('adLink').value || '').trim();
+  const out = $('adOut');
+  out.style.display = 'block';
+  if (!key || !link) { out.textContent = 'اكتب المفتاح والرابط'; return; }
+  const mask = s => String(s).split(key).join('***');
+  let log = '';
+  const call = async (path, params) => {
+    const u = 'https://api.alldebrid.com/v4' + path + '?' + new URLSearchParams(Object.assign({agent: 'Elkomy', apikey: key}, params));
+    try {
+      const r = await fetch(u);
+      const t = await r.text();
+      log += '\n' + path + ' -> HTTP ' + r.status + '\n' + mask(t).slice(0, 1800) + '\n';
+      try { return JSON.parse(t); } catch (e) { return null; }
+    } catch (e) {
+      log += '\n' + path + ' -> المتصفح اتمنع (غالباً CORS أو حجب): ' + mask(e) + '\n';
+      return null;
+    }
+  };
+  out.textContent = 'جاري الفحص...';
+  const j = await call('/link/unlock', {link: link});
+  const d = j && j.data;
+  const streams = d && Array.isArray(d.streams) ? d.streams : [];
+  log += '\nعدد الـ streams: ' + streams.length + (d && d.id ? ' | id موجود' : ' | مفيش id') + '\n';
+  if (d && d.id) {
+    for (const s of streams.slice(0, 6)) {
+      if (!s || !s.id) continue;
+      await call('/link/streaming', {id: d.id, stream: s.id});
+    }
+  }
+  out.textContent = log;
+}
 async function diagCurrent() {
   const el = $('diagOut');
   if (!el || !PLAY || !PLAY.vh) return;
