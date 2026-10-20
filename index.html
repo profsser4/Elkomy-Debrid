@@ -3316,11 +3316,30 @@ async function adDiag() {
       if (+st.statusCode === 4 || +st.statusCode >= 5) break;
       await new Promise(r => setTimeout(r, 3000));
     }
-    const links = (st && Array.isArray(st.links)) ? st.links : [];
-    if (!links.length || +st.statusCode !== 4) {
-      log += '\nالتورنت مش جاهز على AllDebrid (مش متخزّن عندهم). جرّب hash تاني متخزّن، أو استنى.\n';
+    if (!st || +st.statusCode !== 4) {
+      log += '\nالتورنت لسه مش جاهز على AllDebrid (' + (st ? st.status : '؟') + '). استنى شوية أو جرّب hash تاني.\n';
       show();
       return;
+    }
+    let links = Array.isArray(st.links) ? st.links.filter(x => x && x.link).map(x => ({filename: x.filename, link: x.link})) : [];
+    if (!links.length) {
+      // النسخة الجديدة من الـ API بتدي الملفات من نداء تاني
+      log += 'الحالة جاهزة بس من غير روابط، بطلب قايمة الملفات...\n';
+      show();
+      const f = await call('/magnet/files', {}, {body: new URLSearchParams([['id[]', String(m0.id)]]), quiet: true});
+      const walk = (n, name) => {
+        if (!n || typeof n !== 'object') return;
+        if (Array.isArray(n)) { n.forEach(x => walk(x, name)); return; }
+        const lk = n.l || n.link;
+        if (typeof lk === 'string' && lk.startsWith('http')) links.push({filename: n.n || n.filename || name || '', link: lk});
+        Object.keys(n).forEach(k => { if (n[k] && typeof n[k] === 'object') walk(n[k], n.n || name); });
+      };
+      walk(f && f.data, '');
+      if (!links.length) {
+        log += 'ماقدرتش ألاقي روابط. رد AllDebrid:\n' + mask(JSON.stringify(f)).slice(0, 900) + '\n';
+        show();
+        return;
+      }
     }
     const vid = links.find(x => /\.(mkv|mp4|avi|mov|webm|m4v)$/i.test(String(x.filename || '')));
     const pick = vid || links[0];
