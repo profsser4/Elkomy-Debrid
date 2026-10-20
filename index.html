@@ -1529,7 +1529,7 @@ async function searchTorrents(retry, fromAlt) {
   try {
     const {d} = await api('/search?q=' + encodeURIComponent(q));
     if (my !== seq) return;
-    if (d.error) return box.innerHTML = warn(d.error);
+    if (d.error && !/مفيش نتايج/.test(d.error)) return box.innerHTML = warn(d.error);
     torrents = d.results || [];
     const poor = !torrents.length || !visible().good.length;
     if (poor && !retry && want && want.e && /E\d+$/i.test(q)) {
@@ -1952,11 +1952,18 @@ async function ensureCur(id, type, qn) {
   cur = d;
   selected = {title: d.title, year: d.year, type: d.type, poster: d.poster};
 }
+async function nextSameSource(prev, s, e) {
+  if (!prev || !prev.vh) return false;
+  const base = Object.assign(baseOf(prev), {s: s, e: e, fid: null, fname: '', ref: ''});
+  const d = await startPlay({hash: prev.vh, name: prev.fname || prev.title, slow: true, s: s, e: e}, 'watch', base);
+  return !!d || pullId !== LAST_PULL;     // true = اشتغلت (أو اتلغت)، false = كمّل بالبحث العادي
+}
 async function playNext() {
   clearCd();
   const n = nextTarget();
   if (!n) return;
   if (n.kind === 'pack') return playPackFile(n.f);
+  if (await nextSameSource(PLAY, n.s, n.e)) return;
   await ensureCur(PLAY.tmdb, PLAY.type, PLAY.qn);
   if (!cur || cur.id !== PLAY.tmdb) return alert('مش قادر أجيب بيانات المسلسل');
   want = {s: n.s, e: n.e};
@@ -1992,6 +1999,7 @@ async function playAfter(it) {
   }
   const n = nextEpOf(it);
   if (!n) return alert('خلصت كل الحلقات المتاحة 🎉');
+  if (await nextSameSource(it, n.s, n.e)) return;
   await ensureCur(it.tmdb, it.type, it.qn);
   if (!cur || cur.id !== it.tmdb) return alert('مش قادر أجيب بيانات المسلسل');
   want = {s: n.s, e: n.e};
