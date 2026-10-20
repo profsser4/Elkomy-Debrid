@@ -383,7 +383,23 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <script>
 const API = "https://elkomy-server-neon.vercel.app";
 let TOK = sessionStorage.getItem('tok') || localStorage.getItem('rtok') || "";
-let UNAME = '', ROLE = 'user', USERS = [], NOCHK = false;
+let UNAME = '', ROLE = 'user', USERS = [], NOCHK = false, LOCK = 0, LOCK_MSG = '';
+// LOCK: 0 عادي · 1 ممنوع التحميل · 2 تصفح فقط (ممنوع المشاهدة والتحميل). الرسالة من الأدمن.
+function noDl() {                       // تحميل
+  if (LOCK < 1) return false;
+  alert(LOCK_MSG || 'التحميل مش متاح لحسابك.');
+  return true;
+}
+function noWatch() {                    // مشاهدة
+  if (LOCK < 2) return false;
+  alert(LOCK_MSG || 'المشاهدة مش متاحة لحسابك.');
+  return true;
+}
+document.addEventListener('click', e => {
+  if (LOCK < 1 || !e.target.closest) return;
+  const a = e.target.closest('a.btn-download, [onclick^="copyText("]');
+  if (a) { e.preventDefault(); e.stopPropagation(); noDl(); }
+}, true);
 let VS = ['h'], PUSH_ON = false, STREP = [];
 try { history.replaceState({n: 1}, ''); } catch (e) {}
 sessionStorage.removeItem('pass'); localStorage.removeItem('rpass');
@@ -878,6 +894,7 @@ async function showMain() {
     const {d} = await api('/me');
     UNAME = d.user || '';
     ROLE = d.role || 'user';
+    LOCK = d.lock || 0; LOCK_MSG = d.lock_msg || '';
   } catch (e) { return alert('مش قادر أوصل للسيرفر'); }
   loadLocal();
   applyRole();
@@ -1205,7 +1222,7 @@ async function openDetails(type, id) {
       (d.type === 'tv' ? '<p style="color:var(--mut);font-size:12px;margin:-4px 0 10px">لو ضفته لقائمتي بيجيلك إشعار لما ينزل منه حلقة جديدة (فعّل 🔔 من فوق).</p>' : '');
     if (d.type === 'movie') {
       if (d.imdb) h += '<button class="search-btn" style="margin-bottom:10px" onclick="playOpen()">▶ تشغيل / اختيار نسخة</button>';
-      if (stOK() && (ADV() || !d.imdb)) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
+      if (stOK() && (ADV() || !d.imdb || ROLE !== 'admin')) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
       if (ADV() || !d.imdb) h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
     } else {
       h += '<div class="tabs">' + d.seasons.map(s =>
@@ -1351,6 +1368,7 @@ function useAlt(n) {
   searchTorrents();
 }
 function go(s, e, auto, skipSt, skipNew) {
+  if (auto && noWatch()) return;
   if (auto && !skipNew && cur && cur.imdb) return playBest(s, e);
   if (auto && !skipSt && ST.n > 0 && cur && cur.imdb) return stGo(s, e, true);
   want = s ? {s: s, e: e || null} : null;
@@ -1374,6 +1392,7 @@ function go(s, e, auto, skipSt, skipNew) {
 
 // ================= نتايج إضافات Stremio =================
 async function stGo(s, e, auto) {
+  if (auto && noWatch()) return;
   if (!cur || !cur.imdb) return;
   want = s ? {s: s, e: e || null} : null;
   autoPick = false;
@@ -1718,6 +1737,7 @@ async function getLink(body, id) {
   }
 }
 async function pullSource(src, base, fid) {
+  if (noWatch()) return;
   curSrc = src;
   clearCd();
   const id = ++pullId;
@@ -1959,6 +1979,7 @@ async function nextSameSource(prev, s, e) {
   return !!d || pullId !== LAST_PULL;     // true = اشتغلت (أو اتلغت)، false = كمّل بالبحث العادي
 }
 async function playNext() {
+  if (noWatch()) return;
   clearCd();
   const n = nextTarget();
   if (!n) return;
@@ -1970,6 +1991,7 @@ async function playNext() {
   go(n.s, n.e, true);
 }
 async function playItem(key) {
+  if (noWatch()) return;
   const it = getItem(key);
   if (!it || it.del) return;
   scrollToResults();
@@ -1993,6 +2015,7 @@ const baseOf = it => ({title: it.title, poster: it.poster, year: it.year, type: 
   s: it.s, e: it.e, eps: it.eps, ms: it.ms, fid: it.fid, fname: it.fname, src: it.src, qn: it.qn || '',
   dr: !!it.dr, imdb: it.imdb || '', vh: it.vh || '', ref: it.ref || ''});
 async function playAfter(it) {
+  if (noWatch()) return;
   if (it.next && it.src) {
     const base = Object.assign(baseOf(it), {s: it.next.s, e: it.next.e, fid: it.next.fid, fname: it.next.name});
     return pullSource(it.src, base, it.next.fid);
@@ -2064,12 +2087,14 @@ async function packCall(body, label) {
   return d;
 }
 async function packZip() {
+  if (noDl()) return;
   try {
     const d = await packCall({zip: true}, 'جاري تجهيز ملف ZIP...');
     $('packOut').innerHTML = d.direct_link ? linkCard(d, false) : warn(d.error || 'ZIP مش متاح لهذا الباك');
   } catch (e) { $('packOut').innerHTML = ERR; }
 }
 async function packAll() {
+  if (noDl()) return;
   try {
     const d = await packCall({all: true}, 'جاري تجهيز كل الروابط...');
     if (!d.links) return $('packOut').innerHTML = warn(d.error || 'حصل خطأ');
@@ -2718,7 +2743,8 @@ function renderUsers() {
   const el = $('usBox');
   if (!el) return;
   el.innerHTML = (USERS.map(u =>
-    '<div class="ep"><div class="b">👤 ' + esc(u.name) + '</div>' +
+    '<div class="ep"><div class="b">👤 ' + esc(u.name) + (u.lock === 2 ? ' <small style="color:#f59e0b">🔒 تصفح فقط</small>' : (u.lock === 1 ? ' <small style="color:#f59e0b">🚫 ممنوع من التحميل</small>' : '')) + '</div>' +
+    '<button style="background:#0ea5e9;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="usPerm(this.dataset.n)">🔒</button>' +
     '<button style="background:#475569;color:#fff" data-n="' + esc(u.name) + '" onclick="usPass(this.dataset.n)">🔑</button>' +
     '<button style="background:var(--danger);color:#fff;margin-inline-start:6px" data-n="' + esc(u.name) + '" onclick="usDel(this.dataset.n)">🗑</button></div>').join('')
     || warn('مفيش مستخدمين. ضيف أول واحد.')) +
@@ -2740,6 +2766,21 @@ async function usPass(n) {
   if (!p) return;
   const {d} = await api('/users/' + encodeURIComponent(n) + '/password', {method: 'POST', body: JSON.stringify({password: p})});
   alert(d.error || 'تم تغيير الباسورد ✅ (المستخدم هيدخل تاني بالباسورد الجديد)');
+}
+async function usPerm(n) {
+  const u = USERS.find(x => x.name === n) || {};
+  const m = prompt('صلاحيات ' + n + ':\n0 = عادي (يشاهد ويحمّل)\n1 = ممنوع التحميل بس\n2 = تصفح فقط (ممنوع المشاهدة والتحميل)', String(u.lock || 0));
+  if (m === null) return;
+  const lock = Math.max(0, Math.min(2, parseInt(m, 10) || 0));
+  let msg = '';
+  if (lock > 0) {
+    const t = prompt('الرسالة اللي هتظهر له لما يحاول يشاهد/يحمّل:', u.msg || (lock === 2 ? 'المشاهدة والتحميل مش متاحين لحسابك. كلّمني لو عاوز تشاهد.' : 'التحميل مش متاح لحسابك.'));
+    if (t === null) return;
+    msg = t;
+  }
+  const {d} = await api('/users/' + encodeURIComponent(n) + '/perms', {method: 'POST', body: JSON.stringify({lock: lock, msg: msg})});
+  if (d.error) alert(d.error);
+  loadUsers();
 }
 async function usDel(n) {
   if (!confirm('حذف المستخدم ' + n + ' وكل بياناته؟')) return;
@@ -3025,6 +3066,7 @@ function renderVP() {
   el.innerHTML = h + '</div>';
 }
 function dlSeries() {
+  if (noDl()) return;
   closeVP();
   if (!cur) return;
   let nm = (cur.qname || cur.search_title || '').trim();
@@ -3041,12 +3083,14 @@ function dlSeries() {
   searchTorrents();
 }
 function playVersion(i) {
+  if (noWatch()) return;
   const v = VER.list[i];
   if (!v) return;
   closeVP();
   return startPlay(specOf(v), 'watch');
 }
 async function dlVersion(i) {
+  if (noDl()) return;
   const v = VER.list[i];
   if (!v) return;
   closeVP();
@@ -3083,6 +3127,7 @@ function baseFromCur(spec) {
   return b;
 }
 async function startPlay(spec, mode, baseOver) {
+  if (mode === 'download' ? noDl() : noWatch()) return null;
   const my = ++pullId;
   LAST_PULL = my;
   clearCd();
@@ -3107,6 +3152,7 @@ async function startPlay(spec, mode, baseOver) {
   }
   let d = res.d;
   if (!res.r.ok || d.error || !d.direct) {
+    if (d.nodl) { LOCK = Math.max(LOCK, d.lock || 1); LOCK_MSG = d.error || LOCK_MSG; $('results').innerHTML = ''; alert(d.error); return null; }
     $('results').innerHTML = warn(d.error || 'حصل خطأ في التجهيز');
     return null;
   }
@@ -3143,6 +3189,7 @@ async function startPlay(spec, mode, baseOver) {
   return d;
 }
 async function playBest(s, e) {
+  if (noWatch()) return null;
   want = s ? {s: s, e: e || null} : null;
   VER.s = s || null;
   VER.e = s ? (e || 1) : null;
