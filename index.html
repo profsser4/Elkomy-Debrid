@@ -1786,6 +1786,7 @@ function linkCard(d, video) {
     (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
     (video && PLAY && PLAY.nw ? warn('المصدر ده مش مناسب للمتصفح. شغّله من المشغّلات الخارجية أو Stremio.') : '') +
     (video ? '<div class="nfx" id="nfx"><video controls playsinline tabindex="-1" preload="metadata"' + (PLAY && PLAY.hls ? '' : ' crossorigin="anonymous" data-cors="1" src="' + u + '"') + '></video></div><div id="playErr" style="margin-top:8px"></div><div id="audSel"></div>' +
+      (ROLE === 'admin' && PLAY && PLAY.vh ? '<button class="fc" style="margin-top:8px" onclick="diagCurrent()">🧪 فحص البث</button><pre id="diagOut" style="display:none;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;font-size:11px;color:#cbd5e1;background:#0b1220;padding:10px;border-radius:8px;margin-top:8px"></pre>' : '') +
       '<div class="row oldctl" style="margin-top:8px"><button class="fc" onclick="skip(-10)">⏪ 10ث</button>' +
       '<button class="fc" onclick="skip(10)">10ث ⏩</button>' +
       '<select class="fc" onchange="setSpeed(this.value)"><option value="1">1x</option><option value="0.75">0.75x</option>' +
@@ -3167,15 +3168,10 @@ async function playByRef(it) {
   if (!d && pullId === LAST_PULL) return resumeFallback(it);
   return d;
 }
-async function diagVersion(i) {
-  const v = VER.list[i];
-  if (!v || !v.hash) return alert('النسخة دي مالهاش hash');
-  VER.diag = 'جاري الفحص...';
-  renderVP();
+async function diagText(hash, name, s, e) {
   let out = '';
   try {
-    const {d} = await api('/play/diag', {method: 'POST',
-      body: JSON.stringify({hash: v.hash, name: v.title, s: VER.s, e: VER.e})});
+    const {d} = await api('/play/diag', {method: 'POST', body: JSON.stringify({hash: hash, name: name, s: s, e: e})});
     const steps = d.steps || [];
     const cs = steps.find(x => x.step === 'stream' && x.hls);
     const hlsUrl = cs ? cs.hls : '';
@@ -3188,8 +3184,24 @@ async function diagVersion(i) {
       } catch (x) { out += '\n\nالمتصفح: اتمنع (غالباً CORS): ' + x; }
     }
   } catch (x) { out = 'فشل الفحص: ' + x; }
-  VER.diag = out;
+  return out;
+}
+async function diagVersion(i) {
+  const v = VER.list[i];
+  if (!v || !v.hash) return alert('النسخة دي مالهاش hash');
+  VER.diag = 'جاري الفحص...';
   renderVP();
+  VER.diag = await diagText(v.hash, v.title, VER.s, VER.e);
+  renderVP();
+}
+// فحص البث وقت التشغيل (للأدمن): نفس 🧪 بس من جوه صفحة التشغيل
+async function diagCurrent() {
+  const el = $('diagOut');
+  if (!el || !PLAY || !PLAY.vh) return;
+  el.style.display = 'block';
+  el.textContent = 'جاري الفحص...';
+  const t = await diagText(PLAY.vh, PLAY.fname || PLAY.title, PLAY.s, PLAY.e);
+  el.textContent = t + '\n\nالتشغيل الحالي: hls=' + (PLAY.hls ? 'موجود' : 'فاضي') + (PLAY.note ? ' · ' + PLAY.note : '');
 }
 function hlsAudio(i) {
   const v = document.querySelector('#results video');
