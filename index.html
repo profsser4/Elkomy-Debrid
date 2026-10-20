@@ -383,7 +383,7 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <summary>🧪 فحص AllDebrid (تشخيص بس)</summary>
 <p style="color:var(--mut);font-size:12px">الطلب بيطلع من المتصفح بتاعك لـ AllDebrid مباشرة. المفتاح مابيتبعتش لسيرفرنا ولا بيتحفظ.</p>
 <input id="adKey" type="password" class="search-input ltr" placeholder="مفتاح AllDebrid" autocomplete="off">
-<input id="adLink" class="search-input ltr" placeholder="رابط الملف (اللي بيطلع من الإضافة أو من AllDebrid)">
+<input id="adLink" class="search-input ltr" placeholder="magnet أو hash (40 حرف) أو رابط ملف">
 <button class="search-btn" onclick="adDiag()">🧪 افحص</button>
 <pre id="adOut" style="display:none;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;font-size:11px;color:#cbd5e1;background:#0b1220;padding:10px;border-radius:8px;margin-top:8px"></pre>
 </details>
@@ -3266,25 +3266,68 @@ async function diagVersion(i) {
 
 // ---- فحص AllDebrid من المتصفح (تشخيص للأدمن بس، مابيغيّر أي تشغيل) ----
 async function adDiag() {
-  const key = ($('adKey').value || '').trim(), link = ($('adLink').value || '').trim();
+  const key = ($('adKey').value || '').trim(), inp = ($('adLink').value || '').trim();
   const out = $('adOut');
   out.style.display = 'block';
-  if (!key || !link) { out.textContent = 'اكتب المفتاح والرابط'; return; }
+  if (!key || !inp) { out.textContent = 'اكتب المفتاح والرابط'; return; }
   const mask = s => String(s).split(key).join('***');
   let log = '';
-  const call = async (path, params) => {
-    const u = 'https://api.alldebrid.com/v4' + path + '?' + new URLSearchParams(Object.assign({agent: 'Elkomy', apikey: key}, params));
+  const show = () => { out.textContent = log; };
+  const call = async (path, params, o) => {
+    o = o || {};
+    const base = o.base || 'https://api.alldebrid.com/v4';
+    const u = base + path + '?' + new URLSearchParams(Object.assign({agent: 'Elkomy', apikey: key}, params || {}));
     try {
-      const r = await fetch(u);
+      const r = await fetch(u, o.body ? {method: 'POST', body: o.body} : undefined);
       const t = await r.text();
-      log += '\n' + path + ' -> HTTP ' + r.status + '\n' + mask(t).slice(0, 1800) + '\n';
+      if (!o.quiet) log += '\n' + path + ' -> HTTP ' + r.status + '\n' + mask(t).slice(0, 1800) + '\n';
+      show();
       try { return JSON.parse(t); } catch (e) { return null; }
     } catch (e) {
       log += '\n' + path + ' -> المتصفح اتمنع (غالباً CORS أو حجب): ' + mask(e) + '\n';
+      show();
       return null;
     }
   };
+  let link = inp;
   out.textContent = 'جاري الفحص...';
+
+  // لو اللي كتبته magnet أو hash: نضيفه لحساب AllDebrid ونجيب رابط الملف منه
+  const hm = /^[0-9a-fA-F]{40}$/.test(inp) ? inp : ((/btih:([0-9a-zA-Z]+)/i.exec(inp) || [])[1] || '');
+  if (inp.startsWith('magnet:') || hm) {
+    const mg = inp.startsWith('magnet:') ? inp : 'magnet:?xt=urn:btih:' + hm;
+    log += 'بضيف التورنت لحسابك على AllDebrid...\n';
+    show();
+    const up = await call('/magnet/upload', {}, {body: new URLSearchParams([['magnets[]', mg]]), quiet: true});
+    const m0 = up && up.data && up.data.magnets && up.data.magnets[0];
+    if (!m0 || m0.error || !m0.id) {
+      log += 'فشل الإضافة: ' + mask(JSON.stringify((m0 && m0.error) || (up && up.error) || up)).slice(0, 400) + '\n';
+      show();
+      return;
+    }
+    let st = null;
+    for (let i = 0; i < 20; i++) {
+      const s = await call('/magnet/status', {id: m0.id}, {base: 'https://api.alldebrid.com/v4.1', quiet: true});
+      let mm = s && s.data && s.data.magnets;
+      st = Array.isArray(mm) ? mm[0] : mm;
+      if (!st) break;
+      log += 'الحالة: ' + (st.status || '?') + ' (' + (st.statusCode != null ? st.statusCode : '?') + ')\n';
+      show();
+      if (+st.statusCode === 4 || +st.statusCode >= 5) break;
+      await new Promise(r => setTimeout(r, 3000));
+    }
+    const links = (st && Array.isArray(st.links)) ? st.links : [];
+    if (!links.length || +st.statusCode !== 4) {
+      log += '\nالتورنت مش جاهز على AllDebrid (مش متخزّن عندهم). جرّب hash تاني متخزّن، أو استنى.\n';
+      show();
+      return;
+    }
+    const vid = links.find(x => /\.(mkv|mp4|avi|mov|webm|m4v)$/i.test(String(x.filename || '')));
+    const pick = vid || links[0];
+    log += 'ملفات: ' + links.length + ' | هفحص: ' + String(pick.filename || '').slice(0, 80) + '\n';
+    link = pick.link;
+  }
+
   const j = await call('/link/unlock', {link: link});
   const d = j && j.data;
   const streams = d && Array.isArray(d.streams) ? d.streams : [];
@@ -3295,7 +3338,7 @@ async function adDiag() {
       await call('/link/streaming', {id: d.id, stream: s.id});
     }
   }
-  out.textContent = log;
+  show();
 }
 async function diagCurrent() {
   const el = $('diagOut');
