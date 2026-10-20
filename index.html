@@ -259,27 +259,6 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 .nfx-center{pointer-events:none!important}
 .nfx-center>*{pointer-events:auto}
 
-/* ---- تعديلات: المزيد / التثبيت / التقدم / ملء الشاشة ---- */
-.shead{display:flex;align-items:center;justify-content:flex-start;gap:12px;margin:16px 0 10px}
-.shead h3.sec{margin:0}
-.shead .more{flex:0 0 auto;padding:6px 14px;border-radius:99px;border:1px solid #ffffff33;background:#ffffff14;color:#fff;font-weight:700;font-size:13px;cursor:pointer}
-.shead .more:focus-visible,.shead .more:hover{background:#ffffff33;outline:3px solid #fff}
-.hrow>.poster,.hrow>.cw{content-visibility:auto;contain-intrinsic-size:108px 230px}
-.epb{height:4px;background:#334155;border-radius:2px;margin-top:6px;overflow:hidden}
-.epb i{display:block;height:100%;background:var(--danger)}
-.epb.done i{background:var(--success)}
-.pinm{display:inline-block;background:#f59e0b;color:#000;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700;margin-inline-start:4px}
-.ordbar{padding:10px 12px;border-radius:8px;margin-bottom:10px;font-size:13px;line-height:1.7;background:var(--panel);border:1px dashed #f59e0b;color:#f59e0b}
-.ordbar.ok{border:1px solid var(--success);color:var(--success)}
-.btn-pl2.alt{background:#475569 !important;margin-inline-start:4px}
-.pinbox{background:#f59e0b1a;border:1px solid #f59e0b;border-radius:10px;padding:12px;margin-bottom:12px}
-.pinbox .vb{display:flex;gap:8px;margin-top:8px}
-.pinbox .vb button{flex:1;padding:11px;border:0;border-radius:8px;font-weight:bold;cursor:pointer;color:#fff}
-.vrow .vp{background:#f59e0b;color:#000}
-.nfx-wait{position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(0,0,0,.78);direction:rtl;text-align:center;padding:20px;color:#fff}
-.nfx-wait button{padding:8px 18px;border-radius:6px;font-weight:700;background:#fff;color:#000;border:0;cursor:pointer}
-.nfx-next:focus-visible{outline:3px solid #e50914}
-#flash{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#000d;color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;z-index:99999;max-width:90%;text-align:center;display:none}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
@@ -525,16 +504,6 @@ function spatial(dir) {
   const cur = document.activeElement;
   const horiz = dir === 'ArrowLeft' || dir === 'ArrowRight';
   const curRow = (cur && cur !== document.body && cur.closest) ? cur.closest('.hrow') : null;
-  if (dir === 'ArrowUp' && curRow) {
-    const hd = curRow.previousElementSibling;
-    const mb = hd && hd.classList && hd.classList.contains('shead') ? hd.querySelector('.more') : null;
-    if (mb) { focusIt(mb); return; }
-  }
-  if (dir === 'ArrowDown' && cur && cur.classList && cur.classList.contains('more')) {
-    const nr = cur.parentElement && cur.parentElement.nextElementSibling;
-    const fk = nr && [...nr.children].find(isFoc);
-    if (fk) { focusIt(fk, true); return; }
-  }
   let idx = -1;
   if (curRow) idx = Array.prototype.indexOf.call(curRow.children, cur);
   // أفقي داخل صف الأفلام: ننقل للأخ/الأخت مباشرة (من غير أي قياس)
@@ -1182,12 +1151,8 @@ function epMark(tmdb, s, e) {
 // ================= البحث: أفلام / مسلسلات =================
 function row(title, list, rid) {
   if (!list.length) return '';
-  if (rid) list = list.slice(0, isTv() ? 12 : 20);     // صفوف أخف: عناصر أقل + زرار «المزيد» جنب العنوان (سهل بالريموت)
-  const head = rid
-    ? '<div class="shead"><h3 class="sec">' + title + '</h3><button class="more" data-k="' + esc(rid) + '" data-t="' + esc(title) +
-      '" onclick="openMore(this.dataset.k,this.dataset.t)">المزيد ‹</button></div>'
-    : '<h3 class="sec">' + title + '</h3>';
-  return head + '<div class="hrow">' + list.map(t =>
+  if (rid && isTv() && list.length > 16) list = list.slice(0, 16);     // التلفزيون: أقل عناصر في الصف + زرار «المزيد»
+  return '<h3 class="sec">' + title + '</h3><div class="hrow">' + list.map(t =>
     (t.imdb ? '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">'
       : t.lk ? '<div class="poster" data-q="' + esc(t.title) + '" data-y="' + esc(t.year) + '" data-t="' + esc(t.type) + '" onclick="openLookup(this)">'
       : '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">') +
@@ -1221,9 +1186,7 @@ const stOK = () => ST.n > 0 && !!cur && !!cur.imdb;
 const stBtn = (s, e) => stOK()
   ? '<button class="btn-st" onclick="stGo(' + s + ',' + e + ')">🧩</button>' : '';
 const playBtn = (s, e) => (cur && cur.imdb)
-  ? (pinOf(cur.id, s, e)
-      ? '<button class="btn-pl2" title="النسخة المثبّتة" onclick="playPinnedEp(' + s + ',' + e + ')">▶📌</button><button class="btn-pl2 alt" title="نسخ تانية" onclick="playOpen(' + s + ',' + e + ')">⋯</button>'
-      : '<button class="btn-pl2" onclick="playOpen(' + s + ',' + e + ')">▶</button>') : '';
+  ? '<button class="btn-pl2" onclick="playOpen(' + s + ',' + e + ')">▶</button>' : '';
 
 async function openDetails(type, id) {
   if (!VS.includes('d')) pushView('d');
@@ -1292,7 +1255,6 @@ function stopPlayer() {
   pullId++;
   pack = null;
   PLAY = null;
-  NEXTKEEP = 0;
   $('results').innerHTML = '';
   window.scrollTo(0, 0);
 }
@@ -1371,20 +1333,19 @@ async function disablePush() {
   pushState();
 }
 
-async function loadSeason(n, keep) {
+async function loadSeason(n) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab' + n));
   const b = $('eps'), my = ++sReq;
-  if (!keep) b.innerHTML = pend('جاري تحميل الحلقات...');
+  b.innerHTML = pend('جاري تحميل الحلقات...');
   try {
-    const [{d}] = await Promise.all([api('/season?id=' + cur.id + '&n=' + n), loadPins(cur.id)]);
+    const {d} = await api('/season?id=' + cur.id + '&n=' + n);
     if (my !== sReq) return;
     if (d.error) return b.innerHTML = warn(d.error);
-    b.innerHTML = ordBar(n, d.episodes) +
-      (ADV() || !cur.imdb ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
+    b.innerHTML = (ADV() || !cur.imdb ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
       d.episodes.map(e => '<div class="ep">' +
         (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '') +
         '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) +
-        (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + pinMark(n, e.n) + '</small>' + epBar(cur.id, n, e.n) + '</div>' +
+        (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + '</small></div>' +
         playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
         (ADV() || !cur.imdb ? '<button onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div>').join('');
   } catch (e) { if (my === sReq) b.innerHTML = ERR; }
@@ -1717,16 +1678,16 @@ function pullTorrent(i) {
     clearCd();
     const id = ++pullId;
     pack = null;
-    setRes(pend('جاري تجهيز الرابط...'));
+    $('results').innerHTML = pend('جاري تجهيز الرابط...');
     api('/stremio/resolve', {method: 'POST', body: JSON.stringify({ref: t.ref, name: t.title, size: t.size})}).then(({d}) => {
       if (id !== pullId) return;
-      if (!d.url) { setRes(warn(d.error || 'حصل خطأ')); return; }
+      if (!d.url) { $('results').innerHTML = warn(d.error || 'حصل خطأ'); return; }
       base.src = d.url;
       base.dr = true;
       curSrc = d.url;
       packBase = base;
       playData({direct_link: d.url, provider: 'Stremio', name: t.title, size: t.size}, base);
-    }).catch(() => { if (id === pullId) setRes(ERR); });
+    }).catch(() => { if (id === pullId) $('results').innerHTML = ERR; });
     return;
   }
   pullSource(t.magnet, base, null);
@@ -1765,7 +1726,7 @@ async function getLink(body, id) {
     }
     if (id !== pullId) return null;
     if (res.r.status === 202 && tries < 400) {
-      setRes(progHTML(res.d) + triedHTML(res.d.tried));
+      $('results').innerHTML = progHTML(res.d) + triedHTML(res.d.tried);
       tid = res.d.torrent_id || tid;
       tries++;
       await sleep(3000);
@@ -1780,14 +1741,14 @@ async function pullSource(src, base, fid) {
   curSrc = src;
   clearCd();
   const id = ++pullId;
-  setRes(pend('جاري سحب الرابط...'));
+  $('results').innerHTML = pend('جاري سحب الرابط...');
   const body = {query: src};
   if (fid != null) body.file_id = fid;
   const res = await getLink(body, id);
   if (!res) return;
   const d = res.d;
   if (!d.direct_link) {
-    setRes(warn(d.error || 'حصل خطأ') + triedHTML(d.tried));
+    $('results').innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(d.tried);
     return;
   }
   base.src = src;
@@ -1800,59 +1761,6 @@ async function pullSource(src, base, fid) {
     return showPack(d);
   }
   playData(d, base);
-}
-
-// ================= إبقاء ملء الشاشة عند الحلقة التالية + رسائل جوه المشغّل =================
-let NEXTKEEP = 0, SILENT = 0;
-function keepBox() {
-  const r = $('results'), o = r && r.querySelector('.nfx');
-  if (!o || !o.isConnected) return null;
-  const fe = document.fullscreenElement || document.webkitFullscreenElement;
-  return (fe === o || Date.now() < NEXTKEEP) ? o : null;
-}
-function setRes(html) {
-  const isWarn = /class="warn"/.test(html);
-  if (SILENT && isWarn) return;
-  const o = keepBox();
-  if (!o) { $('results').innerHTML = html; return; }
-  let w = o.querySelector('.nfx-wait');
-  if (!html) { if (w) w.remove(); return; }
-  if (!w) { w = document.createElement('div'); w.className = 'nfx-wait'; o.appendChild(w); }
-  w.innerHTML = '<div style="width:100%;max-width:520px">' + html + '</div>' +
-    (isWarn ? '<button onclick="this.parentNode.remove()">✕ إغلاق</button>' : '');
-  o.classList.add('show');
-}
-function renderResults(html) {
-  const res = $('results'), o = keepBox();
-  if (!o) { res.innerHTML = html; return; }
-  const frag = document.createElement('div');
-  frag.innerHTML = html;
-  const nn = frag.querySelector('.nfx'), card = o.parentElement;
-  const newCard = nn && nn.parentElement;
-  if (!nn || !newCard || !card || !card.classList.contains('result-card') || !newCard.classList.contains('result-card')) { res.innerHTML = html; return; }
-  const ov = o.querySelector('video');
-  try { if (ov) { ov.pause(); ov.removeAttribute('src'); ov.load(); } } catch (e) {}
-  nfxDestroy();
-  [...card.childNodes].forEach(c => { if (c !== o) c.remove(); });
-  let before = true;
-  [...newCard.childNodes].forEach(c => {
-    if (c === nn) { before = false; return; }
-    if (before) card.insertBefore(c, o); else card.appendChild(c);
-  });
-  [...o.childNodes].forEach(c => c.remove());
-  [...nn.childNodes].forEach(c => o.appendChild(c));
-  [...res.children].forEach(c => { if (c !== card) c.remove(); });
-  [...frag.children].forEach(c => { if (c !== newCard) res.appendChild(c); });
-  NEXTKEEP = 0;
-  try { o.focus({preventScroll: true}); } catch (e) {}
-}
-function flash(m) {
-  let f = $('flash');
-  if (!f) { f = document.createElement('div'); f.id = 'flash'; document.body.appendChild(f); }
-  f.textContent = m;
-  f.style.display = 'block';
-  clearTimeout(f._t);
-  f._t = setTimeout(() => { f.style.display = 'none'; }, 3500);
 }
 function setPlay(o) {
   PLAY = Object.assign({title: '', poster: '', year: '', type: null, tmdb: null, s: null, e: null,
@@ -1884,10 +1792,10 @@ function playData(d, base) {
   const chk = (c.type === 'tv' || pack)
     ? '<label style="display:block;margin-top:10px;color:var(--mut);font-size:13px"><input type="checkbox" ' +
       ((!p || p.auto !== false) ? 'checked ' : '') + 'onchange="setAuto(this.checked)"> تشغيل تلقائي للحلقة التالية</label>' : '';
-  renderResults('<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">✅ ' +
+  $('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">✅ ' +
     esc(c.title || 'الملف جاهز') + esc(ep) + '</h3>' +
     (c.resume ? '<p style="margin:0 0 8px;color:var(--mut)">▶ هيكمّل من ' + fmtTime(c.resume) + '</p>' : '') +
-    linkCard(d, true) + '<div id="nextUp"></div>' + chk + '</div>' + (pack ? packListHTML() : ''));
+    linkCard(d, true) + '<div id="nextUp"></div>' + chk + '</div>' + (pack ? packListHTML() : '');
   attachPlayer();
 }
 function linkCard(d, video) {
@@ -1908,8 +1816,7 @@ function linkCard(d, video) {
       '<button class="btn-vlc" style="background:#475569" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ رابط التحميل الأصلي</button>'
       : '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في VLC)</button>') +
     (video ? playerMenu((PLAY && PLAY.hls) ? PLAY.hls : d.direct_link) : '') +
-    (video ? '<button class="btn-vlc btn-sub" onclick="openSubs()">💬 ترجمة</button><div id="subBox"></div>' : '') +
-    (video ? pinCardHTML() : '');
+    (video ? '<button class="btn-vlc btn-sub" onclick="openSubs()">💬 ترجمة</button><div id="subBox"></div>' : '');
 }
 function skip(n) {
   const v = document.querySelector('#results video');
@@ -1976,20 +1883,11 @@ function attachPlayer() {
   v.addEventListener('playing', () => {
     setTimeout(() => {
       if (v.paused || v.muted || v.volume === 0 || v.currentTime < 4) return;
-      const silent = (typeof v.webkitAudioDecodedByteCount === 'number' && v.webkitAudioDecodedByteCount === 0) ||
-        (v.mozHasAudio === false) ||
-        (v.audioTracks && v.audioTracks.length === 0 && !v._hls && v.videoWidth > 0 && /\b(mkv|mp4|m4v)\b/i.test(String((PLAY && PLAY.fname) || '').split('.').pop()));
-      if (silent) {
+      if (typeof v.webkitAudioDecodedByteCount === 'number' && v.webkitAudioDecodedByteCount === 0) {
         const b = $('playErr');
         if (b) {
           b.dataset.err = 'audio';
-          b.innerHTML = warn('الفيديو شغال بس الصوت مش بيتفك في المتصفح (غالباً DDP / E-AC3 / AC3 / DTS). افتحه من «المشغّلات الخارجية» (VLC أو MX)، أو اختار نسخة صوتها AAC أو نسخة من TorBox/Real-Debrid (بتتحوّل). والملفات «MultiAudios» المتصفح مش بيقدر يختار منها الصوت العربي، فالأفضل VLC.') +
-            (PLAY && PLAY.tmdb ? '<button class="search-btn" style="margin-top:8px;background:#16a34a" onclick="tryNextVersion()">🔊 جرّب نسخة بصوت يشتغل في المتصفح</button>' : '');
-          if (PLAY && PLAY.tmdb && !PLAY.hls && !PLAY._autoAud && (window.AUTO_AUD = (window.AUTO_AUD || 0) + 1) <= 3) {   // تبديل تلقائي (3 مرات بالكتير)
-            PLAY._autoAud = true;
-            b.insertAdjacentHTML('afterbegin', '<p style="color:var(--mut);font-size:12px">بدّلت تلقائياً لنسخة تانية...</p>');
-            setTimeout(() => { if (PLAY && PLAY._autoAud) tryNextVersion(); }, 1200);
-          }
+          b.innerHTML = warn('الفيديو شغال بس الصوت مش بيتفك في المتصفح (غالباً DDP / E-AC3 / AC3 / DTS). افتحه من «المشغّلات الخارجية» (VLC أو MX)، أو اختار نسخة صوتها AAC أو نسخة من TorBox/Real-Debrid (بتتحوّل). والملفات «MultiAudios» المتصفح مش بيقدر يختار منها الصوت العربي، فالأفضل VLC.');
         }
         const pm = document.querySelector('details.pm');
         if (pm) pm.open = true;
@@ -2010,7 +1908,6 @@ function attachPlayer() {
   if (PLAY.hls) setupHls(v);
   if (isTv()) { try { v.focus(); } catch (e) {} }
   asStop();
-  subSel = null;
   audGate(v);
   try { nfxInit(v); } catch (e) { console.error('nfx', e); }
 }
@@ -2032,11 +1929,10 @@ function nextTarget() {
   return null;
 }
 const nextBtn = n => '<button class="search-btn btn-blue" style="margin-top:10px" onclick="playNext()">⏭ الحلقة التالية ' + esc(n.label) + '</button>';
-const nextWin = d => Math.min(200, d * 0.25);     // آخر 200 ثانية (أو ربع المدة لو الفيديو قصير)
 function checkNext(v) {
   if (nextShown || cdTimer || !PLAY || !isFinite(v.duration)) return;
   const left = v.duration - v.currentTime;
-  if (left > nextWin(v.duration) || left <= 0) return;
+  if (left > 30 || left <= 0) return;
   const n = nextTarget(), box = $('nextUp');
   if (!n || !box) return;
   nextShown = true;
@@ -2079,10 +1975,7 @@ async function ensureCur(id, type, qn) {
 async function nextSameSource(prev, s, e) {
   if (!prev || !prev.vh) return false;
   const base = Object.assign(baseOf(prev), {s: s, e: e, fid: null, fname: '', ref: ''});
-  SILENT++;
-  let d = null;
-  try { d = await startPlay({hash: prev.vh, name: prev.fname || prev.title, slow: true, s: s, e: e}, 'watch', base); }
-  finally { SILENT--; }
+  const d = await startPlay({hash: prev.vh, name: prev.fname || prev.title, slow: true, s: s, e: e}, 'watch', base);
   return !!d || pullId !== LAST_PULL;     // true = اشتغلت (أو اتلغت)، false = كمّل بالبحث العادي
 }
 async function playNext() {
@@ -2090,13 +1983,10 @@ async function playNext() {
   clearCd();
   const n = nextTarget();
   if (!n) return;
-  NEXTKEEP = Date.now() + 10 * 60 * 1000;      // خلّي المشغّل (ملء الشاشة/التكبير) زي ما هو أثناء التبديل
   if (n.kind === 'pack') return playPackFile(n.f);
-  if (await playPinned(PLAY.tmdb, n.s, n.e, PLAY)) return;
   if (await nextSameSource(PLAY, n.s, n.e)) return;
-  setRes(pend('بدوّر على نسخة للحلقة التالية...'));
   await ensureCur(PLAY.tmdb, PLAY.type, PLAY.qn);
-  if (!cur || cur.id !== PLAY.tmdb) { setRes(''); return alert('مش قادر أجيب بيانات المسلسل'); }
+  if (!cur || cur.id !== PLAY.tmdb) return alert('مش قادر أجيب بيانات المسلسل');
   want = {s: n.s, e: n.e};
   go(n.s, n.e, true);
 }
@@ -2132,10 +2022,9 @@ async function playAfter(it) {
   }
   const n = nextEpOf(it);
   if (!n) return alert('خلصت كل الحلقات المتاحة 🎉');
-  if (await playPinned(it.tmdb, n.s, n.e, it)) return;
   if (await nextSameSource(it, n.s, n.e)) return;
   await ensureCur(it.tmdb, it.type, it.qn);
-  if (!cur || cur.id !== it.tmdb) { setRes(''); return alert('مش قادر أجيب بيانات المسلسل'); }
+  if (!cur || cur.id !== it.tmdb) return alert('مش قادر أجيب بيانات المسلسل');
   want = {s: n.s, e: n.e};
   go(n.s, n.e, true);
 }
@@ -2174,11 +2063,11 @@ function packFile(fid) {
 async function playPackFile(f) {
   clearCd();
   const id = ++pullId;
-  setRes(pend('جاري تجهيز الحلقة...'));
+  $('results').innerHTML = pend('جاري تجهيز الحلقة...');
   const res = await getLink({query: '', torrent_id: pack.torrent_id, file_id: f.id}, id);
   if (!res) return;
   const d = res.d;
-  if (!d.direct_link) { setRes(warn(d.error || 'حصل خطأ')); return; }
+  if (!d.direct_link) { $('results').innerHTML = warn(d.error || 'حصل خطأ'); return; }
   const base = Object.assign({}, packBase || {}, {s: f.season, e: f.episode, fid: f.id, fname: f.name});
   if (packBase && packBase.type === 'tv') {
     if (f.season == null && packBase.s != null) base.s = packBase.s;
@@ -2696,7 +2585,6 @@ async function applySubItem(it, shift, quiet, scale, keepAs) {
   tr.src = URL.createObjectURL(new Blob([r.text], {type: 'text/vtt'}));
   v.appendChild(tr);
   tr.track.mode = 'showing';
-  v.addEventListener('playing', () => { const t0 = v.querySelector('track'); if (t0 && t0.track && subSel) t0.track.mode = 'showing'; }, {once: true});
   subSel = {it: it, shift: shift, scale: scale};
   if (PLAY) PLAY.sub = {u: it.u, lang: it.lang, name: it.name, shift: shift, scale: scale};
   if (!keepAs) asReset();
@@ -2757,106 +2645,6 @@ async function dlSub(i) {
   a.href = URL.createObjectURL(new Blob([r.text], {type: 'application/x-subrip'}));
   a.download = (subs[i].name || 'subtitle').replace(/[^\w.-]+/g, '_').slice(0, 80) + '.srt';
   a.click();
-}
-
-
-// ================= تثبيت النسخ (مشترك لكل المستخدمين) =================
-const PINS = {};      // tmdb -> {t: وقت التحميل, eps: {"s:e": pin}}
-async function loadPins(tmdb, force) {
-  const o = PINS[tmdb];
-  if (o && !force && Date.now() - o.t < 60000) return o.eps;
-  try {
-    const {d} = await api('/pins?tmdb=' + tmdb);
-    PINS[tmdb] = {t: Date.now(), eps: d.eps || {}};
-  } catch (e) { if (!PINS[tmdb]) PINS[tmdb] = {t: 0, eps: {}}; }
-  return PINS[tmdb].eps;
-}
-const pinOf = (tmdb, s, e) => ((PINS[tmdb] || {}).eps || {})[s + ':' + e] || null;
-const pinMark = (s, e) => (cur && pinOf(cur.id, s, e)) ? '<span class="pinm">📌 مثبّتة</span>' : '';
-function epBar(tmdb, s, e) {
-  const it = getItem('e:' + tmdb + ':' + s + ':' + e);
-  if (!it || it.del) return '';
-  const done = !!it.done, pct = done ? 100 : Math.min(100, Math.round((it.pos || 0) / (it.dur || 1) * 100));
-  if (!pct) return '';
-  return '<div class="epb' + (done ? ' done' : '') + '"><i style="width:' + pct + '%"></i></div>';
-}
-function ordBar(n, eps) {
-  if (!cur || cur.type !== 'tv') return '';
-  const today = new Date().toISOString().slice(0, 10);
-  const aired = (eps || []).filter(x => !x.date || String(x.date).slice(0, 10) <= today);
-  const have = aired.filter(x => pinOf(cur.id, n, x.n)).length;
-  if (!have) return '<div class="ordbar">📌 حلقات الموسم مش مرتّبة لسه. من ▶ على أي حلقة اختار نسخة ودوس 📌 وهتتثبّت لكل الناس.</div>';
-  if (aired.length && have === aired.length) return '<div class="ordbar ok">✅ الموسم مرتّب بالكامل: ' + have + ' حلقة مثبّتة، وهتشتغل ورا بعض عند الكل.</div>';
-  let k = 0;
-  while (k < aired.length && pinOf(cur.id, n, aired[k].n)) k++;
-  return '<div class="ordbar">📌 مرتّب ' + have + ' من ' + aired.length + ' حلقة' + (k ? ' (متتابعة لحد حلقة ' + aired[k - 1].n + ')' : '') + '. كمّل تثبيت الباقي.</div>';
-}
-async function savePin(spec, tmdb, s, e) {
-  if (!tmdb || s == null || e == null) return flash('مش قادر أحدد الحلقة');
-  if (!spec.hash && !spec.ref) return flash('النسخة دي مش ممكن تتثبّت');
-  try {
-    const {r, d} = await api('/pins', {method: 'POST', body: JSON.stringify(Object.assign({tmdb: tmdb, s: s, e: e}, spec))});
-    if (!r.ok || d.error) { flash(d.error || 'التثبيت فشل'); return false; }
-  } catch (x) { flash('مش قادر أوصل للسيرفر'); return false; }
-  await loadPins(tmdb, true);
-  flash('📌 اتثبّتت الحلقة ' + e + ' لكل المستخدمين');
-  return true;
-}
-async function pinVersion(i) {
-  const v = VER.list[i];
-  if (!v || !cur) return;
-  const ok = await savePin({hash: v.hash || '', ref: v.hash ? '' : v.ref, name: v.title, size: v.size}, cur.id, VER.s, VER.e || 1);
-  if (ok) { renderVP(); if ($('eps')) loadSeason(VER.s, true); }
-}
-async function pinCurrent() {
-  const c = PLAY;
-  if (!c || !c.tmdb || c.s == null) return;
-  const h = c.vh || hashOf(c.src);
-  const ok = await savePin({hash: h || '', ref: h ? '' : (c.ref || ''), name: c.fname || c.title, size: 0}, c.tmdb, c.s, c.e);
-  if (ok) { const b = $('pinBtn'); if (b) { b.textContent = '✅ النسخة دي مثبّتة للحلقة'; b.disabled = true; } }
-}
-function pinCardHTML() {
-  const c = PLAY;
-  if (!c || c.type !== 'tv' || c.tmdb == null || c.s == null) return '';
-  if (c.pin) return '<div class="warn" style="margin-top:10px;color:#f59e0b">📌 نسخة مثبّتة للحلقة دي</div>';
-  if (!(c.vh || hashOf(c.src) || c.ref)) return '';
-  const mine = pinOf(c.tmdb, c.s, c.e);
-  const same = mine && ((mine.hash && mine.hash === (c.vh || hashOf(c.src))));
-  return '<button id="pinBtn" class="btn-vlc" style="background:#f59e0b;color:#000"' + (same ? ' disabled' : '') + ' onclick="pinCurrent()">' +
-    (same ? '✅ النسخة دي مثبّتة للحلقة' : '📌 ثبّت النسخة دي للحلقة لكل الناس') + '</button>';
-}
-async function unpin(s, e) {
-  if (!cur || !confirm('تلغي تثبيت الحلقة ' + e + '؟')) return;
-  try {
-    const {r, d} = await api('/pins?tmdb=' + cur.id + '&s=' + s + '&e=' + e, {method: 'DELETE'});
-    if (!r.ok || d.error) return flash(d.error || 'فشل الإلغاء');
-  } catch (x) { return flash('مش قادر أوصل للسيرفر'); }
-  await loadPins(cur.id, true);
-  renderVP();
-  if ($('eps')) loadSeason(s, true);
-}
-// بيشغّل النسخة المثبّتة للحلقة. بيرجّع true لو اشتغلت (أو اتلغت)، false لو مفيش تثبيت أو ما اشتغلتش
-async function playPinned(tmdb, s, e, prev) {
-  if (!tmdb || s == null || e == null) return false;
-  let pin = null;
-  try { const {d} = await api('/pins?tmdb=' + tmdb + '&s=' + s + '&e=' + e); pin = d.pin; } catch (x) { return false; }
-  if (!pin || (!pin.hash && !pin.ref)) return false;
-  const spec = {hash: pin.hash || '', ref: pin.hash ? '' : pin.ref, name: pin.name, size: pin.size, s: s, e: e, slow: true};
-  let base;
-  if (prev) base = Object.assign(baseOf(prev), {s: s, e: e, fid: null, fname: '', ref: '', vh: '', sub: null, pin: true});
-  else { base = baseFromCur(spec); base.pin = true; }
-  SILENT++;
-  let d = null;
-  try { d = await startPlay(spec, 'watch', base); } finally { SILENT--; }
-  if (d || pullId !== LAST_PULL) return true;
-  setRes(pend('النسخة المثبّتة مش شغالة دلوقتي، بجرّب نسخة تانية...'));
-  return false;
-}
-async function playPinnedEp(s, e) {
-  if (noWatch()) return;
-  if (!cur) return;
-  if (await playPinned(cur.id, s, e, null)) return;
-  playOpen(s, e);
 }
 
 // ================= Stremio: حساب + إضافات + مكتبة =================
@@ -3172,12 +2960,12 @@ async function testProv(id, btn) {
 }
 
 // ================= مسار التشغيل الجديد: نسخ + بث محوَّل + تحميل =================
-const VER = {list: [], s: null, e: null, showSlow: false, key: '', err: '', diag: '', stream: true};
+const VER = {list: [], s: null, e: null, showSlow: false, key: '', err: '', diag: ''};
 
 const qRank = q => ({'1080P': 0, '2160P': 1, '4K': 1, '720P': 2, '480P': 3}[q] ?? 4);
 function verSort(list) {
   const df = dubFirst();
-  const rk = x => (x.risky && (!x.hash || !VER.stream)) ? 1 : 0;   // نسخة مش هتتحوّل (Stremio أو مفيش TorBox/Real-Debrid) وصوتها/صيغتها مش للمتصفح
+  const rk = x => (x.risky && !x.hash) ? 1 : 0;   // نسخة مش هتتحوّل (Stremio) وصوتها/صيغتها مش للمتصفح
   return list.slice().sort((a, b) =>
     (df ? dubRank(b) - dubRank(a) : 0) ||     // الأول اللغة: عربي مدبلج ← مترجم ← الأصلي
     (rk(a) - rk(b)) ||
@@ -3192,7 +2980,6 @@ async function fetchVersions(s, e) {
   const q = '/play/versions?type=' + cur.type + '&imdb=' + encodeURIComponent(cur.imdb) + '&tmdb=' + cur.id +
     (s ? '&s=' + s + '&e=' + (e || 1) : '');
   const {d} = await api(q);
-  VER.stream = d.stream !== false;
   VER.list = verSort(d.versions || []);
   VER.err = d.error || '';
   VER.key = VER.list.length ? key : '';
@@ -3249,7 +3036,6 @@ function verRow(v, i, best) {
     (v.seeders ? '<span style="color:var(--mut)">🌱 ' + v.seeders + '</span>' : '') + '</div><div class="vb">' +
     '<button class="vw" onclick="playVersion(' + i + ')">▶ ' + (v.instant ? 'مشاهدة' : 'سحب ومشاهدة') + '</button>' +
     '<button class="vd" onclick="dlVersion(' + i + ')">⬇ تحميل</button>' +
-    ((cur && cur.type === 'tv' && VER.s) ? '<button class="vp" title="ثبّت النسخة دي للحلقة لكل الناس" onclick="pinVersion(' + i + ')">📌</button>' : '') +
     (ROLE === 'admin' ? '<button class="vg" onclick="diagVersion(' + i + ')">🧪</button>' : '') + '</div></div>';
 }
 function renderVP() {
@@ -3258,15 +3044,6 @@ function renderVP() {
   const all = VER.list, fast = all.filter(v => v.instant), slow = all.filter(v => !v.instant);
   const t = (cur ? cur.title : '') + (VER.s ? ' · S' + p2(VER.s) + 'E' + p2(VER.e || 1) : '');
   let h = '<div class="vbox"><button class="vx" onclick="closeVP()">✕</button><h3 style="margin:0 0 12px;color:var(--primary)">' + esc(t) + '</h3>';
-  const pn = (cur && VER.s) ? pinOf(cur.id, VER.s, VER.e || 1) : null;
-  if (pn) {
-    h += '<div class="pinbox">📌 <b>نسخة مثبّتة للجميع</b> · ثبّتها ' + esc(pn.by || '') +
-      '<div class="fn" style="direction:ltr;text-align:left;font-size:12px;color:var(--mut);word-break:break-all;margin-top:6px">' + esc(pn.name || '') + '</div>' +
-      '<div class="vb"><button style="background:var(--success)" onclick="closeVP();playPinnedEp(' + VER.s + ',' + (VER.e || 1) + ')">▶ شغّل المثبّتة</button>' +
-      '<button style="background:#ef4444" onclick="unpin(' + VER.s + ',' + (VER.e || 1) + ')">🗑 إلغاء التثبيت</button></div></div>';
-  } else if (cur && cur.type === 'tv' && VER.s) {
-    h += '<div class="warn" style="margin-bottom:10px;font-size:12px">📌 دوس على زر 📌 جنب النسخة اللي عاجباك عشان تتثبّت للحلقة دي عند كل الناس، وتشتغل الحلقات ورا بعض.</div>';
-  }
   if (!all.length) {
     h += warn(VER.err || 'مفيش نسخ متاحة للعمل ده من إضافات Stremio.');
     h += '<button class="search-btn btn-blue" onclick="closeVP();go(' + (VER.s ? VER.s + ',' + (VER.e || 1) : '') + ')">🧲 جرّب بحث التورنت</button>';
@@ -3355,16 +3132,16 @@ async function startPlay(spec, mode, baseOver) {
   LAST_PULL = my;
   clearCd();
   scrollToResults();
-  setRes(pend('جاري تجهيز النسخة...'));
+  $('results').innerHTML = pend('جاري تجهيز النسخة...');
   let tid = null, tries = 0, res;
   while (true) {
     try {
       res = await api('/play/start', {method: 'POST',
         body: JSON.stringify(Object.assign({}, spec, {mode: mode, torrent_id: tid}))});
-    } catch (x) { if (my === pullId) setRes(ERR); return null; }
+    } catch (x) { if (my === pullId) $('results').innerHTML = ERR; return null; }
     if (my !== pullId) return null;
     if (res.r.status === 202 && tries < 200) {
-      setRes(progHTML(res.d));
+      $('results').innerHTML = progHTML(res.d);
       tid = res.d.torrent_id || tid;
       tries++;
       await sleep(2500);
@@ -3375,14 +3152,14 @@ async function startPlay(spec, mode, baseOver) {
   }
   let d = res.d;
   if (!res.r.ok || d.error || !d.direct) {
-    if (d.nodl) { LOCK = Math.max(LOCK, d.lock || 1); LOCK_MSG = d.error || LOCK_MSG; setRes(''); alert(d.error); return null; }
-    setRes(warn(d.error || 'حصل خطأ في التجهيز'));
+    if (d.nodl) { LOCK = Math.max(LOCK, d.lock || 1); LOCK_MSG = d.error || LOCK_MSG; $('results').innerHTML = ''; alert(d.error); return null; }
+    $('results').innerHTML = warn(d.error || 'حصل خطأ في التجهيز');
     return null;
   }
   // البث المحوَّل (اللي بيشتغل في المتصفح) ساعات بيتأخر: جرّبه كام مرة قبل ما نرجع للرابط الأصلي
   if (mode === 'watch' && !d.hls && spec.hash && d.stream_note && !/مش متضاف/.test(d.stream_note)) {
     for (let k = 0; k < 2 && my === pullId && !d.hls; k++) {
-      setRes(pend('جاري تجهيز البث المحوَّل... (' + (k + 1) + '/2)'));
+      $('results').innerHTML = pend('جاري تجهيز البث المحوَّل... (' + (k + 1) + '/2)');
       await sleep(3500);
       if (my !== pullId) return null;
       try {
@@ -3392,7 +3169,7 @@ async function startPlay(spec, mode, baseOver) {
       } catch (x) {}
     }
   }
-  if (mode === 'download') { setRes(''); return d; }
+  if (mode === 'download') { $('results').innerHTML = ''; return d; }
   const base = baseOver ? Object.assign({}, baseOver) : baseFromCur(spec);
   base.hls = d.hls || '';
   base.note = d.stream_note || '';
@@ -3411,29 +3188,23 @@ async function startPlay(spec, mode, baseOver) {
   if (pe && !d.hls && d.stream_note && ROLE === 'admin') pe.innerHTML = warn('تشغيل بدون بث محوَّل: ' + d.stream_note);
   return d;
 }
-const simTok = t => new Set(String(t || '').toLowerCase().replace(/\.[a-z0-9]{2,4}$/i, '').split(/[^\p{L}\p{N}]+/u).filter(x => x.length > 1 && !/^s\d+e\d+$/.test(x)));
-function simScore(a, b) { const A = simTok(a), B = simTok(b); let n = 0; B.forEach(x => { if (A.has(x)) n++; }); return n; }
 async function playBest(s, e) {
   if (noWatch()) return null;
   want = s ? {s: s, e: e || null} : null;
   VER.s = s || null;
   VER.e = s ? (e || 1) : null;
-  const prevName = (PLAY && cur && PLAY.tmdb === cur.id && PLAY.type === 'tv') ? (PLAY.fname || '') : '';
   let list = [];
   try { list = await fetchVersions(VER.s, VER.e); } catch (x) {}
-  let pool = list.filter(v => v.instant && !FAILED.has(v.hash || v.ref));
-  // الحلقة التالية: نفضّل نسخة قريبة من اللي كنت شغّالها (نفس الجودة/المجموعة/اللغة) عشان الحلقات تمشي ورا بعض
-  if (prevName) pool = pool.slice(0, 14).map((v, i) => [v, i]).sort((x, y) => (simScore(prevName, y[0].title) - simScore(prevName, x[0].title)) || (x[1] - y[1])).map(x => x[0]);
-  const cands = pool.slice(0, 6);
+  const cands = list.filter(v => v.instant && !FAILED.has(v.hash || v.ref)).slice(0, 6);
   let firstErr = '';
   for (let i = 0; i < cands.length; i++) {
-    if (i > 0) setRes(pend('النسخة اللي قبلها ما اشتغلتش، بجرّب النسخة ' + (i + 1) + ' من ' + cands.length + '...'));
+    if (i > 0) $('results').innerHTML = pend('النسخة اللي قبلها ما اشتغلتش، بجرّب النسخة ' + (i + 1) + ' من ' + cands.length + '...');
     const d = await startPlay(specOf(cands[i]), 'watch');
     if (d || pullId !== LAST_PULL) return d;
     FAILED.add(cands[i].hash || cands[i].ref);
     if (!firstErr) firstErr = (($('results') || {}).textContent || '').trim().slice(0, 90);
   }
-  if (cands.length) setRes(warn('جرّبت ' + cands.length + ' نسخة ومفيش واحدة اشتغلت' + (firstErr ? ' (' + firstErr + ')' : '') + '. بدوّر في التورنت...'));
+  if (cands.length) $('results').innerHTML = warn('جرّبت ' + cands.length + ' نسخة ومفيش واحدة اشتغلت' + (firstErr ? ' (' + firstErr + ')' : '') + '. بدوّر في التورنت...');
   return go(s, e, true, true, true);
 }
 async function playByHash(it) {
@@ -3560,7 +3331,7 @@ function renderHero() {
     '</p><div class="hb"><button class="p" onclick="heroGo(' + i + ',1)">▶ عرض</button><button class="i" onclick="heroGo(' + i +
     ')">المزيد من المعلومات</button><button class="i" onclick="openTrailer(\'' + x.type + '\',' + x.id + ')">🎬 تريلر</button></div></div><div class="dots">' +
     HERO.map((_, j) => '<i class="' + (j === i ? 'on' : '') + '" onclick="heroI=' + j + ';renderHero()"></i>').join('') + '</div></div>';
-  heroT = setInterval(() => { if (isTv() || document.hidden || ($('hzb') && $('hzb').contains(document.activeElement))) return; if ($('hz').style.display !== 'none') { heroI++; renderHero(); } }, 8000);
+  heroT = setInterval(() => { if ($('hz').style.display !== 'none') { heroI++; renderHero(); } }, 8000);
 }
 async function heroGo(i, play) {
   const x = HERO[i];
@@ -3618,14 +3389,12 @@ window.addEventListener('scroll', () => {
 });
 
 // ================= بلاطات التصنيفات + الاهتمامات + دمج الصفوف =================
-const GTILES = [['action', 'أكشن'], ['drama', 'دراما'], ['hi', '🇮🇳 هندي', 'int'], ['comedy', 'كوميديا'],
-  ['tr', '🇹🇷 تركي', 'int'], ['ko', '🇰🇷 كوري', 'int'], ['anime', 'أنمي', 'int'], ['ar', '🇪🇬 عربي', 'int'],
-  ['dub', '🇪🇬 مدبلج مصري', 'int'], ['oldar', '🎞 كلاسيكيات', 'int'], ['crime', 'جريمة'], ['scifi', 'خيال علمي'],
+const GTILES = [['action', 'أكشن'], ['drama', 'دراما'], ['comedy', 'كوميديا'], ['crime', 'جريمة'], ['scifi', 'خيال علمي'],
   ['horror', 'رعب'], ['romance', 'رومانسي'], ['cartoon', 'كرتون'], ['family', 'عائلي'], ['doc', 'وثائقي']];
 function renderGenres() {
   const el = $('gtiles');
-  if (el) el.innerHTML = '<div class="hrow">' + GTILES.map(g => '<button class="gtile" data-g="' + g[0] + '" data-p="' + (g[2] || 'genre') + '" data-n="' + g[1] +
-    '" onclick="openBrowse(this.dataset.p + \'=\' + this.dataset.g, this.dataset.n)">' + g[1] + '</button>').join('') + '</div>';
+  if (el) el.innerHTML = '<div class="hrow">' + GTILES.map(g => '<button class="gtile" data-g="' + g[0] + '" data-n="' + g[1] +
+    '" onclick="openBrowse(\'genre=\' + this.dataset.g, this.dataset.n)">' + g[1] + '</button>').join('') + '</div>';
 }
 let IALL = [], IROWS = [], LATEST = [], IPICK = new Set(), INT_OPEN = false;
 async function loadLatest() {
@@ -3717,7 +3486,7 @@ document.addEventListener('visibilitychange', () => {
 });
 const retryBtn = () => (PLAY && PLAY.tmdb)
   ? '<button class="search-btn" style="margin-top:8px" onclick="tryNextVersion()">🔁 جرّب نسخة تانية</button>' : '';
-async function altVersion(info, failedKey, safeFirst) {
+async function altVersion(info, failedKey) {
   if (failedKey) FAILED.add(failedKey);
   VER.s = info.s != null ? info.s : null;
   VER.e = info.s != null ? (info.e || 1) : null;
@@ -3725,8 +3494,7 @@ async function altVersion(info, failedKey, safeFirst) {
   await ensureCur(info.tmdb, info.type, info.qn);
   if (!cur || !cur.imdb) return null;
   const list = await fetchVersions(VER.s, VER.e);
-  const ok = x => x.instant && !FAILED.has(x.hash || x.ref);
-  return (safeFirst && list.find(x => ok(x) && !x.risky)) || list.find(ok) || null;
+  return list.find(x => x.instant && !FAILED.has(x.hash || x.ref)) || null;
 }
 async function resumeFallback(it) {
   // مفيش تبديل تلقائي للنسخة: النسخة اللي اخترتها هي اللي بتكمّل، أو أنت اللي تقرر
@@ -3751,7 +3519,7 @@ async function tryNextVersion() {
   if (vid) saveProgress(vid);
   const info = {tmdb: PLAY.tmdb, type: PLAY.type, s: PLAY.s, e: PLAY.e, qn: PLAY.qn};
   let v = null;
-  try { v = await altVersion(info, PLAY.vh || PLAY.src, true); } catch (x) {}
+  try { v = await altVersion(info, PLAY.vh || PLAY.src); } catch (x) {}
   if (!v) return playOpen(info.s || undefined, info.e || undefined);
   return startPlay(specOf(v), 'watch');
 }
@@ -3802,7 +3570,6 @@ function nfxDestroy() {
   if (!NFX) return;
   clearTimeout(NFX.hideT);
   clearInterval(NFX.endI);
-  try { if (NFX.ac) NFX.ac.abort(); } catch (e) {}
   try { if (NFX.wl) NFX.wl.release(); } catch (e) {}
   NFX = null;
 }
@@ -3862,11 +3629,11 @@ function nfxInit(v) {
             (pipOk ? ib('pip', NI.pip, 'نافذة عائمة') : '') + ib('fs', NI.fs, 'ملء الشاشة', ' data-r="fs"') +
           '</div></div></div></div>' +
     '<div class="nfx-panel"></div>' +
-    '<button class="nfx-next">' + NI.next + '<span></span></button>' +
+    '<div class="nfx-next">' + NI.next + '<span></span></div>' +
     '<div class="nfx-end"></div>');
   const q = s => box.querySelector(s);
   const S = NFX = {
-    v: v, box: box, ac: new AbortController(), hideT: null, drag: false, dragR: 0, panel: '', wl: null, endI: null,
+    v: v, box: box, hideT: null, drag: false, dragR: 0, panel: '', wl: null, endI: null,
     playBtns: [...box.querySelectorAll('[data-r="play"]'), q('.nfx-big.mid')],
     fsb: q('[data-r="fs"]'), fsbs: [...box.querySelectorAll('[data-r="fs"]')], prog: q('.nfx-prog'), buf: q('.nfx-buf'), thumb: q('.nfx-thumb'), tip: q('.nfx-tip'),
     tm: q('.nfx-tm'), bar: q('.nfx-bar'), track: q('.nfx-track'), panelEl: q('.nfx-panel'), nextEl: q('.nfx-next'),
@@ -3918,9 +3685,9 @@ function nfxInit(v) {
       for (let i = 0; i < b.length; i++) if (b.start(i) <= v.currentTime + 0.5 && b.end(i) > end) end = b.end(i);
       S.buf.style.width = d ? Math.min(100, end / d * 100) + '%' : '0';
     } catch (e) {}
-    // زر الحلقة التالية في آخر 200 ثانية
+    // زر الحلقة التالية في آخر 30 ثانية
     const n = (d && typeof nextTarget === 'function') ? nextTarget() : null, left = d - v.currentTime;
-    if (n && left > 0 && left <= nextWin(d) && !v.ended) {
+    if (n && left > 0 && left <= 30 && !v.ended) {
       S.nextEl.querySelector('span').textContent = 'الحلقة التالية ' + n.label;
       S.nextEl.classList.add('on');
     } else S.nextEl.classList.remove('on');
@@ -3990,11 +3757,10 @@ function nfxInit(v) {
     if (box.classList.contains('show') && !v.paused && (yr > 0.66 || yr < 0.22)) { show(); return; }
     tapT = setTimeout(() => { if (box.classList.contains('show') && !v.paused) hide(true); else show(); }, 280);
   });
-  const SIG = {signal: S.ac.signal};
-  box.addEventListener('mousemove', show, SIG);
+  box.addEventListener('mousemove', show);
   // أي لمسة على الشاشة والشريط ظاهر = عدّاد الاختفاء يبدأ من أول وجديد
-  box.addEventListener('pointerdown', () => { if (box.classList.contains('show')) show(); }, {capture: true, signal: S.ac.signal});
-  box.addEventListener('mouseleave', () => { if (!v.paused && !S.panel) hide(); }, SIG);
+  box.addEventListener('pointerdown', () => { if (box.classList.contains('show')) show(); }, true);
+  box.addEventListener('mouseleave', () => { if (!v.paused && !S.panel) hide(); });
 
   // ----- اللوحات (الصوت والترجمة / السرعة / الحلقات)
   const closePanel = () => { S.panel = ''; S.panelEl.classList.remove('on'); S.panelEl.innerHTML = ''; show(); };
@@ -4144,40 +3910,20 @@ function nfxInit(v) {
     e.stopPropagation();
     act(b.dataset.a, b);
     if (b.dataset.a !== 'back') show();
-  }, SIG);
+  });
   S.nextEl.addEventListener('click', () => { if (typeof playNext === 'function') playNext(); });
 
   // ----- الكيبورد
   box.tabIndex = 0;
-  // تقديم/تأخير بالريموت: الضغط المتكرر بيزوّد الخطوة (10 ← 30 ← 60 ← 120 ثانية)
-  const stepFor = dir => {
-    const now = Date.now();
-    if (S.sk && S.sk.dir === dir && now - S.sk.t < 700) S.sk.n++; else S.sk = {dir: dir, n: 0, t: now};
-    S.sk.t = now;
-    const n = S.sk.n;
-    return n < 3 ? 10 : n < 8 ? 30 : n < 16 ? 60 : 120;
-  };
   box.addEventListener('keydown', e => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    const t = e.target, k = e.key, kc = e.keyCode;
-    // زر الحلقة التالية (آخر 200 ث): سهم لتحت يروحله، Enter يشغّل
-    if (k === 'ArrowDown' && S.nextEl.classList.contains('on') && t !== S.nextEl) {
-      e.preventDefault(); e.stopPropagation(); show();
-      try { S.nextEl.focus({preventScroll: true}); } catch (x) {}
-      return;
-    }
-    if (t === S.nextEl && (k === 'ArrowUp' || k === 'ArrowLeft' || k === 'ArrowRight')) { try { box.focus({preventScroll: true}); } catch (x) {} }
+    const t = e.target, k = e.key;
     if ((k === ' ' || k === 'Enter') && t !== box && /^(BUTTON|INPUT|A)$/.test(t.tagName)) return;
     if (t.tagName === 'INPUT' && t.type === 'range' && /^Arrow/.test(k)) return;
     let h = true;
-    if (k === ' ' || k === 'k' || k === 'K' || k === 'Enter' || k === 'MediaPlayPause' || kc === 179) toggle();
-    else if (k === 'MediaPlay' || kc === 415) { const pp = v.play(); if (pp && pp.catch) pp.catch(() => {}); }
-    else if (k === 'MediaPause' || kc === 19) v.pause();
-    else if (k === 'MediaFastForward' || kc === 417) seekBy(30, 'r');
-    else if (k === 'MediaRewind' || kc === 412) seekBy(-30, 'l');
-    else if (k === 'MediaTrackNext' || kc === 176) { if (typeof nextTarget === 'function' && nextTarget()) playNext(); else h = false; }
-    else if (k === 'ArrowRight' || k === 'l' || k === 'L') seekBy(stepFor(1), 'r');
-    else if (k === 'ArrowLeft' || k === 'j' || k === 'J') seekBy(-stepFor(-1), 'l');
+    if (k === ' ' || k === 'k' || k === 'K' || k === 'Enter') toggle();
+    else if (k === 'ArrowRight' || k === 'l' || k === 'L') seekBy(10, 'r');
+    else if (k === 'ArrowLeft' || k === 'j' || k === 'J') seekBy(-10, 'l');
     else if (k === 'ArrowUp') setVol(v.volume + 0.1);
     else if (k === 'ArrowDown') setVol(v.volume - 0.1);
     else if (k === 'm' || k === 'M') v.muted = !v.muted;
@@ -4188,7 +3934,7 @@ function nfxInit(v) {
     else if (k === 'Escape') { if (S.panel) closePanel(); else h = false; }
     else h = false;
     if (h) { e.preventDefault(); e.stopPropagation(); show(); }
-  }, SIG);
+  });
 
   // ----- أحداث الفيديو
   v.addEventListener('play', () => {
@@ -4207,7 +3953,6 @@ function nfxInit(v) {
   v.addEventListener('ratechange', () => { if (S.panel === 'spd') renderPanel(); });
   v.addEventListener('playing', () => { S.endEl.classList.remove('on'); });
   icons(); upd(); show();
-  if ((document.fullscreenElement || document.webkitFullscreenElement) === box) S.fsbs.forEach(b => { b.innerHTML = NI.fsx; });
   if (!v.paused) box.classList.add('load');   // لحد ما أول إطار يشتغل
 }
 // ----- شاشة نهاية الحلقة / الفيلم
