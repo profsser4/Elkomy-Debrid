@@ -387,6 +387,27 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <button class="search-btn" onclick="adDiag()">🧪 افحص</button>
 <pre id="adOut" style="display:none;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;font-size:11px;color:#cbd5e1;background:#0b1220;padding:10px;border-radius:8px;margin-top:8px"></pre>
 </details>
+
+<details class="action-box adm" style="text-align:right;margin-top:18px">
+<summary>🎛️ مزوّد التشغيل والتحميل (على الجهاز ده)</summary>
+<p style="color:var(--mut);font-size:12px">الطلب بيطلع من المتصفح مباشرة والمفاتيح بتتحفظ على الجهاز ده بس. لو المزوّد فشل بيرجع تلقائي للسيرفر.</p>
+<label class="lbl">التشغيل في المتصفح (بيحوّل الصوت لو محتاج)</label>
+<select id="dbpPlay" class="search-input" onchange="DBP.set('play',this.value)"><option value="server">السيرفر (الافتراضي)</option><option value="ad">AllDebrid</option></select>
+<label class="lbl">التحميل</label>
+<select id="dbpDl" class="search-input" onchange="DBP.set('dl',this.value)"><option value="server">السيرفر (الافتراضي)</option><option value="tb">TorBox</option><option value="ad">AllDebrid</option></select>
+<input id="dbpAd" type="password" class="search-input ltr" placeholder="مفتاح AllDebrid" autocomplete="off" onchange="DBP.set('ad',this.value.trim())">
+<input id="dbpTb" type="password" class="search-input ltr" placeholder="مفتاح TorBox" autocomplete="off" onchange="DBP.set('tb',this.value.trim())">
+</details>
+
+<details class="action-box adm" id="srvPick" style="text-align:right;margin-top:18px">
+<summary>🎚️ مزوّد المشاهدة والتحميل (الافتراضي لكل المستخدمين)</summary>
+<p style="color:var(--mut);font-size:12px">اختار المشاهدة والتحميل من نفس المزوّد، أو المشاهدة من مزوّد والتحميل من مزوّد تاني. وتقدر تغيّره لمستخدم معيّن من زرار 🔒 في المستخدمين.</p>
+<label class="lbl">المشاهدة من</label>
+<select id="spWatch" class="search-input" onchange="saveSrvPick()"></select>
+<label class="lbl">التحميل من</label>
+<select id="spDl" class="search-input" onchange="saveSrvPick()"></select>
+<label style="display:block;margin-top:8px;color:var(--mut);font-size:13px"><input type="checkbox" id="spStrict" onchange="saveSrvPick()"> ماترجعش لمزوّد تاني لو المختار فشل</label>
+</details>
 </div>
 
 <script>
@@ -2744,7 +2765,36 @@ async function stDel(id) {
 }
 
 // ================= المستخدمين (للأدمن) =================
+
+// ================= اختيار مزوّد المشاهدة والتحميل =================
+let SP = {settings: {watch: 'auto', dl: 'same', strict: false}, providers: []};
+const spName = id => { const p = SP.providers.find(x => x.id === id); return p ? p.name : id; };
+async function loadSettings() {
+  try {
+    const {d} = await api('/settings');
+    if (!d || !d.settings) return;
+    SP = {settings: d.settings, providers: d.providers || []};
+    const opt = (v, t, cur) => '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(t) + '</option>';
+    const ps = SP.providers.map(p => [p.id, p.name + ' (' + p.type + ')']);
+    if ($('spWatch')) $('spWatch').innerHTML = opt('auto', 'تلقائي (الأولوية العادية)', SP.settings.watch) + ps.map(x => opt(x[0], x[1], SP.settings.watch)).join('');
+    if ($('spDl')) $('spDl').innerHTML = opt('same', 'نفس مزوّد المشاهدة', SP.settings.dl) + ps.map(x => opt(x[0], x[1], SP.settings.dl)).join('');
+    if ($('spStrict')) $('spStrict').checked = !!SP.settings.strict;
+  } catch (e) {}
+}
+async function saveSrvPick() {
+  const {d} = await api('/settings', {method: 'POST', body: JSON.stringify({watch: $('spWatch').value, dl: $('spDl').value, strict: $('spStrict').checked})});
+  if (d && d.error) alert(d.error);
+}
+function pickProv(title, cur, firstLabel, firstVal) {
+  const list = [[firstVal, firstLabel]].concat(SP.providers.map(p => [p.id, p.name + ' (' + p.type + ')']));
+  const idx = Math.max(0, list.findIndex(x => x[0] === (cur || firstVal)));
+  const m = prompt(title + '\n' + list.map((x, i) => i + ' = ' + x[1]).join('\n'), String(idx));
+  if (m === null) return null;
+  const i = parseInt(m, 10);
+  return list[i >= 0 && i < list.length ? i : 0][0];
+}
 async function loadUsers() {
+  if (!SP.providers.length) await loadSettings();
   try { const {d} = await api('/users'); USERS = d.items || []; } catch (e) {}
   renderUsers();
 }
@@ -2752,7 +2802,8 @@ function renderUsers() {
   const el = $('usBox');
   if (!el) return;
   el.innerHTML = (USERS.map(u =>
-    '<div class="ep"><div class="b">👤 ' + esc(u.name) + (u.lock === 2 ? ' <small style="color:#f59e0b">🔒 تصفح فقط</small>' : (u.lock === 1 ? ' <small style="color:#f59e0b">🚫 ممنوع من التحميل</small>' : '')) + '</div>' +
+    '<div class="ep"><div class="b">👤 ' + esc(u.name) + (u.lock === 2 ? ' <small style="color:#f59e0b">🔒 تصفح فقط</small>' : (u.lock === 1 ? ' <small style="color:#f59e0b">🚫 ممنوع من التحميل</small>' : '')) +
+    (u.wp ? ' <small style="color:var(--mut)">👁 ' + esc(spName(u.wp)) + '</small>' : '') + (u.dp ? ' <small style="color:var(--mut)">⬇ ' + esc(spName(u.dp)) + '</small>' : '') + '</div>' +
     '<button style="background:#0ea5e9;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="usPerm(this.dataset.n)">🔒</button>' +
     '<button style="background:#475569;color:#fff" data-n="' + esc(u.name) + '" onclick="usPass(this.dataset.n)">🔑</button>' +
     '<button style="background:var(--danger);color:#fff;margin-inline-start:6px" data-n="' + esc(u.name) + '" onclick="usDel(this.dataset.n)">🗑</button></div>').join('')
@@ -2787,7 +2838,12 @@ async function usPerm(n) {
     if (t === null) return;
     msg = t;
   }
-  const {d} = await api('/users/' + encodeURIComponent(n) + '/perms', {method: 'POST', body: JSON.stringify({lock: lock, msg: msg})});
+  if (!SP.providers.length) await loadSettings();
+  const wp = pickProv('مزوّد المشاهدة لـ ' + n + ':', u.wp, 'زي الإعداد العام', 'auto');
+  if (wp === null) return;
+  const dp = pickProv('مزوّد التحميل لـ ' + n + ':', u.dp, 'زي الإعداد العام', 'same');
+  if (dp === null) return;
+  const {d} = await api('/users/' + encodeURIComponent(n) + '/perms', {method: 'POST', body: JSON.stringify({lock: lock, msg: msg, wp: wp, dp: dp})});
   if (d.error) alert(d.error);
   loadUsers();
 }
@@ -2938,6 +2994,7 @@ async function loadProviders() {
       '<button style="margin-right:6px" onclick="testProv(\'' + p.id + '\',this)">اختبار</button></div>'
     ).join('') || warn('مفيش مزوّدين. ضيف أول واحد (TorBox مطلوب للتورنت).');
     saveBackup();
+    loadSettings();
   } catch (e) {}
 }
 async function saveBackup() {
@@ -2967,6 +3024,146 @@ async function testProv(id, btn) {
   btn.textContent = d.ok ? '✅ شغال' : '❌ فشل';
   if (!d.ok && d.error) alert(d.error);
 }
+
+// ================= مزوّدو التشغيل والتحميل (من المتصفح مباشرة، والسيرفر احتياطي) =================
+const DBP = {
+  def: {play: 'server', dl: 'server', ad: '', tb: ''},
+  cfg() { try { return Object.assign({}, DBP.def, JSON.parse(localStorage.getItem('dbp') || '{}')); } catch (e) { return Object.assign({}, DBP.def); } },
+  set(k, v) { const c = DBP.cfg(); c[k] = v; try { localStorage.setItem('dbp', JSON.stringify(c)); } catch (e) {} },
+  prov(mode) {
+    const c = DBP.cfg(), p = mode === 'download' ? c.dl : c.play;
+    return ((p === 'ad' && c.ad) || (p === 'tb' && c.tb)) ? p : 'server';
+  }
+};
+function dbpInit() {
+  const c = DBP.cfg();
+  if ($('dbpPlay')) $('dbpPlay').value = c.play;
+  if ($('dbpDl')) $('dbpDl').value = c.dl;
+  if ($('dbpAd')) $('dbpAd').value = c.ad;
+  if ($('dbpTb')) $('dbpTb').value = c.tb;
+}
+const DB_VID = /\.(mkv|mp4|avi|mov|webm|m4v|ts|wmv)$/i;
+function dbpPick(files, spec) {
+  const vids = files.filter(f => f && DB_VID.test(String(f.n || '')) && !/sample/i.test(f.n));
+  if (!vids.length) return null;
+  const big = (a, b) => (b.s || 0) - (a.s || 0);
+  if (spec.s != null && spec.e != null) {
+    const re = new RegExp('(?:s0*' + spec.s + '[ ._-]?e0*' + spec.e + '(?!\\d))|(?:(?:^|[^\\d])0*' + spec.s + 'x0*' + spec.e + '(?!\\d))', 'i');
+    const m = vids.filter(f => re.test(f.n));
+    if (m.length) return m.sort(big)[0];
+    return vids.length === 1 ? vids[0] : null;   // حلقة مش لاقيها: خلّي السيرفر يتصرف
+  }
+  return vids.sort(big)[0];
+}
+const dbpMagnet = h => 'magnet:?xt=urn:btih:' + h;
+
+// ---------- AllDebrid ----------
+async function adApi(path, params, o) {
+  o = o || {};
+  const u = (o.base || 'https://api.alldebrid.com/v4') + path + '?' +
+    new URLSearchParams(Object.assign({agent: 'Elkomy', apikey: DBP.cfg().ad}, params || {}));
+  const r = await fetch(u, o.body ? {method: 'POST', body: o.body} : undefined);
+  const j = await r.json();
+  if (!j || j.status !== 'success') throw new Error((j && j.error && (j.error.message || j.error.code)) || ('HTTP ' + r.status));
+  return j.data;
+}
+async function adResolve(spec, mode, my, ui) {
+  const up = await adApi('/magnet/upload', {}, {body: new URLSearchParams([['magnets[]', dbpMagnet(spec.hash)]])});
+  const m0 = up.magnets && up.magnets[0];
+  if (!m0 || m0.error || !m0.id) throw new Error((m0 && m0.error && m0.error.message) || 'فشل إضافة التورنت');
+  let st = null;
+  const maxT = spec.slow ? 60 : 25;
+  for (let i = 0; i < maxT; i++) {
+    const s = await adApi('/magnet/status', {id: m0.id}, {base: 'https://api.alldebrid.com/v4.1'});
+    st = Array.isArray(s.magnets) ? s.magnets[0] : s.magnets;
+    if (!st) throw new Error('مفيش حالة للتورنت');
+    if (+st.statusCode === 4) break;
+    if (+st.statusCode >= 5) throw new Error(st.status || 'فشل التورنت');
+    const sz = st.size || 0;
+    ui(progHTML({provider: 'AllDebrid', status: st.status, progress: sz ? (st.downloaded || 0) / sz : 0, size: sz,
+      speed: st.downloadSpeed, seeds: st.seeders}));
+    await sleep(3000);
+    if (my !== pullId) return null;
+  }
+  if (!st || +st.statusCode !== 4) throw new Error('التورنت لسه مش جاهز على AllDebrid');
+  const f = await adApi('/magnet/files', {}, {body: new URLSearchParams([['id[]', String(m0.id)]])});
+  const files = [];
+  const walk = (n, name) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach(x => walk(x, name)); return; }
+    const lk = n.l || n.link;
+    if (typeof lk === 'string' && lk.startsWith('http')) files.push({n: n.n || n.filename || name || '', s: n.s || n.size || 0, l: lk});
+    Object.keys(n).forEach(k => { if (n[k] && typeof n[k] === 'object') walk(n[k], n.n || name); });
+  };
+  walk(f, '');
+  const pick = dbpPick(files, spec);
+  if (!pick) throw new Error('مالقيتش الملف المطلوب');
+  const d = await adApi('/link/unlock', {link: pick.l});
+  const out = {direct: d.link, name: d.filename || pick.n, size: d.filesize || pick.s, provider: 'AllDebrid'};
+  if (mode !== 'watch') return out;
+  // لو AllDebrid عنده نسخ محوَّلة (صوت AAC شغّال في المتصفح) نستخدمها بدل الأصلي
+  const sts = (Array.isArray(d.streams) && d.streams.length ? d.streams : (Array.isArray(d.streaming) ? d.streaming : [])).filter(x => x && x.id);
+  if (d.id && sts.length) {
+    const q = x => { const m = /\d{3,4}/.exec(String(x.quality || x.id || x.name || '')); return m ? +m[0] : 0; };
+    const c = sts.slice().sort((a, b) => q(b) - q(a));
+    const best = c.find(x => q(x) && q(x) <= 1080) || c[0];
+    ui(pend('جاري تجهيز نسخة بصوت شغّال في المتصفح...'));
+    let s = await adApi('/link/streaming', {id: d.id, stream: best.id});
+    for (let i = 0; s && !s.link && s.delayed && i < 30; i++) {
+      await sleep(3000);
+      if (my !== pullId) return null;
+      s = Object.assign({delayed: s.delayed}, await adApi('/link/delayed', {id: s.delayed}));
+      if (+s.status === 3) throw new Error('فشل تحويل الصوت');
+      if (+s.status === 2 && s.link) break;
+    }
+    if (s && s.link) out.hls = s.link;
+  }
+  return out;
+}
+
+// ---------- TorBox (تحميل) ----------
+async function tbResolve(spec, my, ui) {
+  const B = 'https://api.torbox.app/v1/api', key = DBP.cfg().tb, H = {Authorization: 'Bearer ' + key};
+  const fd = new FormData();
+  fd.append('magnet', dbpMagnet(spec.hash));
+  fd.append('seed', '1');
+  fd.append('allow_zip', 'false');
+  const c = await (await fetch(B + '/torrents/createtorrent', {method: 'POST', headers: H, body: fd})).json();
+  const id = c && c.data && (c.data.torrent_id || c.data.queued_id);
+  if (!c || !c.success || !id) throw new Error((c && (c.detail || c.error)) || 'فشل إضافة التورنت');
+  let t = null;
+  for (let i = 0; i < 60; i++) {
+    const r = await (await fetch(B + '/torrents/mylist?bypass_cache=true&id=' + id, {headers: H})).json();
+    t = r && r.data;
+    if (Array.isArray(t)) t = t[0];
+    if (t && (t.download_finished || t.download_present) && (t.files || []).length) break;
+    ui(progHTML({provider: 'TorBox', status: (t && t.download_state) || 'جاري التجهيز', progress: (t && t.progress) || 0,
+      size: t && t.size, speed: t && t.download_speed, eta: t && t.eta, seeds: t && t.seeds, peers: t && t.peers}));
+    await sleep(3000);
+    if (my !== pullId) return null;
+  }
+  if (!t || !(t.files || []).length) throw new Error('التورنت لسه بيتسحب على TorBox');
+  const pick = dbpPick(t.files.map(x => ({n: x.name || x.short_name, s: x.size, id: x.id})), spec);
+  if (!pick) throw new Error('مالقيتش الملف المطلوب');
+  const r = await (await fetch(B + '/torrents/requestdl?token=' + encodeURIComponent(key) + '&torrent_id=' + id + '&file_id=' + pick.id, {headers: H})).json();
+  if (!r || !r.success || !r.data) throw new Error((r && r.detail) || 'فشل توليد الرابط');
+  return {direct: r.data, name: pick.n, size: pick.s, provider: 'TorBox', torrent_id: id, file_id: pick.id};
+}
+
+async function dbpStart(spec, mode, pv, my) {
+  const nm = pv === 'ad' ? 'AllDebrid' : 'TorBox';
+  const ui = m => { if (my === pullId) $('results').innerHTML = m; };
+  try {
+    ui(pend('جاري التجهيز من ' + nm + '...'));
+    return pv === 'ad' ? await adResolve(spec, mode, my, ui) : await tbResolve(spec, my, ui);
+  } catch (e) {
+    console.warn('dbp', e);
+    ui(pend(nm + ' ماشتغلش (' + String((e && e.message) || e).slice(0, 80) + ')، بجرّب السيرفر...'));
+    await sleep(1500);
+    return null;
+  }
+}
+dbpInit();
 
 // ================= مسار التشغيل الجديد: نسخ + بث محوَّل + تحميل =================
 const VER = {list: [], s: null, e: null, showSlow: false, key: '', err: '', diag: ''};
@@ -3142,28 +3339,35 @@ async function startPlay(spec, mode, baseOver) {
   clearCd();
   scrollToResults();
   $('results').innerHTML = pend('جاري تجهيز النسخة...');
-  let tid = null, tries = 0, res;
-  while (true) {
-    try {
-      res = await api('/play/start', {method: 'POST',
-        body: JSON.stringify(Object.assign({}, spec, {mode: mode, torrent_id: tid}))});
-    } catch (x) { if (my === pullId) $('results').innerHTML = ERR; return null; }
+  let tid = null, tries = 0, res, d = null;
+  const pv = DBP.prov(mode);
+  if (pv !== 'server' && spec.hash) {
+    d = await dbpStart(spec, mode, pv, my);
     if (my !== pullId) return null;
-    if (res.r.status === 202 && tries < 200) {
-      $('results').innerHTML = progHTML(res.d);
-      tid = res.d.torrent_id || tid;
-      tries++;
-      await sleep(2500);
-      if (my !== pullId) return null;
-      continue;
-    }
-    break;
   }
-  let d = res.d;
-  if (!res.r.ok || d.error || !d.direct) {
-    if (d.nodl) { LOCK = Math.max(LOCK, d.lock || 1); LOCK_MSG = d.error || LOCK_MSG; $('results').innerHTML = ''; alert(d.error); return null; }
-    $('results').innerHTML = warn(d.error || 'حصل خطأ في التجهيز');
-    return null;
+  if (!d) {
+    while (true) {
+      try {
+        res = await api('/play/start', {method: 'POST',
+          body: JSON.stringify(Object.assign({}, spec, {mode: mode, torrent_id: tid}))});
+      } catch (x) { if (my === pullId) $('results').innerHTML = ERR; return null; }
+      if (my !== pullId) return null;
+      if (res.r.status === 202 && tries < 200) {
+        $('results').innerHTML = progHTML(res.d);
+        tid = res.d.torrent_id || tid;
+        tries++;
+        await sleep(2500);
+        if (my !== pullId) return null;
+        continue;
+      }
+      break;
+    }
+    d = res.d;
+    if (!res.r.ok || d.error || !d.direct) {
+      if (d.nodl) { LOCK = Math.max(LOCK, d.lock || 1); LOCK_MSG = d.error || LOCK_MSG; $('results').innerHTML = ''; alert(d.error); return null; }
+      $('results').innerHTML = warn(d.error || 'حصل خطأ في التجهيز');
+      return null;
+    }
   }
   // البث المحوَّل (اللي بيشتغل في المتصفح) ساعات بيتأخر: جرّبه كام مرة قبل ما نرجع للرابط الأصلي
   if (mode === 'watch' && !d.hls && spec.hash && d.stream_note && !/مش متضاف/.test(d.stream_note)) {
@@ -3349,7 +3553,7 @@ async function adDiag() {
 
   const j = await call('/link/unlock', {link: link});
   const d = j && j.data;
-  const streams = d && Array.isArray(d.streams) ? d.streams : [];
+  const streams = d && Array.isArray(d.streams) ? d.streams : (d && Array.isArray(d.streaming) ? d.streaming : []);
   log += '\nعدد الـ streams: ' + streams.length + (d && d.id ? ' | id موجود' : ' | مفيش id') + '\n';
   if (d && d.id) {
     for (const s of streams.slice(0, 6)) {
@@ -3374,6 +3578,7 @@ function hlsAudio(i) {
 function setupHls(v) {
   const url = PLAY && PLAY.hls;
   if (!url) return;
+  if (!/\.m3u8(\?|#|$)/i.test(url) && !/m3u8|playlist/i.test(url)) { v.removeAttribute('crossorigin'); v.src = url; v.load(); v.play().catch(() => {}); return; }
   const fallback = why => {
     if (!AUD.decided) audDecide(!!(PLAY && PLAY.arDub));
     try { if (v._hls) { v._hls.destroy(); v._hls = null; } } catch (e) {}
