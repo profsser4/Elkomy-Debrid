@@ -1976,11 +1976,20 @@ function attachPlayer() {
   v.addEventListener('playing', () => {
     setTimeout(() => {
       if (v.paused || v.muted || v.volume === 0 || v.currentTime < 4) return;
-      if (typeof v.webkitAudioDecodedByteCount === 'number' && v.webkitAudioDecodedByteCount === 0) {
+      const silent = (typeof v.webkitAudioDecodedByteCount === 'number' && v.webkitAudioDecodedByteCount === 0) ||
+        (v.mozHasAudio === false) ||
+        (v.audioTracks && v.audioTracks.length === 0 && !v._hls && v.videoWidth > 0 && /\b(mkv|mp4|m4v)\b/i.test(String((PLAY && PLAY.fname) || '').split('.').pop()));
+      if (silent) {
         const b = $('playErr');
         if (b) {
           b.dataset.err = 'audio';
-          b.innerHTML = warn('الفيديو شغال بس الصوت مش بيتفك في المتصفح (غالباً DDP / E-AC3 / AC3 / DTS). افتحه من «المشغّلات الخارجية» (VLC أو MX)، أو اختار نسخة صوتها AAC أو نسخة من TorBox/Real-Debrid (بتتحوّل). والملفات «MultiAudios» المتصفح مش بيقدر يختار منها الصوت العربي، فالأفضل VLC.');
+          b.innerHTML = warn('الفيديو شغال بس الصوت مش بيتفك في المتصفح (غالباً DDP / E-AC3 / AC3 / DTS). افتحه من «المشغّلات الخارجية» (VLC أو MX)، أو اختار نسخة صوتها AAC أو نسخة من TorBox/Real-Debrid (بتتحوّل). والملفات «MultiAudios» المتصفح مش بيقدر يختار منها الصوت العربي، فالأفضل VLC.') +
+            (PLAY && PLAY.tmdb ? '<button class="search-btn" style="margin-top:8px;background:#16a34a" onclick="tryNextVersion()">🔊 جرّب نسخة بصوت يشتغل في المتصفح</button>' : '');
+          if (PLAY && PLAY.tmdb && !PLAY.hls && !PLAY._autoAud && (window.AUTO_AUD = (window.AUTO_AUD || 0) + 1) <= 3) {   // تبديل تلقائي (3 مرات بالكتير)
+            PLAY._autoAud = true;
+            b.insertAdjacentHTML('afterbegin', '<p style="color:var(--mut);font-size:12px">بدّلت تلقائياً لنسخة تانية...</p>');
+            setTimeout(() => { if (PLAY && PLAY._autoAud) tryNextVersion(); }, 1200);
+          }
         }
         const pm = document.querySelector('details.pm');
         if (pm) pm.open = true;
@@ -3163,12 +3172,12 @@ async function testProv(id, btn) {
 }
 
 // ================= مسار التشغيل الجديد: نسخ + بث محوَّل + تحميل =================
-const VER = {list: [], s: null, e: null, showSlow: false, key: '', err: '', diag: ''};
+const VER = {list: [], s: null, e: null, showSlow: false, key: '', err: '', diag: '', stream: true};
 
 const qRank = q => ({'1080P': 0, '2160P': 1, '4K': 1, '720P': 2, '480P': 3}[q] ?? 4);
 function verSort(list) {
   const df = dubFirst();
-  const rk = x => (x.risky && !x.hash) ? 1 : 0;   // نسخة مش هتتحوّل (Stremio) وصوتها/صيغتها مش للمتصفح
+  const rk = x => (x.risky && (!x.hash || !VER.stream)) ? 1 : 0;   // نسخة مش هتتحوّل (Stremio أو مفيش TorBox/Real-Debrid) وصوتها/صيغتها مش للمتصفح
   return list.slice().sort((a, b) =>
     (df ? dubRank(b) - dubRank(a) : 0) ||     // الأول اللغة: عربي مدبلج ← مترجم ← الأصلي
     (rk(a) - rk(b)) ||
@@ -3183,6 +3192,7 @@ async function fetchVersions(s, e) {
   const q = '/play/versions?type=' + cur.type + '&imdb=' + encodeURIComponent(cur.imdb) + '&tmdb=' + cur.id +
     (s ? '&s=' + s + '&e=' + (e || 1) : '');
   const {d} = await api(q);
+  VER.stream = d.stream !== false;
   VER.list = verSort(d.versions || []);
   VER.err = d.error || '';
   VER.key = VER.list.length ? key : '';
@@ -3707,7 +3717,7 @@ document.addEventListener('visibilitychange', () => {
 });
 const retryBtn = () => (PLAY && PLAY.tmdb)
   ? '<button class="search-btn" style="margin-top:8px" onclick="tryNextVersion()">🔁 جرّب نسخة تانية</button>' : '';
-async function altVersion(info, failedKey) {
+async function altVersion(info, failedKey, safeFirst) {
   if (failedKey) FAILED.add(failedKey);
   VER.s = info.s != null ? info.s : null;
   VER.e = info.s != null ? (info.e || 1) : null;
@@ -3715,7 +3725,8 @@ async function altVersion(info, failedKey) {
   await ensureCur(info.tmdb, info.type, info.qn);
   if (!cur || !cur.imdb) return null;
   const list = await fetchVersions(VER.s, VER.e);
-  return list.find(x => x.instant && !FAILED.has(x.hash || x.ref)) || null;
+  const ok = x => x.instant && !FAILED.has(x.hash || x.ref);
+  return (safeFirst && list.find(x => ok(x) && !x.risky)) || list.find(ok) || null;
 }
 async function resumeFallback(it) {
   // مفيش تبديل تلقائي للنسخة: النسخة اللي اخترتها هي اللي بتكمّل، أو أنت اللي تقرر
@@ -3740,7 +3751,7 @@ async function tryNextVersion() {
   if (vid) saveProgress(vid);
   const info = {tmdb: PLAY.tmdb, type: PLAY.type, s: PLAY.s, e: PLAY.e, qn: PLAY.qn};
   let v = null;
-  try { v = await altVersion(info, PLAY.vh || PLAY.src); } catch (x) {}
+  try { v = await altVersion(info, PLAY.vh || PLAY.src, true); } catch (x) {}
   if (!v) return playOpen(info.s || undefined, info.e || undefined);
   return startPlay(specOf(v), 'watch');
 }
