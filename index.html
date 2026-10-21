@@ -400,9 +400,9 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <summary>🎛️ مزوّد التشغيل والتحميل (على الجهاز ده)</summary>
 <p style="color:var(--mut);font-size:12px">الطلب بيطلع من المتصفح مباشرة والمفاتيح بتتحفظ على الجهاز ده بس. لو المزوّد فشل بيرجع تلقائي للسيرفر.</p>
 <label class="lbl">التشغيل في المتصفح (بيحوّل الصوت لو محتاج)</label>
-<select id="dbpPlay" class="search-input" onchange="DBP.set('play',this.value)"><option value="server">السيرفر (الافتراضي)</option><option value="ad">AllDebrid</option></select>
+<select id="dbpPlay" class="search-input" onchange="DBP.set('play',this.value)"><option value="server">السيرفر</option><option value="tb">TorBox (الافتراضي)</option><option value="ad">AllDebrid</option></select>
 <label class="lbl">التحميل</label>
-<select id="dbpDl" class="search-input" onchange="DBP.set('dl',this.value)"><option value="server">السيرفر (الافتراضي)</option><option value="tb">TorBox</option><option value="ad">AllDebrid</option></select>
+<select id="dbpDl" class="search-input" onchange="DBP.set('dl',this.value)"><option value="server">السيرفر</option><option value="tb">TorBox</option><option value="ad">AllDebrid (الافتراضي)</option></select>
 <input id="dbpAd" type="password" class="search-input ltr" placeholder="مفتاح AllDebrid" autocomplete="off" onchange="DBP.set('ad',this.value.trim())">
 <input id="dbpTb" type="password" class="search-input ltr" placeholder="مفتاح TorBox" autocomplete="off" onchange="DBP.set('tb',this.value.trim())">
 </details>
@@ -1392,6 +1392,7 @@ async function loadSeason(n) {
     await smapLoad(cur.id);
     if (my !== sReq) return;
     b.innerHTML = (smapKeys(SMAP[cur.id]).length ? '<p style="margin:0 0 10px;color:#38bdf8;font-size:13px">📌 المسلسل متضاف للكل: ' + smapKeys(SMAP[cur.id]).length + ' حلقة بتشتغل ورا بعض</p>' : '') + (ADV() || !cur.imdb ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
+      (ROLE === 'admin' && cur.imdb ? '<button class="search-btn" style="margin-bottom:10px;background:#0ea5e9" onclick="playOpen(' + n + ',1)">📌 ضيف الموسم ' + n + ' كله (اختار نسخة)</button>' : '') +
       d.episodes.map(e => '<div class="ep">' +
         (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '') +
         '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) +
@@ -3272,7 +3273,7 @@ async function testProv(id, btn) {
 
 // ================= مزوّدو التشغيل والتحميل (من المتصفح مباشرة، والسيرفر احتياطي) =================
 const DBP = {
-  def: {play: 'server', dl: 'server', ad: '', tb: ''},
+  def: {play: 'tb', dl: 'ad', ad: '', tb: ''},
   cfg() { try { return Object.assign({}, DBP.def, JSON.parse(localStorage.getItem('dbp') || '{}')); } catch (e) { return Object.assign({}, DBP.def); } },
   set(k, v) { const c = DBP.cfg(); c[k] = v; try { localStorage.setItem('dbp', JSON.stringify(c)); } catch (e) {} },
   prov(mode) {
@@ -3450,14 +3451,15 @@ const VER = {list: [], s: null, e: null, showSlow: false, key: '', err: '', diag
 const qRank = q => ({'1080P': 0, '2160P': 1, '4K': 1, '720P': 2, '480P': 3}[q] ?? 4);
 function verSort(list) {
   const df = dubFirst();
+  const sc = x => x.score != null ? x.score : (x.risky ? 0 : 1);
   const rk = x => (!x.hash && (x.risky || /2160|4K/i.test(x.q))) ? 1 : 0;   // نسخة مباشرة (Stremio) خطرة/4K: آخر الترتيب
   return list.slice().sort((a, b) =>
     (rk(a) - rk(b)) ||
     (df ? dubRank(b) - dubRank(a) : 0) ||     // اللغة: عربي مدبلج ← مترجم ← الأصلي
 
     (b.instant - a.instant) ||
-    (qRank(a.q) - qRank(b.q)) ||
-    (a.risky - b.risky) ||
+    (sc(b) - sc(a)) ||
+    (qRank(a.q) - qRank(b.q)) ||                         // H.264+AAC أول، DDP/DTS/HEVC/x265 آخر
     (b.seeders - a.seeders));
 }
 async function fetchVersions(s, e) {
@@ -3526,10 +3528,12 @@ function verRow(v, i, best) {
     (v.instant ? '<span class="badge">⚡ فوري</span>' : '<span class="badge" style="background:#475569;color:#fff">⏳ بطيء</span>') + dub +
     ((v.risky && !v.hash) ? '<span class="badge" style="background:#ef4444;color:#fff">⚠️ الصوت ممكن مايشتغلش (VLC/MX أحسن)</span>'
       : v.risky ? '<span class="badge" style="background:#0ea5e9;color:#fff">🔄 هيتحوّل</span>'
-             : '<span class="badge" style="background:#22c55e;color:#000">✅ متوافق</span>') +
+             : (v.score >= 3 ? '<span class="badge" style="background:#22c55e;color:#000">🎯 H.264 + AAC</span>'
+               : '<span class="badge" style="background:#22c55e;color:#000">✅ متوافق</span>')) +
     (v.seeders ? '<span style="color:var(--mut)">🌱 ' + v.seeders + '</span>' : '') + '</div><div class="vb">' +
     '<button class="vw" onclick="playVersion(' + i + ')">▶ ' + (v.instant ? 'مشاهدة' : 'سحب ومشاهدة') + '</button>' +
     '<button class="vd" onclick="dlVersion(' + i + ')">⬇ تحميل</button>' +
+    (ROLE === 'admin' && cur && cur.type === 'tv' && VER.s && v.hash ? '<button class="vd" style="background:#0ea5e9" onclick="seasonFromVersion(' + i + ')">📌 الموسم كله</button>' : '') +
     (ROLE === 'admin' ? '<button class="vg" onclick="diagVersion(' + i + ')">🧪</button>' : '') + '</div></div>';
 }
 function renderVP() {
@@ -3558,6 +3562,19 @@ function renderVP() {
   }
   if (VER.diag) h += '<pre style="direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;font-size:11px;color:#cbd5e1;background:#0b1220;padding:10px;border-radius:8px;margin-top:10px">' + esc(VER.diag) + '</pre>';
   el.innerHTML = h + '</div>';
+}
+async function seasonFromVersion(i) {
+  const v = VER.list[i];
+  if (!v || !v.hash || !cur || !VER.s) return;
+  const sn = (cur.seasons || []).find(x => x.n === VER.s), n = sn ? (sn.eps || 0) : 0;
+  if (!n) return alert('مش عارف عدد حلقات الموسم');
+  if (!confirm('أضيف الموسم ' + VER.s + ' كله (' + n + ' حلقة) من النسخة دي وتشتغل ورا بعض؟')) return;
+  const {r, d} = await api('/series/map/bulk', {method: 'POST', body: JSON.stringify({id: cur.id, s: VER.s, count: n, force: true,
+    spec: {hash: v.hash, name: v.title}})});
+  if (!r.ok || d.error) return alert(d.error || 'مقدرتش أضيف الموسم');
+  SMAP[cur.id] = d.eps || {};
+  alert('اتضافت ' + (d.added || 0) + ' حلقة، والباقي كان مضاف قبل كده');
+  closeVP();
 }
 function dlSeries() {
   if (noDl()) return;
@@ -4242,6 +4259,28 @@ function nfxFs() {
   if (S.v.webkitEnterFullscreen) { try { S.v.webkitEnterFullscreen(); } catch (e) {} return true; }
   return false;
 }
+function nfxFsZoom() {
+  const fe = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fe) document.body.style.zoom = 1;       // zoom الجسم (وضع التلفزيون 145%) بيطلّع الشريط برا الشاشة
+  else if (typeof applyView === 'function') applyView();
+  const S = NFX;
+  if (S && S.box.isConnected) setTimeout(() => { try { S.box.focus({preventScroll: true}); if (S.show) S.show(); } catch (e) {} }, 60);
+}
+document.addEventListener('fullscreenchange', nfxFsZoom);
+document.addEventListener('webkitfullscreenchange', nfxFsZoom);
+// في الفول سكرين: أي زرار ريموت يروح للمشغّل حتى لو الفوكس بعيد عنه
+document.addEventListener('keydown', e => {
+  const S = NFX;
+  if (!S || !S.box.isConnected || e.__nfx || e.ctrlKey || e.metaKey || e.altKey) return;
+  const fe = document.fullscreenElement || document.webkitFullscreenElement;
+  if (!fe || !fe.contains(S.box) || S.box.contains(e.target)) return;
+  if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  try { S.box.focus({preventScroll: true}); } catch (x) {}
+  const ev = new KeyboardEvent('keydown', {key: e.key, code: e.code, keyCode: e.keyCode, which: e.which, bubbles: true, cancelable: true});
+  ev.__nfx = true;
+  S.box.dispatchEvent(ev);
+}, true);
 document.addEventListener('fullscreenchange', () => {
   const S = NFX;
   if (!S) return;
@@ -4311,6 +4350,9 @@ function nfxInit(v) {
   const hide = force => {
     if (!force && (v.paused || S.panel || S.drag)) return;
     box.classList.remove('show');
+    // الفوكس كان على زرار مخفي (زي التكبير)؟ نرجّعه للمشغّل عشان الريموت يفضل شغّال
+    const ae = document.activeElement;
+    if (ae && ae !== box && box.contains(ae)) { try { box.focus({preventScroll: true}); } catch (e) {} }
   };
   S.show = show;
   const toggle = () => { if (v.paused || v.ended) { const p = v.play(); if (p && p.catch) p.catch(() => {}); } else v.pause(); };
@@ -4517,6 +4559,7 @@ function nfxInit(v) {
       case 'zoom': {
         const on = box.classList.toggle('fill');      // object-fit: cover => الصورة تملأ الشاشة من غير شرايط سودا
         asToast(on ? 'تكبير الصورة: شغّال' : 'الحجم الطبيعي');
+        try { box.focus({preventScroll: true}); } catch (x) {}
         break;
       }
       case 'pip':
@@ -4567,6 +4610,7 @@ function nfxInit(v) {
     e.stopPropagation();
     act(b.dataset.a, b);
     if (b.dataset.a !== 'back') show();
+    if (/^(zoom|fs|play|b10|f10|mute|pip)$/.test(b.dataset.a)) { try { box.focus({preventScroll: true}); } catch (x) {} }
   });
   S.nextEl.addEventListener('click', () => { if (typeof playNext === 'function') playNext(); });
 
