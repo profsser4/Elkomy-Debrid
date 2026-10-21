@@ -1897,24 +1897,29 @@ function vchk() {
   if (!v || !pe) return;
   let box = $('vchk');
   if (!box) {
-    pe.insertAdjacentHTML('afterend', '<div id="vchk" style="margin-top:8px;font-size:12px;border:1px solid #243044;border-radius:10px;padding:8px 10px;color:var(--mut)"><span id="vchkT">⏳ بيفحص الفيديو...</span>' +
+    pe.insertAdjacentHTML('afterend', '<div id="vchk" style="margin-top:8px;font-size:12px;border:1px solid #243044;border-radius:10px;padding:8px 10px;color:var(--mut)"><span id="vchkT">⏳ بيفحص الفيديو...</span> <button id="vchkB" class="fc" style="display:none;margin:0 6px" onclick="vchkRetry()">🔁 إعادة المحاولة</button>' +
       (ROLE === 'admin' ? '<div><button class="fc" style="margin-top:6px" onclick="vchkReports()">📋 بلاغات المشاهدة</button><pre id="vchkRep" style="display:none;direction:rtl;white-space:pre-wrap;font-size:11px;color:#cbd5e1;background:#0b1220;padding:8px;border-radius:8px;margin-top:6px"></pre></div>' : '') + '</div>');
     box = $('vchk');
   }
   const T = $('vchkT'), my = pullId, t0 = Date.now(), sent = {};
+  let nSent = 0;
   let lastT = -1, lastAdv = Date.now(), hooked = false, hlsErr = '', iv = null;
   const mode = () => (PLAY && PLAY.hls) ? 'HLS محوَّل' : 'مباشر';
   const set = (ok, msg) => {
     if (!T.isConnected) return;
     let extra = '';
     if (ok === false) {
-      if (!sent[msg]) {
-        sent[msg] = 1;
-        api('/play/report', {method: 'POST', body: JSON.stringify({msg: msg, title: PLAY && PLAY.title, s: PLAY && PLAY.s, e: PLAY && PLAY.e,
+      const key = msg.replace(/\d+/g, '#');
+      if (!sent[key] && nSent < 3) {
+        sent[key] = 1;
+        nSent++;
+        api('/play/report', {method: 'POST', body: JSON.stringify({msg: msg.replace(/\d+ ث/, 'N ث'), title: PLAY && PLAY.title, s: PLAY && PLAY.s, e: PLAY && PLAY.e,
           mode: mode(), f: PLAY && (PLAY.fname || ''), ua: navigator.userAgent})}).catch(() => {});
       }
       extra = ' · 📤 اتبلّغ للأدمن';
     }
+    const rb = $('vchkB');
+    if (rb) rb.style.display = ok === false ? 'inline-block' : 'none';
     T.style.color = ok === true ? 'var(--success)' : ok === false ? '#f59e0b' : 'var(--mut)';
     T.textContent = (ok === true ? '✅ ' : ok === false ? '⚠️ ' : '⏳ ') + msg + extra;
   };
@@ -1940,6 +1945,12 @@ function vchk() {
   };
   iv = setInterval(tick, 2000);
   tick();
+}
+function vchkRetry() {
+  const v = document.querySelector('#results video');
+  if (PLAY && PLAY.vh) return retryStream();
+  if (PLAY && PLAY.ref) { if (v) saveProgress(v); return playByRef(Object.assign({}, PLAY)); }
+  if (v) { const t = v.currentTime; v.load(); v.addEventListener('loadedmetadata', () => { try { v.currentTime = t; } catch (e) {} v.play().catch(() => {}); }, {once: true}); }
 }
 async function vchkReports() {
   const pre = $('vchkRep');
