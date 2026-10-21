@@ -117,6 +117,10 @@ body.m-tv .nfx-panel,body.m-tv .nfx-next{box-shadow:none}
 body.m-tv .hrow>.poster,body.m-tv .hrow>.cw{content-visibility:auto;contain-intrinsic-size:150px 290px}
 img.lz{background:#0b1220}
 body.m-tv button:focus-visible,body.m-tv .pl:focus-visible,body.m-tv summary:focus-visible{outline-width:4px}
+/* تلفزيونات سامسونج القديمة مش بتفهم :focus-visible، فبنكرر القواعد بـ :focus (لازم تكون قواعد منفصلة) */
+body.m-tv .poster:focus,body.m-tv .cw:focus,body.m-tv .pcard:focus,body.m-tv .gtile:focus{transform:scale(1.08);outline:4px solid var(--primary);outline-offset:2px;position:relative;z-index:2}
+body.m-tv button:focus,body.m-tv .pl:focus,body.m-tv summary:focus,body.m-tv a:focus,body.m-tv .ep:focus,body.m-tv .tor:focus{outline:4px solid var(--primary);outline-offset:2px}
+body.m-tv .nfx-ib:focus,body.m-tv .nfx-it:focus,body.m-tv .nfx-big:focus{outline:3px solid #fff;outline-offset:2px}
 .btn-st{background:#7c3aed !important;color:#fff !important;margin-inline-start:6px}
 #vpanel{position:fixed;inset:0;background:#000b;z-index:9600;display:none;align-items:flex-start;justify-content:center;padding:12px;overflow:auto}
 .vbox{background:var(--panel);border-radius:14px;padding:16px;width:100%;max-width:640px;margin:auto}
@@ -520,6 +524,13 @@ window.addEventListener('resize', () => { if (viewPref() === 'auto') applyView()
 
 // تنقّل بالأسهم (تلفزيون / كيبورد) + اختصارات الفيديو
 const ARROWS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+const KEYFIX = {Left: 'ArrowLeft', Right: 'ArrowRight', Up: 'ArrowUp', Down: 'ArrowDown'};
+const KEYCODES = {37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown', 13: 'Enter'};
+function keyOf(e) {
+  const k = e.key;
+  if (k && k !== 'Unidentified' && k !== 'Process') return KEYFIX[k] || k;
+  return KEYCODES[e.keyCode] || k || '';
+}
 const FOCUSABLE = 'button:not([disabled]),a[href],input:not([type=hidden]),select,summary,[tabindex="0"]';
 function navScope() {
   for (const id of ['login-screen', 'pform', 'viewbox', 'vpanel', 'profile-screen']) {
@@ -592,8 +603,9 @@ document.addEventListener('keydown', e => {
   const t = e.target, tag = t.tagName;
   const typing = (tag === 'INPUT' && !['checkbox', 'range', 'button'].includes(t.type)) || tag === 'TEXTAREA';
   const v = document.querySelector('#results video');
+  const KY = keyOf(e);
   if (v && (t === v || document.fullscreenElement)) {
-    const k = e.key;
+    const k = KY;
     if (k === ' ' || k === 'k' || k === 'Enter') { e.preventDefault(); v.paused ? v.play() : v.pause(); }
     else if (k === 'ArrowRight') { e.preventDefault(); v.currentTime = Math.max(0, v.currentTime + 10); }
     else if (k === 'ArrowLeft') { e.preventDefault(); v.currentTime = Math.max(0, v.currentTime - 10); }
@@ -604,14 +616,14 @@ document.addEventListener('keydown', e => {
     else if (k === 'Escape' || k === 'Backspace' || e.keyCode === 461 || e.keyCode === 10009) { if (!document.fullscreenElement) { e.preventDefault(); v.blur(); } }
     return;
   }
-  const back = ['Escape', 'GoBack', 'BrowserBack'].includes(e.key) || (e.key === 'Backspace' && !typing) || e.keyCode === 461 || e.keyCode === 10009;
+  const back = ['Escape', 'GoBack', 'BrowserBack'].includes(KY) || (KY === 'Backspace' && !typing) || e.keyCode === 461 || e.keyCode === 10009;
   if (back && !typing && tag !== 'SELECT' && VS.length > 1) { e.preventDefault(); history.back(); return; }
-  if (isTv() && ARROWS.includes(e.key) && tag !== 'SELECT' && !(typing && (e.key === 'ArrowLeft' || e.key === 'ArrowRight'))) {
+  if (isTv() && ARROWS.includes(KY) && tag !== 'SELECT' && !(typing && (KY === 'ArrowLeft' || KY === 'ArrowRight'))) {
     e.preventDefault();
-    spatial(e.key);
+    spatial(KY);
     return;
   }
-  if (e.key === 'Enter' && t.getAttribute && t.getAttribute('tabindex') === '0' && !/^(BUTTON|A|INPUT|SUMMARY|VIDEO)$/.test(tag)) {
+  if (KY === 'Enter' && t.getAttribute && t.getAttribute('tabindex') === '0' && !/^(BUTTON|A|INPUT|SUMMARY|VIDEO)$/.test(tag)) {
     e.preventDefault();
     t.click();
   }
@@ -1784,8 +1796,8 @@ async function smapTry(prev, s, e) {
   const sp = smapSpec(prev.tmdb, s, e);
   if (!sp) return false;
   const base = Object.assign(baseOf(prev), {s: s, e: e, fid: sp.fid != null ? sp.fid : null, fname: sp.name || '', ref: sp.ref || '', vh: sp.hash || '', src: sp.src || ''});
-  if (sp.hash) { await startPlay({hash: sp.hash, name: sp.name || prev.title, slow: true, s: s, e: e}, 'watch', base); return true; }
-  if (sp.ref) { await startPlay({ref: sp.ref, name: sp.name || prev.title, s: s, e: e}, 'watch', base); return true; }
+  if (sp.hash) { const d = await startPlay({hash: sp.hash, name: sp.name || prev.title, slow: true, s: s, e: e}, 'watch', base); return !!d || pullId !== LAST_PULL; }
+  if (sp.ref) { const d = await startPlay({ref: sp.ref, name: sp.name || prev.title, s: s, e: e}, 'watch', base); return !!d || pullId !== LAST_PULL; }
   if (sp.src) { await pullSource(sp.src, base, sp.fid != null ? sp.fid : null); return true; }
   return false;
 }
@@ -1805,6 +1817,7 @@ function smapUI() {
     const list = smapKeys(m).map(k => { const a = k.split(':'); return 'S' + p2(a[0]) + 'E' + p2(a[1]); }).join(' · ');
     box.innerHTML = '<button class="fc" onclick="smapAdd()">' + (mine ? '🔄 حدّث مصدر الحلقة دي' : '📌 ضيف الحلقة دي لتسلسل المسلسل (للكل)') + '</button>' +
       (mine ? ' <button class="fc" style="background:var(--danger)" onclick="smapDel()">🗑 شيلها</button>' : '') +
+      (c.vh && smapCount(c) ? ' <button class="fc" style="background:#0ea5e9" onclick="smapAddSeason()">📌 ضيف الموسم ' + c.s + ' كله (' + smapCount(c) + ' حلقة) من النسخة دي</button>' : '') +
       '<div style="font-size:12px;color:var(--mut);margin-top:6px">📌 المضاف للكل: ' + (list || 'لسه مفيش') + '</div>';
   });
 }
@@ -1816,6 +1829,22 @@ async function smapAdd() {
   if (!r.ok || d.error) return alert(d.error || 'مقدرتش أضيف الحلقة');
   SMAP[c.tmdb] = d.eps || {};
   smapUI();
+}
+function smapCount(c) {
+  if (!cur || cur.id !== c.tmdb) return 0;
+  const sn = (cur.seasons || []).find(x => x.n === c.s);
+  return sn ? (sn.eps || 0) : 0;
+}
+async function smapAddSeason() {
+  const c = PLAY, n = c ? smapCount(c) : 0;
+  if (!c || !c.tmdb || !c.vh || !n) return;
+  if (!confirm('هضيف حلقات الموسم ' + c.s + ' (' + n + ' حلقة) من نفس النسخة، وتشتغل ورا بعض. الحلقات المضافة قبل كده مش هتتغيّر. كمّل؟')) return;
+  const {r, d} = await api('/series/map/bulk', {method: 'POST', body: JSON.stringify({id: c.tmdb, s: c.s, count: n,
+    spec: {hash: c.vh, name: c.fname || c.title || ''}})});
+  if (!r.ok || d.error) return alert(d.error || 'مقدرتش أضيف الموسم');
+  SMAP[c.tmdb] = d.eps || {};
+  smapUI();
+  alert('اتضافت ' + (d.added || 0) + ' حلقة جديدة');
 }
 async function smapDel() {
   const c = PLAY;
@@ -4545,7 +4574,7 @@ function nfxInit(v) {
   box.tabIndex = 0;
   box.addEventListener('keydown', e => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    const t = e.target, k = e.key;
+    const t = e.target, k = keyOf(e);
     if ((k === ' ' || k === 'Enter') && t !== box && /^(BUTTON|INPUT|A)$/.test(t.tagName)) return;
     if (t.tagName === 'INPUT' && t.type === 'range' && /^Arrow/.test(k)) return;
     let h = true;
