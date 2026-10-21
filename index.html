@@ -1891,6 +1891,87 @@ function keyOf(c) {
   if (c.tmdb && c.type === 'movie') return 'm:' + c.tmdb;
   return 'u:' + hash(c.src || c.title || '') + (c.fid != null ? ':' + c.fid : '');
 }
+// ===== شريط فحص دايم تحت كل فيديو: ✅ لو سليم، ⚠️ + السبب (واتبلّغ للأدمن) لو فيه مشكلة =====
+function vchk() {
+  const v = document.querySelector('#results video'), pe = $('playErr');
+  if (!v || !pe) return;
+  let box = $('vchk');
+  if (!box) {
+    pe.insertAdjacentHTML('afterend', '<div id="vchk" style="margin-top:8px;font-size:12px;border:1px solid #243044;border-radius:10px;padding:8px 10px;color:var(--mut)"><span id="vchkT">⏳ بيفحص الفيديو...</span>' +
+      (ROLE === 'admin' ? '<div><button class="fc" style="margin-top:6px" onclick="vchkReports()">📋 بلاغات المشاهدة</button><pre id="vchkRep" style="display:none;direction:rtl;white-space:pre-wrap;font-size:11px;color:#cbd5e1;background:#0b1220;padding:8px;border-radius:8px;margin-top:6px"></pre></div>' : '') + '</div>');
+    box = $('vchk');
+  }
+  const T = $('vchkT'), my = pullId, t0 = Date.now(), sent = {};
+  let lastT = -1, lastAdv = Date.now(), hooked = false, hlsErr = '', iv = null;
+  const mode = () => (PLAY && PLAY.hls) ? 'HLS محوَّل' : 'مباشر';
+  const set = (ok, msg) => {
+    if (!T.isConnected) return;
+    let extra = '';
+    if (ok === false) {
+      if (!sent[msg]) {
+        sent[msg] = 1;
+        api('/play/report', {method: 'POST', body: JSON.stringify({msg: msg, title: PLAY && PLAY.title, s: PLAY && PLAY.s, e: PLAY && PLAY.e,
+          mode: mode(), f: PLAY && (PLAY.fname || ''), ua: navigator.userAgent})}).catch(() => {});
+      }
+      extra = ' · 📤 اتبلّغ للأدمن';
+    }
+    T.style.color = ok === true ? 'var(--success)' : ok === false ? '#f59e0b' : 'var(--mut)';
+    T.textContent = (ok === true ? '✅ ' : ok === false ? '⚠️ ' : '⏳ ') + msg + extra;
+  };
+  const tick = () => {
+    if (my !== pullId || !T.isConnected) { clearInterval(iv); return; }
+    if (!hooked && v._hls && window.Hls) {
+      hooked = true;
+      try { v._hls.on(Hls.Events.ERROR, (ev, data) => { if (data && data.fatal) hlsErr = data.details || data.type || 'خطأ'; }); } catch (e) {}
+    }
+    if (v.error) return set(false, 'خطأ تشغيل: ' + ({1: 'اتلغى', 2: 'مشكلة شبكة', 3: 'الفيديو مش بيتفك', 4: 'الصيغة مش مدعومة'}[v.error.code] || v.error.code));
+    if (hlsErr) return set(false, 'خطأ في بث HLS: ' + hlsErr);
+    if (v.readyState >= 1 && v.videoWidth === 0 && Date.now() - t0 > 4000) return set(false, 'الصورة مش بتتفك (غالباً H.265 أو 4K). شغّله من مشغّل خارجي');
+    if (v.paused || v.currentTime !== lastT || v.readyState >= 3) lastAdv = Date.now();
+    lastT = v.currentTime;
+    if (!v.paused && Date.now() - lastAdv > 10000) return set(false, 'الفيديو واقف بيحمّل من ' + Math.round((Date.now() - lastAdv) / 1000) + ' ث');
+    if (v.currentTime > 3 && v.videoWidth > 0) {
+      if (typeof v.webkitAudioDecodedByteCount === 'number' && v.webkitAudioDecodedByteCount === 0 && !v.muted && v.volume > 0 && !v.paused)
+        return set(false, 'مفيش صوت: صيغة الصوت (AC3 / DTS / EAC3) مش مدعومة في المتصفح');
+      return set(true, 'شغّال سليم · ' + mode() + ' · ' + v.videoWidth + '×' + v.videoHeight);
+    }
+    if (Date.now() - t0 > 20000 && v.readyState < 3) return set(false, 'لسه بيحمّل بعد 20 ثانية (' + mode() + ')');
+    set(null, 'بيفحص... (' + mode() + ')');
+  };
+  iv = setInterval(tick, 2000);
+  tick();
+}
+async function vchkReports() {
+  const pre = $('vchkRep');
+  if (!pre) return;
+  if (pre.style.display === 'block') { pre.style.display = 'none'; return; }
+  pre.style.display = 'block';
+  pre.textContent = 'جاري التحميل...';
+  try {
+    const {d} = await api('/play/reports');
+    pre.textContent = (d.items || []).length ? d.items.map(x => new Date(x.t * 1000).toLocaleString('ar-EG') + ' · ' + x.u + '\n' + (x.title || '') +
+      (x.s != null ? ' S' + p2(x.s) + 'E' + p2(x.e) : '') + ' [' + x.mode + ']\n⚠️ ' + x.msg + (x.f ? '\n' + x.f : '')).join('\n\n') : (d.error || 'مفيش بلاغات');
+  } catch (e) { pre.textContent = 'مش قادر أجيب البلاغات'; }
+}
+// لو الفيديو علّق (دايرة بتلف) أو صورته مش بتتفك (H.265 / 4K): نقول السبب ونوجّه لحل
+function playWatch() {
+  const v = document.querySelector('#results video');
+  if (!v) return;
+  const my = pullId, hint = /x265|h\.?265|hevc|2160p|4k|uhd/i.test((PLAY && (PLAY.fname || '')) + ' ' + (PLAY && PLAY.title || ''));
+  let shown = false;
+  const say = m => { const pe = $('playErr'); if (!shown && pe && my === pullId && !pe.textContent.trim()) { shown = true; pe.innerHTML = warn(m); } };
+  const check = () => {
+    if (my !== pullId || !v.isConnected || shown) return;
+    if (v.readyState >= 1 && v.videoWidth === 0 && !v.error) {
+      say('الصوت/الوقت ظاهر بس الصورة مش بتتفك: الملف غالباً H.265 (HEVC) أو 4K ومتصفحك مش بيدعمه. شغّله من مشغّل خارجي (MX Player / VLC) من الأزرار تحت، أو اختار نسخة 1080p H.264.');
+    } else if (v.currentTime < 1 && v.readyState < 3 && !v.ended) {
+      say('الفيديو لسه بيحمّل' + (hint ? ' (الملف H.265/4K وكبير)' : '') + '. لو فضل كده شغّله من مشغّل خارجي (MX Player / VLC) من الأزرار تحت أو جرّب نسخة 1080p تانية.');
+    }
+  };
+  setTimeout(check, 12000);
+  v.addEventListener('loadedmetadata', () => setTimeout(check, 6000), {once: true});
+  v.addEventListener('playing', () => { if (v.videoWidth > 0) { const was = shown; shown = true; const pe = $('playErr'); if (was && pe && my === pullId) pe.innerHTML = ''; } });
+}
 function playData(d, base) {
   const ov = document.querySelector('#results video');
   if (ov && ov._hls) { try { ov._hls.destroy(); } catch (e) {} }
@@ -1914,6 +1995,8 @@ function playData(d, base) {
     linkCard(d, true) + '<div id="nextUp"></div>' + chk + '</div>' + (pack ? packListHTML() : '');
   attachPlayer();
   try { smapUI(); } catch (e) {}
+  try { playWatch(); } catch (e) {}
+  try { vchk(); } catch (e) {}
 }
 function linkCard(d, video) {
   const u = esc(d.direct_link);
