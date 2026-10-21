@@ -1907,6 +1907,10 @@ function vchk() {
           mode: mode(), f: PLAY && (PLAY.fname || ''), ua: navigator.userAgent})}).catch(() => {});
       }
       extra = ' · 📤 اتبلّغ للأدمن';
+      if (/واقف|الصورة مش بتتفك|لسه بيحمّل بعد/.test(msg) && PLAY && !PLAY.hls && PLAY.tmdb && AUTO_N < 2) {
+        AUTO_N++;
+        setTimeout(tryNextVersion, 1500);
+      }
     }
     const rb = $('vchkB');
     if (rb) rb.style.display = ok === false ? 'inline-block' : 'none';
@@ -2085,6 +2089,7 @@ function attachPlayer() {
       (PLAY && PLAY.vh && !PLAY.hls ? '<button class="search-btn" style="margin-top:8px;background:#0ea5e9" onclick="retryStream()">🔄 جرّب البث المحوَّل تاني (نفس النسخة)</button>' : '') + retryBtn();
     const pm = document.querySelector('details.pm');
     if (pm) pm.open = true;
+    probeCurrent();
   });
   v.addEventListener('playing', () => {
     const b = $('playErr');
@@ -2120,6 +2125,23 @@ function attachPlayer() {
   if (PLAY.hls) setupHls(v);
   if (isTv()) { try { v.focus(); } catch (e) {} }
   try { nfxInit(v); } catch (e) { console.error('nfx', e); }
+}
+let AUTO_N = 0;
+async function probeCurrent() {
+  if (ROLE !== 'admin' || !PLAY || !PLAY.url || PLAY._probed) return;
+  PLAY._probed = true;
+  const pe = $('playErr');
+  try {
+    const {d} = await api('/play/probe', {method: 'POST', body: JSON.stringify({url: PLAY.url})});
+    const txt = d.error || ('الحاوية: ' + d.container + ' | الكودكات: ' + (d.codecs || []).join(', ') + ' | HTTP ' + d.status + ' | ' + d.type + ' | ' + fmtSize(d.total) + ' | ' + d.host + '\n⇒ ' + d.fix);
+    if (pe) pe.insertAdjacentHTML('beforeend', '<pre style="direction:rtl;white-space:pre-wrap;font-size:12px;color:#cbd5e1;background:#0b1220;padding:8px;border-radius:8px;margin-top:8px">🔬 ' + esc(txt) + '</pre>');
+    api('/play/report', {method: 'POST', body: JSON.stringify({msg: 'PROBE: ' + txt.replace(/\n/g, ' ').slice(0, 280), title: PLAY.title, s: PLAY.s, e: PLAY.e, mode: 'probe', f: PLAY.fname || '', ua: navigator.userAgent})}).catch(() => {});
+    if (/المتصفح مش بيفك|MKV/.test(d.fix || '') && !PLAY.hls && PLAY.tmdb && AUTO_N < 2) {
+      AUTO_N++;
+      if (pe) pe.insertAdjacentHTML('beforeend', warn('بجرّب نسخة تانية تلقائياً (' + AUTO_N + '/2)...'));
+      setTimeout(tryNextVersion, 1500);
+    }
+  } catch (e) {}
 }
 function nextTarget() {
   const c = PLAY;
@@ -3398,10 +3420,11 @@ const VER = {list: [], s: null, e: null, showSlow: false, key: '', err: '', diag
 const qRank = q => ({'1080P': 0, '2160P': 1, '4K': 1, '720P': 2, '480P': 3}[q] ?? 4);
 function verSort(list) {
   const df = dubFirst();
-  const rk = x => (x.risky && !x.hash) ? 1 : 0;   // نسخة مش هتتحوّل (Stremio) وصوتها/صيغتها مش للمتصفح
+  const rk = x => (!x.hash && (x.risky || /2160|4K/i.test(x.q))) ? 1 : 0;   // نسخة مباشرة (Stremio) خطرة/4K: آخر الترتيب
   return list.slice().sort((a, b) =>
-    (df ? dubRank(b) - dubRank(a) : 0) ||     // الأول اللغة: عربي مدبلج ← مترجم ← الأصلي
     (rk(a) - rk(b)) ||
+    (df ? dubRank(b) - dubRank(a) : 0) ||     // اللغة: عربي مدبلج ← مترجم ← الأصلي
+
     (b.instant - a.instant) ||
     (qRank(a.q) - qRank(b.q)) ||
     (a.risky - b.risky) ||
@@ -3449,6 +3472,7 @@ function closeVP() {
   }
 }
 async function playOpen(s, e) {
+  AUTO_N = 0;
   if (!cur || !cur.imdb) return alert('العمل ده مالوش بيانات كافية للتشغيل');
   want = s ? {s: s, e: e || null} : null;
   VER.s = s || null;
@@ -3643,7 +3667,9 @@ async function playBest(s, e) {
   VER.e = s ? (e || 1) : null;
   let list = [];
   try { list = await fetchVersions(VER.s, VER.e); } catch (x) {}
-  const ranked = list.filter(v => v.instant && !FAILED.has(v.hash || v.ref));
+  const all0 = list.filter(v => v.instant && !FAILED.has(v.hash || v.ref));
+  const okv = all0.filter(v => v.hash || !(v.risky || /2160|4K/i.test(v.q)));
+  const ranked = okv.length ? okv : all0;
   // 3 نسخ تورنت فوري + 3 نسخ Stremio بالترتيب (عشان لو روابط Stremio ميتة، نسخ التورنت الشغالة تتجرّب)
   const keep = new Set(ranked.filter(v => v.hash).slice(0, 3).concat(ranked.filter(v => !v.hash).slice(0, 3)));
   const cands = ranked.filter(v => keep.has(v));
@@ -4117,7 +4143,7 @@ async function tryNextVersion() {
   if (vid) saveProgress(vid);
   const info = {tmdb: PLAY.tmdb, type: PLAY.type, s: PLAY.s, e: PLAY.e, qn: PLAY.qn};
   let v = null;
-  try { v = await altVersion(info, PLAY.vh || PLAY.src); } catch (x) {}
+  try { v = await altVersion(info, PLAY.vh || PLAY.ref || PLAY.src); } catch (x) {}
   if (!v) return playOpen(info.s || undefined, info.e || undefined);
   return startPlay(specOf(v), 'watch');
 }
