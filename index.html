@@ -1907,6 +1907,7 @@ function vchk() {
           mode: mode(), f: PLAY && (PLAY.fname || ''), ua: navigator.userAgent})}).catch(() => {});
       }
       extra = ' · 📤 اتبلّغ للأدمن';
+      try { probeCurrent(); } catch (x) {}
       if (/واقف|الصورة مش بتتفك|لسه بيحمّل بعد/.test(msg) && PLAY && !PLAY.hls && PLAY.tmdb && AUTO_N < 2) {
         AUTO_N++;
         setTimeout(tryNextVersion, 1500);
