@@ -173,6 +173,8 @@ video{border-radius:14px}
 .nfx video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:0;background:#000}
 .nfx video::cue{background:rgba(0,0,0,0);color:#fff;font-size:1.15em;text-shadow:0 0 4px #000,0 0 6px #000,1px 1px 3px #000}
 .nfx:fullscreen{width:100vw;height:100vh;aspect-ratio:auto;border-radius:0}
+#results:fullscreen,#results:-webkit-full-screen{background:#000;overflow:hidden;padding:0}
+#results:fullscreen .nfx,#results:-webkit-full-screen .nfx{position:fixed;inset:0;width:100vw;height:100vh;max-width:none;aspect-ratio:auto;border-radius:0;z-index:9999}
 .nfx:-webkit-full-screen{width:100vw;height:100vh;aspect-ratio:auto;border-radius:0}
 .nfx svg{width:1em;height:1em;fill:currentColor;display:block}
 .nfx :where(button){font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;-webkit-appearance:none}
@@ -202,6 +204,8 @@ video{border-radius:14px}
 .nfx-track{position:relative;width:100%;height:4px;background:rgba(255,255,255,.3);border-radius:2px;transition:height .12s}
 .nfx-bar:hover .nfx-track,.nfx-bar.drag .nfx-track{height:7px}
 .nfx-buf{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.35);border-radius:2px;width:0}
+.epbar{display:block;height:3px;margin-top:5px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden}
+.epbar i{display:block;height:100%}
 .nfx-prog{position:absolute;left:0;top:0;bottom:0;background:#e50914;border-radius:2px;width:0}
 .nfx-thumb{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#e50914;transform:scale(0);transition:transform .12s;left:0}
 .nfx-bar:hover .nfx-thumb,.nfx-bar.drag .nfx-thumb{transform:scale(1)}
@@ -1174,8 +1178,10 @@ function toggleList() {
 function epMark(tmdb, s, e) {
   const it = getItem('e:' + tmdb + ':' + s + ':' + e);
   if (!it || it.del) return '';
-  if (it.done) return ' <span style="color:var(--success)">✓ شوهدت</span>';
-  return ' <span style="color:#f59e0b">▶ ' + Math.round(it.pos / (it.dur || 1) * 100) + '%</span>';
+  const pc = it.done ? 100 : Math.max(0, Math.min(100, Math.round((it.pos || 0) / (it.dur || 1) * 100)));
+  const bar = '<span class="epbar"><i style="width:' + pc + '%;background:' + (it.done ? 'var(--success)' : '#f59e0b') + '"></i></span>';
+  if (it.done) return ' <span style="color:var(--success)">✓ شوهدت</span>' + bar;
+  return ' <span style="color:#f59e0b">▶ ' + pc + '%</span>' + bar;
 }
 
 // ================= البحث: أفلام / مسلسلات =================
@@ -1371,11 +1377,13 @@ async function loadSeason(n) {
     const {d} = await api('/season?id=' + cur.id + '&n=' + n);
     if (my !== sReq) return;
     if (d.error) return b.innerHTML = warn(d.error);
-    b.innerHTML = (ADV() || !cur.imdb ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
+    await smapLoad(cur.id);
+    if (my !== sReq) return;
+    b.innerHTML = (smapKeys(SMAP[cur.id]).length ? '<p style="margin:0 0 10px;color:#38bdf8;font-size:13px">📌 المسلسل متضاف للكل: ' + smapKeys(SMAP[cur.id]).length + ' حلقة بتشتغل ورا بعض</p>' : '') + (ADV() || !cur.imdb ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
       d.episodes.map(e => '<div class="ep">' +
         (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '') +
         '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) +
-        (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + '</small></div>' +
+        (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌 مضافة</span>' : '') + '</small></div>' +
         playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
         (ADV() || !cur.imdb ? '<button onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div>').join('');
   } catch (e) { if (my === sReq) b.innerHTML = ERR; }
@@ -1399,6 +1407,10 @@ function useAlt(n) {
 }
 function go(s, e, auto, skipSt, skipNew) {
   if (auto && noWatch()) return;
+  if (auto && s != null && e != null && cur && cur.id && smapSpec(cur.id, s, e)) {
+    smapTry({title: cur.title || cur.name, poster: cur.poster, year: cur.year, type: 'tv', tmdb: cur.id, imdb: cur.imdb || '', qn: cur.qname || ''}, s, e);
+    return;
+  }
   if (auto && !skipNew && cur && cur.imdb) return playBest(s, e);
   if (auto && !skipSt && ST.n > 0 && cur && cur.imdb) return stGo(s, e, true);
   want = s ? {s: s, e: e || null} : null;
@@ -1766,6 +1778,60 @@ async function getLink(body, id) {
     return res;
   }
 }
+// ===== تسلسل المسلسل المتضاف (للكل): كل حلقة ليها مصدرها، والتالية بتشتغل بنفس الترتيب =====
+const SMAP = {};
+async function smapLoad(id, force) {
+  if (!id) return {};
+  if (SMAP[id] && !force) return SMAP[id];
+  try { const {d} = await api('/series/map?id=' + encodeURIComponent(id)); SMAP[id] = d.eps || {}; } catch (e) { SMAP[id] = SMAP[id] || {}; }
+  return SMAP[id];
+}
+const smapSpec = (id, s, e) => (SMAP[id] || {})[s + ':' + e] || null;
+const smapKeys = m => Object.keys(m || {}).sort((a, b) => { const x = a.split(':').map(Number), y = b.split(':').map(Number); return x[0] - y[0] || x[1] - y[1]; });
+async function smapTry(prev, s, e) {
+  if (!prev || !prev.tmdb || s == null || e == null) return false;
+  await smapLoad(prev.tmdb);
+  const sp = smapSpec(prev.tmdb, s, e);
+  if (!sp) return false;
+  const base = Object.assign(baseOf(prev), {s: s, e: e, fid: sp.fid != null ? sp.fid : null, fname: sp.name || '', ref: sp.ref || '', vh: sp.hash || '', src: sp.src || ''});
+  if (sp.hash) { await startPlay({hash: sp.hash, name: sp.name || prev.title, slow: true, s: s, e: e}, 'watch', base); return true; }
+  if (sp.ref) { await startPlay({ref: sp.ref, name: sp.name || prev.title, s: s, e: e}, 'watch', base); return true; }
+  if (sp.src) { await pullSource(sp.src, base, sp.fid != null ? sp.fid : null); return true; }
+  return false;
+}
+function smapUI() {
+  const c = PLAY;
+  if (!c || ROLE !== 'admin' || c.type !== 'tv' || !c.tmdb || c.s == null || c.e == null || !(c.vh || c.ref || c.src)) return;
+  const pe = $('playErr');
+  if (!pe) return;
+  let box = $('smapBox');
+  if (!box) { pe.insertAdjacentHTML('beforebegin', '<div id="smapBox" style="margin-top:10px"></div>'); box = $('smapBox'); }
+  smapLoad(c.tmdb).then(m => {
+    if (!box.isConnected) return;
+    const mine = m[c.s + ':' + c.e];
+    const list = smapKeys(m).map(k => { const a = k.split(':'); return 'S' + p2(a[0]) + 'E' + p2(a[1]); }).join(' · ');
+    box.innerHTML = '<button class="fc" onclick="smapAdd()">' + (mine ? '🔄 حدّث مصدر الحلقة دي' : '📌 ضيف الحلقة دي لتسلسل المسلسل (للكل)') + '</button>' +
+      (mine ? ' <button class="fc" style="background:var(--danger)" onclick="smapDel()">🗑 شيلها</button>' : '') +
+      '<div style="font-size:12px;color:var(--mut);margin-top:6px">📌 المضاف للكل: ' + (list || 'لسه مفيش') + '</div>';
+  });
+}
+async function smapAdd() {
+  const c = PLAY;
+  if (!c || !c.tmdb) return;
+  const {r, d} = await api('/series/map', {method: 'POST', body: JSON.stringify({id: c.tmdb, s: c.s, e: c.e,
+    spec: {hash: c.vh || '', name: c.fname || c.title || '', fid: c.fid, src: c.src || '', ref: c.ref || ''}})});
+  if (!r.ok || d.error) return alert(d.error || 'مقدرتش أضيف الحلقة');
+  SMAP[c.tmdb] = d.eps || {};
+  smapUI();
+}
+async function smapDel() {
+  const c = PLAY;
+  if (!c || !c.tmdb || !confirm('تشيل الحلقة دي من التسلسل؟')) return;
+  const {r, d} = await api('/series/unmap', {method: 'POST', body: JSON.stringify({id: c.tmdb, s: c.s, e: c.e})});
+  if (!r.ok || d.error) return alert(d.error || 'فشل');
+  SMAP[c.tmdb] = d.eps || {};
+  smapUI();
+}
 // بيجيب رابط البث المحوَّل (صوته شغّال) للملفات اللي جاية من /generate (TorBox). التحميل مابيتأثرش.
 async function ensureHls(d, fid, id) {
   if (!d || d.hls || !d.torrent_id || !/^\d+$/.test(String(d.torrent_id))) return;
@@ -1844,6 +1910,7 @@ function playData(d, base) {
     (c.resume ? '<p style="margin:0 0 8px;color:var(--mut)">▶ هيكمّل من ' + fmtTime(c.resume) + '</p>' : '') +
     linkCard(d, true) + '<div id="nextUp"></div>' + chk + '</div>' + (pack ? packListHTML() : '');
   attachPlayer();
+  try { smapUI(); } catch (e) {}
 }
 function linkCard(d, video) {
   const u = esc(d.direct_link);
@@ -1961,6 +2028,10 @@ function attachPlayer() {
 function nextTarget() {
   const c = PLAY;
   if (!c || c.type === 'movie') return null;
+  if (c.tmdb && c.s != null && c.e != null) {
+    const ne = nextEpOf(c);
+    if (ne && smapSpec(c.tmdb, ne.s, ne.e)) return {kind: 'map', s: ne.s, e: ne.e, label: 'S' + p2(ne.s) + 'E' + p2(ne.e)};
+  }
   if (pack && pack.files && c.fid != null) {
     const i = pack.files.findIndex(f => f.id === c.fid);
     if (i >= 0) {
@@ -1979,7 +2050,7 @@ const nextBtn = n => '<button class="search-btn btn-blue" style="margin-top:10px
 function checkNext(v) {
   if (nextShown || cdTimer || !PLAY || !isFinite(v.duration)) return;
   const left = v.duration - v.currentTime;
-  if (left > 30 || left <= 0) return;
+  if (left > Math.min(200, v.duration * 0.2) || left <= 0) return;
   const n = nextTarget(), box = $('nextUp');
   if (!n || !box) return;
   nextShown = true;
@@ -2020,6 +2091,7 @@ async function ensureCur(id, type, qn) {
   selected = {title: d.title, year: d.year, type: d.type, poster: d.poster};
 }
 async function nextSameSource(prev, s, e) {
+  if (await smapTry(prev, s, e)) return true;
   if (!prev || !prev.vh) return false;
   const base = Object.assign(baseOf(prev), {s: s, e: e, fid: null, fname: '', ref: ''});
   const d = await startPlay({hash: prev.vh, name: prev.fname || prev.title, slow: true, s: s, e: e}, 'watch', base);
@@ -2030,6 +2102,7 @@ async function playNext() {
   clearCd();
   const n = nextTarget();
   if (!n) return;
+  if (n.kind === 'map' && await smapTry(PLAY, n.s, n.e)) return;
   if (n.kind === 'pack') return playPackFile(n.f);
   if (await nextSameSource(PLAY, n.s, n.e)) return;
   await ensureCur(PLAY.tmdb, PLAY.type, PLAY.qn);
@@ -2540,7 +2613,7 @@ function subQ(lang, forAuto) {
   if (c.tmdb && c.type) {
     q += '&type=' + c.type + '&id=' + c.tmdb;
   } else {
-    const t = forAuto ? '' : (($('subQ') || {}).value || '').trim();
+    const t = forAuto ? String(c.title || '').trim() : (($('subQ') || {}).value || '').trim();
     if (!t) return null;
     q += '&q=' + encodeURIComponent(t);
     if (c.s != null) q += '&type=tv';
@@ -3784,12 +3857,12 @@ window.addEventListener('scroll', () => {
 });
 
 // ================= بلاطات التصنيفات + الاهتمامات + دمج الصفوف =================
-const GTILES = [['action', 'أكشن'], ['drama', 'دراما'], ['comedy', 'كوميديا'], ['crime', 'جريمة'], ['scifi', 'خيال علمي'],
+const GTILES = [['action', 'أكشن'], ['drama', 'دراما'], ['int:hi', '🇮🇳 هندي'], ['comedy', 'كوميديا'], ['crime', 'جريمة'], ['scifi', 'خيال علمي'],
   ['horror', 'رعب'], ['romance', 'رومانسي'], ['cartoon', 'كرتون'], ['family', 'عائلي'], ['doc', 'وثائقي']];
 function renderGenres() {
   const el = $('gtiles');
   if (el) el.innerHTML = '<div class="hrow">' + GTILES.map(g => '<button class="gtile" data-g="' + g[0] + '" data-n="' + g[1] +
-    '" onclick="openBrowse(\'genre=\' + this.dataset.g, this.dataset.n)">' + g[1] + '</button>').join('') + '</div>';
+    '" onclick="openBrowse((this.dataset.g.indexOf(\'int:\') === 0 ? \'int=\' + this.dataset.g.slice(4) : \'genre=\' + this.dataset.g), this.dataset.n)">' + g[1] + '</button>').join('') + '</div>';
 }
 let IALL = [], IROWS = [], LATEST = [], IPICK = new Set(), INT_OPEN = false;
 async function loadLatest() {
@@ -3977,15 +4050,17 @@ function nfxFs() {
     if (x) { try { const p = x.call(document); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
     return true;
   }
-  const f = S.box.requestFullscreen || S.box.webkitRequestFullscreen;
-  if (f) { try { const p = f.call(S.box); if (p && p.catch) p.catch(() => {}); } catch (e) {} return true; }
+  const T = S.box.closest('#results') || S.box;
+  const f = T.requestFullscreen || T.webkitRequestFullscreen;
+  if (f) { try { const p = f.call(T); if (p && p.catch) p.catch(() => {}); } catch (e) {} return true; }
   if (S.v.webkitEnterFullscreen) { try { S.v.webkitEnterFullscreen(); } catch (e) {} return true; }
   return false;
 }
 document.addEventListener('fullscreenchange', () => {
   const S = NFX;
   if (!S) return;
-  const on = document.fullscreenElement === S.box;
+  const fe0 = document.fullscreenElement || document.webkitFullscreenElement;
+  const on = !!fe0 && (fe0 === S.box || fe0 === S.box.closest('#results'));
   (S.fsbs || [S.fsb]).forEach(b => { b.innerHTML = on ? NI.fsx : NI.fs; });
   try {
     if (on) { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); S.box.focus({preventScroll: true}); }
@@ -3996,6 +4071,7 @@ function nfxInit(v) {
   const box = v && v.parentElement;
   if (!box || !box.classList.contains('nfx')) return;
   nfxDestroy();
+  try { if (document.fullscreenElement || document.webkitFullscreenElement) setTimeout(() => { try { box.focus({preventScroll: true}); } catch (e) {} }, 50); } catch (e) {}
   v.controls = false;
   v.removeAttribute('controls');
   const title = () => esc((PLAY && (PLAY.title || PLAY.fname)) || '') +
@@ -4080,9 +4156,9 @@ function nfxInit(v) {
       for (let i = 0; i < b.length; i++) if (b.start(i) <= v.currentTime + 0.5 && b.end(i) > end) end = b.end(i);
       S.buf.style.width = d ? Math.min(100, end / d * 100) + '%' : '0';
     } catch (e) {}
-    // زر الحلقة التالية في آخر 30 ثانية
+    // زر الحلقة التالية في آخر 200 ثانية
     const n = (d && typeof nextTarget === 'function') ? nextTarget() : null, left = d - v.currentTime;
-    if (n && left > 0 && left <= 30 && !v.ended) {
+    if (n && left > 0 && left <= Math.min(200, d * 0.2) && !v.ended) {
       S.nextEl.querySelector('span').textContent = 'الحلقة التالية ' + n.label;
       S.nextEl.classList.add('on');
     } else S.nextEl.classList.remove('on');
@@ -4316,7 +4392,18 @@ function nfxInit(v) {
     if ((k === ' ' || k === 'Enter') && t !== box && /^(BUTTON|INPUT|A)$/.test(t.tagName)) return;
     if (t.tagName === 'INPUT' && t.type === 'range' && /^Arrow/.test(k)) return;
     let h = true;
-    if (k === ' ' || k === 'k' || k === 'K' || k === 'Enter') toggle();
+    const kc = e.keyCode;
+    if (k === 'MediaPlayPause' || k === 'MediaPlay' || k === 'MediaPause' || kc === 179 || kc === 415 || kc === 19) {
+      if (k === 'MediaPlay' || kc === 415) v.play().catch(() => {}); else if (k === 'MediaPause' || kc === 19) v.pause(); else toggle();
+    }
+    else if (k === 'MediaFastForward' || kc === 417 || kc === 228) seekBy(30, 'r');
+    else if (k === 'MediaRewind' || kc === 412 || kc === 227) seekBy(-30, 'l');
+    else if (k === 'MediaTrackNext' || kc === 176 || kc === 406) { if (typeof nextTarget === 'function' && nextTarget()) playNext(); else h = false; }
+    else if (k === 'MediaTrackPrevious' || kc === 177) seekBy(-30, 'l');
+    else if (kc === 403) nfxFs();
+    else if (kc === 405 || kc === 457 || k === 'ContextMenu' || k === 'Info') openPanel('as');
+    else if (kc === 461 || kc === 10009 || k === 'GoBack' || k === 'BrowserBack') { if (S.panel) closePanel(); else if (document.fullscreenElement || document.webkitFullscreenElement) nfxFs(); else h = false; }
+    else if (k === ' ' || k === 'k' || k === 'K' || k === 'Enter') toggle();
     else if (k === 'ArrowRight' || k === 'l' || k === 'L') seekBy(10, 'r');
     else if (k === 'ArrowLeft' || k === 'j' || k === 'J') seekBy(-10, 'l');
     else if (k === 'ArrowUp') setVol(v.volume + 0.1);
