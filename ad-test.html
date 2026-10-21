@@ -10,7 +10,7 @@ button{background:#16a34a;border:0;font-weight:700}
 pre{direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;font-size:11px;color:#cbd5e1;background:#020617;padding:10px;border-radius:8px}
 small{color:#94a3b8}
 </style></head><body>
-<h3>🧪 فحص AllDebrid — صفحة مستقلة (إصدار 3)</h3>
+<h3>🧪 فحص AllDebrid — صفحة مستقلة (إصدار 4)</h3>
 <small>الطلب بيطلع من متصفحك لـ AllDebrid مباشرة. المفتاح مابيتحفظش ومابيتبعتش لأي سيرفر تاني.</small>
 <input id="adKey" type="password" class="ltr" placeholder="مفتاح AllDebrid" autocomplete="off">
 <input id="adLink" class="ltr" placeholder="اكتب: حسابي   (أو magnet / hash / رابط ملف)">
@@ -18,5 +18,130 @@ small{color:#94a3b8}
 <pre id="adOut" style="display:none"></pre>
 <script>
 const $ = id => document.getElementById(id);
+// ---- فحص AllDebrid من المتصفح (تشخيص للأدمن بس، مابيغيّر أي تشغيل) ----
+async function adDiag() {
+  const key = ($('adKey').value || '').trim(), inp = ($('adLink').value || '').trim();
+  const out = $('adOut');
+  out.style.display = 'block';
+  if (!key || !inp) { out.textContent = 'اكتب المفتاح والرابط'; return; }
+  const mask = s => String(s).split(key).join('***');
+  let log = '';
+  const show = () => { out.textContent = log; };
+  const call = async (path, params, o) => {
+    o = o || {};
+    const base = o.base || 'https://api.alldebrid.com/v4';
+    const u = base + path + '?' + new URLSearchParams(Object.assign({agent: 'Elkomy', apikey: key}, params || {}));
+    try {
+      const r = await fetch(u, o.body ? {method: 'POST', body: o.body} : undefined);
+      const t = await r.text();
+      if (!o.quiet) log += '\n' + path + ' -> HTTP ' + r.status + '\n' + mask(t).slice(0, 1800) + '\n';
+      show();
+      try { return JSON.parse(t); } catch (e) { return null; }
+    } catch (e) {
+      log += '\n' + path + ' -> المتصفح اتمنع (غالباً CORS أو حجب): ' + mask(e) + '\n';
+      show();
+      return null;
+    }
+  };
+  const VID = /\.(mkv|mp4|avi|mov|webm|m4v)$/i;
+  const filesOf = async id => {
+    const f = await call('/magnet/files', {}, {body: new URLSearchParams([['id[]', String(id)]]), quiet: true});
+    const res = [];
+    const walk = (n, name) => {
+      if (!n || typeof n !== 'object') return;
+      if (Array.isArray(n)) { n.forEach(x => walk(x, name)); return; }
+      const lk = n.l || n.link;
+      if (typeof lk === 'string' && lk.startsWith('http')) res.push({filename: n.n || n.filename || name || '', link: lk, size: n.s || 0});
+      Object.keys(n).forEach(k => { if (n[k] && typeof n[k] === 'object') walk(n[k], n.n || name); });
+    };
+    walk(f && f.data, '');
+    return res;
+  };
+  const streamsOf = d => (d && (Array.isArray(d.streaming) ? d.streaming : (Array.isArray(d.streams) ? d.streams : []))) || [];
+  const streamIds = list => list.map(s => (s && typeof s === 'object') ? (s.id || s.name || '') : String(s)).filter(Boolean);
+  const tryStreams = async (d) => {
+    for (const sid of streamIds(streamsOf(d)).slice(0, 3)) {
+      await call('/link/streaming', {id: d.id, stream: sid});
+    }
+  };
+  out.textContent = 'جاري الفحص...';
+
+  // وضع "حسابي": بيفحص آخر تورنتات في حسابك ويشوف أنهي ملف ليه stream بديل
+  if (inp.replace(/ى/g, 'ي').replace(/\s+/g, '') === 'حسابي' || inp.toLowerCase() === 'my') {
+    const s = await call('/magnet/status', {}, {base: 'https://api.alldebrid.com/v4.1', quiet: true});
+    let ms = s && s.data && s.data.magnets;
+    ms = Array.isArray(ms) ? ms : (ms ? Object.values(ms) : []);
+    ms = ms.filter(m => m && +m.statusCode === 4).slice(0, 8);
+    log += 'تورنتات جاهزة في حسابك: ' + ms.length + '\n';
+    show();
+    let hits = 0;
+    for (const m of ms) {
+      const fl = (await filesOf(m.id)).filter(x => VID.test(x.filename)).sort((x, y) => y.size - x.size);
+      if (!fl.length) continue;
+      const j = await call('/link/unlock', {link: fl[0].link}, {quiet: true});
+      const d = j && j.data;
+      if (!d) { log += '- ' + String(fl[0].filename).slice(0, 70) + ' | فشل الفك: ' + mask(JSON.stringify(j && j.error)).slice(0, 120) + '\n'; show(); continue; }
+      const st = streamsOf(d);
+      log += '- ' + String(fl[0].filename).slice(0, 70) + ' | streams: ' + st.length + (st.length ? ' ' + mask(JSON.stringify(st)).slice(0, 250) : '') + '\n';
+      show();
+      if (st.length && hits < 2) { hits++; await tryStreams(d); }
+    }
+    log += '\nخلص.\n';
+    show();
+    return;
+  }
+
+  let link = inp;
+  const hm = /^[0-9a-fA-F]{40}$/.test(inp) ? inp : ((/btih:([0-9a-zA-Z]+)/i.exec(inp) || [])[1] || '');
+  if (inp.startsWith('magnet:') || hm) {
+    const mg = inp.startsWith('magnet:') ? inp : 'magnet:?xt=urn:btih:' + hm;
+    log += 'بضيف التورنت لحسابك على AllDebrid...\n';
+    show();
+    const up = await call('/magnet/upload', {}, {body: new URLSearchParams([['magnets[]', mg]]), quiet: true});
+    const m0 = up && up.data && up.data.magnets && up.data.magnets[0];
+    if (!m0 || m0.error || !m0.id) {
+      log += 'فشل الإضافة: ' + mask(JSON.stringify((m0 && m0.error) || (up && up.error) || up)).slice(0, 400) + '\n';
+      show();
+      return;
+    }
+    let st = null;
+    for (let i = 0; i < 20; i++) {
+      const s = await call('/magnet/status', {id: m0.id}, {base: 'https://api.alldebrid.com/v4.1', quiet: true});
+      let mm = s && s.data && s.data.magnets;
+      st = Array.isArray(mm) ? mm[0] : mm;
+      if (!st) break;
+      log += 'الحالة: ' + (st.status || '?') + ' (' + (st.statusCode != null ? st.statusCode : '?') + ')\n';
+      show();
+      if (+st.statusCode === 4 || +st.statusCode >= 5) break;
+      await new Promise(r => setTimeout(r, 3000));
+    }
+    if (!st || +st.statusCode !== 4) {
+      log += '\nالتورنت لسه مش جاهز على AllDebrid (' + (st ? st.status : '؟') + ').\n';
+      show();
+      return;
+    }
+    const links = (await filesOf(m0.id)).filter(x => VID.test(x.filename));
+    if (!links.length) { log += 'مفيش ملفات فيديو.\n'; show(); return; }
+    log += 'ملفات فيديو: ' + links.length + '\n';
+    for (const f of links.slice(0, 8)) {
+      const j = await call('/link/unlock', {link: f.link}, {quiet: true});
+      const st2 = streamsOf(j && j.data);
+      log += '- ' + String(f.filename).slice(0, 70) + ' | streams: ' + st2.length + (st2.length ? ' ' + mask(JSON.stringify(st2)).slice(0, 250) : '') + '\n';
+      show();
+      if (st2.length) { await tryStreams(j.data); break; }
+    }
+    log += '\nخلص.\n';
+    show();
+    return;
+  }
+
+  const j = await call('/link/unlock', {link: link});
+  const d = j && j.data;
+  const st = streamsOf(d);
+  log += '\nعدد الـ streams: ' + st.length + (d && d.id ? ' | id موجود' : ' | مفيش id') + '\n';
+  if (d && d.id) await tryStreams(d);
+  show();
+}
+
 
 </script></body></html>
