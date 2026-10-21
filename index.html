@@ -438,7 +438,7 @@ let torrents = [], shown = [], selected = null, cur = null, want = null;
 let qf = 'all', showAll = false, lastQ = '', autoPick = false, altQ = [];
 let seq = 0, pullId = 0, sReq = 0;
 let pack = null, packBase = null, curSrc = '', links = [];
-let PACKQ = false;
+let PACKQ = false, LAST_ERR = '';
 let PLAY = null, subs = [], subSel = null, cdTimer = null, nextShown = false;
 let ROWS = null, showCfg = false;
 let manage = false, editId = null, form = {emoji: '😎', color: '#3b82f6'};
@@ -2028,17 +2028,21 @@ async function playItem(key) {
   if (it.done && it.type === 'tv') return playAfter(it);
   const h0 = it.vh || ((/btih:([a-fA-F0-9]{40})/.exec(it.src || '') || [])[1] || '').toLowerCase();
   if (h0) return playByHash(Object.assign({}, it, {vh: h0}));
-  if (it.ref) return playByRef(it);
-  if (!it.src) return alert('مفيش مصدر محفوظ للعنصر ده');
-  if (it.dr) {
+  if (it.dr && it.src) {
     clearCd();
     pullId++;
     pack = null;
     curSrc = it.src;
     const b = baseOf(it);
     packBase = b;
-    return playData({direct_link: it.src, provider: 'Stremio', name: it.fname || it.title}, b);
+    playData({direct_link: it.src, provider: 'Stremio', name: it.fname || it.title}, b);
+    // لو الرابط المحفوظ انتهى: نجيب رابط جديد من نفس نسخة Stremio (الـref)
+    const v = document.querySelector('#results video');
+    if (v && it.ref) v.addEventListener('error', () => { if (!v._refTried) { v._refTried = true; playByRef(it); } }, {once: true});
+    return;
   }
+  if (it.ref) return playByRef(it);
+  if (!it.src) return alert('مفيش مصدر محفوظ للعنصر ده');
   await pullSource(it.src, baseOf(it), it.fid != null ? it.fid : null);
 }
 const baseOf = it => ({title: it.title, poster: it.poster, year: it.year, type: it.type, tmdb: it.tmdb,
@@ -3365,7 +3369,8 @@ async function startPlay(spec, mode, baseOver) {
     d = res.d;
     if (!res.r.ok || d.error || !d.direct) {
       if (d.nodl) { LOCK = Math.max(LOCK, d.lock || 1); LOCK_MSG = d.error || LOCK_MSG; $('results').innerHTML = ''; alert(d.error); return null; }
-      $('results').innerHTML = warn(d.error || 'حصل خطأ في التجهيز');
+      LAST_ERR = d.error || 'حصل خطأ في التجهيز';
+      $('results').innerHTML = warn(LAST_ERR);
       return null;
     }
   }
@@ -3408,14 +3413,18 @@ async function playBest(s, e) {
   VER.e = s ? (e || 1) : null;
   let list = [];
   try { list = await fetchVersions(VER.s, VER.e); } catch (x) {}
-  const cands = list.filter(v => v.instant && !FAILED.has(v.hash || v.ref)).slice(0, 6);
+  const ranked = list.filter(v => v.instant && !FAILED.has(v.hash || v.ref));
+  // 3 نسخ تورنت فوري + 3 نسخ Stremio بالترتيب (عشان لو روابط Stremio ميتة، نسخ التورنت الشغالة تتجرّب)
+  const keep = new Set(ranked.filter(v => v.hash).slice(0, 3).concat(ranked.filter(v => !v.hash).slice(0, 3)));
+  const cands = ranked.filter(v => keep.has(v));
   let firstErr = '';
   for (let i = 0; i < cands.length; i++) {
     if (i > 0) $('results').innerHTML = pend('النسخة اللي قبلها ما اشتغلتش، بجرّب النسخة ' + (i + 1) + ' من ' + cands.length + '...');
+    LAST_ERR = '';
     const d = await startPlay(specOf(cands[i]), 'watch');
     if (d || pullId !== LAST_PULL) return d;
     FAILED.add(cands[i].hash || cands[i].ref);
-    if (!firstErr) firstErr = (($('results') || {}).textContent || '').trim().slice(0, 90);
+    if (!firstErr) firstErr = String(LAST_ERR || '').slice(0, 90);
   }
   if (cands.length) $('results').innerHTML = warn('جرّبت ' + cands.length + ' نسخة ومفيش واحدة اشتغلت' + (firstErr ? ' (' + firstErr + ')' : '') + '. بدوّر في التورنت...');
   return go(s, e, true, true, true);
@@ -3437,7 +3446,15 @@ async function playByRef(it) {
   scrollToResults();
   const d = await startPlay({ref: it.ref, name: it.fname || it.title,
     s: it.s != null ? it.s : null, e: it.e != null ? it.e : null}, 'watch', baseOf(it));
-  if (!d && pullId === LAST_PULL) return resumeFallback(it);
+  if (!d && pullId === LAST_PULL) {
+    if (it.dr && it.src && !it._srcTried) {        // آخر محاولة: الرابط المحفوظ نفسه
+      curSrc = it.src;
+      const b = baseOf(it);
+      packBase = b;
+      return playData({direct_link: it.src, provider: 'Stremio', name: it.fname || it.title}, b);
+    }
+    return resumeFallback(it);
+  }
   return d;
 }
 async function diagText(hash, name, s, e) {
@@ -3467,6 +3484,14 @@ async function diagVersion(i) {
   renderVP();
 }
 // فحص البث وقت التشغيل (للأدمن): نفس 🧪 بس من جوه صفحة التشغيل
+async function diagCurrent() {
+  const el = $('diagOut');
+  if (!el || !PLAY || !PLAY.vh) return;
+  el.style.display = 'block';
+  el.textContent = 'جاري الفحص...';
+  const t = await diagText(PLAY.vh, PLAY.fname || PLAY.title, PLAY.s, PLAY.e);
+  el.textContent = t + '\n\nالتشغيل الحالي: hls=' + (PLAY.hls ? 'موجود' : 'فاضي') + (PLAY.note ? ' · ' + PLAY.note : '');
+}
 
 // ---- فحص AllDebrid من المتصفح (تشخيص للأدمن بس، مابيغيّر أي تشغيل) ----
 async function adDiag() {
