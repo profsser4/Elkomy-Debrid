@@ -2137,7 +2137,7 @@ async function probeCurrent() {
     const txt = d.error || ('الحاوية: ' + d.container + ' | الكودكات: ' + (d.codecs || []).join(', ') + ' | HTTP ' + d.status + ' | ' + d.type + ' | ' + fmtSize(d.total) + ' | ' + d.host + '\n⇒ ' + d.fix);
     if (pe) pe.insertAdjacentHTML('beforeend', '<pre style="direction:rtl;white-space:pre-wrap;font-size:12px;color:#cbd5e1;background:#0b1220;padding:8px;border-radius:8px;margin-top:8px">🔬 ' + esc(txt) + '</pre>');
     api('/play/report', {method: 'POST', body: JSON.stringify({msg: 'PROBE: ' + txt.replace(/\n/g, ' ').slice(0, 280), title: PLAY.title, s: PLAY.s, e: PLAY.e, mode: 'probe', f: PLAY.fname || '', ua: navigator.userAgent})}).catch(() => {});
-    if (/المتصفح مش بيفك|MKV/.test(d.fix || '') && !PLAY.hls && PLAY.tmdb && AUTO_N < 2) {
+    if ((d.bad && d.bad.length) && !PLAY.hls && PLAY.tmdb && AUTO_N < 2) {
       AUTO_N++;
       if (pe) pe.insertAdjacentHTML('beforeend', warn('بجرّب نسخة تانية تلقائياً (' + AUTO_N + '/2)...'));
       setTimeout(tryNextVersion, 1500);
