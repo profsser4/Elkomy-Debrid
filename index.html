@@ -3071,6 +3071,27 @@ async function adApi(path, params, o) {
   if (!j || j.status !== 'success') throw new Error((j && j.error && (j.error.message || j.error.code)) || ('HTTP ' + r.status));
   return j.data;
 }
+async function adInstant(hashes) {
+  const out = new Set();
+  const key = DBP.cfg().ad;
+  if (!key || !hashes.length) return out;
+  try {
+    const q = new URLSearchParams([['agent', 'Elkomy'], ['apikey', key]].concat(hashes.slice(0, 100).map(x => ['magnets[]', x])));
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 7000);
+    const r = await fetch('https://api.alldebrid.com/v4/magnet/instant?' + q, {signal: ctl.signal});
+    clearTimeout(t);
+    const j = await r.json();
+    if (j && j.status === 'success' && j.data && Array.isArray(j.data.magnets)) {
+      j.data.magnets.forEach(m => {
+        if (m && m.instant) {
+          [m.hash, m.magnet].forEach(x => { const s = String(x || '').toLowerCase(); const mm = /[a-f0-9]{40}/.exec(s); if (mm) out.add(mm[0]); });
+        }
+      });
+    }
+  } catch (e) { console.warn('adInstant', e); }
+  return out;
+}
 async function adResolve(spec, mode, my, ui) {
   const up = await adApi('/magnet/upload', {}, {body: new URLSearchParams([['magnets[]', dbpMagnet(spec.hash)]])});
   const m0 = up.magnets && up.magnets[0];
@@ -3190,7 +3211,14 @@ async function fetchVersions(s, e) {
   const q = '/play/versions?type=' + cur.type + '&imdb=' + encodeURIComponent(cur.imdb) + '&tmdb=' + cur.id +
     (s ? '&s=' + s + '&e=' + (e || 1) : '');
   const {d} = await api(q);
-  VER.list = verSort(d.versions || []);
+  let vs = d.versions || [];
+  // مشاهدة من AllDebrid: النسخ اللي عنده كاش تتحسب فورية (السيرفر بيفحص TorBox بس)
+  if (DBP.prov('watch') === 'ad') {
+    const hs = vs.filter(v => v.hash).map(v => v.hash);
+    const ok = await adInstant(hs);
+    if (ok.size) vs = vs.map(v => (v.hash && ok.has(v.hash)) ? Object.assign({}, v, {instant: true, adc: true}) : v);
+  }
+  VER.list = verSort(vs);
   VER.err = d.error || '';
   VER.key = VER.list.length ? key : '';
   return VER.list;
