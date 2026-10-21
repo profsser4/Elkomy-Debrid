@@ -3694,9 +3694,10 @@ async function startPlay(spec, mode, baseOver) {
     }
   }
   // البث المحوَّل (اللي بيشتغل في المتصفح) ساعات بيتأخر: جرّبه كام مرة قبل ما نرجع للرابط الأصلي
-  if (mode === 'watch' && !d.hls && spec.hash && d.stream_note && !/مش متضاف/.test(d.stream_note)) {
-    for (let k = 0; k < 2 && my === pullId && !d.hls; k++) {
-      $('results').innerHTML = pend('جاري تجهيز البث المحوَّل... (' + (k + 1) + '/2)');
+  if (mode === 'watch' && !d.hls && (spec.hash || spec.ref) && d.stream_note && !/مش متضاف/.test(d.stream_note)) {
+    const kmax = spec.hash ? 2 : 6;     // نسخ الإضافات: الملف بيتحمّل في حسابك الأول، فنستنى أكتر
+    for (let k = 0; k < kmax && my === pullId && !d.hls; k++) {
+      $('results').innerHTML = pend('جاري تجهيز البث المحوَّل من حسابك... (' + (k + 1) + '/' + kmax + ')');
       await sleep(3500);
       if (my !== pullId) return null;
       try {
