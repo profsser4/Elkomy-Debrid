@@ -190,6 +190,7 @@ video{border-radius:14px}
 .nfx-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:12px;padding:14px 16px 40px;
   background:linear-gradient(to bottom,rgba(0,0,0,.8),rgba(0,0,0,0))}
 .nfx.fill video{object-fit:cover}
+.nfx video{transition:transform .2s}
 .nfx-top .nfx-ib{width:44px;height:44px;font-size:24px}
 .nfx-title{flex:1;min-width:0;font-size:clamp(14px,2.2vw,22px);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px #000}
 .nfx-ib{font-size:26px;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;transition:transform .15s,background .15s;flex:0 0 auto}
@@ -4268,18 +4269,22 @@ function nfxFsZoom() {
 }
 document.addEventListener('fullscreenchange', nfxFsZoom);
 document.addEventListener('webkitfullscreenchange', nfxFsZoom);
-// في الفول سكرين: أي زرار ريموت يروح للمشغّل حتى لو الفوكس بعيد عنه
+// الريموت: أي زرار تحكم يروح للمشغّل (فول سكرين، أو وهو شغّال) حتى لو الفوكس بعيد عنه
 document.addEventListener('keydown', e => {
   const S = NFX;
-  if (!S || !S.box.isConnected || e.__nfx || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!S || !S.box.isConnected || !S.onKey || e.ctrlKey || e.metaKey || e.altKey) return;
+  const tg = e.target;
+  if (S.box.contains(tg)) return;                                   // المشغّل نفسه هيتعامل معاه
+  if (tg && /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName) && tg.type !== 'range') return;
+  if (tg && tg.closest && tg.closest('#vpanel,#viewbox,#login-screen,#pform')) return;
   const fe = document.fullscreenElement || document.webkitFullscreenElement;
-  if (!fe || !fe.contains(S.box) || S.box.contains(e.target)) return;
-  if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
-  e.preventDefault(); e.stopImmediatePropagation();
-  try { S.box.focus({preventScroll: true}); } catch (x) {}
-  const ev = new KeyboardEvent('keydown', {key: e.key, code: e.code, keyCode: e.keyCode, which: e.which, bubbles: true, cancelable: true});
-  ev.__nfx = true;
-  S.box.dispatchEvent(ev);
+  const fs = !!fe && fe.contains(S.box);
+  const k = keyOf(e), kc = e.keyCode;
+  const media = /^Media/.test(k) || [179, 415, 19, 417, 412, 228, 227, 176, 177, 406, 403].includes(kc);
+  const side = k === 'ArrowLeft' || k === 'ArrowRight';
+  const playing = !S.v.paused && !S.v.ended;
+  if (!(fs || media || (playing && side))) return;
+  if (S.onKey(e)) { e.preventDefault(); e.stopImmediatePropagation(); }
 }, true);
 document.addEventListener('fullscreenchange', () => {
   const S = NFX;
@@ -4557,8 +4562,11 @@ function nfxInit(v) {
       case 'next': if (typeof playNext === 'function') playNext(); break;
       case 'fs': nfxFs(); break;
       case 'zoom': {
-        const on = box.classList.toggle('fill');      // object-fit: cover => الصورة تملأ الشاشة من غير شرايط سودا
-        asToast(on ? 'تكبير الصورة: شغّال' : 'الحجم الطبيعي');
+        // مراحل: عادي ← تكبير خفيف جداً ← أكبر شوية ← ملء الشاشة (cover)
+        S.zl = ((S.zl || 0) + 1) % 4;
+        box.classList.toggle('fill', S.zl === 3);
+        v.style.transform = S.zl === 1 ? 'scale(1.06)' : S.zl === 2 ? 'scale(1.16)' : '';
+        asToast(['الحجم الطبيعي', 'تكبير خفيف', 'تكبير متوسط', 'ملء الشاشة'][S.zl]);
         try { box.focus({preventScroll: true}); } catch (x) {}
         break;
       }
@@ -4616,9 +4624,16 @@ function nfxInit(v) {
 
   // ----- الكيبورد
   box.tabIndex = 0;
-  box.addEventListener('keydown', e => {
+  let kLast = 0, kN = 0;
+  const kStep = () => {                       // ضغط متكرر بسرعة = خطوة أكبر (10، 10، 20، 30، 60)
+    const n = Date.now();
+    kN = (n - kLast < 700) ? kN + 1 : 0;
+    kLast = n;
+    return [10, 10, 20, 30, 60][Math.min(kN, 4)];
+  };
+  const onKey = e => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    const t = e.target, k = keyOf(e);
+    const t = box.contains(e.target) ? e.target : box, k = keyOf(e);
     if ((k === ' ' || k === 'Enter') && t !== box && /^(BUTTON|INPUT|A)$/.test(t.tagName)) return;
     if (t.tagName === 'INPUT' && t.type === 'range' && /^Arrow/.test(k)) return;
     let h = true;
@@ -4634,8 +4649,8 @@ function nfxInit(v) {
     else if (kc === 405 || kc === 457 || k === 'ContextMenu' || k === 'Info') openPanel('as');
     else if (kc === 461 || kc === 10009 || k === 'GoBack' || k === 'BrowserBack') { if (S.panel) closePanel(); else if (document.fullscreenElement || document.webkitFullscreenElement) nfxFs(); else h = false; }
     else if (k === ' ' || k === 'k' || k === 'K' || k === 'Enter') toggle();
-    else if (k === 'ArrowRight' || k === 'l' || k === 'L') seekBy(10, 'r');
-    else if (k === 'ArrowLeft' || k === 'j' || k === 'J') seekBy(-10, 'l');
+    else if (k === 'ArrowRight' || k === 'l' || k === 'L') seekBy(kStep(), 'r');
+    else if (k === 'ArrowLeft' || k === 'j' || k === 'J') seekBy(-kStep(), 'l');
     else if (k === 'ArrowUp') setVol(v.volume + 0.1);
     else if (k === 'ArrowDown') setVol(v.volume - 0.1);
     else if (k === 'm' || k === 'M') v.muted = !v.muted;
@@ -4646,7 +4661,10 @@ function nfxInit(v) {
     else if (k === 'Escape') { if (S.panel) closePanel(); else h = false; }
     else h = false;
     if (h) { e.preventDefault(); e.stopPropagation(); show(); }
-  });
+    return h;
+  };
+  box.addEventListener('keydown', onKey);
+  S.onKey = onKey;
 
   // ----- أحداث الفيديو
   v.addEventListener('play', () => {
