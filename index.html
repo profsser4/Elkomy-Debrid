@@ -3470,6 +3470,7 @@ function verSort(list) {
     (rk(a) - rk(b)) ||
     (df ? dubRank(b) - dubRank(a) : 0) ||     // اللغة: عربي مدبلج ← مترجم ← الأصلي
 
+    (!!b.hash - !!a.hash) ||                   // نسخة ليها hash أول: بتتحفظ وتتحوّل من حسابك كل مرة
     (b.instant - a.instant) ||
     (sc(b) - sc(a)) ||
     (qRank(a.q) - qRank(b.q)) ||                         // H.264+AAC أول، DDP/DTS/HEVC/x265 آخر
@@ -3729,6 +3730,18 @@ async function playBest(s, e) {
   want = s ? {s: s, e: e || null} : null;
   VER.s = s || null;
   VER.e = s ? (e || 1) : null;
+  // لو العمل ده اتشاهد قبل كده: نكمّل بنفس النسخة المحفوظة (نفس الـhash)، من غير ما نختار نسخة جديدة
+  try {
+    if (cur && cur.id) {
+      const k0 = cur.type === 'movie' ? 'm:' + cur.id : (s != null && e != null ? 'e:' + cur.id + ':' + s + ':' + e : '');
+      const sv = k0 ? getItem(k0) : null;
+      if (sv && !sv.del) {
+        const h1 = sv.vh || ((/btih:([a-fA-F0-9]{40})/.exec(sv.src || '') || [])[1] || '').toLowerCase();
+        if (h1) return playByHash(Object.assign({}, sv, {vh: h1}));
+        if (sv.ref) return playByRef(sv);
+      }
+    }
+  } catch (x) {}
   let list = [];
   try { list = await fetchVersions(VER.s, VER.e); } catch (x) {}
   const all0 = list.filter(v => v.instant && !FAILED.has(v.hash || v.ref));
