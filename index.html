@@ -384,7 +384,7 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 </details>
 
 <details class="action-box adm" style="text-align:right;margin-top:18px">
-<summary>🧪 فحص AllDebrid (تشخيص بس) — إصدار 3</summary>
+<summary>🧪 فحص AllDebrid (تشخيص بس) — إصدار 4</summary>
 <p style="color:var(--mut);font-size:12px">الطلب بيطلع من المتصفح بتاعك لـ AllDebrid مباشرة. المفتاح مابيتبعتش لسيرفرنا ولا بيتحفظ.</p>
 <input id="adKey" type="password" class="search-input ltr" placeholder="مفتاح AllDebrid" autocomplete="off">
 <input id="adLink" class="search-input ltr" placeholder="اكتب: حسابي   (أو magnet / hash / رابط ملف)">
@@ -3772,7 +3772,7 @@ async function adDiag() {
   out.textContent = 'جاري الفحص...';
 
   // وضع "حسابي": بيفحص آخر تورنتات في حسابك ويشوف أنهي ملف ليه stream بديل
-  if (inp === 'حسابي' || inp.toLowerCase() === 'my') {
+  if (inp.replace(/ى/g, 'ي').replace(/\s+/g, '') === 'حسابي' || inp.toLowerCase() === 'my') {
     const s = await call('/magnet/status', {}, {base: 'https://api.alldebrid.com/v4.1', quiet: true});
     let ms = s && s.data && s.data.magnets;
     ms = Array.isArray(ms) ? ms : (ms ? Object.values(ms) : []);
@@ -3845,110 +3845,6 @@ async function adDiag() {
   const st = streamsOf(d);
   log += '\nعدد الـ streams: ' + st.length + (d && d.id ? ' | id موجود' : ' | مفيش id') + '\n';
   if (d && d.id) await tryStreams(d);
-  show();
-}
-async function diagCurrent() {
-  const el = $('diagOut');
-  if (!el || !PLAY || !PLAY.vh) return;
-  el.style.display = 'block';
-  el.textContent = 'جاري الفحص...';
-  const t = await diagText(PLAY.vh, PLAY.fname || PLAY.title, PLAY.s, PLAY.e);
-  el.textContent = t + '\n\nالتشغيل الحالي: hls=' + (PLAY.hls ? 'موجود' : 'فاضي') + (PLAY.note ? ' · ' + PLAY.note : '');
-}
-
-// ---- فحص AllDebrid من المتصفح (تشخيص للأدمن بس، مابيغيّر أي تشغيل) ----
-async function adDiag() {
-  const key = ($('adKey').value || '').trim(), inp = ($('adLink').value || '').trim();
-  const out = $('adOut');
-  out.style.display = 'block';
-  if (!key || !inp) { out.textContent = 'اكتب المفتاح والرابط'; return; }
-  const mask = s => String(s).split(key).join('***');
-  let log = '';
-  const show = () => { out.textContent = log; };
-  const call = async (path, params, o) => {
-    o = o || {};
-    const base = o.base || 'https://api.alldebrid.com/v4';
-    const u = base + path + '?' + new URLSearchParams(Object.assign({agent: 'Elkomy', apikey: key}, params || {}));
-    try {
-      const r = await fetch(u, o.body ? {method: 'POST', body: o.body} : undefined);
-      const t = await r.text();
-      if (!o.quiet) log += '\n' + path + ' -> HTTP ' + r.status + '\n' + mask(t).slice(0, 1800) + '\n';
-      show();
-      try { return JSON.parse(t); } catch (e) { return null; }
-    } catch (e) {
-      log += '\n' + path + ' -> المتصفح اتمنع (غالباً CORS أو حجب): ' + mask(e) + '\n';
-      show();
-      return null;
-    }
-  };
-  let link = inp;
-  out.textContent = 'جاري الفحص...';
-
-  // لو اللي كتبته magnet أو hash: نضيفه لحساب AllDebrid ونجيب رابط الملف منه
-  const hm = /^[0-9a-fA-F]{40}$/.test(inp) ? inp : ((/btih:([0-9a-zA-Z]+)/i.exec(inp) || [])[1] || '');
-  if (inp.startsWith('magnet:') || hm) {
-    const mg = inp.startsWith('magnet:') ? inp : 'magnet:?xt=urn:btih:' + hm;
-    log += 'بضيف التورنت لحسابك على AllDebrid...\n';
-    show();
-    const up = await call('/magnet/upload', {}, {body: new URLSearchParams([['magnets[]', mg]]), quiet: true});
-    const m0 = up && up.data && up.data.magnets && up.data.magnets[0];
-    if (!m0 || m0.error || !m0.id) {
-      log += 'فشل الإضافة: ' + mask(JSON.stringify((m0 && m0.error) || (up && up.error) || up)).slice(0, 400) + '\n';
-      show();
-      return;
-    }
-    let st = null;
-    for (let i = 0; i < 20; i++) {
-      const s = await call('/magnet/status', {id: m0.id}, {base: 'https://api.alldebrid.com/v4.1', quiet: true});
-      let mm = s && s.data && s.data.magnets;
-      st = Array.isArray(mm) ? mm[0] : mm;
-      if (!st) break;
-      log += 'الحالة: ' + (st.status || '?') + ' (' + (st.statusCode != null ? st.statusCode : '?') + ')\n';
-      show();
-      if (+st.statusCode === 4 || +st.statusCode >= 5) break;
-      await new Promise(r => setTimeout(r, 3000));
-    }
-    if (!st || +st.statusCode !== 4) {
-      log += '\nالتورنت لسه مش جاهز على AllDebrid (' + (st ? st.status : '؟') + '). استنى شوية أو جرّب hash تاني.\n';
-      show();
-      return;
-    }
-    let links = Array.isArray(st.links) ? st.links.filter(x => x && x.link).map(x => ({filename: x.filename, link: x.link})) : [];
-    if (!links.length) {
-      // النسخة الجديدة من الـ API بتدي الملفات من نداء تاني
-      log += 'الحالة جاهزة بس من غير روابط، بطلب قايمة الملفات...\n';
-      show();
-      const f = await call('/magnet/files', {}, {body: new URLSearchParams([['id[]', String(m0.id)]]), quiet: true});
-      const walk = (n, name) => {
-        if (!n || typeof n !== 'object') return;
-        if (Array.isArray(n)) { n.forEach(x => walk(x, name)); return; }
-        const lk = n.l || n.link;
-        if (typeof lk === 'string' && lk.startsWith('http')) links.push({filename: n.n || n.filename || name || '', link: lk});
-        Object.keys(n).forEach(k => { if (n[k] && typeof n[k] === 'object') walk(n[k], n.n || name); });
-      };
-      walk(f && f.data, '');
-      if (!links.length) {
-        log += 'ماقدرتش ألاقي روابط. رد AllDebrid:\n' + mask(JSON.stringify(f)).slice(0, 900) + '\n';
-        show();
-        return;
-      }
-    }
-    const vid = links.find(x => /\.(mkv|mp4|avi|mov|webm|m4v)$/i.test(String(x.filename || '')));
-    const pick = vid || links[0];
-    log += 'ملفات: ' + links.length + ' | هفحص: ' + String(pick.filename || '').slice(0, 80) + '\n';
-    link = pick.link;
-  }
-
-  const j = await call('/link/unlock', {link: link});
-  const d = j && j.data;
-  const streams = d && Array.isArray(d.streams) ? d.streams : (d && Array.isArray(d.streaming) ? d.streaming : []);
-  log += '\nعدد الـ streams: ' + streams.length + (d && d.id ? ' | id موجود' : ' | مفيش id') + '\n';
-  if (d && d.id) {
-    for (const s of streams.slice(0, 6)) {
-      if (!s || !s.id) continue;
-      await call('/link/streaming', {id: d.id, stream: s.id});
-    }
-  }
   show();
 }
 async function diagCurrent() {
