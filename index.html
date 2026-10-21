@@ -1718,18 +1718,8 @@ function pullTorrent(i) {
   scrollToResults();
   if (t.ref) {
     clearCd();
-    const id = ++pullId;
     pack = null;
-    $('results').innerHTML = pend('جاري تجهيز الرابط...');
-    api('/stremio/resolve', {method: 'POST', body: JSON.stringify({ref: t.ref, name: t.title, size: t.size})}).then(({d}) => {
-      if (id !== pullId) return;
-      if (!d.url) { $('results').innerHTML = warn(d.error || 'حصل خطأ'); return; }
-      base.src = d.url;
-      base.dr = true;
-      curSrc = d.url;
-      packBase = base;
-      playData({direct_link: d.url, provider: 'Stremio', name: t.title, size: t.size}, base);
-    }).catch(() => { if (id === pullId) $('results').innerHTML = ERR; });
+    startPlay({ref: t.ref, name: t.title, size: t.size, s: base.s != null ? base.s : null, e: base.e != null ? base.e : null}, 'watch', base);
     return;
   }
   pullSource(t.magnet, base, null);
@@ -1837,11 +1827,11 @@ async function smapDel() {
 }
 // بيجيب رابط البث المحوَّل (صوته شغّال) للملفات اللي جاية من /generate (TorBox). التحميل مابيتأثرش.
 async function ensureHls(d, fid, id) {
-  if (!d || d.hls || !d.torrent_id || !/^\d+$/.test(String(d.torrent_id))) return;
+  if (!d || d.hls || !d.torrent_id || !/^(\d+|x:[^:]+:[^:]+:.+)$/.test(String(d.torrent_id))) return;
   for (let k = 0; k < 2 && !d.hls; k++) {
     try {
       const {d: r} = await api('/play/hls', {method: 'POST',
-        body: JSON.stringify({torrent_id: d.torrent_id, file_id: d.file_id != null ? d.file_id : fid})});
+        body: JSON.stringify({torrent_id: d.torrent_id, file_id: d.file_id != null ? d.file_id : fid, direct_link: d.direct_link || ''})});
       if (id !== pullId) return;
       if (r && r.hls) d.hls = r.hls; else d.stream_note = (r && (r.note || r.error)) || '';
     } catch (e) {}
@@ -2054,6 +2044,15 @@ function saveProgress(v, ended) {
       ? {fid: n.f.id, s: n.f.season, e: n.f.episode, name: n.f.name} : null
   });
 }
+function nfxAutoplayBlocked() {
+  setTimeout(() => {
+    const b = document.getElementById('nfx');
+    if (!b) return;
+    b.classList.remove('load');
+    b.classList.add('show');
+    try { if (NFX && NFX.show) NFX.show(); } catch (e) {}
+  }, 0);
+}
 function attachPlayer() {
   const v = document.querySelector('#results video');
   if (!v || !PLAY) return;
@@ -2115,11 +2114,11 @@ function attachPlayer() {
     }
     box.innerHTML = '<select class="search-input" style="margin-top:8px" onchange="setAudio(this.value)">' + o + '</select>';
   });
-  v.play().catch(() => {});
-  if (PLAY.hls) setupHls(v);
-  if (isTv()) { try { v.focus(); } catch (e) {} }
   asStop();
   audGate(v);
+  v.play().catch(() => nfxAutoplayBlocked());
+  if (PLAY.hls) setupHls(v);
+  if (isTv()) { try { v.focus(); } catch (e) {} }
   try { nfxInit(v); } catch (e) { console.error('nfx', e); }
 }
 function nextTarget() {
@@ -2215,6 +2214,7 @@ async function playItem(key) {
   if (it.done && it.type === 'tv') return playAfter(it);
   const h0 = it.vh || ((/btih:([a-fA-F0-9]{40})/.exec(it.src || '') || [])[1] || '').toLowerCase();
   if (h0) return playByHash(Object.assign({}, it, {vh: h0}));
+  if (it.ref) return playByRef(it);
   if (it.dr && it.src) {
     clearCd();
     pullId++;
@@ -3879,11 +3879,15 @@ function setupHls(v) {
   if (window.Hls && Hls.isSupported()) {
     const h = new Hls({maxBufferLength: 40});
     v._hls = h;
+    let netTry = 0, medTry = 0;
     h.on(Hls.Events.ERROR, (ev, data) => {
-      if (data && data.fatal) fallback((data.type || '') + ' ' + (data.details || ''));
+      if (!data || !data.fatal) return;
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR && netTry++ < 3) { try { h.startLoad(); } catch (e) {} return; }
+      if (data.type === Hls.ErrorTypes.MEDIA_ERROR && medTry++ < 2) { try { h.recoverMediaError(); } catch (e) {} return; }
+      fallback((data.type || '') + ' ' + (data.details || ''));
     });
     h.on(Hls.Events.MANIFEST_PARSED, () => {
-      v.play().catch(() => {});
+      v.play().catch(() => nfxAutoplayBlocked());
       const box = $('audSel'), at = h.audioTracks || [];
       {
         const pk = pickAudio(at.map(t => ({lang: t.lang, name: t.name, def: t.default})));
