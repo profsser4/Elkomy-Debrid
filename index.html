@@ -3147,7 +3147,7 @@ async function adResolve(spec, mode, my, ui) {
 }
 
 // ---------- TorBox (تحميل) ----------
-async function tbResolve(spec, my, ui) {
+async function tbResolve(spec, mode, my, ui) {
   const B = 'https://api.torbox.app/v1/api', key = DBP.cfg().tb, H = {Authorization: 'Bearer ' + key};
   const fd = new FormData();
   fd.append('magnet', dbpMagnet(spec.hash));
@@ -3172,7 +3172,20 @@ async function tbResolve(spec, my, ui) {
   if (!pick) throw new Error('مالقيتش الملف المطلوب');
   const r = await (await fetch(B + '/torrents/requestdl?token=' + encodeURIComponent(key) + '&torrent_id=' + id + '&file_id=' + pick.id, {headers: H})).json();
   if (!r || !r.success || !r.data) throw new Error((r && r.detail) || 'فشل توليد الرابط');
-  return {direct: r.data, name: pick.n, size: pick.s, provider: 'TorBox', torrent_id: id, file_id: pick.id};
+  const out = {direct: r.data, name: pick.n, size: pick.s, provider: 'TorBox', torrent_id: id, file_id: pick.id};
+  // المشاهدة: نجيب رابط HLS محوَّل (صوته شغّال). التحميل: بيفضل على الرابط الأصلي (out.direct) من غير تحويل
+  if (mode === 'watch') {
+    for (let k = 0; k < 3 && !out.hls; k++) {
+      try {
+        const sr = await (await fetch(B + '/stream/createstream?id=' + id + '&file_id=' + pick.id + '&type=torrent', {headers: H})).json();
+        const u = sr && sr.success && sr.data && (sr.data.hls_url || sr.data.hlsUrl);
+        if (u) out.hls = u;
+        else out.stream_note = (sr && (sr.detail || sr.error)) || 'TorBox رجّع رد من غير رابط HLS';
+      } catch (e) { out.stream_note = 'createstream: ' + String((e && e.message) || e).slice(0, 100); }
+      if (!out.hls) { await sleep(1500); if (my !== pullId) return null; }
+    }
+  }
+  return out;
 }
 
 async function dbpStart(spec, mode, pv, my) {
@@ -3180,7 +3193,7 @@ async function dbpStart(spec, mode, pv, my) {
   const ui = m => { if (my === pullId) $('results').innerHTML = m; };
   try {
     ui(pend('جاري التجهيز من ' + nm + '...'));
-    return pv === 'ad' ? await adResolve(spec, mode, my, ui) : await tbResolve(spec, my, ui);
+    return pv === 'ad' ? await adResolve(spec, mode, my, ui) : await tbResolve(spec, mode, my, ui);
   } catch (e) {
     console.warn('dbp', e);
     ui(pend(nm + ' ماشتغلش (' + String((e && e.message) || e).slice(0, 80) + ')، بجرّب السيرفر...'));
