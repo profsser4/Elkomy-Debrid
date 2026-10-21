@@ -667,7 +667,7 @@ const EG_RX = /(مصري|مصرى|المصرية|egypt|🇪🇬)/i, DUB_RX = /(�
 const T_AR_SCRIPT = /[\u0600-\u06FF]/, T_CYR = /[\u0400-\u04FF]/;
 const T_DUB = /(مدبلج|دبلج|dubbed|dubbing|\bdub\b|\bmvo\b|\bdvo\b|\bavo\b|lostfilm|дубляж|многоголос|закадров)/i;
 const T_AR = /(عربي|عربى|العربية|arabic|\barab\b|\bara\b|\bar\b|🇪🇬|🇸🇦|🇦🇪)/i;
-const T_ARSUB = /(مترجم|ترجمة|ترجمه|hard.?sub|(?:arabic|\bara\b|\bar\b|عرب\w*)[ .\-]{0,3}subs?(?:titles?)?|subs?(?:titles?)?[ .\-:(\[]{0,3}(?:arabic|\bara\b|\bar\b|عرب\w*))/i;
+const T_ARSUB = /(مترجم|ترجمة|ترجمه|مدمج\w*|محروق\w*|\bhc\b|hard.?cod\w*|burn(?:ed|t)?[ .\-]?in|hard.?sub|(?:arabic|\bara\b|\bar\b|عرب\w*)[ .\-]{0,3}subs?(?:titles?)?|subs?(?:titles?)?[ .\-:(\[]{0,3}(?:arabic|\bara\b|\bar\b|عرب\w*))/i;
 const T_SUB = /(multi.?subs?|\bmsubs?\b|\besubs?\b|\bsubbed\b|\bsubs?\b|subtitles?)/i;
 const T_FOREIGN = /(\b(?:russian|rus|polish|german|ger|deu|french|fre|fra|vff|vfq|vostfr|italian|ita|spanish|spa|latino|castellano|portuguese|ptbr|hindi|hin|tamil|telugu|turkish|tur|ukrainian|ukr|czech|korean|kor|japanese|jpn|thai|dutch|swedish)\b|🇷🇺|🇵🇱|🇩🇪|🇫🇷|🇮🇹|🇪🇸|🇹🇷|🇮🇳|🇺🇦)/i;
 const _LC = new Map();
@@ -3453,7 +3453,7 @@ const qRank = q => ({'1080P': 0, '2160P': 1, '4K': 1, '720P': 2, '480P': 3}[q] ?
 function verSort(list) {
   const df = dubFirst();
   const sc = x => x.score != null ? x.score : (x.risky ? 0 : 1);
-  const rk = x => (!x.hash && (x.risky || /2160|4K/i.test(x.q))) ? 1 : 0;   // نسخة مباشرة (Stremio) خطرة/4K: آخر الترتيب
+  const rk = x => (!x.hash && !isDub(x) && (x.risky || /2160|4K/i.test(x.q))) ? 1 : 0;   // نسخة مباشرة (Stremio) خطرة/4K: آخر الترتيب
   return list.slice().sort((a, b) =>
     (rk(a) - rk(b)) ||
     (df ? dubRank(b) - dubRank(a) : 0) ||     // اللغة: عربي مدبلج ← مترجم ← الأصلي
@@ -3467,6 +3467,7 @@ async function fetchVersions(s, e) {
   const key = (cur ? cur.type + cur.id : '') + ':' + (s || '') + ':' + (e || '');
   if (VER.key === key && VER.list.length) return VER.list;
   const q = '/play/versions?type=' + cur.type + '&imdb=' + encodeURIComponent(cur.imdb) + '&tmdb=' + cur.id +
+    '&q=' + encodeURIComponent(cur.qname || cur.title || '') +
     (s ? '&s=' + s + '&e=' + (e || 1) : '');
   const {d} = await api(q);
   let vs = d.versions || [];
@@ -3540,7 +3541,8 @@ function verRow(v, i, best) {
 function renderVP() {
   const el = $('vpanel');
   if (!el) return;
-  const all = VER.list, fast = all.filter(v => v.instant), slow = all.filter(v => !v.instant);
+  const all = VER.list, okAr = v => !VER.arOnly || verLang(v).r >= 3.5;
+  const fast = all.filter(v => v.instant && okAr(v)), slow = all.filter(v => !v.instant && okAr(v));
   const t = (cur ? cur.title : '') + (VER.s ? ' · S' + p2(VER.s) + 'E' + p2(VER.e || 1) : '');
   let h = '<div class="vbox"><button class="vx" onclick="closeVP()">✕</button><h3 style="margin:0 0 12px;color:var(--primary)">' + esc(t) + '</h3>';
   if (!all.length) {
@@ -3549,6 +3551,8 @@ function renderVP() {
     if (cur && cur.type === 'tv') h += '<button class="search-btn" style="margin-top:8px;background:#0ea5e9" onclick="dlSeries()">📦 تحميل المسلسل كامل (رابط واحد)</button>';
   } else {
     if (cur && cur.type === 'tv') h += '<button class="search-btn" style="margin-bottom:10px;background:#0ea5e9" onclick="dlSeries()">📦 تحميل المسلسل كامل برابط واحد (ZIP)</button>';
+    h += '<button class="fc' + (VER.arOnly ? ' on' : '') + '" style="margin-bottom:10px" onclick="VER.arOnly=!VER.arOnly;renderVP()">🇪🇬 ' + (VER.arOnly ? 'عرض كل النسخ' : 'عربي بس (مدبلج / ترجمة مدمجة)') + '</button>';
+    if (VER.arOnly && !fast.length && !slow.length) h += warn('مفيش نسخة عربي لده. دوس «عرض كل النسخ».');
     if (fast.length) h += '<button class="search-btn" style="margin-bottom:12px" onclick="playVersion(' + all.indexOf(fast[0]) + ')">▶ تشغيل الأفضل</button>';
     else h += warn('مفيش نسخة فورية. تقدر تسحب نسخة (هتاخد وقت).');
     h += fast.map(v => verRow(v, all.indexOf(v), v === fast[0])).join('');
