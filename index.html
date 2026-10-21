@@ -1766,6 +1766,19 @@ async function getLink(body, id) {
     return res;
   }
 }
+// بيجيب رابط البث المحوَّل (صوته شغّال) للملفات اللي جاية من /generate (TorBox). التحميل مابيتأثرش.
+async function ensureHls(d, fid, id) {
+  if (!d || d.hls || !d.torrent_id || !/^\d+$/.test(String(d.torrent_id))) return;
+  for (let k = 0; k < 2 && !d.hls; k++) {
+    try {
+      const {d: r} = await api('/play/hls', {method: 'POST',
+        body: JSON.stringify({torrent_id: d.torrent_id, file_id: d.file_id != null ? d.file_id : fid})});
+      if (id !== pullId) return;
+      if (r && r.hls) d.hls = r.hls; else d.stream_note = (r && (r.note || r.error)) || '';
+    } catch (e) {}
+    if (!d.hls) await sleep(1500);
+  }
+}
 async function pullSource(src, base, fid) {
   if (noWatch()) return;
   curSrc = src;
@@ -1790,6 +1803,8 @@ async function pullSource(src, base, fid) {
     if (f) return playPackFile(f);
     return showPack(d);
   }
+  await ensureHls(d, fid, id);
+  if (id !== pullId) return;
   playData(d, base);
 }
 function setPlay(o) {
@@ -1817,6 +1832,8 @@ function playData(d, base) {
   base.fname = d.name || base.fname || '';
   setPlay(base);
   PLAY.url = d.direct_link;
+  if (d.hls) PLAY.hls = d.hls;
+  if (!PLAY.hls && d.stream_note && !PLAY.note) PLAY.note = d.stream_note;
   const c = PLAY, p = prof();
   const ep = (c.s != null && c.e != null) ? ' · S' + p2(c.s) + 'E' + p2(c.e) : '';
   const chk = (c.type === 'tv' || pack)
@@ -2108,6 +2125,8 @@ async function playPackFile(f) {
     if (f.episode == null && packBase.e != null && packBase.fid === f.id) base.e = packBase.e;
   }
   if (!base.src) base.src = curSrc;
+  await ensureHls(d, f.id, id);
+  if (id !== pullId) return;
   playData(d, base);
   scrollToResults();
 }
