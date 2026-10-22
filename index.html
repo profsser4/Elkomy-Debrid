@@ -1462,7 +1462,7 @@ async function loadSeason(n) {
       (ROLE === 'admin' && cur.imdb ? '<button class="search-btn" style="margin-bottom:10px;background:#0ea5e9" onclick="playOpen(' + n + ',1)">📌 ضيف الموسم ' + n + ' كله (اختار نسخة)</button>' : '') +
       d.episodes.map(e => '<div class="ep">' +
         (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '') +
-        '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) +
+        '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) + (e.date && e.date > new Date().toISOString().slice(0, 10) ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') +
         (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌 مضافة</span>' : '') + '</small></div>' +
         playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
         (ADV() || !cur.imdb ? '<button onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div>').join('');
@@ -3650,14 +3650,30 @@ function renderVP() {
 async function seasonFromVersion(i) {
   const v = VER.list[i];
   if (!v || !v.hash || !cur || !VER.s) return;
-  const sn = (cur.seasons || []).find(x => x.n === VER.s), n = sn ? (sn.eps || 0) : 0;
-  if (!n) return alert('مش عارف عدد حلقات الموسم');
-  if (!confirm('أضيف الموسم ' + VER.s + ' كله (' + n + ' حلقة) من النسخة دي وتشتغل ورا بعض؟')) return;
-  const {r, d} = await api('/series/map/bulk', {method: 'POST', body: JSON.stringify({id: cur.id, s: VER.s, count: n, force: true,
+  const sn = (cur.seasons || []).find(x => x.n === VER.s);
+  let total = sn ? (sn.eps || 0) : 0, aired = total;
+  try {
+    const {d} = await api('/season?id=' + cur.id + '&n=' + VER.s);
+    const eps = (d && d.episodes) || [];
+    if (eps.length) {
+      const t = new Date(), today = t.getFullYear() + '-' + p2(t.getMonth() + 1) + '-' + p2(t.getDate());
+      total = Math.max(total, eps.length);
+      const out = eps.filter(e => e.date && e.date <= today).map(e => e.n);
+      aired = out.length ? Math.max.apply(null, out) : 0;
+    }
+  } catch (x) {}
+  if (!aired) return alert('مفيش حلقات نزلت لحد دلوقتي في الموسم ده');
+  const rest = total - aired;
+  if (!confirm('أضيف الحلقات 1 → ' + aired + ' (اللي نزلت) من النسخة دي وتشتغل ورا بعض؟' +
+      (rest > 0 ? '\nالـ ' + rest + ' حلقة الجاية بتتضاف بعد ما تنزل: ارجع دوس الزرار تاني على نسخة فيها الحلقة الجديدة.' : ''))) return;
+  const {r, d} = await api('/series/map/bulk', {method: 'POST', body: JSON.stringify({id: cur.id, s: VER.s, count: aired,
     spec: {hash: v.hash, name: v.title}})});
   if (!r.ok || d.error) return alert(d.error || 'مقدرتش أضيف الموسم');
   SMAP[cur.id] = d.eps || {};
-  alert('اتضافت ' + (d.added || 0) + ' حلقة، والباقي كان مضاف قبل كده');
+  // نضيف المسلسل لقائمتي: ده اللي بيبعتلك إشعار لما حلقة جديدة تنزل
+  const lk = 'l:tv:' + cur.id, lo = getItem(lk);
+  if (!lo || lo.del) { setItem({key: lk, type: cur.type, tmdb: cur.id, title: cur.title, poster: cur.poster, year: cur.year}); renderShelves(); }
+  alert('اتضافت ' + (d.added || 0) + ' حلقة، والمسلسل في قائمتي 🔔 هيجيلك إشعار لما حلقة جديدة تنزل (لازم الجرس 🔔 فوق يكون شغّال).');
   closeVP();
 }
 function dlSeries() {
