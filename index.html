@@ -31,6 +31,7 @@ body{margin:0;background:var(--bg);color:var(--text)}
 video{width:100%;border-radius:8px;background:#000}
 h3.sec{margin:8px 0 10px;color:var(--primary)}
 .hrow{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;margin-bottom:8px}
+body.g-grid .hrow{flex-wrap:wrap;overflow:visible}
 .poster,.cw{flex:0 0 108px;background:var(--panel);border-radius:10px;overflow:hidden;cursor:pointer;border:1px solid #334155;position:relative}
 .cw{flex-basis:124px}
 .poster img,.poster .noimg,.cw img,.cw .noimg{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#0b1220}
@@ -296,6 +297,7 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div class="pbox">
 <h3 style="margin-top:0">🖥 شكل الموقع</h3>
 <div id="vmodes" class="eg"></div>
+<button id="vgridB" class="fc" style="margin:8px 0;width:100%" onclick="toggleGrid()"></button>
 <div class="lbl">حجم الواجهة: <b id="vzv"></b></div>
 <input id="vzoom" type="range" min="0.7" max="2.2" step="0.05" style="width:100%;margin:10px 0" oninput="setZoom(this.value)">
 <div class="row"><button class="search-btn" onclick="resetView()" style="background:#475569">إعادة ضبط</button><button class="search-btn" onclick="closeView()">تمام</button></div>
@@ -505,20 +507,24 @@ function autoMode() {
 const viewPref = () => localStorage.getItem('vmode') || 'auto';
 const realMode = () => viewPref() === 'auto' ? autoMode() : viewPref();
 const isTv = () => realMode() === 'tv';
+const gridOn = () => { const g = localStorage.getItem('vgrid'); return g === null ? realMode() === 'tv' : g === '1'; };
+function toggleGrid() { localStorage.setItem('vgrid', gridOn() ? '0' : '1'); applyView(); }
 function applyView() {
   const m = realMode();
-  document.body.className = 'm-' + m;
+  document.body.className = 'm-' + m + (gridOn() ? ' g-grid' : '');
   const z = parseFloat(localStorage.getItem('vzoom')) || (m === 'tv' ? 1.45 : 1);
   document.body.style.zoom = z;
   const zr = $('vzoom'), zv = $('vzv');
   if (zr) zr.value = z;
   if (zv) zv.textContent = Math.round(z * 100) + '%';
+  const gb = $('vgridB');
+  if (gb) gb.textContent = gridOn() ? '▦ القوائم: كل العناصر ظاهرة (شبكة) ✓' : '↔ القوائم: صف أفقي بيتحرك';
   const vm = $('vmodes');
   if (vm) vm.innerHTML = MODES.map(x => '<button class="fc' + (viewPref() === x[0] ? ' on' : '') + '" onclick="setMode(\'' + x[0] + '\')">' + x[1] + '</button>').join('');
 }
 function setMode(m) { localStorage.setItem('vmode', m); localStorage.removeItem('vzoom'); applyView(); }
 function setZoom(v) { localStorage.setItem('vzoom', v); applyView(); }
-function resetView() { localStorage.removeItem('vmode'); localStorage.removeItem('vzoom'); applyView(); }
+function resetView() { localStorage.removeItem('vmode'); localStorage.removeItem('vzoom'); localStorage.removeItem('vgrid'); applyView(); }
 function openView() { applyView(); $('viewbox').style.display = 'flex'; }
 function closeView() { $('viewbox').style.display = 'none'; }
 window.addEventListener('resize', () => { if (viewPref() === 'auto') applyView(); });
@@ -527,7 +533,7 @@ window.addEventListener('resize', () => { if (viewPref() === 'auto') applyView()
 const ARROWS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 const KEYFIX = {Left: 'ArrowLeft', Right: 'ArrowRight', Up: 'ArrowUp', Down: 'ArrowDown'};
 const KEYCODES = {37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown', 13: 'Enter'};
-function keyOf(e) {
+function evKey(e) {
   const k = e.key;
   if (k && k !== 'Unidentified' && k !== 'Process') return KEYFIX[k] || k;
   return KEYCODES[e.keyCode] || k || '';
@@ -604,7 +610,7 @@ document.addEventListener('keydown', e => {
   const t = e.target, tag = t.tagName;
   const typing = (tag === 'INPUT' && !['checkbox', 'range', 'button'].includes(t.type)) || tag === 'TEXTAREA';
   const v = document.querySelector('#results video');
-  const KY = keyOf(e);
+  const KY = evKey(e);
   if (v && (t === v || document.fullscreenElement)) {
     const k = KY;
     if (k === ' ' || k === 'k' || k === 'Enter') { e.preventDefault(); v.paused ? v.play() : v.pause(); }
@@ -4313,7 +4319,7 @@ document.addEventListener('keydown', e => {
   if (tg && tg.closest && tg.closest('#vpanel,#viewbox,#login-screen,#pform')) return;
   const fe = document.fullscreenElement || document.webkitFullscreenElement;
   const fs = !!fe && fe.contains(S.box);
-  const k = keyOf(e), kc = e.keyCode;
+  const k = evKey(e), kc = e.keyCode;
   const media = /^Media/.test(k) || [179, 415, 19, 417, 412, 228, 227, 176, 177, 406, 403].includes(kc);
   const side = k === 'ArrowLeft' || k === 'ArrowRight';
   const playing = !S.v.paused && !S.v.ended;
@@ -4348,7 +4354,7 @@ function nfxInit(v) {
     '<div class="nfx-hit"></div><div class="nfx-spin"></div><div class="nfx-rip l"></div><div class="nfx-rip r"></div>' +
     '<div class="nfx-ui">' +
       '<div class="nfx-top">' + ib('back', NI.back, 'رجوع') + '<div class="nfx-title">' + title() + '</div>' +
-        ib('zoom', NI.zoom, 'تكبير الصورة (يملأ الشاشة)') + ib('fs', NI.fs, 'ملء الشاشة', ' data-r="fs"') + '</div>' +
+        ib('more', 'المزيد', 'المزيد: تقديم وتأخير وتكبير', ' style="width:auto;padding:0 12px;font-size:14px;font-weight:700"') + ib('zoom', NI.zoom, 'تكبير الصورة (يملأ الشاشة)') + ib('fs', NI.fs, 'ملء الشاشة', ' data-r="fs"') + '</div>' +
       '<div class="nfx-center"><button class="nfx-big" data-a="b10" aria-label="رجوع 10 ثواني">' + NI.b10 + '</button>' +
         '<button class="nfx-big mid" data-a="play" aria-label="تشغيل">' + NI.play + '</button>' +
         '<button class="nfx-big" data-a="f10" aria-label="تقديم 10 ثواني">' + NI.f10 + '</button></div>' +
@@ -4358,6 +4364,7 @@ function nfxInit(v) {
           '<div class="nfx-grp">' + ib('play', NI.play, 'تشغيل', ' data-r="play"') + ib('b10', NI.b10, 'رجوع 10 ثواني') + ib('f10', NI.f10, 'تقديم 10 ثواني') +
             '<div class="nfx-vol">' + ib('mute', NI.vol, 'الصوت') + '<input type="range" min="0" max="1" step="0.05" value="1" aria-label="مستوى الصوت"></div></div>' +
           '<div class="nfx-grp">' +
+            ib('more', 'المزيد', 'المزيد: تقديم وتأخير وتكبير', ' style="width:auto;padding:0 12px;font-size:14px;font-weight:700"') +
             (hasNext ? ib('next', NI.next, 'الحلقة التالية') : '') +
             (hasEps ? ib('eps', NI.eps, 'الحلقات') : '') +
             ib('as', NI.cc, 'الصوت والترجمة') + ib('spd', NI.spd, 'السرعة') +
@@ -4543,6 +4550,10 @@ function nfxInit(v) {
           [['-1', -1], ['-0.5', -0.5], ['+0.5', 0.5], ['+1', 1]].map(x => '<button class="nfx-chip" data-a="shift" data-d="' + x[1] + '">' + x[0] + '</button>').join('') + '</div>';
       }
       h += '</div></div>';
+    } else if (k === 'more') {
+      h += '<div class="nfx-col"><h4>تقديم وتأخير (ثانية)</h4><div class="nfx-chips" style="direction:ltr">' +
+        [-60, -30, -10, 10, 30, 60].map(x => '<button class="nfx-chip" style="padding:12px 16px;font-size:16px" data-a="seek" data-d="' + x + '">' + (x < 0 ? '⏪ ' + (-x) : x + ' ⏩') + '</button>').join('') +
+        '</div><h4 style="margin-top:12px">الصورة</h4><div class="nfx-chips"><button class="nfx-chip" data-a="zoom">🔍 تكبير الصورة</button><button class="nfx-chip" data-a="fs">⛶ ملء الشاشة</button></div></div>';
     } else if (k === 'spd') {
       h += '<div class="nfx-col"><h4>سرعة التشغيل</h4>' + [0.5, 0.75, 1, 1.25, 1.5, 2].map(x =>
         '<button class="nfx-it' + (v.playbackRate === x ? ' on' : '') + '" data-a="rate" data-x="' + x + '">' + (x === 1 ? 'عادية' : x + 'x') + '</button>').join('') + '</div>';
@@ -4590,6 +4601,8 @@ function nfxInit(v) {
         else if (typeof VS !== 'undefined' && VS.length > 1) history.back();
         break;
       case 'play': toggle(); break;
+      case 'more': openPanel('more'); break;
+      case 'seek': seekBy(parseFloat(b && b.dataset.d) || 0); break;
       case 'b10': seekBy(-10); break;
       case 'f10': seekBy(10); break;
       case 'mute': v.muted = !v.muted; if (!v.muted && v.volume === 0) v.volume = 0.5; break;
@@ -4667,7 +4680,7 @@ function nfxInit(v) {
   };
   const onKey = e => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    const t = box.contains(e.target) ? e.target : box, k = keyOf(e);
+    const t = box.contains(e.target) ? e.target : box, k = evKey(e);
     if ((k === ' ' || k === 'Enter') && t !== box && /^(BUTTON|INPUT|A)$/.test(t.tagName)) return;
     if (t.tagName === 'INPUT' && t.type === 'range' && /^Arrow/.test(k)) return;
     let h = true;
