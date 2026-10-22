@@ -329,7 +329,7 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div style="display:flex;gap:8px"><button class="fc" onclick="openView()">🖥</button><button class="fc" onclick="openInterests()">⭐</button><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
 </div>
 
-<div class="action-box">
+<div class="action-box" id="searchBox">
 <h2 style="margin-top:0">🔍 ابحث عن فيلم / مسلسل / أنمي</h2>
 <input id="searchInput" class="search-input" placeholder="اكتب الاسم (عربي أو إنجليزي)" onkeydown="if(event.key==='Enter')searchTitles()">
 <div class="row">
@@ -353,7 +353,7 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div id="torrentResults"></div>
 </div>
 
-<div class="action-box">
+<div class="action-box" id="linkBox">
 <h2 style="margin-top:0">🔗 فك الروابط المباشرة والتورنت</h2>
 <input id="linkInput" class="search-input ltr" placeholder="magnet:?xt=... أو https://...">
 <button class="search-btn" onclick="processDirectLink()">سحب الرابط الآن 🚀</button>
@@ -507,6 +507,23 @@ function autoMode() {
   if (/SmartTV|SMART-TV|Tizen|Web0S|WebOS|HbbTV|NetCast|BRAVIA|AFTT|AFTM|AFTB|GoogleTV|CrKey|Android TV|Large Screen|AppleTV/i.test(UA)) return 'tv';
   return window.innerWidth >= 1000 ? 'desktop' : 'mobile';
 }
+// قايمة البحث وفك الروابط في الشاشة الرئيسية بس: بتختفي لما تفتح عمل أو فيديو أو نسخ التورنت
+function syncHome() {
+  const d = $('details'), r = $('results'), tp = $('torrentPanel');
+  const busy = !!((d && d.innerHTML.trim()) || (r && r.querySelector('video,.nfx')) || (tp && tp.style.display !== 'none'));
+  ['searchBox', 'linkBox'].forEach(id => { const e = $(id); if (e) e.style.display = busy ? 'none' : ''; });
+}
+(function () {
+  let q = 0;
+  const run = () => { if (!q) q = requestAnimationFrame(() => { q = 0; syncHome(); }); };
+  if (window.MutationObserver) {
+    const mo = new MutationObserver(run);
+    ['details', 'results'].forEach(id => { const e = document.getElementById(id); if (e) mo.observe(e, {childList: true, subtree: true}); });
+    const tp = document.getElementById('torrentPanel');
+    if (tp) mo.observe(tp, {attributes: true, attributeFilter: ['style']});
+  }
+  run();
+})();
 var TVW = {start: 0, n: 3};
 const tvOn = () => isTv() && !gridOn();
 function tvBlocks() {
