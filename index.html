@@ -1854,6 +1854,15 @@ const SOURCES = [
    title: t => t.title, thumb: t => t.thumb || '',
    meta: t => (t.owner || '') + (t.duration ? ' · ⏱ ' + dmDur(t.duration) : ''),
    open: t => pullSource(t.url, {src: t.url, title: t.title}, null)},
+  {id: 'vk', icon: '🔷', name: 'VK Video', color: '#0077ff',
+   search: async q => {
+     const {d} = await api('/vk/search?q=' + enc(q));
+     if (d.error) throw new Error(d.error);
+     return d.results || [];
+   },
+   title: t => t.title, thumb: t => t.thumb || '',
+   meta: t => (t.views ? '👁 ' + t.views + ' · ' : '') + (t.duration ? '⏱ ' + dmDur(t.duration) : ''),
+   open: t => pullSource(t.url, {src: t.url, title: t.title}, null)},
 ];
 let ALL = [], SRCERR = {}, SRCF = 'all', USEQ = 0;
 function dmDur(s) {
@@ -1915,7 +1924,7 @@ function srcOpen(i) {
   x.s.open(x.t);
 }
 
-const sbIsLink = v => /^(https?:\/\/|magnet:|www\.)/i.test(v);
+const sbIsLink = v => /^(https?:\/\/|magnet:|www\.)/i.test(v) || /^[^\s\/]+\.[a-z]{2,}\/\S*$/i.test(v);
 function sbSync() {
   const l = sbIsLink($('searchInput').value.trim());
   $('sbBtns').style.display = l ? 'none' : '';
