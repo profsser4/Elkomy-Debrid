@@ -574,7 +574,7 @@ window.addEventListener('resize', () => { if (viewPref() === 'auto') applyView()
 // تنقّل بالأسهم (تلفزيون / كيبورد) + اختصارات الفيديو
 const ARROWS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 const KEYFIX = {Left: 'ArrowLeft', Right: 'ArrowRight', Up: 'ArrowUp', Down: 'ArrowDown'};
-const KEYCODES = {37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown', 13: 'Enter'};
+const KEYCODES = {37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown', 13: 'Enter', 21: 'ArrowLeft', 22: 'ArrowRight', 23: 'Enter'};
 function evKey(e) {
   const k = e.key;
   if (k && k !== 'Unidentified' && k !== 'Process') return KEYFIX[k] || k;
@@ -4780,6 +4780,7 @@ function nfxInit(v) {
   };
   box.addEventListener('keydown', onKey);
   S.onKey = onKey;
+  S.seekBy = seekBy;
 
   // ----- أحداث الفيديو
   v.addEventListener('play', () => {
@@ -4846,6 +4847,86 @@ function nfxEnded() {
   fsVideo = function () { if (nfxFs()) return; oldFs.apply(this, arguments); };
 })();
 
+
+// ===== طبقة الريموت الموحّدة للتقديم/التأخير =====
+// بتتسجّل على window في مرحلة الـcapture، فبتشتغل قبل أي معالج تاني (التنقل، الفوكس، الأزرار المخفية).
+(function () {
+  const REW = new Set(['MediaRewind', 'MediaTrackPrevious']);
+  const FWD = new Set(['MediaFastForward', 'MediaTrackNext']);
+  let last = 0, n = 0;
+  function dirOf(e) {
+    const k = e.key, kc = e.keyCode;
+    const unk = !k || k === 'Unidentified' || k === 'Process';
+    if (k === 'ArrowLeft' || k === 'Left') return {d: -1, media: false};
+    if (k === 'ArrowRight' || k === 'Right') return {d: 1, media: false};
+    if (REW.has(k)) return {d: -1, media: true};
+    if (FWD.has(k)) return {d: 1, media: true};
+    if (kc === 412 || kc === 227) return {d: -1, media: true};
+    if (kc === 417 || kc === 228) return {d: 1, media: true};
+    if (unk) {
+      if (kc === 37 || kc === 21) return {d: -1, media: false};
+      if (kc === 39 || kc === 22) return {d: 1, media: false};
+      if (kc === 89) return {d: -1, media: true};     // KEYCODE_MEDIA_REWIND
+      if (kc === 90) return {d: 1, media: true};      // KEYCODE_MEDIA_FAST_FORWARD
+    }
+    return null;
+  }
+  function clampT(v, t) {
+    try {
+      if (v.seekable && v.seekable.length) {
+        const a = v.seekable.start(0), b = v.seekable.end(v.seekable.length - 1);
+        if (isFinite(b)) t = Math.min(t, b - 0.5);
+        if (isFinite(a)) t = Math.max(t, a);
+      }
+    } catch (x) {}
+    if (isFinite(v.duration) && v.duration > 0) t = Math.min(t, v.duration - 1);
+    return Math.max(0, t);
+  }
+  window.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const S = (typeof NFX !== 'undefined') ? NFX : null;
+    if (!S || !S.box || !S.box.isConnected || !S.v) return;
+    const r = dirOf(e);
+    if (!r) return;
+    const tg = e.target, tag = tg && tg.tagName;
+    if (tag === 'TEXTAREA' || tag === 'SELECT' || (tag === 'INPUT' && tg.type !== 'range' && tg.type !== 'checkbox' && tg.type !== 'button')) return;
+    if (tg && tg.closest && tg.closest('#vpanel,#viewbox,#login-screen,#pform')) return;
+    if (S.panel) return;                                      // لوحة الترجمة/الصوت مفتوحة: الأسهم ليها
+    const v = S.v;
+    const fe = document.fullscreenElement || document.webkitFullscreenElement;
+    const inBox = S.box.contains(tg);
+    const playing = !v.paused && !v.ended;
+    if (!(r.media || fe || inBox || playing)) return;         // غير كده سيب التنقل العادي في الصفحة
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const now = Date.now();
+    n = (now - last < 700) ? n + 1 : 0;
+    last = now;
+    const step = r.media ? 30 : [10, 10, 20, 30, 60][Math.min(n, 4)];
+    const delta = r.d * step;
+    if (typeof S.seekBy === 'function') {
+      const before = v.currentTime;
+      S.seekBy(delta, r.d > 0 ? 'r' : 'l');
+      // لو التقديم اتحجّم أو ما اتحركش (ستريم مش seekable كامل) نطبّق بحدود المتاح
+      if (Math.abs(v.currentTime - before) < 0.01) { try { v.currentTime = clampT(v, before + delta); } catch (x) {} }
+    } else {
+      try { v.currentTime = clampT(v, v.currentTime + delta); } catch (x) {}
+    }
+    try { S.show && S.show(); } catch (x) {}
+  }, true);
+})();
+
+// ===== تشخيص الريموت: افتح الصفحة بـ ?keys=1 وهيظهر آخر زرار اتضغط =====
+(function () {
+  if (!/[?&]keys=1/.test(location.search)) return;
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;top:0;left:0;z-index:2147483647;background:#000c;color:#0f0;font:bold 22px monospace;padding:6px 12px;direction:ltr;pointer-events:none';
+  d.textContent = 'اضغط أي زرار في الريموت';
+  (document.fullscreenElement || document.body).appendChild(d);
+  const put = () => { const f = document.fullscreenElement || document.webkitFullscreenElement || document.body; if (d.parentNode !== f) f.appendChild(d); };
+  ['fullscreenchange', 'webkitfullscreenchange'].forEach(n => document.addEventListener(n, put));
+  window.addEventListener('keydown', e => { put(); d.textContent = 'key=' + e.key + ' code=' + e.code + ' keyCode=' + e.keyCode; }, true);
+})();
 </script>
 </body>
 </html>
