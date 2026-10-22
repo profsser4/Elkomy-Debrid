@@ -334,14 +334,12 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <h2 style="margin-top:0">🔍 ابحث أو الصق رابط</h2>
 <input id="searchInput" class="search-input" placeholder="اسم فيلم/مسلسل، أو رابط مباشر، أو magnet" oninput="sbSync()" onkeydown="if(event.key==='Enter')sbGo()">
 <div class="row" id="sbBtns">
-<button class="search-btn" onclick="searchTitles()">🎬 بحث</button>
-<button class="search-btn btn-blue" onclick="directTorrentSearch()">🧲 تورنت مباشر</button>
-<button class="search-btn" style="background:#0066dc" onclick="dmOpen()">▶️ Dailymotion</button>
+<button class="search-btn" onclick="unifiedSearch()">🔍 بحث</button>
 </div>
 <div class="row" id="sbLink" style="display:none">
 <button class="search-btn" onclick="processDirectLink()">سحب الرابط الآن 🚀</button>
 </div>
-<p style="color:var(--mut);font-size:12px;margin:8px 0 0">اكتب اسم للبحث، أو الصق رابط مباشر / magnet وهيتحوّل على طول.</p>
+<p style="color:var(--mut);font-size:12px;margin:8px 0 0">البحث بيشمل الأعمال والتورنت وDailymotion مرة واحدة. أو الصق رابط مباشر / magnet وهيتحوّل على طول.</p>
 </div>
 
 <div id="titles"></div>
@@ -359,9 +357,9 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div id="torrentResults"></div>
 </div>
 
-<div id="dmPanel" style="display:none">
-<h3 class="sec">▶️ نتايج Dailymotion</h3>
-<div id="dmResults"></div>
+<div id="allPanel" style="display:none">
+<div id="allBar"></div>
+<div id="allResults"></div>
 </div>
 
 <div id="results"></div>
@@ -517,7 +515,7 @@ function syncHome() {
   const d = $('details'), r = $('results'), tp = $('torrentPanel');
   const busy = !!((d && d.innerHTML.trim()) || (r && r.querySelector('video,.nfx')) || (tp && tp.style.display !== 'none'));
   ['searchBox', 'linkBox'].forEach(id => { const e = $(id); if (e) e.style.display = busy ? 'none' : ''; });
-  const dp = $('dmPanel'); if (dp) dp.style.display = (!busy && typeof DM !== 'undefined' && DM.length) ? 'block' : 'none';
+  const ap = $('allPanel'); if (ap) ap.style.display = (!busy && ALL.length) ? 'block' : 'none';
 }
 (function () {
   let q = 0;
@@ -1811,45 +1809,110 @@ function pullTorrent(i) {
   }
   pullSource(t.magnet, base, null);
 }
-// ================= Dailymotion: بحث ← TorBox يحوّل ← تشغيل/سماع =================
-let DM = [];
-let DMQ = '';
-function dmOpen() {
-  const q = $('searchInput').value.trim();
-  if (!q) return alert("اكتب اللي عايز تدوّر عليه الأول");
-  DMQ = q;
-  $('dmPanel').style.display = 'block';
-  $('dmPanel').scrollIntoView({behavior: 'smooth'});
-  dmSearch(1);
-}
+// ================= البحث الموحّد: زرار واحد لكل المصادر =================
+// لإضافة مصدر جديد: ضيف عنصر في SOURCES فيه: id, icon, name, color,
+//   search(q) -> مصفوفة نتايج (وترمي Error لو فشل), title(t), thumb(t), meta(t), open(t) عند الضغط.
+const enc = encodeURIComponent;
+const SOURCES = [
+  {id: 'titles', icon: '🎬', name: 'أعمال', color: '#8b5cf6',
+   search: async q => {
+     const {d} = await api('/tmdb?q=' + enc(q));
+     if (d.error) throw new Error(d.error);
+     return (d.results || []).slice(0, 12);
+   },
+   title: t => t.title, thumb: t => t.poster || '',
+   meta: t => (t.type === 'tv' ? '📺 مسلسل' : '🎬 فيلم') + (t.year ? ' · ' + t.year : ''),
+   open: t => {
+     if (t.imdb) return openImdb(t.imdb, t.type);
+     if (t.lk) return openLookup({dataset: {q: t.title, t: t.type, y: t.year || ''}});
+     openDetails(t.type, t.id);
+   }},
+  {id: 'torrent', icon: '🧲', name: 'تورنت', color: '#2563eb',
+   search: async q => {
+     const {d} = await api('/search?q=' + enc(q));
+     if (d.error) throw new Error(d.error);
+     const items = (d.results || []).slice(0, 25);
+     const hs = items.map(t => t.hash || hashOf(t.magnet)).filter(Boolean).slice(0, 100);
+     if (hs.length) {
+       api('/cached?h=' + hs.join(',')).then(({d: c}) => {
+         const set = new Set(c.cached || []);
+         items.forEach(t => { t.cached = set.has(t.hash || hashOf(t.magnet)); });
+         renderAll();
+       }).catch(() => {});
+     }
+     return items;
+   },
+   title: t => t.title, thumb: () => '',
+   meta: t => '💾 ' + fmtSize(t.size) + ' · 🌱 ' + t.seeders + (t.cached ? ' · ⚡ فوري' : ''),
+   open: t => pullSource(t.magnet, {src: t.magnet, title: ''}, null)},
+  {id: 'dm', icon: '▶️', name: 'Dailymotion', color: '#0066dc',
+   search: async q => {
+     const {d} = await api('/dailymotion/search?q=' + enc(q));
+     if (d.error) throw new Error(d.error);
+     return d.results || [];
+   },
+   title: t => t.title, thumb: t => t.thumb || '',
+   meta: t => (t.owner || '') + (t.duration ? ' · ⏱ ' + dmDur(t.duration) : ''),
+   open: t => pullSource(t.url, {src: t.url, title: t.title}, null)},
+];
+let ALL = [], SRCERR = {}, SRCF = 'all', USEQ = 0;
 function dmDur(s) {
   s = Math.round(+s || 0);
   const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
   return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0');
 }
-async function dmSearch(page) {
-  const q = DMQ;
-  if (!q) return;
-  const box = $('dmResults');
-  if (page === 1) { DM = []; box.innerHTML = pend('جاري البحث في Dailymotion...'); }
-  try {
-    const {d} = await api('/dailymotion/search?q=' + encodeURIComponent(q) + '&page=' + page);
-    if (d.error) return box.innerHTML = warn(d.error);
-    DM = DM.concat(d.results || []);
-    if (!DM.length) return box.innerHTML = warn('مفيش نتايج. جرب كلمات تانية.');
-    box.innerHTML = DM.map((v, i) =>
-      '<div class="ep" style="display:flex;gap:10px;align-items:center;cursor:pointer" onclick="dmPull(' + i + ')">' +
-      (v.thumb ? '<img src="' + esc(v.thumb) + '" alt="" loading="lazy" style="width:110px;height:62px;object-fit:cover;border-radius:6px;flex:none">' : '') +
-      '<div style="text-align:right;min-width:0"><div class="b">' + esc(v.title) + '</div>' +
-      '<small style="color:var(--mut)">' + esc(v.owner) + (v.duration ? ' · ⏱ ' + dmDur(v.duration) : '') + '</small></div></div>'
-    ).join('') + (d.has_more ? '<button class="fc" style="margin-top:8px" onclick="dmSearch(' + (page + 1) + ')">عرض المزيد</button>' : '');
-  } catch (e) { box.innerHTML = ERR; }
+async function unifiedSearch() {
+  const q = $('searchInput').value.trim();
+  if (!q) return alert('اكتب اللي عايز تدوّر عليه الأول');
+  const my = ++USEQ;
+  autoPick = false;
+  BR.on = false;
+  closeDetails();
+  $('titles').innerHTML = '';
+  ALL = []; SRCERR = {}; SRCF = 'all';
+  $('allPanel').style.display = 'block';
+  $('allBar').innerHTML = '';
+  $('allResults').innerHTML = pend('جاري البحث في كل المصادر...');
+  $('allPanel').scrollIntoView({behavior: 'smooth'});
+  let left = SOURCES.length;
+  await Promise.all(SOURCES.map(async s => {
+    try {
+      const items = await s.search(q);
+      if (my !== USEQ) return;
+      items.forEach(t => ALL.push({s: s, t: t}));
+    } catch (e) {
+      if (my === USEQ) SRCERR[s.id] = (e && e.message) || 'فشل البحث';
+    } finally {
+      if (my === USEQ) { left--; renderAll(left > 0); }
+    }
+  }));
 }
-function dmPull(i) {
-  const v = DM[i];
-  if (!v) return;
-  scrollToResults();
-  pullSource(v.url, {src: v.url, title: v.title}, null);   // نفس مسار سحب الروابط: TorBox بيحوّل والمشغّل بيشغّل
+function setSrcF(id) { SRCF = id; renderAll(false); }
+function renderAll(loading) {
+  const order = s => SOURCES.indexOf(s);
+  ALL.sort((a, b) => order(a.s) - order(b.s));
+  const cnt = id => ALL.filter(x => x.s.id === id).length;
+  $('allBar').innerHTML = '<div class="fbar"><button class="fc' + (SRCF === 'all' ? ' on' : '') + '" onclick="setSrcF(\'all\')">الكل (' + ALL.length + ')</button>' +
+    SOURCES.map(s => '<button class="fc' + (SRCF === s.id ? ' on' : '') + '" onclick="setSrcF(\'' + s.id + '\')">' + s.icon + ' ' + esc(s.name) + ' (' + cnt(s.id) + ')</button>').join('') + '</div>' +
+    ((SRCF === 'torrent' && cnt('torrent')) ? '<button class="fc" style="margin:6px 0" onclick="directTorrentSearch()">🧲 فلاتر التورنت الكاملة (مدبلج / مترجم / جودة...)</button>' : '');
+  let h = '';
+  ALL.forEach((x, i) => {
+    if (SRCF !== 'all' && x.s.id !== SRCF) return;
+    const th = x.s.thumb(x.t);
+    h += '<div class="ep" style="display:flex;gap:10px;align-items:center;cursor:pointer" onclick="srcOpen(' + i + ')">' +
+      (th ? '<img src="' + esc(th) + '" alt="" loading="lazy" style="width:80px;height:60px;object-fit:cover;border-radius:6px;flex:none">' : '') +
+      '<div style="text-align:right;min-width:0;flex:1"><div class="b">' + esc(x.s.title(x.t)) + '</div>' +
+      '<div style="margin-top:4px;font-size:12px;color:var(--mut)"><span class="badge" style="background:' + x.s.color + ';color:#fff">' + x.s.icon + ' ' + esc(x.s.name) + '</span> ' + esc(x.s.meta(x.t)) + '</div></div></div>';
+  });
+  const errs = SOURCES.filter(s => SRCERR[s.id] && (SRCF === 'all' || SRCF === s.id)).map(s => warn(s.icon + ' ' + s.name + ': ' + SRCERR[s.id])).join('');
+  if (!h && !loading) h = warn('مفيش نتايج. جرب كلمات تانية.');
+  $('allResults').innerHTML = h + errs + (loading ? pend('لسه بدوّر في باقي المصادر...') : '');
+}
+function srcOpen(i) {
+  const x = ALL[i];
+  if (!x) return;
+  if (x.s.id !== 'titles') scrollToResults();
+  x.s.open(x.t);
 }
 
 const sbIsLink = v => /^(https?:\/\/|magnet:|www\.)/i.test(v);
@@ -1859,7 +1922,7 @@ function sbSync() {
   $('sbLink').style.display = l ? '' : 'none';
 }
 function sbGo() {
-  if (sbIsLink($('searchInput').value.trim())) processDirectLink(); else searchTitles();
+  if (sbIsLink($('searchInput').value.trim())) processDirectLink(); else unifiedSearch();
 }
 function processDirectLink() {
   let link = $('searchInput').value.trim();
