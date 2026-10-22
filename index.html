@@ -118,6 +118,9 @@ body.m-tv .nfx-panel,body.m-tv .nfx-next{box-shadow:none}
 body.m-tv .hrow>.poster,body.m-tv .hrow>.cw{content-visibility:auto;contain-intrinsic-size:150px 290px}
 img.lz{background:#0b1220}
 body.m-tv button:focus-visible,body.m-tv .pl:focus-visible,body.m-tv summary:focus-visible{outline-width:4px}
+body.m-tv .hrow{padding:18px 14px 22px}
+body.m-tv .poster:focus-visible,body.m-tv .cw:focus-visible,body.m-tv .gtile:focus-visible{transform:scale(1.16);z-index:3;position:relative}
+body.m-tv .poster:focus,body.m-tv .cw:focus,body.m-tv .gtile:focus{transform:scale(1.16);z-index:3;position:relative}
 /* تلفزيونات سامسونج القديمة مش بتفهم :focus-visible، فبنكرر القواعد بـ :focus (لازم تكون قواعد منفصلة) */
 body.m-tv .poster:focus,body.m-tv .cw:focus,body.m-tv .pcard:focus,body.m-tv .gtile:focus{transform:scale(1.08);outline:4px solid var(--primary);outline-offset:2px;position:relative;z-index:2}
 body.m-tv button:focus,body.m-tv .pl:focus,body.m-tv summary:focus,body.m-tv a:focus,body.m-tv .ep:focus,body.m-tv .tor:focus{outline:4px solid var(--primary);outline-offset:2px}
@@ -504,10 +507,31 @@ function autoMode() {
   if (/SmartTV|SMART-TV|Tizen|Web0S|WebOS|HbbTV|NetCast|BRAVIA|AFTT|AFTM|AFTB|GoogleTV|CrKey|Android TV|Large Screen|AppleTV/i.test(UA)) return 'tv';
   return window.innerWidth >= 1000 ? 'desktop' : 'mobile';
 }
+var TVW = {start: 0, n: 3};
+const tvOn = () => isTv() && !gridOn();
+function tvBlocks() {
+  const el = $('shelves'), bl = [];
+  if (!el) return bl;
+  let pend = null;
+  Array.prototype.forEach.call(el.children, c => {
+    if (c.classList.contains('sec')) pend = c;
+    else if (c.classList.contains('hrow')) { bl.push({nodes: pend ? [pend, c] : [c], row: c}); pend = null; }
+    else if (bl.length) bl[bl.length - 1].nodes.push(c);
+  });
+  return bl;
+}
+function tvApply() {
+  const bl = tvBlocks(), on = tvOn();
+  TVW.start = Math.max(0, Math.min(TVW.start, Math.max(0, bl.length - TVW.n)));
+  bl.forEach((b, i) => {
+    const hide = on && (i < TVW.start || i >= TVW.start + TVW.n);
+    b.nodes.forEach(n => { n.style.display = hide ? 'none' : ''; });
+  });
+}
 const viewPref = () => localStorage.getItem('vmode') || 'auto';
 const realMode = () => viewPref() === 'auto' ? autoMode() : viewPref();
 const isTv = () => realMode() === 'tv';
-const gridOn = () => { const g = localStorage.getItem('vgrid'); return g === null ? realMode() === 'tv' : g === '1'; };
+const gridOn = () => { const g = localStorage.getItem('vgrid'); return g === null ? false : g === '1'; };
 function toggleGrid() { localStorage.setItem('vgrid', gridOn() ? '0' : '1'); applyView(); }
 function applyView() {
   const m = realMode();
@@ -517,8 +541,9 @@ function applyView() {
   const zr = $('vzoom'), zv = $('vzv');
   if (zr) zr.value = z;
   if (zv) zv.textContent = Math.round(z * 100) + '%';
+  tvApply();
   const gb = $('vgridB');
-  if (gb) gb.textContent = gridOn() ? '▦ القوائم: كل العناصر ظاهرة (شبكة) ✓' : '↔ القوائم: صف أفقي بيتحرك';
+  if (gb) gb.textContent = gridOn() ? '▦ القوائم: شبكة (كل العناصر ظاهرة)' : (isTv() ? '🎞 القوائم: زي نتفلكس (3 صفوف بس)' : '↔ القوائم: صفوف أفقية');
   const vm = $('vmodes');
   if (vm) vm.innerHTML = MODES.map(x => '<button class="fc' + (viewPref() === x[0] ? ' on' : '') + '" onclick="setMode(\'' + x[0] + '\')">' + x[1] + '</button>').join('');
 }
@@ -558,6 +583,23 @@ function spatial(dir) {
   const curRow = (cur && cur !== document.body && cur.closest) ? cur.closest('.hrow') : null;
   let idx = -1;
   if (curRow) idx = Array.prototype.indexOf.call(curRow.children, cur);
+  // نتفلكس: فوق/تحت بين الصفوف. النافذة (3 صفوف) بتتحرك ويتلغي الصف اللي بعّد
+  if (!horiz && curRow && tvOn() && $('shelves') && $('shelves').contains(curRow)) {
+    const bl = tvBlocks(), bi = bl.findIndex(b => b.row === curRow), ni = bi + (dir === 'ArrowDown' ? 1 : -1);
+    if (bi >= 0 && ni >= bl.length) return;
+    if (bi >= 0 && ni >= 0) {
+      if (ni >= TVW.start + TVW.n) TVW.start = ni - TVW.n + 1;
+      else if (ni < TVW.start) TVW.start = ni;
+      tvApply();
+      const kids = Array.prototype.filter.call(bl[ni].row.children, isFoc);
+      if (kids.length) {
+        const t = kids[Math.max(0, Math.min(idx, kids.length - 1))];
+        try { t.focus({preventScroll: true}); } catch (e) { t.focus(); }
+        try { t.scrollIntoView({block: 'center', inline: 'center', behavior: 'auto'}); } catch (e) {}
+      }
+      return;
+    }
+  }
   // أفقي داخل صف الأفلام: ننقل للأخ/الأخت مباشرة (من غير أي قياس)
   if (horiz && curRow && idx >= 0) {
     const rtl = getComputedStyle(curRow).direction === 'rtl';
@@ -1174,6 +1216,7 @@ function renderShelves() {
     if (showCfg) h += rowsCfgHTML();
   }
   el.innerHTML = h;
+  tvApply();
 }
 function latestOf(tmdb) {
   let best = null;
