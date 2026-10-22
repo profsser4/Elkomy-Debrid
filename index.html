@@ -513,7 +513,7 @@ function applyView() {
   const m = realMode();
   document.body.className = 'm-' + m + (gridOn() ? ' g-grid' : '');
   const z = parseFloat(localStorage.getItem('vzoom')) || (m === 'tv' ? 1.45 : 1);
-  document.body.style.zoom = z;
+  document.body.style.zoom = (document.fullscreenElement || document.webkitFullscreenElement) ? 1 : z;
   const zr = $('vzoom'), zv = $('vzv');
   if (zr) zr.value = z;
   if (zv) zv.textContent = Math.round(z * 100) + '%';
@@ -3960,14 +3960,6 @@ async function adDiag() {
   log += '\nعدد الـ streams: ' + st.length + (d && d.id ? ' | id موجود' : ' | مفيش id') + '\n';
   if (d && d.id) await tryStreams(d);
   show();
-}
-async function diagCurrent() {
-  const el = $('diagOut');
-  if (!el || !PLAY || !PLAY.vh) return;
-  el.style.display = 'block';
-  el.textContent = 'جاري الفحص...';
-  const t = await diagText(PLAY.vh, PLAY.fname || PLAY.title, PLAY.s, PLAY.e);
-  el.textContent = t + '\n\nالتشغيل الحالي: hls=' + (PLAY.hls ? 'موجود' : 'فاضي') + (PLAY.note ? ' · ' + PLAY.note : '');
 }
 function hlsAudio(i) {
   const v = document.querySelector('#results video');
