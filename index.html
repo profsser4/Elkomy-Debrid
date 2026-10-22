@@ -119,6 +119,7 @@ body.m-tv .hrow>.poster,body.m-tv .hrow>.cw{content-visibility:auto;contain-intr
 img.lz{background:#0b1220}
 body.m-tv button:focus-visible,body.m-tv .pl:focus-visible,body.m-tv summary:focus-visible{outline-width:4px}
 body.m-tv .hrow{padding:18px 14px 22px}
+body.m-tv.g-grid .hrow{flex-wrap:nowrap;overflow:visible}
 body.m-tv .poster:focus-visible,body.m-tv .cw:focus-visible,body.m-tv .gtile:focus-visible{transform:scale(1.16);z-index:3;position:relative}
 body.m-tv .poster:focus,body.m-tv .cw:focus,body.m-tv .gtile:focus{transform:scale(1.16);z-index:3;position:relative}
 /* تلفزيونات سامسونج القديمة مش بتفهم :focus-visible، فبنكرر القواعد بـ :focus (لازم تكون قواعد منفصلة) */
@@ -1264,9 +1265,10 @@ function epMark(tmdb, s, e) {
 }
 
 // ================= البحث: أفلام / مسلسلات =================
+const TV_ROW_N = 6;   // عدد الأعمال في الصف على التلفزيون (غيّر الرقم ده لو عاوز أكتر أو أقل)
 function row(title, list, rid) {
   if (!list.length) return '';
-  if (rid && isTv() && list.length > 16) list = list.slice(0, 16);     // التلفزيون: أقل عناصر في الصف + زرار «المزيد»
+  if (rid && isTv() && list.length > TV_ROW_N) list = list.slice(0, TV_ROW_N);     // التلفزيون: 6 أعمال بس في الصف + زرار «المزيد»
   return '<h3 class="sec">' + title + '</h3><div class="hrow">' + list.map(t =>
     (t.imdb ? '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">'
       : t.lk ? '<div class="poster" data-q="' + esc(t.title) + '" data-y="' + esc(t.year) + '" data-t="' + esc(t.type) + '" onclick="openLookup(this)">'
