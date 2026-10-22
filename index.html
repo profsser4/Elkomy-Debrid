@@ -1854,15 +1854,6 @@ const SOURCES = [
    title: t => t.title, thumb: t => t.thumb || '',
    meta: t => (t.owner || '') + (t.duration ? ' · ⏱ ' + dmDur(t.duration) : ''),
    open: t => pullSource(t.url, {src: t.url, title: t.title}, null)},
-  {id: 'vk', icon: '🔷', name: 'VK Video', color: '#0077ff',
-   search: async q => {
-     const {d} = await api('/vk/search?q=' + enc(q));
-     if (d.error) throw new Error(d.error);
-     return d.results || [];
-   },
-   title: t => t.title, thumb: t => t.thumb || '',
-   meta: t => (t.views ? '👁 ' + t.views + ' · ' : '') + (t.duration ? '⏱ ' + dmDur(t.duration) : ''),
-   open: t => pullSource(t.url, {src: t.url, title: t.title}, null)},
 ];
 let ALL = [], SRCERR = {}, SRCF = 'all', USEQ = 0;
 function dmDur(s) {
@@ -2070,13 +2061,26 @@ async function pullSource(src, base, fid) {
   clearCd();
   const id = ++pullId;
   $('results').innerHTML = pend('جاري سحب الرابط...');
+  const adTried = [];
+  if (fid == null && VK_RX.test(src) && DBP.cfg().ad) {
+    try {
+      $('results').innerHTML = pend('جاري فك الرابط عبر AllDebrid...');
+      const dd = await adLinkResolve(src);
+      if (id !== pullId) return;
+      base.src = src;
+      packBase = base;
+      playData(dd, base);
+      return;
+    } catch (e) { adTried.push('AllDebrid (من المتصفح): ' + ((e && e.message) || 'فشل')); }
+    $('results').innerHTML = pend('جاري سحب الرابط...');
+  }
   const body = {query: src};
   if (fid != null) body.file_id = fid;
   const res = await getLink(body, id);
   if (!res) return;
   const d = res.d;
   if (!d.direct_link) {
-    $('results').innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(d.tried);
+    $('results').innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(adTried.concat(d.tried || []));
     return;
   }
   base.src = src;
@@ -3592,6 +3596,31 @@ async function adResolve(spec, mode, my, ui) {
       if (+s.status === 2 && s.link) break;
     }
     if (s && s.link) out.hls = s.link;
+  }
+  return out;
+}
+
+// فك رابط عادي (زي VK) عن طريق AllDebrid من المتصفح مباشرة (السيرفر على Vercel وAllDebrid بيحجب IP السيرفرات)
+const VK_RX = /^https?:\/\/(?:[\w-]+\.)*(?:vk\.com|vkvideo\.ru|vk\.ru)\//i;
+async function adLinkResolve(url) {
+  const d = await adApi('/link/unlock', {link: url});
+  if (!d || !d.link) throw new Error('مفيش رابط راجع من AllDebrid');
+  const out = {direct_link: d.link, name: d.filename || '', size: d.filesize || 0, provider: 'AllDebrid'};
+  const sts = (Array.isArray(d.streams) && d.streams.length ? d.streams : (Array.isArray(d.streaming) ? d.streaming : [])).filter(x => x && x.id);
+  if (d.id && sts.length) {
+    try {
+      const q = x => { const m = /\d{3,4}/.exec(String(x.quality || x.id || x.name || '')); return m ? +m[0] : 0; };
+      const c = sts.slice().sort((a, b) => q(b) - q(a));
+      const best = c.find(x => q(x) && q(x) <= 1080) || c[0];
+      let s = await adApi('/link/streaming', {id: d.id, stream: best.id});
+      for (let i = 0; s && !s.link && s.delayed && i < 30; i++) {
+        await sleep(3000);
+        s = Object.assign({delayed: s.delayed}, await adApi('/link/delayed', {id: s.delayed}));
+        if (+s.status === 3) break;
+        if (+s.status === 2 && s.link) break;
+      }
+      if (s && s.link) out.hls = s.link;
+    } catch (e) { console.warn('ad streaming', e); }
   }
   return out;
 }
