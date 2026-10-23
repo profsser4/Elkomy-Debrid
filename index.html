@@ -1134,6 +1134,7 @@ async function loadRows() {
   loadFresh();
   loadInterestRows();
   renderShelves();
+  setTimeout(() => { loadForYou().then(renderShelvesSoon); }, 2500);
   if (prof() && prof().int === undefined) openInterests();
 }
 function nextEpOf(c) {
@@ -1210,6 +1211,11 @@ async function openImdb(imdb, type) {
     openDetails(d.type, d.id);
   } catch (e) { alert('مش قادر أوصل للسيرفر'); }
 }
+let _rsT = 0;
+function renderShelvesSoon() {
+  clearTimeout(_rsT);
+  _rsT = setTimeout(renderShelves, 250);
+}
 function renderShelves() {
   const el = $('shelves');
   if (!PID) { el.innerHTML = ''; return; }
@@ -1230,6 +1236,7 @@ function renderShelves() {
   if (LATEST.length) h += row('🔔 جديد في قائمتي', LATEST);
   FRESH.forEach(r => { h += row(r.title, r.items, r.id); });
   IROWS.forEach(r => { h += row(r.title, r.items, r.id); });
+  if (AROWS_PID === PID) AROWS.slice(0, isTv() ? 3 : 8).forEach(r => { h += row(r.title, isTv() ? r.items.slice(0, TV_ROW_N) : r.items); });
   h += stRow();
   (ROWS || []).forEach(r => { if (!hr.includes(r.id)) h += row(r.title, r.items, r.id); });
   if (ROWS && ROWS.length) {
@@ -4337,13 +4344,13 @@ function renderGenres() {
 let IALL = [], IROWS = [], LATEST = [], IPICK = new Set(), INT_OPEN = false;
 async function loadLatest() {
   try { const {d} = await api('/latest'); LATEST = d.items || []; } catch (e) {}
-  renderShelves();
+  renderShelvesSoon();
 }
 async function loadInterestRows() {
   const p = prof(), ks = (p && p.int) || [];
   IROWS = [];
   if (ks.length) { try { const {d} = await api('/interest?k=' + ks.join(',')); IROWS = d.rows || []; } catch (e) {} }
-  renderShelves();
+  renderShelvesSoon();
 }
 function drawInterests() {
   vpEl().innerHTML = '<div class="vbox"><button class="vx" onclick="closeVP()">✕</button><h3 style="margin:0 0 6px;color:var(--primary)">⭐ اهتماماتي</h3>' +
@@ -4412,11 +4419,21 @@ function renderLayout() {
 }
 
 // ================= أحدث الإضافات + تكملة المشاهدة بنفس النسخة + التريلر =================
-let FRESH = [], FRESH_T = 0, LAST_PULL = 0;
+let FRESH = [], AROWS = [], FRESH_T = 0, LAST_PULL = 0;
 const FAILED = new Set();
+let AROWS_PID = null;
+async function loadForYou() {
+  const p = prof(), pid = PID;
+  if (!pid) { AROWS = []; return; }
+  try {
+    const {d} = await api('/for-you?pid=' + encodeURIComponent(pid) + '&skip=' + encodeURIComponent(((p && p.int) || []).join(',')) + (isTv() ? '&lite=1' : ''));
+    if (pid === PID) { AROWS = d.rows || []; AROWS_PID = pid; }
+  } catch (e) {}
+}
 async function loadFresh() {
   try { const {d} = await api('/fresh'); FRESH = d.rows || []; FRESH_T = Date.now(); } catch (e) {}
-  renderShelves();
+  loadForYou().then(renderShelvesSoon);
+  renderShelvesSoon();
 }
 setInterval(() => { if (PID && !document.hidden) { loadFresh(); loadLatest(); } }, 20 * 60 * 1000);
 document.addEventListener('visibilitychange', () => {
