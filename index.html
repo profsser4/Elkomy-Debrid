@@ -123,6 +123,44 @@ body.m-tv .hz .hb .i{backdrop-filter:none}
 body.m-tv .nfx-panel,body.m-tv .nfx-next{box-shadow:none}
 body.m-tv .hrow>.poster,body.m-tv .hrow>.cw{content-visibility:auto;contain-intrinsic-size:150px 290px}
 img.lz{background:#0b1220}
+/* ===== صفحة البحث (شاشة لوحدها) ===== */
+body.sp-on{overflow:hidden}
+#sp{display:none;position:fixed;inset:0;z-index:100;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;direction:rtl;color:var(--text)}
+.sphd{position:sticky;top:0;z-index:2;background:var(--bg);padding:10px 12px 6px;border-bottom:1px solid #ffffff14}
+.sprow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+#sp .search-input{margin:0;flex:1;min-width:0;height:44px;padding:0 14px}
+.spback,.spgo{flex:none;width:44px;height:44px;border-radius:12px;border:1px solid #334155;background:var(--panel);color:#fff;font-size:18px;cursor:pointer}
+.spgo{background:var(--primary);border-color:var(--primary)}
+.spbody{padding:6px 12px 48px;max-width:1200px;margin:0 auto}
+.sph{display:flex;align-items:center;justify-content:space-between;margin:16px 0 10px}
+.sph h3{margin:0;font-size:18px;color:#fff}
+.sph small{color:var(--mut);font-weight:400;font-size:13px}
+.spg{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:12px}
+body.m-desktop .spg,body.m-tv .spg{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+.spc{cursor:pointer;border-radius:12px;background:var(--panel);border:1px solid #ffffff14;overflow:hidden;transition:transform .15s}
+.spc:hover,.spc:focus-visible{transform:scale(1.04);outline:2px solid var(--primary)}
+.spi{position:relative}
+.spi img,.spi .noimg{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#0b1220}
+.spi .noimg{display:flex;align-items:center;justify-content:center;font-size:34px}
+.spk{position:absolute;top:6px;right:6px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#000b;color:#fff}
+.spk.tv{background:#7c3aedd9}.spk.movie{background:#e11d48d9}
+.spt{padding:7px 8px 0;font-size:13px;font-weight:700;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.8em;text-align:right}
+.spm{padding:2px 8px;font-size:11.5px;color:var(--mut);text-align:right}
+.spm.sprt{min-height:1.6em;color:#cbd5e1;padding-bottom:8px}
+.spl{display:flex;flex-direction:column;gap:8px}
+.spr{display:flex;gap:10px;align-items:center;padding:8px;border-radius:12px;background:var(--panel);border:1px solid #ffffff14;cursor:pointer}
+.spr:hover,.spr:focus-visible{outline:2px solid var(--primary)}
+.spri{flex:none;width:56px;height:56px;border-radius:10px;background:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:24px}
+.sprb{min-width:0;flex:1}
+.sprt2{font-size:13px;font-weight:700;line-height:1.45;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sprm{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.spb{font-size:11.5px;padding:2px 8px;border-radius:99px;background:#334155;color:#e2e8f0}
+.spb.sz{background:#0e7490;color:#fff;font-weight:700}.spb.q{background:#7c3aed;color:#fff}.spb.ok{background:#16a34a;color:#fff}
+.spth{position:relative;flex:none;width:132px}
+.spth img,.spth .noimg{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;display:block;background:#0b1220}
+.spth .noimg{display:flex;align-items:center;justify-content:center;font-size:26px}
+.spth b{position:absolute;bottom:4px;left:4px;background:#000c;color:#fff;font-size:11px;padding:1px 6px;border-radius:4px}
+
 body.m-tv button:focus-visible,body.m-tv .pl:focus-visible,body.m-tv summary:focus-visible{outline-width:4px}
 body.m-tv .hrow{padding:18px 14px 22px}
 body.m-tv.g-grid .hrow{flex-wrap:nowrap;overflow:visible}
@@ -371,6 +409,18 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div id="allResults"></div>
 </div>
 
+<div id="sp">
+<div class="sphd">
+<div class="sprow">
+<button class="spback" onclick="spBack()" aria-label="رجوع">➡️</button>
+<input id="spInput" class="search-input" placeholder="ابحث عن فيلم أو مسلسل..." enterkeyhint="search" onkeydown="if(event.key==='Enter')spGo()">
+<button class="spgo" onclick="spGo()" aria-label="بحث">🔍</button>
+</div>
+<div id="spBar"></div>
+</div>
+<div id="spResults" class="spbody"></div>
+</div>
+
 <div id="results"></div>
 
 <details class="action-box adm" style="text-align:right;margin-top:18px">
@@ -522,9 +572,10 @@ function autoMode() {
 // قايمة البحث وفك الروابط في الشاشة الرئيسية بس: بتختفي لما تفتح عمل أو فيديو أو نسخ التورنت
 function syncHome() {
   const d = $('details'), r = $('results'), tp = $('torrentPanel');
-  const busy = !!((d && d.innerHTML.trim()) || (r && r.querySelector('video,.nfx')) || (tp && tp.style.display !== 'none'));
+  const busy = !!((d && d.style.display === 'block' && d.innerHTML.trim()) || (r && r.querySelector('video,.nfx')) || (tp && tp.style.display !== 'none'));
   ['searchBox', 'linkBox'].forEach(id => { const e = $(id); if (e) e.style.display = busy ? 'none' : ''; });
-  const ap = $('allPanel'); if (ap) ap.style.display = (!busy && ALL.length) ? 'block' : 'none';
+  const ap = $('allPanel'); if (ap) ap.style.display = 'none';
+  if (window.spSync) spSync();
 }
 (function () {
   let q = 0;
@@ -1169,6 +1220,7 @@ function enterProfile(id) {
   pack = null;
   showCfg = false;
   VS = ['h'];
+  if (window.spReset) spReset();
   try { history.replaceState({n: 1}, ''); } catch (e) {}
   closeDetails();
   const p = prof();
@@ -1262,7 +1314,7 @@ async function openLookup(el) {
     const {d} = await api('/stremio/lookup?q=' + encodeURIComponent(el.dataset.q) + '&type=' + encodeURIComponent(el.dataset.t) + '&year=' + encodeURIComponent(el.dataset.y || ''));
     if (d.error || !d.id) {
       const si = $('searchInput');
-      if (si) { si.value = el.dataset.q || ''; scrollTo({top: 0, behavior: 'smooth'}); searchTitles(); }
+      if (si) { si.value = el.dataset.q || ''; unifiedSearch(); }
       return;
     }
     openDetails(d.type, d.id);
@@ -1432,6 +1484,7 @@ function closeDetails() {
   $('hz').style.display = BR.on ? 'none' : 'block';
   $('browse').style.display = BR.on ? 'block' : 'none';
   renderShelves();
+  if (window.spSync) spSync();
 }
 // ================= زرار الرجوع (history) =================
 function pushView(v) {
@@ -1462,7 +1515,9 @@ window.addEventListener('popstate', e => {
     if (top === 'p') stopPlayer();
     else if (top === 'd') closeDetails();
     else if (top === 'b') closeBrowse();
+    else if (top === 's') spHide();
   }
+  if (window.spSync) spSync();
 });
 function handleDeepLink() {
   const m = /^#open=(tv|movie):(\d+)$/.exec(location.hash);
@@ -1932,6 +1987,45 @@ function dmDur(s) {
   const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
   return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0');
 }
+// ---------- صفحة البحث: شاشة لوحدها (مش بتنزل تحت) ----------
+const SPG = {open: false, sy: 0, rt: {}};
+const spCat = x => x.s.id === 'titles' ? x.t.type : x.s.id;          // movie | tv | torrent | dm
+const spKey = x => spCat(x) + ':' + (x.t.id || x.t.imdb || x.t.title);
+const SP_TABS = [['all', 'الكل'], ['movie', '🎬 أفلام'], ['tv', '📺 مسلسلات'], ['torrent', '🧲 تورنت'], ['dm', '▶️ Dailymotion']];
+const fmtMin = m => { m = Math.round(+m || 0); return !m ? '' : (m >= 60 ? Math.floor(m / 60) + 'س' + (m % 60 ? ' ' + (m % 60) + 'د' : '') : m + 'د'); };
+function spOpen(q) {
+  const o = $('sp');
+  if (!o) return;
+  $('spInput').value = q || '';
+  if (!SPG.open) { SPG.open = true; SPG.sy = 0; if (VS[VS.length - 1] !== 's') pushView('s'); }
+  spSync();
+  o.scrollTop = 0;
+}
+function spHide() { SPG.open = false; spSync(); }
+function spReset() { SPG.open = false; spSync(); }
+function spBack() { if (VS[VS.length - 1] === 's') history.back(); else spHide(); }
+// بتظهر لما نكون في وضع البحث ومفيش تفاصيل/مشغّل/نسخ تورنت مفتوحة، وبتختفي لما تفتح عمل وترجع لما ترجع
+function spSync() {
+  const o = $('sp');
+  if (!o) return;
+  const d = $('details'), r = $('results'), tp = $('torrentPanel');
+  const busy = !!((d && d.style.display === 'block' && d.innerHTML.trim()) || (r && r.innerHTML.trim()) || (tp && tp.style.display !== 'none'));
+  const show = SPG.open && !busy;
+  const was = o.style.display === 'block';
+  if (show === was) return;
+  if (was) SPG.sy = o.scrollTop;
+  o.style.display = show ? 'block' : 'none';
+  document.body.classList.toggle('sp-on', show);
+  if (show) o.scrollTop = SPG.sy || 0;
+}
+function spGo() {
+  const v = $('spInput').value.trim();
+  if (!v) return;
+  $('searchInput').value = v;
+  $('spInput').blur();
+  if (sbIsLink(v)) { if (VS[VS.length - 1] !== 'p') pushView('p'); processDirectLink(); }
+  else unifiedSearch();
+}
 async function unifiedSearch() {
   const q = $('searchInput').value.trim();
   if (!q) return alert('اكتب اللي عايز تدوّر عليه الأول');
@@ -1941,10 +2035,9 @@ async function unifiedSearch() {
   closeDetails();
   $('titles').innerHTML = '';
   ALL = []; SRCERR = {}; SRCF = 'all';
-  $('allPanel').style.display = 'block';
-  $('allBar').innerHTML = '';
-  $('allResults').innerHTML = pend('جاري البحث في كل المصادر...');
-  $('allPanel').scrollIntoView({behavior: 'smooth'});
+  spOpen(q);
+  $('spBar').innerHTML = '';
+  $('spResults').innerHTML = pend('جاري البحث في كل المصادر...');
   let left = SOURCES.length;
   await Promise.all(SOURCES.map(async s => {
     try {
@@ -1954,35 +2047,94 @@ async function unifiedSearch() {
     } catch (e) {
       if (my === USEQ) SRCERR[s.id] = (e && e.message) || 'فشل البحث';
     } finally {
-      if (my === USEQ) { left--; renderAll(left > 0); }
+      if (my === USEQ) { left--; renderAll(left > 0); if (s.id === 'titles') spFillRt(my); }
     }
   }));
 }
-function setSrcF(id) { SRCF = id; renderAll(false); }
+function setSrcF(id) { SRCF = id; renderAll(false); const o = $('sp'); if (o) o.scrollTop = 0; }
+function spCard(x, i) {
+  const t = x.t, c = spCat(x), th = x.s.thumb(t), key = spKey(x);
+  return '<div class="spc" tabindex="0" onclick="srcOpen(' + i + ')">' +
+    '<div class="spi">' + (th ? '<img src="' + esc(th) + '" alt="" loading="lazy" decoding="async">' : '<div class="noimg">🎬</div>') +
+    '<span class="spk ' + c + '">' + (c === 'tv' ? '📺 مسلسل' : '🎬 فيلم') + '</span></div>' +
+    '<div class="spt">' + esc(t.title) + '</div>' +
+    '<div class="spm">' + esc(t.year || '') + '</div>' +
+    '<div class="spm sprt" data-k="' + esc(key) + '">' + (SPG.rt[key] || '') + '</div></div>';
+}
+function spTor(x, i) {
+  const t = x.t, tg = tags(t.title || '');
+  return '<div class="spr" tabindex="0" onclick="srcOpen(' + i + ')"><div class="spri">🧲</div><div class="sprb">' +
+    '<div class="sprt2" style="direction:ltr;text-align:left">' + esc(t.title) + '</div><div class="sprm">' +
+    '<span class="spb sz">💾 ' + esc(fmtSize(t.size)) + '</span><span class="spb">🌱 ' + (t.seeders || 0) + '</span>' +
+    (tg ? '<span class="spb q">' + esc(tg) + '</span>' : '') + (t.cached ? '<span class="spb ok">⚡ فوري</span>' : '') +
+    '</div></div></div>';
+}
+function spDm(x, i) {
+  const t = x.t, th = x.s.thumb(t);
+  return '<div class="spr" tabindex="0" onclick="srcOpen(' + i + ')"><div class="spth">' +
+    (th ? '<img src="' + esc(th) + '" alt="" loading="lazy" decoding="async">' : '<div class="noimg">▶️</div>') +
+    (t.duration ? '<b>⏱ ' + dmDur(t.duration) + '</b>' : '') + '</div><div class="sprb">' +
+    '<div class="sprt2">' + esc(t.title) + '</div><div class="sprm"><span class="spb">' + esc(t.owner || 'Dailymotion') + '</span>' +
+    (t.duration ? '<span class="spb sz">⏱ ' + dmDur(t.duration) + '</span>' : '') + '</div></div></div>';
+}
 function renderAll(loading) {
   const order = s => SOURCES.indexOf(s);
   ALL.sort((a, b) => order(a.s) - order(b.s));
-  const cnt = id => ALL.filter(x => x.s.id === id).length;
-  $('allBar').innerHTML = '<div class="fbar"><button class="fc' + (SRCF === 'all' ? ' on' : '') + '" onclick="setSrcF(\'all\')">الكل (' + ALL.length + ')</button>' +
-    SOURCES.map(s => '<button class="fc' + (SRCF === s.id ? ' on' : '') + '" onclick="setSrcF(\'' + s.id + '\')">' + s.icon + ' ' + esc(s.name) + ' (' + cnt(s.id) + ')</button>').join('') + '</div>' +
-    ((SRCF === 'torrent' && cnt('torrent')) ? '<button class="fc" style="margin:6px 0" onclick="directTorrentSearch()">🧲 فلاتر التورنت الكاملة (مدبلج / مترجم / جودة...)</button>' : '');
+  const idx = ALL.map((x, i) => ({x: x, i: i}));
+  const by = c => idx.filter(o => spCat(o.x) === c);
+  const f = SRCF;
+  $('spBar').innerHTML = '<div class="fbar">' + SP_TABS.map(tb =>
+    '<button class="fc' + (f === tb[0] ? ' on' : '') + '" onclick="setSrcF(\'' + tb[0] + '\')">' + tb[1] + ' (' + (tb[0] === 'all' ? ALL.length : by(tb[0]).length) + ')</button>').join('') + '</div>';
   let h = '';
-  ALL.forEach((x, i) => {
-    if (SRCF !== 'all' && x.s.id !== SRCF) return;
-    const th = x.s.thumb(x.t);
-    h += '<div class="ep" style="display:flex;gap:10px;align-items:center;cursor:pointer" onclick="srcOpen(' + i + ')">' +
-      (th ? '<img src="' + esc(th) + '" alt="" loading="lazy" style="width:80px;height:60px;object-fit:cover;border-radius:6px;flex:none">' : '') +
-      '<div style="text-align:right;min-width:0;flex:1"><div class="b">' + esc(x.s.title(x.t)) + '</div>' +
-      '<div style="margin-top:4px;font-size:12px;color:var(--mut)"><span class="badge" style="background:' + x.s.color + ';color:#fff">' + x.s.icon + ' ' + esc(x.s.name) + '</span> ' + esc(x.s.meta(x.t)) + '</div></div></div>';
+  [['movie', '🎬 الأفلام'], ['tv', '📺 المسلسلات'], ['torrent', '🧲 التورنت'], ['dm', '▶️ Dailymotion']].forEach(g => {
+    const c = g[0];
+    if (f !== 'all' && f !== c) return;
+    const l = by(c);
+    if (!l.length) return;
+    const lim = (f === 'all' && (c === 'torrent' || c === 'dm')) ? 6 : l.length;
+    const body = (c === 'movie' || c === 'tv')
+      ? '<div class="spg">' + l.map(o => spCard(o.x, o.i)).join('') + '</div>'
+      : '<div class="spl">' + l.slice(0, lim).map(o => (c === 'torrent' ? spTor : spDm)(o.x, o.i)).join('') + '</div>';
+    h += '<div class="sph"><h3>' + g[1] + ' <small>(' + l.length + ')</small></h3>' +
+      (l.length > lim ? '<button class="fc" onclick="setSrcF(\'' + c + '\')">عرض الكل ‹</button>' : '') + '</div>' + body;
   });
-  const errs = SOURCES.filter(s => SRCERR[s.id] && (SRCF === 'all' || SRCF === s.id)).map(s => warn(s.icon + ' ' + s.name + ': ' + SRCERR[s.id])).join('');
+  if (f === 'torrent' && by('torrent').length) h += '<button class="fc" style="margin:12px 0" onclick="spTorFull()">🧲 فلاتر التورنت الكاملة (مدبلج / مترجم / جودة...)</button>';
+  const errs = SOURCES.filter(s => SRCERR[s.id] && (f === 'all' || (s.id === 'titles' ? (f === 'movie' || f === 'tv') : f === s.id)))
+    .map(s => warn(s.icon + ' ' + s.name + ': ' + SRCERR[s.id])).join('');
   if (!h && !loading) h = warn('مفيش نتايج. جرب كلمات تانية.');
-  $('allResults').innerHTML = h + errs + (loading ? pend('لسه بدوّر في باقي المصادر...') : '');
+  $('spResults').innerHTML = h + errs + (loading ? pend('لسه بدوّر في باقي المصادر...') : '');
+}
+function spTorFull() {
+  if (!VS.includes('d')) pushView('d');
+  directTorrentSearch();
+}
+// مدة الفيلم/المسلسل وتقييمه: بتتجاب من تفاصيل العمل ورا الكواليس وبتظهر على الكروت أول ما توصل
+async function spFillRt(my) {
+  const jobs = ALL.filter(x => x.s.id === 'titles' && x.t.id && !SPG.rt[spKey(x)]);
+  const worker = async () => {
+    while (jobs.length) {
+      const x = jobs.shift();
+      if (my !== USEQ) return;
+      try {
+        const {d} = await api('/details?type=' + enc(x.t.type) + '&id=' + enc(x.t.id));
+        if (!d || d.error) continue;
+        const p = [];
+        if (d.rating && +d.rating) p.push('⭐ ' + esc(d.rating));
+        const m = fmtMin(d.runtime);
+        if (m) p.push('⏱ ' + m + (x.t.type === 'tv' ? '/حلقة' : ''));
+        if (x.t.type === 'tv' && d.seasons && d.seasons.length) p.push(d.seasons.length + ' موسم');
+        const key = spKey(x);
+        SPG.rt[key] = p.join(' · ');
+        document.querySelectorAll('#sp .sprt').forEach(e => { if (e.dataset.k === key) e.innerHTML = SPG.rt[key]; });
+      } catch (e) {}
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
 }
 function srcOpen(i) {
   const x = ALL[i];
   if (!x) return;
-  if (x.s.id !== 'titles') scrollToResults();
+  if (x.s.id !== 'titles') { if (VS[VS.length - 1] !== 'p') pushView('p'); scrollToResults(); }
   x.s.open(x.t);
 }
 
