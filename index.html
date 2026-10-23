@@ -9,6 +9,8 @@
 <style>
 :root{--bg:#0f172a;--panel:#1e293b;--primary:#38bdf8;--text:#f8fafc;--danger:#ef4444;--success:#22c55e;--mut:#94a3b8}
 *{box-sizing:border-box;font-family:Tahoma}
+#tvpager{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:12px;background:#000c;color:#fff;padding:6px 14px;border-radius:24px;z-index:60;font-size:14px;direction:rtl}
+#tvpager button{background:#334155;color:#fff;border:0;border-radius:50%;width:34px;height:34px;font-size:15px;cursor:pointer}
 body{margin:0;background:var(--bg);color:var(--text);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom)}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 button,a,summary,.poster,.cw,.pcard,.gtile{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
@@ -309,6 +311,8 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <button id="vgridB" class="fc" style="margin:8px 0;width:100%" onclick="toggleGrid()"></button>
 <div class="lbl">حجم الواجهة: <b id="vzv"></b></div>
 <input id="vzoom" type="range" min="0.7" max="2.2" step="0.05" style="width:100%;margin:10px 0" oninput="setZoom(this.value)">
+<div class="lbl">عدد الصفوف في الشاشة (التلفزيون): <b id="trv"></b></div>
+<input id="trng" type="range" min="2" max="10" step="1" style="width:100%;margin:10px 0" oninput="setRows(this.value)">
 <div class="row"><button class="search-btn" onclick="resetView()" style="background:#475569">إعادة ضبط</button><button class="search-btn" onclick="closeView()">تمام</button></div>
 <p style="color:var(--mut);font-size:12px">على التلفزيون: اختار "📺 شاشة". بتتحكم بالأسهم وزرار OK ورجوع، وفي الفيديو الأسهم للتقديم والصوت.</p>
 </div>
@@ -553,7 +557,50 @@ function tvApply() {
     const hide = on && (i < TVW.start || i >= TVW.start + TVW.n);
     b.nodes.forEach(n => { n.style.display = hide ? 'none' : ''; });
   });
+  tvPager(bl, on);
 }
+function tvPager(bl, on) {
+  let p = $('tvpager');
+  if (!on || bl.length <= TVW.n) { if (p) p.style.display = 'none'; return; }
+  if (!p) {
+    p = document.createElement('div');
+    p.id = 'tvpager';
+    p.innerHTML = '<button onclick="tvScroll(-1)">▲</button><span id="tvpt"></span><button onclick="tvScroll(1)">▼</button>';
+    document.body.appendChild(p);
+  }
+  p.style.display = 'flex';
+  $('tvpt').textContent = (TVW.start + 1) + '–' + Math.min(bl.length, TVW.start + TVW.n) + ' من ' + bl.length;
+}
+function tvScroll(d) {
+  if (!tvOn()) return;
+  const before = TVW.start;
+  TVW.start += d * Math.max(1, TVW.n - 1);
+  tvApply();
+  if (TVW.start === before) return;
+  const bl = tvBlocks(), b = bl[d > 0 ? Math.min(bl.length - 1, TVW.start + TVW.n - 1) : TVW.start];
+  const t = b && Array.prototype.find.call(b.row.children, isFoc);
+  if (t) { try { t.focus({preventScroll: true}); } catch (e) { t.focus(); } }
+  window.scrollTo(0, 0);
+}
+const tvHome = () => tvOn() && $('shelves') && $('shelves').style.display !== 'none' && $('main-content') && $('main-content').style.display !== 'none' && navScope() === document;
+let _wT = 0, _ty = null;
+window.addEventListener('wheel', e => {
+  if (!tvHome() || Math.abs(e.deltaY) < 8 || Date.now() - _wT < 280) return;
+  _wT = Date.now();
+  tvScroll(e.deltaY > 0 ? 1 : -1);
+}, {passive: true});
+window.addEventListener('touchstart', e => { _ty = e.touches.length === 1 ? e.touches[0].clientY : null; }, {passive: true});
+window.addEventListener('touchend', e => {
+  if (_ty === null || !tvHome()) return;
+  const dy = e.changedTouches[0].clientY - _ty;
+  _ty = null;
+  if (Math.abs(dy) > 70) tvScroll(dy < 0 ? 1 : -1);
+}, {passive: true});
+window.addEventListener('keydown', e => {
+  if (!tvHome()) return;
+  if (e.key === 'PageDown' || e.keyCode === 34 || e.keyCode === 428) { tvScroll(1); e.preventDefault(); }
+  else if (e.key === 'PageUp' || e.keyCode === 33 || e.keyCode === 427) { tvScroll(-1); e.preventDefault(); }
+});
 // إعدادات الشكل (النمط، الحجم، الشبكة) بتتحفظ لكل بروفايل على كل جهاز لوحده.
 // لو البروفايل ملوش إعدادات لسه، بياخد الإعدادات القديمة زي ما كانت.
 const VKEY = () => 'view:' + UNAME + ':' + (PID || '');
@@ -573,15 +620,20 @@ function applyView() {
   const zr = $('vzoom'), zv = $('vzv');
   if (zr) zr.value = z;
   if (zv) zv.textContent = Math.round(z * 100) + '%';
+  TVW.n = Math.max(2, Math.min(10, parseInt(vGet('r', 'vrows')) || 3));
+  const rr = $('trng'), rv = $('trv');
+  if (rr) rr.value = TVW.n;
+  if (rv) rv.textContent = TVW.n;
   tvApply();
   const gb = $('vgridB');
-  if (gb) gb.textContent = gridOn() ? '▦ القوائم: شبكة (كل العناصر ظاهرة)' : (isTv() ? '🎞 القوائم: زي نتفلكس (3 صفوف بس)' : '↔ القوائم: صفوف أفقية');
+  if (gb) gb.textContent = gridOn() ? '▦ القوائم: شبكة (كل العناصر ظاهرة)' : (isTv() ? '🎞 القوائم: زي نتفلكس (' + TVW.n + ' صفوف في الشاشة)' : '↔ القوائم: صفوف أفقية');
   const vm = $('vmodes');
   if (vm) vm.innerHTML = MODES.map(x => '<button class="fc' + (viewPref() === x[0] ? ' on' : '') + '" onclick="setMode(\'' + x[0] + '\')">' + x[1] + '</button>').join('');
 }
 function setMode(m) { const o = vRead() || {}; o.m = m; o.z = ''; vWrite(o); applyView(); }
+function setRows(v) { const o = vRead() || {}; o.r = String(v); vWrite(o); applyView(); }
 function setZoom(v) { const o = vRead() || {}; o.z = v; vWrite(o); applyView(); }
-function resetView() { vWrite({m: 'auto', z: '', g: '0'}); applyView(); }
+function resetView() { vWrite({m: 'auto', z: '', g: '0', r: ''}); applyView(); }
 function openView() { applyView(); $('viewbox').style.display = 'flex'; }
 function closeView() { $('viewbox').style.display = 'none'; }
 window.addEventListener('resize', () => { if (viewPref() === 'auto') applyView(); });
