@@ -2,13 +2,17 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
 <title>Elkomy Debrid VIP</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0f172a;--panel:#1e293b;--primary:#38bdf8;--text:#f8fafc;--danger:#ef4444;--success:#22c55e;--mut:#94a3b8}
 *{box-sizing:border-box;font-family:Tahoma}
-body{margin:0;background:var(--bg);color:var(--text)}
+body{margin:0;background:var(--bg);color:var(--text);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom)}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,a,summary,.poster,.cw,.pcard,.gtile{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important;scroll-behavior:auto !important}}
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
 .login-box{background:var(--panel);padding:2rem;border-radius:12px;width:90%;max-width:400px;text-align:center}
 .login-input,.search-input{width:100%;padding:13px;margin-bottom:10px;border-radius:8px;border:1px solid #334155;background:var(--bg);color:#fff;font-size:15px}
@@ -181,10 +185,10 @@ video{border-radius:14px}
   user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;outline:none;font-family:Tahoma,Arial,sans-serif;touch-action:manipulation}
 .nfx video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:0;background:#000}
 .nfx video::cue{background:rgba(0,0,0,0);color:#fff;font-size:1.15em;text-shadow:0 0 4px #000,0 0 6px #000,1px 1px 3px #000}
-.nfx:fullscreen{width:100vw;height:100vh;aspect-ratio:auto;border-radius:0}
+.nfx:fullscreen{width:100vw;height:100vh;height:100dvh;aspect-ratio:auto;border-radius:0}
 #results:fullscreen,#results:-webkit-full-screen{background:#000;overflow:hidden;padding:0}
-#results:fullscreen .nfx,#results:-webkit-full-screen .nfx{position:fixed;inset:0;width:100vw;height:100vh;max-width:none;aspect-ratio:auto;border-radius:0;z-index:9999}
-.nfx:-webkit-full-screen{width:100vw;height:100vh;aspect-ratio:auto;border-radius:0}
+#results:fullscreen .nfx,#results:-webkit-full-screen .nfx{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;max-width:none;aspect-ratio:auto;border-radius:0;z-index:9999}
+.nfx:-webkit-full-screen{width:100vw;height:100vh;height:100dvh;aspect-ratio:auto;border-radius:0}
 .nfx svg{width:1em;height:1em;fill:currentColor;display:block}
 .nfx :where(button){font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;-webkit-appearance:none}
 .nfx-hit{position:absolute;inset:0;z-index:1}
@@ -300,6 +304,7 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div id="viewbox" style="display:none;position:fixed;inset:0;background:#000b;z-index:9800;align-items:center;justify-content:center;padding:16px">
 <div class="pbox">
 <h3 style="margin-top:0">🖥 شكل الموقع</h3>
+<div class="lbl" style="margin-bottom:8px">الإعدادات دي خاصة بالبروفايل ده على الجهاز ده بس</div>
 <div id="vmodes" class="eg"></div>
 <button id="vgridB" class="fc" style="margin:8px 0;width:100%" onclick="toggleGrid()"></button>
 <div class="lbl">حجم الواجهة: <b id="vzv"></b></div>
@@ -549,15 +554,21 @@ function tvApply() {
     b.nodes.forEach(n => { n.style.display = hide ? 'none' : ''; });
   });
 }
-const viewPref = () => localStorage.getItem('vmode') || 'auto';
+// إعدادات الشكل (النمط، الحجم، الشبكة) بتتحفظ لكل بروفايل على كل جهاز لوحده.
+// لو البروفايل ملوش إعدادات لسه، بياخد الإعدادات القديمة زي ما كانت.
+const VKEY = () => 'view:' + UNAME + ':' + (PID || '');
+function vRead() { try { const o = JSON.parse(localStorage.getItem(VKEY()) || 'null'); return (o && typeof o === 'object') ? o : null; } catch (e) { return null; } }
+function vWrite(o) { try { localStorage.setItem(VKEY(), JSON.stringify(o)); } catch (e) {} }
+function vGet(k, legacy) { const o = vRead(); return (o && o[k] !== undefined) ? o[k] : localStorage.getItem(legacy); }
+const viewPref = () => vGet('m', 'vmode') || 'auto';
 const realMode = () => viewPref() === 'auto' ? autoMode() : viewPref();
 const isTv = () => realMode() === 'tv';
-const gridOn = () => { const g = localStorage.getItem('vgrid'); return g === null ? false : g === '1'; };
-function toggleGrid() { localStorage.setItem('vgrid', gridOn() ? '0' : '1'); applyView(); }
+const gridOn = () => { const g = vGet('g', 'vgrid'); return g === null || g === undefined ? false : g === '1'; };
+function toggleGrid() { const o = vRead() || {}; o.g = gridOn() ? '0' : '1'; vWrite(o); applyView(); }
 function applyView() {
   const m = realMode();
   document.body.className = 'm-' + m + (gridOn() ? ' g-grid' : '');
-  const z = parseFloat(localStorage.getItem('vzoom')) || (m === 'tv' ? 1.45 : 1);
+  const z = parseFloat(vGet('z', 'vzoom')) || (m === 'tv' ? 1.45 : 1);
   document.body.style.zoom = (document.fullscreenElement || document.webkitFullscreenElement) ? 1 : z;
   const zr = $('vzoom'), zv = $('vzv');
   if (zr) zr.value = z;
@@ -568,9 +579,9 @@ function applyView() {
   const vm = $('vmodes');
   if (vm) vm.innerHTML = MODES.map(x => '<button class="fc' + (viewPref() === x[0] ? ' on' : '') + '" onclick="setMode(\'' + x[0] + '\')">' + x[1] + '</button>').join('');
 }
-function setMode(m) { localStorage.setItem('vmode', m); localStorage.removeItem('vzoom'); applyView(); }
-function setZoom(v) { localStorage.setItem('vzoom', v); applyView(); }
-function resetView() { localStorage.removeItem('vmode'); localStorage.removeItem('vzoom'); localStorage.removeItem('vgrid'); applyView(); }
+function setMode(m) { const o = vRead() || {}; o.m = m; o.z = ''; vWrite(o); applyView(); }
+function setZoom(v) { const o = vRead() || {}; o.z = v; vWrite(o); applyView(); }
+function resetView() { vWrite({m: 'auto', z: '', g: '0'}); applyView(); }
 function openView() { applyView(); $('viewbox').style.display = 'flex'; }
 function closeView() { $('viewbox').style.display = 'none'; }
 window.addEventListener('resize', () => { if (viewPref() === 'auto') applyView(); });
@@ -1096,6 +1107,7 @@ function delForm() {
 function enterProfile(id) {
   PID = id;
   localStorage.setItem('pid:' + UNAME, id);
+  applyView();
   $('profile-screen').style.display = 'none';
   $('main-content').style.display = 'block';
   $('results').innerHTML = '';
