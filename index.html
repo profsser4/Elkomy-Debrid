@@ -228,6 +228,13 @@ video{border-radius:14px}
 .nfx:fullscreen{width:100vw;height:100vh;height:100dvh;aspect-ratio:auto;border-radius:0}
 #results:fullscreen,#results:-webkit-full-screen{background:#000;overflow:hidden;padding:0}
 #results:fullscreen .nfx,#results:-webkit-full-screen .nfx{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;max-width:none;aspect-ratio:auto;border-radius:0;z-index:9999}
+/* ===== صفحة الإعدادات والإضافات ===== */
+#setPage{display:none;position:fixed;inset:0;z-index:150;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;direction:rtl;color:var(--text)}
+body.setopen{overflow:hidden}
+body.setopen #setPage{display:block}
+#setBody{max-width:800px;margin:0 auto;padding:6px 14px calc(30px + env(safe-area-inset-bottom))}
+#setBody .action-box{margin-top:12px !important}
+#setBody .action-box>summary{font-size:16px;font-weight:700;cursor:pointer;padding:6px 0}
 /* ===== صفحة المشغّل المستقلة + شكل الترجمة ===== */
 #pgbar{display:none;position:fixed;top:0;left:0;right:0;z-index:210;height:calc(56px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 12px 0;align-items:center;gap:10px;background:rgba(10,10,15,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid #ffffff14;direction:rtl}
 body.pgopen #pgbar{display:flex}
@@ -391,7 +398,7 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div id="main-content">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
 <h1 style="color:var(--primary);margin:0;font-size:20px">Elkomy VIP 🚀</h1>
-<div style="display:flex;gap:8px"><button class="fc" onclick="openView()">🖥</button><button class="fc" onclick="openInterests()">⭐</button><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
+<div style="display:flex;gap:8px"><button class="fc" onclick="openView()">🖥</button><button class="fc" onclick="openInterests()">⭐</button><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button class="fc adm" onclick="setOpen()" aria-label="الإعدادات والإضافات">⚙️</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
 </div>
 
 <div class="action-box" id="searchBox">
@@ -441,6 +448,9 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div id="pgbar"><button class="pgb" onclick="pgBack()" aria-label="رجوع">➡️ رجوع</button><div class="pgt" id="pgt"></div></div>
 <div id="results"></div>
 
+<div id="setPage">
+<div class="sphd"><div class="sprow"><button class="spback" onclick="setBack()" aria-label="رجوع">➡️</button><div style="flex:1;font-weight:800;font-size:17px">⚙️ الإعدادات والإضافات</div></div></div>
+<div id="setBody">
 <details class="action-box adm" style="text-align:right;margin-top:18px">
 <summary>👥 المستخدمين</summary>
 <div id="usBox" style="margin:14px 0"></div>
@@ -502,6 +512,7 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <select id="spDl" class="search-input" onchange="saveSrvPick()"></select>
 <label style="display:block;margin-top:8px;color:var(--mut);font-size:13px"><input type="checkbox" id="spStrict" onchange="saveSrvPick()"> ماترجعش لمزوّد تاني لو المختار فشل</label>
 </details>
+</div></div>
 </div>
 
 <script>
@@ -724,6 +735,7 @@ function navScope() {
   }
   const pg = $('results');
   if (pg && pg.classList.contains('pg')) return pg;
+  if (document.body.classList.contains('setopen')) return $('setPage');
   return document;
 }
 const isFoc = el => !!(el && el.matches && el.matches(FOCUSABLE));
@@ -1560,6 +1572,7 @@ window.addEventListener('popstate', e => {
     else if (top === 'd') closeDetails();
     else if (top === 'b') closeBrowse();
     else if (top === 's') spHide();
+    else if (top === 'g') setHide();
   }
   if (window.spSync) spSync();
 });
@@ -1951,6 +1964,14 @@ async function markCached() {
   }
 }
 // أي نتيجة (تشغيل / سحب / تحميل) بتفتح في صفحة مستقلة فوق الصفحة، فيها زرار رجوع، من غير ما تنزل لتحت
+function setOpen() {
+  document.body.classList.add('setopen');
+  pushView('g');
+  const p = $('setPage');
+  if (p) p.scrollTop = 0;
+}
+function setHide() { document.body.classList.remove('setopen'); }
+function setBack() { if (VS[VS.length - 1] === 'g') history.back(); else setHide(); }
 function pgTitle() {
   const t = $('pgt');
   if (!t) return;
