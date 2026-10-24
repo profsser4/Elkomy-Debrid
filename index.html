@@ -991,7 +991,7 @@ const bestOf = list => {
 function intentUrl(u, pkg) {
   const m = /^(https?):\/\/(.*)$/i.exec(u || '');
   if (!m) return u;
-  return 'intent://' + m[2] + '#Intent;scheme=' + m[1].toLowerCase() + ';' + (pkg ? 'package=' + pkg + ';' : '') + 'type=video/*;end';
+  return 'intent://' + m[2] + '#Intent;action=android.intent.action.VIEW;scheme=' + m[1].toLowerCase() + ';' + (pkg ? 'package=' + pkg + ';' : '') + 'type=video/*;end';
 }
 function setAudio(idx) {
   const v = document.querySelector('#results video');
@@ -1028,15 +1028,50 @@ async function dlM3U1() {
   a.download = 'video.m3u';
   a.click();
 }
-function vlcGo(el) {
+function extFail(name, u) {
+  const box = document.getElementById('extFail') || (function () {
+    const d = document.createElement('div'); d.id = 'extFail';
+    d.style.cssText = 'margin-top:8px;padding:10px;border-radius:8px;background:#7c2d12;color:#fff;font-size:13px;direction:rtl;text-align:right';
+    const pm = document.querySelector('details.pm'); (pm || document.body).appendChild(d); return d;
+  })();
+  const inApp = /FBAN|FBAV|Instagram|Telegram|Line\/|; wv\)|GSA\//i.test(navigator.userAgent);
+  box.innerHTML = '⚠️ ' + name + ' ما فتحش من هنا. ' + (inApp ? 'انت فاتح الموقع من متصفح داخلي — افتحه من <b>Chrome</b> وجرّب تاني. ' : 'اتأكد إن التطبيق متسطّب. ') +
+    'أو انسخ الرابط والصقه في ' + name + ' (Network Stream): ' +
+    '<button class="pl" style="margin-top:6px" data-u="' + esc(u) + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط</button>';
+}
+function _watchLeave(name, u) {
+  let left = false;
+  const f = () => { if (document.hidden) left = true; };
+  document.addEventListener('visibilitychange', f);
+  window.addEventListener('pagehide', f, {once: true});
+  setTimeout(() => { document.removeEventListener('visibilitychange', f); if (!left && !document.hidden) extFail(name, u); }, 2200);
+}
+async function vlcGo(el) {
+  const u = el.dataset.u;
   const v = document.querySelector('#results video');
   const t = Math.floor(((v && v.currentTime) || (PLAY && PLAY.resume) || 0) * 1000);
-  let h = intentUrl(el.dataset.u, 'org.videolan.vlc');
+  let sx = '';
+  try { sx = AUD.ar ? '' : (PLAY && PLAY.subx) || await subxWarm(); } catch (e) {}
+  let h = intentUrl(u, 'org.videolan.vlc');
   let ex = t > 5000 ? ';l.position=' + t : '';
-  if (PLAY && PLAY.subx && !AUD.ar) ex += ';S.subtitles_location=' + encodeURIComponent(PLAY.subx);
+  if (sx) ex += ';S.subtitles_location=' + encodeURIComponent(sx);
   if (PLAY && PLAY.title) ex += ';S.title=' + encodeURIComponent(PLAY.title);
   if (ex) h = h.replace(/;end$/, ex + ';end');
   if (v) { try { v.pause(); } catch (e) {} }
+  _watchLeave('VLC', u);
+  location.href = h;
+  return false;
+}
+async function wvcGo(el) {
+  const u = el.dataset.u;
+  let sx = '';
+  try { sx = AUD.ar ? '' : (PLAY && PLAY.subx) || await subxWarm(); } catch (e) {}
+  const v = document.querySelector('#results video');
+  if (v) { try { v.pause(); } catch (e) {} }
+  let h = 'wvc-x-callback://open?url=' + encodeURIComponent(u) + '&secure_uri=true';
+  if (sx) h += '&sub=' + encodeURIComponent(sx);
+  if (PLAY && PLAY.title) h += '&title=' + encodeURIComponent(PLAY.title);
+  _watchLeave('Web Video Caster', u);
   location.href = h;
   return false;
 }
@@ -1053,10 +1088,12 @@ function playerMenu(u) {
     L.push(a('▶ VLC (يكمّل من مكانك + الترجمة)', intentUrl(u, 'org.videolan.vlc'), du + ' onclick="return vlcGo(this)"'));
     L.push(a('▶ Just Player', intentUrl(u, 'com.brouken.player')));
     L.push(a('📂 أي مشغّل', intentUrl(u, '')));
+    L.push(a('📺 Web Video Caster (كاست للتلفزيون)', 'wvc-x-callback://open?url=' + encodeURIComponent(u), du + ' onclick="return wvcGo(this)"'));
   } else if (IS_IOS) {
     L.push(a('▶ VLC', 'vlc-x-callback://x-callback-url/stream?url=' + encodeURIComponent(u), du + ' onclick="return extGo(this,\'vlc\')"'));
     L.push(a('▶ Infuse', 'infuse://x-callback-url/play?url=' + encodeURIComponent(u), du + ' onclick="return extGo(this,\'infuse\')"'));
     L.push(a('▶ nPlayer', 'nplayer-' + u));
+    L.push(a('📺 Web Video Caster', 'wvc-x-callback://open?url=' + encodeURIComponent(u), du + ' onclick="return wvcGo(this)"'));
   } else {
     L.push('<button class="pl" onclick="dlM3U1()">▶ VLC / أي مشغّل (ملف M3U فيه الترجمة)</button>');
     L.push(a('▶ PotPlayer', 'potplayer://' + u));
