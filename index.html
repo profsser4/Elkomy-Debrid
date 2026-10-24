@@ -228,6 +228,20 @@ video{border-radius:14px}
 .nfx:fullscreen{width:100vw;height:100vh;height:100dvh;aspect-ratio:auto;border-radius:0}
 #results:fullscreen,#results:-webkit-full-screen{background:#000;overflow:hidden;padding:0}
 #results:fullscreen .nfx,#results:-webkit-full-screen .nfx{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;max-width:none;aspect-ratio:auto;border-radius:0;z-index:9999}
+/* ===== صفحة المشغّل المستقلة + شكل الترجمة ===== */
+#pgbar{display:none;position:fixed;top:0;left:0;right:0;z-index:210;height:calc(56px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 12px 0;align-items:center;gap:10px;background:rgba(10,10,15,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid #ffffff14;direction:rtl}
+body.pgopen #pgbar{display:flex}
+body.pgopen{overflow:hidden}
+#pgbar .pgb{flex:none;display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px;border-radius:20px;border:1px solid #ffffff26;background:#ffffff14;color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+#pgbar .pgb:focus-visible{outline:2px solid #fff;outline-offset:2px}
+#pgbar .pgt{flex:1;min-width:0;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#results.pg{position:fixed;inset:0;z-index:200;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:calc(66px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));direction:rtl}
+#results.pg>*{max-width:1100px;margin-inline:auto}
+#results.pg .result-card{margin-top:0}
+#results.pg.vid .result-card{background:none;border:0;padding:0;text-align:right}
+#results.pg.vid .result-card>h3{display:none}
+#results.pg.vid .nfx{border-radius:12px;box-shadow:0 12px 40px #000b}
+#results.pg:fullscreen,#results.pg:-webkit-full-screen{padding:0;overflow:hidden}
 .nfx:-webkit-full-screen{width:100vw;height:100vh;height:100dvh;aspect-ratio:auto;border-radius:0}
 .nfx svg{width:1em;height:1em;fill:currentColor;display:block}
 .nfx :where(button){font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;-webkit-appearance:none}
@@ -421,6 +435,7 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div id="spResults" class="spbody"></div>
 </div>
 
+<div id="pgbar"><button class="pgb" onclick="pgBack()" aria-label="رجوع">➡️ رجوع</button><div class="pgt" id="pgt"></div></div>
 <div id="results"></div>
 
 <details class="action-box adm" style="text-align:right;margin-top:18px">
@@ -704,6 +719,8 @@ function navScope() {
     const el = $(id);
     if (el && getComputedStyle(el).display !== 'none') return el;
   }
+  const pg = $('results');
+  if (pg && pg.classList.contains('pg')) return pg;
   return document;
 }
 const isFoc = el => !!(el && el.matches && el.matches(FOCUSABLE));
@@ -931,9 +948,14 @@ function stremioLink(web) {
   const tail = '/' + c.imdb + (vid ? '/' + vid : '');
   return web ? 'https://web.stremio.com/#/detail/' + typ + tail : 'stremio:///detail/' + typ + tail;
 }
-function dlM3U1() {
+async function dlM3U1() {
   if (!PLAY || !PLAY.url) return;
-  const body = '#EXTM3U\n#EXTINF:-1,' + (PLAY.title || PLAY.fname || 'video') + '\n' + (PLAY.hls || PLAY.url) + '\n';
+  const sx = await subxPrep();
+  const v = document.querySelector('#results video');
+  const t = Math.floor((v && v.currentTime) || PLAY.resume || 0);
+  const body = '#EXTM3U\n#EXTINF:-1,' + (PLAY.title || PLAY.fname || 'video') + '\n' +
+    (sx ? '#EXTVLCOPT:input-slave=' + sx + '\n' : '') + (t > 5 ? '#EXTVLCOPT:start-time=' + t + '\n' : '') +
+    (PLAY.hls || PLAY.url) + '\n';
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([body], {type: 'audio/x-mpegurl'}));
   a.download = 'video.m3u';
@@ -943,24 +965,33 @@ function vlcGo(el) {
   const v = document.querySelector('#results video');
   const t = Math.floor(((v && v.currentTime) || (PLAY && PLAY.resume) || 0) * 1000);
   let h = intentUrl(el.dataset.u, 'org.videolan.vlc');
-  if (t > 5000) h = h.replace(/;end$/, ';l.position=' + t + ';end');
+  let ex = t > 5000 ? ';l.position=' + t : '';
+  if (PLAY && PLAY.subx) ex += ';S.subtitles_location=' + encodeURIComponent(PLAY.subx);
+  if (PLAY && PLAY.title) ex += ';S.title=' + encodeURIComponent(PLAY.title);
+  if (ex) h = h.replace(/;end$/, ex + ';end');
   if (v) { try { v.pause(); } catch (e) {} }
   location.href = h;
+  return false;
+}
+function extGo(el, kind) {
+  const u = encodeURIComponent(el.dataset.u), sx = (PLAY && PLAY.subx) ? '&sub=' + encodeURIComponent(PLAY.subx) : '';
+  location.href = (kind === 'vlc' ? 'vlc-x-callback://x-callback-url/stream?url=' : 'infuse://x-callback-url/play?url=') + u + sx;
   return false;
 }
 function playerMenu(u) {
   const L = [];
   const a = (label, href, extra) => '<a class="pl" href="' + esc(href) + '"' + (extra || '') + '>' + label + '</a>';
+  const du = ' data-u="' + esc(u) + '"';
   if (IS_ANDROID) {
-    L.push(a('▶ VLC (يكمّل من مكانك)', intentUrl(u, 'org.videolan.vlc'), ' data-u="' + esc(u) + '" onclick="return vlcGo(this)"'));
+    L.push(a('▶ VLC (يكمّل من مكانك + الترجمة)', intentUrl(u, 'org.videolan.vlc'), du + ' onclick="return vlcGo(this)"'));
     L.push(a('▶ Just Player', intentUrl(u, 'com.brouken.player')));
     L.push(a('📂 أي مشغّل', intentUrl(u, '')));
   } else if (IS_IOS) {
-    L.push(a('▶ VLC', 'vlc-x-callback://x-callback-url/stream?url=' + encodeURIComponent(u)));
-    L.push(a('▶ Infuse', 'infuse://x-callback-url/play?url=' + encodeURIComponent(u)));
+    L.push(a('▶ VLC', 'vlc-x-callback://x-callback-url/stream?url=' + encodeURIComponent(u), du + ' onclick="return extGo(this,\'vlc\')"'));
+    L.push(a('▶ Infuse', 'infuse://x-callback-url/play?url=' + encodeURIComponent(u), du + ' onclick="return extGo(this,\'infuse\')"'));
     L.push(a('▶ nPlayer', 'nplayer-' + u));
   } else {
-    L.push('<button class="pl" onclick="dlM3U1()">▶ VLC / أي مشغّل (ملف M3U)</button>');
+    L.push('<button class="pl" onclick="dlM3U1()">▶ VLC / أي مشغّل (ملف M3U فيه الترجمة)</button>');
     L.push(a('▶ PotPlayer', 'potplayer://' + u));
   }
   const sl = stremioLink(false);
@@ -969,8 +1000,10 @@ function playerMenu(u) {
     L.push(a('🌐 Stremio Web', stremioLink(true), ' target="_blank" rel="noopener"'));
   }
   L.push('<button class="pl" style="background:#475569" onclick="fsVideo()">⛶ ملء الشاشة</button>');
-  const open = ' open';
-  return '<details class="pm"' + open + '><summary>🎬 مشغّلات خارجية (بتشغّل أي صيغة وأي صوت)</summary><div class="pgrid2">' + L.join('') + '</div></details>';
+  L.push('<button class="pl" style="background:#475569" onclick="dlCurSub()">⬇️ تحميل الترجمة (SRT)</button>');
+  L.push('<button class="pl" style="background:#475569" onclick="copySubLink()">📋 نسخ رابط الترجمة</button>');
+  return '<details class="pm" open><summary>🎬 مشغّلات خارجية (بتشغّل أي صيغة وأي صوت)</summary><div class="pgrid2">' + L.join('') + '</div>' +
+    '<p style="color:var(--mut);font-size:12px;margin:8px 0 0">اختار ترجمة من زرار 💬 الأول، وبعدها فتح VLC من هنا بيشغّل الفيديو بالترجمة نفسها (بنفس ضبط التوقيت).</p></details>';
 }
 async function copyText(t) {
   try { await navigator.clipboard.writeText(t); alert('تم النسخ!'); }
@@ -1508,7 +1541,7 @@ function stopPlayer() {
   pack = null;
   PLAY = null;
   $('results').innerHTML = '';
-  window.scrollTo(0, 0);
+  pgClose();
 }
 function goBack() {
   const i = VS.indexOf('d');
@@ -1914,7 +1947,33 @@ async function markCached() {
     }
   }
 }
-function scrollToResults() { $('results').scrollIntoView({behavior: 'smooth'}); }
+// أي نتيجة (تشغيل / سحب / تحميل) بتفتح في صفحة مستقلة فوق الصفحة، فيها زرار رجوع، من غير ما تنزل لتحت
+function pgTitle() {
+  const t = $('pgt');
+  if (!t) return;
+  const c = PLAY;
+  t.textContent = c ? ((c.title || c.fname || '') + (c.s != null && c.e != null ? ' · S' + p2(c.s) + 'E' + p2(c.e) : ''))
+    : ((typeof selected !== 'undefined' && selected && selected.title) || '');
+}
+function pgOpen() {
+  const r = $('results');
+  r.classList.remove('vid');
+  if (!r.classList.contains('pg')) { r.classList.add('pg'); r.scrollTop = 0; }
+  document.body.classList.add('pgopen');
+  if (VS[VS.length - 1] !== 'p') pushView('p');
+  pgTitle();
+}
+function pgClose() {
+  const r = $('results');
+  r.classList.remove('pg', 'vid');
+  document.body.classList.remove('pgopen');
+  const t = $('pgt');
+  if (t) t.textContent = '';
+}
+function pgBack() {
+  if (VS[VS.length - 1] === 'p') history.back(); else stopPlayer();
+}
+function scrollToResults() { pgOpen(); }
 
 function pullTorrent(i) {
   const t = shown[i];
@@ -2473,7 +2532,7 @@ function playWatch() {
 function playData(d, base) {
   const ov = document.querySelector('#results video');
   if (ov && ov._hls) { try { ov._hls.destroy(); } catch (e) {} }
-  if (VS[VS.length - 1] !== 'p') pushView('p');
+  pgOpen();
   pack = (d.files && base.type !== 'movie') ? d : null;
   if (!base.title) base.title = d.name || '';
   base.fid = d.file_id != null ? d.file_id : (base.fid != null ? base.fid : null);
@@ -2491,6 +2550,8 @@ function playData(d, base) {
     esc(c.title || 'الملف جاهز') + esc(ep) + '</h3>' +
     (c.resume ? '<p style="margin:0 0 8px;color:var(--mut)">▶ هيكمّل من ' + fmtTime(c.resume) + '</p>' : '') +
     linkCard(d, true) + '<div id="nextUp"></div>' + chk + '</div>' + (pack ? packListHTML() : '');
+  $('results').classList.add('vid');
+  pgTitle();
   attachPlayer();
   try { smapUI(); } catch (e) {}
   try { playWatch(); } catch (e) {}
@@ -3310,6 +3371,7 @@ async function applySubItem(it, shift, quiet, scale, keepAs) {
   ASY.a = scale; ASY.b = shift;
   ASY.raw = asParseCues(r.text).map(c => [(c[0] - shift) / scale, (c[1] - shift) / scale]);
   saveProgress(v);
+  subxPrep();
   const stn = $('subState');
   if (stn) {
     stn.innerHTML = '<div style="margin:8px 0;color:var(--success)">✅ الترجمة شغالة · التوقيت: ' +
@@ -3339,7 +3401,7 @@ function subOff() {
   if (v) v.querySelectorAll('track').forEach(x => x.remove());
   subSel = null;
   asStopCapture();
-  if (PLAY) PLAY.sub = null;
+  if (PLAY) { PLAY.sub = null; PLAY.subx = ''; }
   const p = prof();
   if (p) { p.sl = ''; saveProgress(v); saveProfileObj(p); }
   const st = $('subState');
@@ -3356,6 +3418,35 @@ async function autoSub() {
     const list = rankSubs(d.items || []);
     if (list[0]) { subs = list; await applySubItem(list[0], 0, true); }
   } catch (e) {}
+}
+// رابط ترجمة SRT موقّع (بيشتغل من غير تسجيل دخول) عشان VLC وغيره يحمّلوه
+async function subxPrep() {
+  const s = PLAY && PLAY.sub;
+  if (!s || !s.u) { if (PLAY) PLAY.subx = ''; return ''; }
+  const key = [s.u, s.shift || 0, s.scale || 1, PLAY.s, PLAY.e].join('|');
+  if (PLAY.subx && PLAY.subxKey === key) return PLAY.subx;
+  try {
+    const {d} = await api('/sub/link?' + subFetchQS({u: s.u, lang: s.lang}, 'srt', s.shift || 0, s.scale || 1));
+    PLAY.subx = d.url || '';
+    PLAY.subxKey = key;
+  } catch (e) { PLAY.subx = ''; }
+  return PLAY.subx;
+}
+async function copySubLink() {
+  const u = await subxPrep();
+  if (!u) return alert('اختار ترجمة الأول من زرار 💬 ترجمة');
+  copyText(u);
+}
+async function dlCurSub() {
+  const s = PLAY && PLAY.sub;
+  if (!s) return alert('اختار ترجمة الأول من زرار 💬 ترجمة');
+  const r = await fetchText('/sub?' + subFetchQS({u: s.u, lang: s.lang}, 'srt', s.shift || 0, s.scale || 1));
+  if (r.error) return alert(r.error);
+  const base = String(PLAY.fname || PLAY.title || 'subtitle').replace(/\.[a-z0-9]{2,4}$/i, '').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 120);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + r.text], {type: 'application/x-subrip'}));
+  a.download = base + '.srt';   // نفس اسم الفيديو: VLC على الكمبيوتر بيلقطها لوحده لو جنب الفيديو
+  a.click();
 }
 async function dlSub(i) {
   const r = await fetchText('/sub?' + subFetchQS(subs[i], 'srt', 0));
@@ -4804,10 +4895,36 @@ document.addEventListener('fullscreenchange', () => {
     else if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
   } catch (e) {}
 });
+const CUE_DEF = {sz: 1.15, bg: 0, col: '#ffffff'};
+function cueLoad() {
+  try { return Object.assign({}, CUE_DEF, JSON.parse(localStorage.getItem('cue:' + (PID || '')) || '{}')); }
+  catch (e) { return Object.assign({}, CUE_DEF); }
+}
+function cueApply(o) {
+  let st = document.getElementById('cuestyle');
+  if (!st) { st = document.createElement('style'); st.id = 'cuestyle'; document.head.appendChild(st); }
+  st.textContent = '.nfx video::cue{font-size:' + o.sz + 'em;color:' + o.col + ';background:rgba(0,0,0,' + o.bg + ');text-shadow:' +
+    (o.bg > 0.5 ? 'none' : '0 0 4px #000,0 0 6px #000,1px 1px 3px #000') + '}';
+}
+function cueSet(k, val) {
+  const o = cueLoad();
+  o[k] = k === 'col' ? val : parseFloat(val);
+  try { localStorage.setItem('cue:' + (PID || ''), JSON.stringify(o)); } catch (e) {}
+  cueApply(o);
+}
+function cueChips() {
+  const o = cueLoad();
+  const row = (t, k, arr) => '<div class="nfx-sm">' + t + '</div><div class="nfx-chips">' + arr.map(x =>
+    '<button class="nfx-chip' + (String(o[k]) === String(x[0]) ? ' on' : '') + '" data-a="cue" data-k="' + k + '" data-v="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>';
+  return row('الحجم', 'sz', [[0.9, 'صغير'], [1.15, 'عادي'], [1.5, 'كبير'], [1.9, 'كبير جداً']]) +
+    row('الخلفية', 'bg', [[0, 'بدون'], [0.5, 'شفافة'], [0.85, 'غامقة']]) +
+    row('اللون', 'col', [['#ffffff', 'أبيض'], ['#ffe14d', 'أصفر']]);
+}
 function nfxInit(v) {
   const box = v && v.parentElement;
   if (!box || !box.classList.contains('nfx')) return;
   nfxDestroy();
+  try { cueApply(cueLoad()); } catch (e) {}
   try { if (document.fullscreenElement || document.webkitFullscreenElement) setTimeout(() => { try { box.focus({preventScroll: true}); } catch (e) {} }, 50); } catch (e) {}
   v.controls = false;
   v.removeAttribute('controls');
@@ -5020,7 +5137,7 @@ function nfxInit(v) {
     } else if (k === 'more') {
       h += '<div class="nfx-col"><h4>تقديم وتأخير (ثانية)</h4><div class="nfx-chips" style="direction:ltr">' +
         [-60, -30, -10, 10, 30, 60].map(x => '<button class="nfx-chip" style="padding:12px 16px;font-size:16px" data-a="seek" data-d="' + x + '">' + (x < 0 ? '⏪ ' + (-x) : x + ' ⏩') + '</button>').join('') +
-        '</div><h4 style="margin-top:12px">الصورة</h4><div class="nfx-chips"><button class="nfx-chip" data-a="zoom">🔍 تكبير الصورة</button><button class="nfx-chip" data-a="fs">⛶ ملء الشاشة</button></div></div>';
+        '</div><h4 style="margin-top:12px">الصورة</h4><div class="nfx-chips"><button class="nfx-chip" data-a="zoom">🔍 تكبير الصورة</button><button class="nfx-chip" data-a="fs">⛶ ملء الشاشة</button></div><h4 style="margin-top:12px">شكل الترجمة</h4>' + cueChips() + '</div>';
     } else if (k === 'spd') {
       h += '<div class="nfx-col"><h4>سرعة التشغيل</h4>' + [0.5, 0.75, 1, 1.25, 1.5, 2].map(x =>
         '<button class="nfx-it' + (v.playbackRate === x ? ' on' : '') + '" data-a="rate" data-x="' + x + '">' + (x === 1 ? 'عادية' : x + 'x') + '</button>').join('') + '</div>';
@@ -5117,6 +5234,7 @@ function nfxInit(v) {
         if (subSel) { shiftSub(+b.dataset.d); setTimeout(() => { if (NFX === S && S.panel === 'as') renderPanel(); }, 700); }
         break;
       case 'rate': v.playbackRate = +b.dataset.x; renderPanel(); break;
+      case 'cue': cueSet(b.dataset.k, b.dataset.v); renderPanel(); break;
       case 'ep': {
         const f = pack && pack.files && pack.files[+b.dataset.i];
         if (f && typeof playPackFile === 'function') { closePanel(); playPackFile(f); }
