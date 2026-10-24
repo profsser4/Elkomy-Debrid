@@ -242,6 +242,9 @@ body.pgopen{overflow:hidden}
 #results.pg.vid .result-card>h3{display:none}
 #results.pg.vid .nfx{border-radius:12px;box-shadow:0 12px 40px #000b}
 #results.pg:fullscreen,#results.pg:-webkit-full-screen{padding:0;overflow:hidden}
+.nfx-cc{position:absolute;left:0;right:0;bottom:9%;z-index:1;text-align:center;pointer-events:none;padding:0 6%;direction:rtl;transition:bottom .2s}
+.nfx.show .nfx-cc{bottom:21%}
+.nfx-cc span{display:inline-block;padding:2px 14px;border-radius:6px;line-height:1.55;font-weight:700;text-shadow:0 0 4px #000,0 0 7px #000,1px 1px 3px #000}
 .nfx:-webkit-full-screen{width:100vw;height:100vh;height:100dvh;aspect-ratio:auto;border-radius:0}
 .nfx svg{width:1em;height:1em;fill:currentColor;display:block}
 .nfx :where(button){font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;-webkit-appearance:none}
@@ -3367,6 +3370,7 @@ async function applySubItem(it, shift, quiet, scale, keepAs) {
   tr.src = URL.createObjectURL(new Blob([r.text], {type: 'text/vtt'}));
   v.appendChild(tr);
   tr.track.mode = 'showing';
+  try { if (isTv()) subOverlay(v, tr); } catch (e) {}
   subSel = {it: it, shift: shift, scale: scale};
   if (PLAY) PLAY.subOff = false;
   if (PLAY) PLAY.sub = {u: it.u, lang: it.lang, name: it.name, shift: shift, scale: scale};
@@ -3399,10 +3403,26 @@ function shiftSub(d) {
   if (!subSel) return;
   applySubItem(subSel.it, Math.round((subSel.shift + d) * 10) / 10, false, subSel.scale || 1);
 }
+function subOverlay(v, tr) {
+  const box = v.parentElement;
+  if (!box) return;
+  let cc = box.querySelector('.nfx-cc');
+  if (!cc) { cc = document.createElement('div'); cc.className = 'nfx-cc'; box.appendChild(cc); }
+  tr.track.mode = 'hidden';
+  const draw = () => {
+    const a = tr.track.activeCues || [];
+    let t = '';
+    for (let i = 0; i < a.length; i++) t += (i ? '<br>' : '') + esc(String(a[i].text || '').replace(/<[^>]*>/g, '').replace(/[\u202a-\u202e]/g, '')).replace(/\n/g, '<br>');
+    cc.innerHTML = t ? '<span>' + t + '</span>' : '';
+  };
+  tr.track.addEventListener('cuechange', draw);
+  draw();
+}
 function subOff() {
   const v = document.querySelector('#results video');
   if (v) v.querySelectorAll('track').forEach(x => x.remove());
   subSel = null;
+  { const cc = document.querySelector('#results .nfx-cc'); if (cc) cc.innerHTML = ''; }
   asStopCapture();
   if (PLAY) { PLAY.sub = null; PLAY.subx = ''; }
   const p = prof();
@@ -4923,7 +4943,7 @@ function cueLoad() {
 function cueApply(o) {
   let st = document.getElementById('cuestyle');
   if (!st) { st = document.createElement('style'); st.id = 'cuestyle'; document.head.appendChild(st); }
-  st.textContent = '.nfx video::cue{font-size:' + o.sz + 'em;color:' + o.col + ';background:rgba(0,0,0,' + o.bg + ');text-shadow:' +
+  st.textContent = '.nfx-cc{font-size:calc(clamp(18px,2.6vw,44px) * ' + (o.sz / 1.15) + ')}.nfx-cc span{color:' + o.col + ';background:rgba(0,0,0,' + o.bg + ')}.nfx video::cue{font-size:' + o.sz + 'em;color:' + o.col + ';background:rgba(0,0,0,' + o.bg + ');text-shadow:' +
     (o.bg > 0.5 ? 'none' : '0 0 4px #000,0 0 6px #000,1px 1px 3px #000') + '}';
 }
 function cueSet(k, val) {
