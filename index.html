@@ -761,6 +761,17 @@ window.addEventListener('resize', () => { if (viewPref() === 'auto') applyView()
 
 // تنقّل بالأسهم (تلفزيون / كيبورد) + اختصارات الفيديو
 const ARROWS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+// متصفحات التلفزيون اللي فيها مؤشر ماوس (السهم بيتحول لدايرة زرقا): الأسهم لازم تفضل للمتصفح يحرّك بيها المؤشر.
+// افتح الرابط بـ ?nokeys=1 عشان تقفل تنقل الأسهم بتاع الصفحة (وبيتحفظ)، و ?nokeys=0 يرجّعه. وبيتقفل لوحده لو المؤشر اتحرّك.
+let _mouseAt = 0;
+(function () {
+  try {
+    const m = /[?&]nokeys=([01])/.exec(location.search);
+    if (m) localStorage.setItem('nokeys', m[1]);
+  } catch (e) {}
+  window.addEventListener('mousemove', e => { if (e.isTrusted) _mouseAt = Date.now(); }, true);
+})();
+const keysOff = () => { try { if (localStorage.getItem('nokeys') === '1') return true; } catch (e) {} return Date.now() - _mouseAt < 15000; };
 const KEYFIX = {Left: 'ArrowLeft', Right: 'ArrowRight', Up: 'ArrowUp', Down: 'ArrowDown'};
 const KEYCODES = {37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown', 13: 'Enter', 21: 'ArrowLeft', 22: 'ArrowRight', 23: 'Enter'};
 function evKey(e) {
@@ -875,7 +886,7 @@ document.addEventListener('keydown', e => {
   }
   const back = ['Escape', 'GoBack', 'BrowserBack'].includes(KY) || (KY === 'Backspace' && !typing) || e.keyCode === 461 || e.keyCode === 10009;
   if (back && !typing && tag !== 'SELECT' && VS.length > 1) { e.preventDefault(); history.back(); return; }
-  if (isTv() && ARROWS.includes(KY) && tag !== 'SELECT' && !(typing && (KY === 'ArrowLeft' || KY === 'ArrowRight'))) {
+  if (isTv() && !keysOff() && ARROWS.includes(KY) && tag !== 'SELECT' && !(typing && (KY === 'ArrowLeft' || KY === 'ArrowRight'))) {
     e.preventDefault();
     spatial(KY);
     return;
