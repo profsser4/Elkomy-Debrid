@@ -3005,7 +3005,7 @@ async function playItem(key) {
 }
 const baseOf = it => ({title: it.title, poster: it.poster, year: it.year, type: it.type, tmdb: it.tmdb,
   s: it.s, e: it.e, eps: it.eps, ms: it.ms, fid: it.fid, fname: it.fname, src: it.src, qn: it.qn || '',
-  dr: !!it.dr, imdb: it.imdb || '', vh: it.vh || '', ref: it.ref || ''});
+  dr: !!it.dr, imdb: it.imdb || '', vh: it.vh || '', ref: it.ref || '', _rr: it._rr || 0});
 async function playAfter(it) {
   if (noWatch()) return;
   if (it.next && it.src) {
@@ -3580,6 +3580,7 @@ async function applySubItem(it, shift, quiet, scale, keepAs) {
   v.appendChild(tr);
   tr.track.mode = 'showing';
   try { if (isTv()) subOverlay(v, tr); } catch (e) {}
+  try { subLock(v, tr); } catch (e) {}
   subSel = {it: it, shift: shift, scale: scale};
   if (PLAY) PLAY.subOff = false;
   if (PLAY) PLAY.sub = {u: it.u, lang: it.lang, name: it.name, shift: shift, scale: scale};
@@ -3611,6 +3612,25 @@ function applySub(i) {
 function shiftSub(d) {
   if (!subSel) return;
   applySubItem(subSel.it, Math.round((subSel.shift + d) * 10) / 10, false, subSel.scale || 1);
+}
+// نثبّت ترجمتنا العربي: أي مسار ترجمة تاني (جاي من البث نفسه) نقفله عشان ما يبدّلش اللغة في نص الفيلم
+function subLock(v, tr) {
+  const st = v._subLock || (v._subLock = {tr: null});
+  st.tr = tr;
+  if (st.on) return;
+  st.on = true;
+  const fix = () => {
+    for (let i = 0; i < v.textTracks.length; i++) {
+      const t = v.textTracks[i];
+      if (st.tr && t === st.tr.track) continue;
+      if (t.mode !== 'disabled') t.mode = 'disabled';
+    }
+    try { if (v._hls) { v._hls.subtitleDisplay = false; if (v._hls.subtitleTrack !== -1) v._hls.subtitleTrack = -1; } } catch (e) {}
+  };
+  try { v.textTracks.addEventListener('addtrack', fix); v.textTracks.addEventListener('change', fix); } catch (e) {}
+  v.addEventListener('loadedmetadata', fix);
+  v.addEventListener('seeked', fix);
+  fix();
 }
 function subOverlay(v, tr) {
   const box = v.parentElement;
@@ -4532,7 +4552,8 @@ async function startPlay(spec, mode, baseOver) {
   if (mode === 'watch' && !d.hls && (spec.hash || spec.ref) && d.stream_note && !/مش متضاف/.test(d.stream_note)) {
     const kmax = spec.hash ? 2 : 6;     // نسخ الإضافات: الملف بيتحمّل في حسابك الأول، فنستنى أكتر
     for (let k = 0; k < kmax && my === pullId && !d.hls; k++) {
-      $('results').innerHTML = pend('جاري تجهيز البث المحوَّل من حسابك... (' + (k + 1) + '/' + kmax + ')');
+      $('results').innerHTML = pend('جاري تجهيز البث المحوَّل من حسابك... (' + (k + 1) + '/' + kmax + ')') +
+        (ROLE === 'admin' && d.stream_note ? '<div style="margin-top:8px;font-size:12px;color:#94a3b8;text-align:right;direction:rtl">السبب: ' + esc(String(d.stream_note).slice(0, 300)) + '</div>' : '');
       await sleep(3500);
       if (my !== pullId) return null;
       try {
@@ -4557,7 +4578,7 @@ async function startPlay(spec, mode, baseOver) {
   packBase = base;
   playData({direct_link: d.direct, hls: d.hls, provider: d.provider || 'Stremio', name: d.name,
     size: d.size, file_id: d.file_id}, base);
-  if (spec.ref && !d.hls) {
+  if (spec.ref && !d.hls && !(baseOver && baseOver._rr)) {
     const v0 = document.querySelector('#results video');
     if (v0) v0.addEventListener('error', () => { refRecover('native'); }, {once: true});
   }
@@ -4630,7 +4651,7 @@ function refRecover(why) {
   const v = document.querySelector('#results video');
   if (v) { try { saveProgress(v); } catch (e) {} }
   $('results').insertAdjacentHTML('afterbegin', pend('اللينك خلص، بجيب لينك جديد من الأصل...'));
-  playByRef(Object.assign({}, c));
+  playByRef(Object.assign({}, c, {_rr: 1}));
   return true;
 }
 async function playByRef(it) {
@@ -4833,6 +4854,7 @@ function setupHls(v) {
   if (window.Hls && Hls.isSupported()) {
     const h = new Hls({maxBufferLength: 40});
     v._hls = h;
+    try { h.subtitleDisplay = false; h.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => { try { h.subtitleTrack = -1; } catch (e) {} }); } catch (e) {}
     let netTry = 0, medTry = 0;
     h.on(Hls.Events.ERROR, (ev, data) => {
       if (!data || !data.fatal) return;
