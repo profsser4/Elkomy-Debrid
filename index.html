@@ -2356,6 +2356,33 @@ async function smapDel() {
   SMAP[c.tmdb] = d.eps || {};
   smapUI();
 }
+// ===== تسلسل المسلسل تلقائي: أي حلقة أو موسم بتسحبه أو بتشغّله بيتضاف في مكانه من غير ما تعلّم =====
+const btihOf = s => ((/btih:([a-fA-F0-9]{40})/.exec(s || '') || [])[1] || '').toLowerCase();
+async function smapAutoPack(d, base, src) {
+  if (ROLE !== 'admin' || !base || base.type !== 'tv' || !base.tmdb) return;
+  const hash = btihOf(src) || base.vh || '';
+  if (!hash) return;
+  const eps = (d.files || []).filter(f => f.episode != null && (f.season != null || base.s != null))
+    .map(f => ({s: f.season != null ? f.season : base.s, e: f.episode, fid: f.id}));
+  if (!eps.length) return;
+  try {
+    const {r, d: x} = await api('/series/map/bulk', {method: 'POST', body: JSON.stringify({id: base.tmdb, hash: hash, name: d.name || '', eps: eps})});
+    if (r.ok && x.eps) SMAP[base.tmdb] = x.eps;
+  } catch (e) {}
+}
+async function smapAuto() {
+  const c = PLAY;
+  if (ROLE !== 'admin' || !c || c.type !== 'tv' || !c.tmdb || c.s == null || c.e == null) return;
+  const hash = c.vh || btihOf(c.src);
+  if (!(hash || c.ref)) return;
+  const m = await smapLoad(c.tmdb);
+  if (m[c.s + ':' + c.e]) return;
+  try {
+    const {r, d} = await api('/series/map', {method: 'POST', body: JSON.stringify({id: c.tmdb, s: c.s, e: c.e,
+      spec: {hash: hash, name: c.fname || c.title || '', fid: c.fid, src: c.src || '', ref: c.ref || ''}})});
+    if (r.ok && d.eps) { SMAP[c.tmdb] = d.eps; smapUI(); }
+  } catch (e) {}
+}
 // بيجيب رابط البث المحوَّل (صوته شغّال) للملفات اللي جاية من /generate (TorBox). التحميل مابيتأثرش.
 async function ensureHls(d, fid, id) {
   if (!d || d.hls || !d.torrent_id || !/^(\d+|x:[^:]+:[^:]+:.+)$/.test(String(d.torrent_id))) return;
@@ -2401,6 +2428,7 @@ async function pullSource(src, base, fid) {
   packBase = base;
   if (d.pack && fid == null && d.files && base.type !== 'movie') {
     pack = d;
+    smapAutoPack(d, base, src);
     const f = base.e != null
       ? d.files.find(x => x.episode === base.e && (base.s == null || x.season == null || x.season === base.s)) : null;
     if (f) return playPackFile(f);
@@ -2578,6 +2606,8 @@ function playData(d, base) {
   pgTitle();
   const my0 = PLAY;
   setTimeout(() => { if (PLAY === my0) subxWarm(); }, 4000);
+  if (PLAY.type === 'tv' && PLAY.tmdb) smapLoad(PLAY.tmdb);
+  setTimeout(() => { if (PLAY === my0) smapAuto(); }, 2500);
   attachPlayer();
   try { smapUI(); } catch (e) {}
   try { playWatch(); } catch (e) {}
