@@ -245,6 +245,25 @@ body.setopen #setPage{display:block}
 #setPage.sec #setMenu{display:none}
 #setPage.sec #setBody>details.cur{display:block;background:none;border:0;padding:0;margin-top:10px !important}
 #setBody>details.cur>summary{display:none}
+
+/* ===== تحسين صفحة الإعدادات ===== */
+#setPage .sphd{padding-top:calc(10px + env(safe-area-inset-top))}
+.setgrp{margin:18px 4px 2px;font-size:13px;font-weight:800;color:var(--mut);letter-spacing:.3px}
+#setPage.sec #setBody>details.cur{background:none;border:0;padding:0;text-align:right}
+.setnote{background:#38bdf814;border:1px solid #38bdf833;color:#cbd5e1;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.9;margin:4px 0 14px;text-align:right}
+.setcard{background:var(--panel);border:1px solid #ffffff14;border-radius:14px;padding:14px;margin-bottom:14px;text-align:right}
+.setcard .lbl{display:block;margin:12px 0 6px;color:#e2e8f0;font-size:14px;font-weight:700}
+.setcard .lbl:first-child{margin-top:0}
+.setcard .search-input{margin-bottom:4px}
+.setchk{display:flex;align-items:center;gap:10px;margin:14px 0 4px;color:#cbd5e1;font-size:14px;line-height:1.6}
+.setchk input{width:20px;height:20px;flex:none}
+.savebar{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:10px;margin:16px -14px -14px;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(0deg,var(--panel) 70%,#15151d00);border-radius:0 0 14px 14px}
+.savest{flex:1;font-size:12px;color:#f59e0b;font-weight:700}
+.setsave{flex:none;min-width:150px;padding:13px 18px;border:0;border-radius:10px;background:var(--success);color:#fff;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit}
+.setsave:disabled{background:#334155;color:#94a3b8;cursor:default}
+#stoast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#16a34a;color:#fff;padding:12px 20px;border-radius:99px;font-weight:700;font-size:14px;z-index:99999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:90%;text-align:center}
+#stoast.on{opacity:1;transform:translate(-50%,0)}
+#stoast.err{background:#dc2626}
 /* ===== صفحة المشغّل المستقلة + شكل الترجمة ===== */
 #pgbar{display:none;position:fixed;top:0;left:0;right:0;z-index:210;height:calc(56px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 12px 0;align-items:center;gap:10px;background:rgba(10,10,15,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid #ffffff14;direction:rtl}
 body.pgopen #pgbar{display:flex}
@@ -466,14 +485,14 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div id="usBox" style="margin:14px 0"></div>
 </details>
 
-<details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadLayout()">
-<summary>🏠 ترتيب الصفحة الرئيسية</summary>
-<div id="layBox" style="margin:14px 0"></div>
-</details>
-
 <details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadActivity()">
 <summary>📊 نشاط المستخدمين</summary>
 <div id="actBox" style="margin:14px 0"></div>
+</details>
+
+<details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadLayout()">
+<summary>🏠 ترتيب الصفحة الرئيسية</summary>
+<div id="layBox" style="margin:14px 0"></div>
 </details>
 
 <details class="action-box adm" style="text-align:right;margin-top:18px">
@@ -481,9 +500,9 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div id="stBox" style="margin:14px 0"></div>
 </details>
 
-<details class="action-box adm" style="text-align:right;margin-top:18px">
+<details class="action-box adm" id="provSec" data-save="saveAdvSet" style="text-align:right;margin-top:18px">
 <summary>⚙️ المزوّدين (TorBox / Real-Debrid / ...)</summary>
-<label style="display:block;margin:10px 0;color:var(--mut);font-size:13px"><input type="checkbox" id="advChk" onchange="setAdv(this.checked)"> إظهار الأزرار القديمة (بحث التورنت وStremio القديم)</label>
+<div class="setcard"><label class="setchk"><input type="checkbox" class="sv" id="advChk"> إظهار الأزرار القديمة (بحث التورنت وStremio القديم)</label><div class="savebar"><span class="savest"></span><button class="setsave" disabled onclick="secSave(this)">✔ محفوظ</button></div></div>
 <div id="provList" style="margin:14px 0"></div>
 <select id="provType" class="search-input"></select>
 <input id="provName" class="search-input" placeholder="الاسم (اختياري)">
@@ -493,6 +512,35 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <p style="color:var(--mut);font-size:12px">الرابط بيجرّب المزوّد اللي دومينه بيطابقه أولاً، وبعدين باقي المزوّدين بالترتيب.</p>
 </details>
 
+<details class="action-box adm" id="srvPick" data-save="saveSrvPick" style="text-align:right;margin-top:18px">
+<summary>🎚️ مزوّد المشاهدة والتحميل (الافتراضي لكل المستخدمين)</summary>
+<div class="setnote">▶ المشاهدة: TorBox هو الأساسي، والفيديو بيتحوّل لبث HLS (صوت وصورة شغّالين في المتصفح) ولينك التشغيل ده <b>غير</b> لينك التحميل.<br>⬇ التحميل: بياخد الملف الأصلي من المزوّد اللي تختاره تحت. وتقدر تغيّره لمستخدم معيّن من زرار 🔒 في المستخدمين.</div>
+<div class="setcard">
+<label class="lbl">▶ المشاهدة من</label>
+<select id="spWatch" class="search-input sv"></select>
+<label class="lbl">⬇ التحميل من</label>
+<select id="spDl" class="search-input sv"></select>
+<label class="setchk"><input type="checkbox" class="sv" id="spStrict"> ماترجعش لمزوّد تاني لو المختار فشل</label>
+<div class="savebar"><span class="savest"></span><button class="setsave" disabled onclick="secSave(this)">✔ محفوظ</button></div>
+</div>
+</details>
+
+<details class="action-box adm" id="dbpSec" data-save="saveDbp" style="text-align:right;margin-top:18px">
+<summary>🎛️ مزوّد التشغيل والتحميل (على الجهاز ده)</summary>
+<div class="setnote">الطلب بيطلع من المتصفح مباشرة والمفاتيح بتتحفظ على الجهاز ده بس. لو المزوّد فشل بيرجع تلقائي للسيرفر.</div>
+<div class="setcard">
+<label class="lbl">▶ المشاهدة (بيحوّل الفيديو لبث HLS عشان الصوت والصورة يشتغلوا)</label>
+<select id="dbpPlay" class="search-input sv"><option value="server">السيرفر</option><option value="tb">TorBox (الأساسي)</option><option value="ad">AllDebrid</option></select>
+<label class="lbl">⬇ التحميل (لينك الملف الأصلي، غير لينك المشاهدة)</label>
+<select id="dbpDl" class="search-input sv"><option value="server">السيرفر</option><option value="tb">TorBox</option><option value="ad">AllDebrid (الافتراضي)</option></select>
+<label class="lbl">مفتاح AllDebrid</label>
+<input id="dbpAd" type="password" class="search-input ltr sv" placeholder="مفتاح AllDebrid" autocomplete="off">
+<label class="lbl">مفتاح TorBox</label>
+<input id="dbpTb" type="password" class="search-input ltr sv" placeholder="مفتاح TorBox" autocomplete="off">
+<div class="savebar"><span class="savest"></span><button class="setsave" disabled onclick="secSave(this)">✔ محفوظ</button></div>
+</div>
+</details>
+
 <details class="action-box adm" style="text-align:right;margin-top:18px">
 <summary>🧪 فحص AllDebrid (تشخيص بس) — إصدار 4</summary>
 <p style="color:var(--mut);font-size:12px">الطلب بيطلع من المتصفح بتاعك لـ AllDebrid مباشرة. المفتاح مابيتبعتش لسيرفرنا ولا بيتحفظ.</p>
@@ -500,27 +548,6 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <input id="adLink" class="search-input ltr" placeholder="اكتب: حسابي   (أو magnet / hash / رابط ملف)">
 <button class="search-btn" onclick="adDiag()">🧪 افحص</button>
 <pre id="adOut" style="display:none;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;font-size:11px;color:#cbd5e1;background:#0b1220;padding:10px;border-radius:8px;margin-top:8px"></pre>
-</details>
-
-<details class="action-box adm" style="text-align:right;margin-top:18px">
-<summary>🎛️ مزوّد التشغيل والتحميل (على الجهاز ده)</summary>
-<p style="color:var(--mut);font-size:12px">الطلب بيطلع من المتصفح مباشرة والمفاتيح بتتحفظ على الجهاز ده بس. لو المزوّد فشل بيرجع تلقائي للسيرفر.</p>
-<label class="lbl">التشغيل في المتصفح (بيحوّل الصوت لو محتاج)</label>
-<select id="dbpPlay" class="search-input" onchange="DBP.set('play',this.value)"><option value="server">السيرفر</option><option value="tb">TorBox (الافتراضي)</option><option value="ad">AllDebrid</option></select>
-<label class="lbl">التحميل</label>
-<select id="dbpDl" class="search-input" onchange="DBP.set('dl',this.value)"><option value="server">السيرفر</option><option value="tb">TorBox</option><option value="ad">AllDebrid (الافتراضي)</option></select>
-<input id="dbpAd" type="password" class="search-input ltr" placeholder="مفتاح AllDebrid" autocomplete="off" onchange="DBP.set('ad',this.value.trim())">
-<input id="dbpTb" type="password" class="search-input ltr" placeholder="مفتاح TorBox" autocomplete="off" onchange="DBP.set('tb',this.value.trim())">
-</details>
-
-<details class="action-box adm" id="srvPick" style="text-align:right;margin-top:18px">
-<summary>🎚️ مزوّد المشاهدة والتحميل (الافتراضي لكل المستخدمين)</summary>
-<p style="color:var(--mut);font-size:12px">اختار المشاهدة والتحميل من نفس المزوّد، أو المشاهدة من مزوّد والتحميل من مزوّد تاني. وتقدر تغيّره لمستخدم معيّن من زرار 🔒 في المستخدمين.</p>
-<label class="lbl">المشاهدة من</label>
-<select id="spWatch" class="search-input" onchange="saveSrvPick()"></select>
-<label class="lbl">التحميل من</label>
-<select id="spDl" class="search-input" onchange="saveSrvPick()"></select>
-<label style="display:block;margin-top:8px;color:var(--mut);font-size:13px"><input type="checkbox" id="spStrict" onchange="saveSrvPick()"> ماترجعش لمزوّد تاني لو المختار فشل</label>
 </details>
 </div></div>
 </div>
@@ -704,7 +731,10 @@ const gridOn = () => { const g = vGet('g', 'vgrid'); return g === null || g === 
 function toggleGrid() { const o = vRead() || {}; o.g = gridOn() ? '0' : '1'; vWrite(o); applyView(); }
 function applyView() {
   const m = realMode();
-  document.body.className = 'm-' + m + (gridOn() ? ' g-grid' : '');
+  const bc = document.body.classList;
+  [...bc].forEach(c => { if (/^m-/.test(c) || c === 'g-grid') bc.remove(c); });
+  bc.add('m-' + m);
+  if (gridOn()) bc.add('g-grid');
   const z = parseFloat(vGet('z', 'vzoom')) || (m === 'tv' ? 1.45 : 1);
   document.body.style.zoom = (document.fullscreenElement || document.webkitFullscreenElement) ? 1 : z;
   const zr = $('vzoom'), zv = $('vzv');
@@ -1296,6 +1326,7 @@ function enterProfile(id) {
   if (ROLE === 'admin') { loadProviders(); loadUsers(); }
   pushState();
   handleDeepLink();
+  setRestore();
 }
 function setAuto(b) {
   const p = prof();
@@ -1975,19 +2006,76 @@ async function markCached() {
   }
 }
 // أي نتيجة (تشغيل / سحب / تحميل) بتفتح في صفحة مستقلة فوق الصفحة، فيها زرار رجوع، من غير ما تنزل لتحت
-const SET_DESC = ['إضافة الأعضاء وتعديلهم وصلاحياتهم', 'رتّب صفوف الصفحة الرئيسية', 'مين شاف إيه ومتى', 'حساب Stremio والإضافات', 'TorBox وReal-Debrid وباقي المزوّدين', 'تشخيص AllDebrid', 'مزوّد التشغيل والتحميل لجهازك', 'المزوّد الافتراضي لكل الأعضاء'];
+const SET_META = [
+  {g: 'الأعضاء', d: 'إضافة الأعضاء وتعديلهم وصلاحياتهم'},
+  {d: 'مين شاف إيه ومتى'},
+  {g: 'الصفحة الرئيسية', d: 'رتّب صفوف الصفحة الرئيسية'},
+  {g: 'المصادر والمزوّدين', d: 'حساب Stremio والإضافات'},
+  {d: 'TorBox وReal-Debrid وباقي المزوّدين'},
+  {d: 'المشاهدة (TorBox + HLS) والتحميل لكل الأعضاء'},
+  {d: 'مزوّد التشغيل والتحميل ومفاتيحك على الجهاز ده'},
+  {g: 'أدوات', d: 'تشخيص AllDebrid'}
+];
 const setDs = () => [...$('setBody').querySelectorAll(':scope>details')];
+function toast(m, err) {
+  let t = $('stoast');
+  if (!t) { t = document.createElement('div'); t.id = 'stoast'; document.body.appendChild(t); }
+  t.textContent = m;
+  t.className = (err ? 'err ' : '') + 'on';
+  clearTimeout(t._t);
+  t._t = setTimeout(() => { t.className = err ? 'err' : ''; }, 2600);
+}
+function setDirty(sec, on) {
+  if (!sec) return;
+  sec.dataset.dirty = on ? '1' : '';
+  sec.querySelectorAll('.setsave').forEach(b => { b.disabled = !on; b.textContent = on ? '💾 حفظ التعديلات' : '✔ محفوظ'; });
+  sec.querySelectorAll('.savest').forEach(x => { x.textContent = on ? '● فيه تعديلات لسه ما اتحفظتش' : ''; });
+}
+['input', 'change'].forEach(ev => document.addEventListener(ev, e => {
+  const t = e.target;
+  if (!t || !t.classList || !t.classList.contains('sv')) return;
+  setDirty(t.closest('details[data-save]'), true);
+}));
+async function secSave(btn) {
+  const sec = btn.closest('details');
+  if (!sec || !sec.dataset.save) return;
+  btn.disabled = true;
+  btn.textContent = 'جاري الحفظ...';
+  let ok = false;
+  try { ok = (await window[sec.dataset.save]()) !== false; } catch (e) { ok = false; }
+  setDirty(sec, !ok);
+  toast(ok ? '✅ اتحفظت الإعدادات' : '❌ مقدرتش أحفظ', !ok);
+}
+async function setSaveDirty() {
+  const ds = setDs().filter(d => d.dataset.dirty === '1' && d.dataset.save);
+  for (const d of ds) {
+    let ok = false;
+    try { ok = (await window[d.dataset.save]()) !== false; } catch (e) {}
+    setDirty(d, !ok);
+    toast(ok ? '✅ اتحفظت التعديلات تلقائياً' : '❌ فيه تعديلات ماتحفظتش', !ok);
+  }
+}
+function saveDbp() {
+  DBP.set('play', $('dbpPlay').value);
+  DBP.set('dl', $('dbpDl').value);
+  DBP.set('ad', $('dbpAd').value.trim());
+  DBP.set('tb', $('dbpTb').value.trim());
+  return true;
+}
+function saveAdvSet() { setAdv($('advChk').checked); return true; }
 function setBuild() {
   const body = $('setBody');
   if (!body || $('setMenu')) return;
   const m = document.createElement('div');
   m.id = 'setMenu';
   setDs().forEach((d, i) => {
+    const meta = SET_META[i] || {};
+    if (meta.g) { const h = document.createElement('div'); h.className = 'setgrp'; h.textContent = meta.g; m.appendChild(h); }
     const t = ((d.querySelector('summary') || {}).textContent || '').trim();
     const x = /^(\S+)\s+(.*)$/.exec(t);
     const b = document.createElement('button');
-    b.className = 'setm';
-    b.innerHTML = '<span class="seti">' + esc(x ? x[1] : '⚙️') + '</span><span class="sett"><b>' + esc(x ? x[2] : t) + '</b><small>' + esc(SET_DESC[i] || '') + '</small></span><span class="setc">‹</span>';
+    b.className = 'setm adm';
+    b.innerHTML = '<span class="seti">' + esc(x ? x[1] : '⚙️') + '</span><span class="sett"><b>' + esc(x ? x[2] : t) + '</b><small>' + esc(meta.d || '') + '</small></span><span class="setc">‹</span>';
     b.onclick = () => setSec(i);
     m.appendChild(b);
   });
@@ -1997,28 +2085,48 @@ function setSec(i) {
   const ds = setDs();
   ds.forEach((d, k) => d.classList.toggle('cur', k === i));
   const d = ds[i];
+  if (!d) return;
   $('setPage').classList.add('sec');
   $('setTitle').textContent = ((d.querySelector('summary') || {}).textContent || '').trim();
   if (!d.open) d.open = true;
   $('setPage').scrollTop = 0;
+  try { sessionStorage.setItem('setsec', String(i)); } catch (e) {}
+  if (d.id === 'srvPick' && d.dataset.dirty !== '1') loadSettings();
+  if (d.id === 'dbpSec' && d.dataset.dirty !== '1') dbpInit();
+  if (d.id === 'provSec' && d.dataset.dirty !== '1') { const c = $('advChk'); if (c) c.checked = ADV(); }
   pushView('g2');
 }
 function setSecHide() {
+  setSaveDirty();
   $('setPage').classList.remove('sec');
   $('setTitle').textContent = '⚙️ الإعدادات والإضافات';
   setDs().forEach(d => d.classList.remove('cur'));
   $('setPage').scrollTop = 0;
+  try { sessionStorage.removeItem('setsec'); } catch (e) {}
 }
 function setOpen() {
   setBuild();
   setSecHide();
   document.body.classList.add('setopen');
+  try { sessionStorage.setItem('setopen', '1'); } catch (e) {}
   pushView('g');
   const p = $('setPage');
   if (p) p.scrollTop = 0;
 }
-function setHide() { document.body.classList.remove('setopen'); setSecHide(); }
+function setHide() {
+  document.body.classList.remove('setopen');
+  try { sessionStorage.removeItem('setopen'); } catch (e) {}
+  setSecHide();
+}
 function setBack() { const t = VS[VS.length - 1]; if (t === 'g2' || t === 'g') history.back(); else setHide(); }
+// بعد أي إعادة تحميل للصفحة: نرجع لنفس القسم اللي كنت فاتحه
+function setRestore() {
+  let o = null, sec = null;
+  try { o = sessionStorage.getItem('setopen'); sec = sessionStorage.getItem('setsec'); } catch (e) {}
+  if (o !== '1' || ROLE !== 'admin') return;
+  setOpen();
+  if (sec !== null && sec !== '' && !isNaN(+sec)) setSec(+sec);
+}
 function pgTitle() {
   const t = $('pgt');
   if (!t) return;
@@ -3692,16 +3800,24 @@ async function loadSettings() {
     const {d} = await api('/settings');
     if (!d || !d.settings) return;
     SP = {settings: d.settings, providers: d.providers || []};
+    const sec = $('srvPick');
+    if (sec && sec.dataset.dirty === '1') return;      // مانمسحش اختيارات لسه ما اتحفظتش
     const opt = (v, t, cur) => '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(t) + '</option>';
     const ps = SP.providers.map(p => [p.id, p.name + ' (' + p.type + ')']);
-    if ($('spWatch')) $('spWatch').innerHTML = opt('auto', 'تلقائي (الأولوية العادية)', SP.settings.watch) + ps.map(x => opt(x[0], x[1], SP.settings.watch)).join('');
-    if ($('spDl')) $('spDl').innerHTML = opt('same', 'نفس مزوّد المشاهدة', SP.settings.dl) + ps.map(x => opt(x[0], x[1], SP.settings.dl)).join('');
+    const norm = v => { const m = SP.providers.find(p => p.id === v || p.type === v); return m ? m.id : v; };
+    const w = norm(SP.settings.watch), dl = SP.settings.dl === 'same' ? 'same' : norm(SP.settings.dl);
+    if ($('spWatch')) $('spWatch').innerHTML = opt('auto', 'تلقائي (الأولوية العادية)', w) + ps.map(x => opt(x[0], x[1] + (x[1].indexOf('(torbox)') > 0 ? ' — موصى به للمشاهدة (HLS)' : ''), w)).join('');
+    if ($('spDl')) $('spDl').innerHTML = opt('same', 'نفس مزوّد المشاهدة', dl) + ps.map(x => opt(x[0], x[1], dl)).join('');
     if ($('spStrict')) $('spStrict').checked = !!SP.settings.strict;
   } catch (e) {}
 }
 async function saveSrvPick() {
-  const {d} = await api('/settings', {method: 'POST', body: JSON.stringify({watch: $('spWatch').value, dl: $('spDl').value, strict: $('spStrict').checked})});
-  if (d && d.error) alert(d.error);
+  try {
+    const {r, d} = await api('/settings', {method: 'POST', body: JSON.stringify({watch: $('spWatch').value, dl: $('spDl').value, strict: $('spStrict').checked})});
+    if (!r.ok || (d && d.error)) { alert((d && d.error) || 'مقدرتش أحفظ'); return false; }
+    if (d && d.settings) SP.settings = d.settings;
+    return true;
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); return false; }
 }
 function pickProv(title, cur, firstLabel, firstVal) {
   const list = [[firstVal, firstLabel]].concat(SP.providers.map(p => [p.id, p.name + ' (' + p.type + ')']));
