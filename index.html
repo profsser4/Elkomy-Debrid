@@ -939,12 +939,20 @@ function dlM3U1() {
   a.download = 'video.m3u';
   a.click();
 }
+function vlcGo(el) {
+  const v = document.querySelector('#results video');
+  const t = Math.floor(((v && v.currentTime) || (PLAY && PLAY.resume) || 0) * 1000);
+  let h = intentUrl(el.dataset.u, 'org.videolan.vlc');
+  if (t > 5000) h = h.replace(/;end$/, ';l.position=' + t + ';end');
+  if (v) { try { v.pause(); } catch (e) {} }
+  location.href = h;
+  return false;
+}
 function playerMenu(u) {
   const L = [];
   const a = (label, href, extra) => '<a class="pl" href="' + esc(href) + '"' + (extra || '') + '>' + label + '</a>';
   if (IS_ANDROID) {
-    L.push(a('▶ VLC', intentUrl(u, 'org.videolan.vlc')));
-    L.push(a('▶ MX Player', intentUrl(u, 'com.mxtech.videoplayer.ad')));
+    L.push(a('▶ VLC (يكمّل من مكانك)', intentUrl(u, 'org.videolan.vlc'), ' data-u="' + esc(u) + '" onclick="return vlcGo(this)"'));
     L.push(a('▶ Just Player', intentUrl(u, 'com.brouken.player')));
     L.push(a('📂 أي مشغّل', intentUrl(u, '')));
   } else if (IS_IOS) {
@@ -961,7 +969,7 @@ function playerMenu(u) {
     L.push(a('🌐 Stremio Web', stremioLink(true), ' target="_blank" rel="noopener"'));
   }
   L.push('<button class="pl" style="background:#475569" onclick="fsVideo()">⛶ ملء الشاشة</button>');
-  const open = (PLAY && (PLAY.nw || risky(PLAY.fname || PLAY.title))) ? ' open' : '';
+  const open = ' open';
   return '<details class="pm"' + open + '><summary>🎬 مشغّلات خارجية (بتشغّل أي صيغة وأي صوت)</summary><div class="pgrid2">' + L.join('') + '</div></details>';
 }
 async function copyText(t) {
@@ -2453,9 +2461,9 @@ function playWatch() {
   const check = () => {
     if (my !== pullId || !v.isConnected || shown) return;
     if (v.readyState >= 1 && v.videoWidth === 0 && !v.error) {
-      say('الصوت/الوقت ظاهر بس الصورة مش بتتفك: الملف غالباً H.265 (HEVC) أو 4K ومتصفحك مش بيدعمه. شغّله من مشغّل خارجي (MX Player / VLC) من الأزرار تحت، أو اختار نسخة 1080p H.264.');
+      say('الصوت/الوقت ظاهر بس الصورة مش بتتفك: الملف غالباً H.265 (HEVC) أو 4K ومتصفحك مش بيدعمه. شغّله من VLC من الأزرار تحت، أو اختار نسخة 1080p H.264.');
     } else if (v.currentTime < 1 && v.readyState < 3 && !v.ended) {
-      say('الفيديو لسه بيحمّل' + (hint ? ' (الملف H.265/4K وكبير)' : '') + '. لو فضل كده شغّله من مشغّل خارجي (MX Player / VLC) من الأزرار تحت أو جرّب نسخة 1080p تانية.');
+      say('الفيديو لسه بيحمّل' + (hint ? ' (الملف H.265/4K وكبير)' : '') + '. لو فضل كده شغّله من VLC من الأزرار تحت أو جرّب نسخة 1080p تانية.');
     }
   };
   setTimeout(check, 12000);
@@ -3988,7 +3996,7 @@ function verRow(v, i, best) {
   return '<div class="vrow' + (best ? ' best' : '') + '"><div class="vt">' + esc(v.title) + '</div><div class="vm">' +
     '<b>💾 ' + fmtSize(v.size) + '</b>' + (v.q ? '<span class="badge">' + esc(v.q) + '</span>' : '') +
     (v.instant ? '<span class="badge">⚡ فوري</span>' : '<span class="badge" style="background:#475569;color:#fff">⏳ بطيء</span>') + dub +
-    ((v.risky && !v.hash) ? '<span class="badge" style="background:#ef4444;color:#fff">⚠️ الصوت ممكن مايشتغلش (VLC/MX أحسن)</span>'
+    ((v.risky && !v.hash) ? '<span class="badge" style="background:#ef4444;color:#fff">⚠️ الصوت ممكن مايشتغلش (VLC أحسن)</span>'
       : v.risky ? '<span class="badge" style="background:#0ea5e9;color:#fff">🔄 هيتحوّل</span>'
              : (v.score >= 3 ? '<span class="badge" style="background:#22c55e;color:#000">🎯 H.264 + AAC</span>'
                : '<span class="badge" style="background:#22c55e;color:#000">✅ متوافق</span>')) +
