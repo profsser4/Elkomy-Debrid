@@ -950,7 +950,7 @@ function stremioLink(web) {
 }
 async function dlM3U1() {
   if (!PLAY || !PLAY.url) return;
-  const sx = await subxPrep();
+  const sx = AUD.ar ? '' : await subxWarm();
   const v = document.querySelector('#results video');
   const t = Math.floor((v && v.currentTime) || PLAY.resume || 0);
   const body = '#EXTM3U\n#EXTINF:-1,' + (PLAY.title || PLAY.fname || 'video') + '\n' +
@@ -966,7 +966,7 @@ function vlcGo(el) {
   const t = Math.floor(((v && v.currentTime) || (PLAY && PLAY.resume) || 0) * 1000);
   let h = intentUrl(el.dataset.u, 'org.videolan.vlc');
   let ex = t > 5000 ? ';l.position=' + t : '';
-  if (PLAY && PLAY.subx) ex += ';S.subtitles_location=' + encodeURIComponent(PLAY.subx);
+  if (PLAY && PLAY.subx && !AUD.ar) ex += ';S.subtitles_location=' + encodeURIComponent(PLAY.subx);
   if (PLAY && PLAY.title) ex += ';S.title=' + encodeURIComponent(PLAY.title);
   if (ex) h = h.replace(/;end$/, ex + ';end');
   if (v) { try { v.pause(); } catch (e) {} }
@@ -974,7 +974,7 @@ function vlcGo(el) {
   return false;
 }
 function extGo(el, kind) {
-  const u = encodeURIComponent(el.dataset.u), sx = (PLAY && PLAY.subx) ? '&sub=' + encodeURIComponent(PLAY.subx) : '';
+  const u = encodeURIComponent(el.dataset.u), sx = (PLAY && PLAY.subx && !AUD.ar) ? '&sub=' + encodeURIComponent(PLAY.subx) : '';
   location.href = (kind === 'vlc' ? 'vlc-x-callback://x-callback-url/stream?url=' : 'infuse://x-callback-url/play?url=') + u + sx;
   return false;
 }
@@ -2552,6 +2552,8 @@ function playData(d, base) {
     linkCard(d, true) + '<div id="nextUp"></div>' + chk + '</div>' + (pack ? packListHTML() : '');
   $('results').classList.add('vid');
   pgTitle();
+  const my0 = PLAY;
+  setTimeout(() => { if (PLAY === my0) subxWarm(); }, 4000);
   attachPlayer();
   try { smapUI(); } catch (e) {}
   try { playWatch(); } catch (e) {}
@@ -2924,7 +2926,7 @@ function subHide() {
   subSel = null;
 }
 function subsStart() {
-  if (!PLAY || AUD.ar) return;
+  if (!PLAY || AUD.ar || PLAY.subOff) return;
   if (subSel) { asArm(); return; }
   const go = PLAY.sub ? applySubItem(PLAY.sub, PLAY.sub.shift || 0, true, PLAY.sub.scale || 1) : autoSub();
   Promise.resolve(go).then(asArm, () => {});
@@ -3314,11 +3316,11 @@ function openSubs() {
   const box = $('subBox');
   if (!box) return;
   if (box.innerHTML) { box.innerHTML = ''; return; }
-  const p = prof(), sl = (p && p.sl) ? p.sl : 'AR';
+  const sl = 'AR';
   const opt = (v, t) => '<option value="' + v + '"' + (sl === v ? ' selected' : '') + '>' + t + '</option>';
   const hasId = PLAY && PLAY.tmdb && PLAY.type;
   box.innerHTML = '<div style="margin-top:10px;text-align:right">' +
-    '<select id="subLang" class="search-input">' + opt('AR', 'العربية') + opt('EN', 'English') + opt('AR,EN', 'عربي + English') + '</select>' +
+    '<select id="subLang" class="search-input">' + opt('AR', 'العربية') + '</select>' +
     (hasId ? '' : '<input id="subQ" class="search-input ltr" placeholder="اسم الفيلم أو المسلسل بالإنجليزي" value="' +
       esc(cleanName(PLAY ? (PLAY.title || PLAY.fname) : '')) + '">') +
     '<div class="row"><button class="search-btn" onclick="findSubs()">🔍 ابحث عن ترجمة</button>' +
@@ -3366,6 +3368,7 @@ async function applySubItem(it, shift, quiet, scale, keepAs) {
   v.appendChild(tr);
   tr.track.mode = 'showing';
   subSel = {it: it, shift: shift, scale: scale};
+  if (PLAY) PLAY.subOff = false;
   if (PLAY) PLAY.sub = {u: it.u, lang: it.lang, name: it.name, shift: shift, scale: scale};
   if (!keepAs) asReset();
   ASY.a = scale; ASY.b = shift;
@@ -3403,13 +3406,15 @@ function subOff() {
   asStopCapture();
   if (PLAY) { PLAY.sub = null; PLAY.subx = ''; }
   const p = prof();
-  if (p) { p.sl = ''; saveProgress(v); saveProfileObj(p); }
+  if (PLAY) PLAY.subOff = true;   // إيقاف للفيديو ده بس، والحلقة/الفيلم الجاي بيشغّلها تلقائي
+  saveProgress(v);
   const st = $('subState');
-  if (st) st.innerHTML = '<p style="color:var(--mut)">اتقفلت الترجمة التلقائية.</p>';
+  if (st) st.innerHTML = '<p style="color:var(--mut)">اتقفلت الترجمة للفيديو ده.</p>';
 }
 async function autoSub() {
   const p = prof();
-  const sl = p ? (p.sl === undefined ? 'AR' : p.sl) : 'AR';   // الافتراضي: عربي
+  const sl = 'AR';   // عربي بس
+  if (PLAY && PLAY.subOff) return;
   if (!sl || !PLAY || !PLAY.tmdb) return;
   const q = subQ(sl, true);
   if (!q) return;
@@ -3422,7 +3427,7 @@ async function autoSub() {
 // رابط ترجمة SRT موقّع (بيشتغل من غير تسجيل دخول) عشان VLC وغيره يحمّلوه
 async function subxPrep() {
   const s = PLAY && PLAY.sub;
-  if (!s || !s.u) { if (PLAY) PLAY.subx = ''; return ''; }
+  if (!s || !s.u || PLAY.subOff) { if (PLAY) PLAY.subx = ''; return ''; }
   const key = [s.u, s.shift || 0, s.scale || 1, PLAY.s, PLAY.e].join('|');
   if (PLAY.subx && PLAY.subxKey === key) return PLAY.subx;
   try {
@@ -3431,6 +3436,21 @@ async function subxPrep() {
     PLAY.subxKey = key;
   } catch (e) { PLAY.subx = ''; }
   return PLAY.subx;
+}
+// بيجهّز الترجمة العربية لوحده للمشغّلات الخارجية حتى لو ماتفتحتش في المتصفح
+async function subxWarm() {
+  if (!PLAY || PLAY.subOff) return '';
+  if (!PLAY.sub && PLAY.tmdb) {
+    const q = subQ('AR', true);
+    if (q) {
+      try {
+        const {d} = await api('/subs?' + q);
+        const l = rankSubs(d.items || []);
+        if (l[0] && PLAY && !PLAY.sub && !PLAY.subOff) PLAY.sub = {u: l[0].u, lang: l[0].lang, name: l[0].name, shift: 0, scale: 1};
+      } catch (e) {}
+    }
+  }
+  return subxPrep();
 }
 async function copySubLink() {
   const u = await subxPrep();
@@ -5105,8 +5125,8 @@ function nfxInit(v) {
     }
     return [];
   };
-  const subLang = () => { const p = typeof prof === 'function' ? prof() : null; return (p && p.sl) || 'AR'; };
-  const LANGS = [['AR', 'العربية'], ['EN', 'English'], ['AR,EN', 'عربي + English']];
+  const subLang = () => { const p = typeof prof === 'function' ? prof() : null; return 'AR'; };
+  const LANGS = [['AR', 'العربية']];
   const renderPanel = () => {
     const k = S.panel, el = S.panelEl;
     if (!k) return;
