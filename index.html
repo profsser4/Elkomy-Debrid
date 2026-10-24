@@ -1080,12 +1080,14 @@ function extGo(el, kind) {
   location.href = (kind === 'vlc' ? 'vlc-x-callback://x-callback-url/stream?url=' : 'infuse://x-callback-url/play?url=') + u + sx;
   return false;
 }
-function playerMenu(u) {
+function playerMenu(u, hu) {
+  hu = hu || u;
   const L = [];
   const a = (label, href, extra) => '<a class="pl" href="' + esc(href) + '"' + (extra || '') + '>' + label + '</a>';
   const du = ' data-u="' + esc(u) + '"';
   if (IS_ANDROID) {
     L.push(a('▶ VLC (يكمّل من مكانك + الترجمة)', intentUrl(u, 'org.videolan.vlc'), du + ' onclick="return vlcGo(this)"'));
+    if (hls) L.push(a('▶ VLC (البث المحوَّل - احتياطي)', intentUrl(hls, 'org.videolan.vlc'), ' data-u="' + esc(hls) + '" onclick="return vlcGo(this)"'));
     L.push(a('▶ Just Player', intentUrl(u, 'com.brouken.player')));
     L.push(a('📂 أي مشغّل', intentUrl(u, '')));
     L.push(a('📺 Web Video Caster (كاست للتلفزيون)', 'wvc-x-callback://open?url=' + encodeURIComponent(u), du + ' onclick="return wvcGo(this)"'));
@@ -1107,7 +1109,7 @@ function playerMenu(u) {
   L.push('<button class="pl" style="background:#475569" onclick="dlCurSub()">⬇️ تحميل الترجمة (SRT)</button>');
   L.push('<button class="pl" style="background:#475569" onclick="copySubLink()">📋 نسخ رابط الترجمة</button>');
   return '<details class="pm" open><summary>🎬 مشغّلات خارجية (بتشغّل أي صيغة وأي صوت)</summary><div class="pgrid2">' + L.join('') + '</div>' +
-    '<p style="color:var(--mut);font-size:12px;margin:8px 0 0">اختار ترجمة من زرار 💬 الأول، وبعدها فتح VLC من هنا بيشغّل الفيديو بالترجمة نفسها (بنفس ضبط التوقيت).</p></details>';
+    '<p style="color:var(--mut);font-size:12px;margin:8px 0 0">الترجمة العربي بتتجهّز لوحدها، واضغط VLC وهتيجي معاه. لو عايز ترجمة تانية اختارها من زرار 💬.</p></details>';
 }
 async function copyText(t) {
   try { await navigator.clipboard.writeText(t); alert('تم النسخ!'); }
@@ -2811,7 +2813,7 @@ function playData(d, base) {
   $('results').classList.add('vid');
   pgTitle();
   const my0 = PLAY;
-  setTimeout(() => { if (PLAY === my0) subxWarm(); }, 4000);
+  setTimeout(() => { if (PLAY === my0) subxWarm(); }, 300);
   if (PLAY.type === 'tv' && PLAY.tmdb) smapLoad(PLAY.tmdb);
   setTimeout(() => { if (PLAY === my0) smapAuto(); }, 2500);
   attachPlayer();
@@ -2836,7 +2838,7 @@ function linkCard(d, video) {
     (hu ? '<button class="btn-vlc" data-u="' + hu + '" onclick="copyText(this.dataset.u)">📋 نسخ رابط التشغيل (بصوت شغّال)</button>' +
       '<button class="btn-vlc" style="background:#475569" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ رابط التحميل الأصلي</button>'
       : '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في VLC)</button>') +
-    (video ? playerMenu((PLAY && PLAY.hls) ? PLAY.hls : d.direct_link) : '') +
+    (video ? playerMenu(d.direct_link, (PLAY && PLAY.hls) || '') : '') +
     (video ? '<button class="btn-vlc btn-sub" onclick="openSubs()">💬 ترجمة</button><div id="subBox"></div>' : '');
 }
 function skip(n) {
@@ -3750,13 +3752,14 @@ async function subxWarm() {
   return subxPrep();
 }
 async function copySubLink() {
-  const u = await subxPrep();
-  if (!u) return alert('اختار ترجمة الأول من زرار 💬 ترجمة');
+  const u = await subxWarm();
+  if (!u) return alert('مالقيتش ترجمة عربي تلقائي. اختار واحدة من زرار 💬 ترجمة');
   copyText(u);
 }
 async function dlCurSub() {
+  if (!(PLAY && PLAY.sub)) await subxWarm();
   const s = PLAY && PLAY.sub;
-  if (!s) return alert('اختار ترجمة الأول من زرار 💬 ترجمة');
+  if (!s) return alert('مالقيتش ترجمة عربي تلقائي. اختار واحدة من زرار 💬 ترجمة');
   const r = await fetchText('/sub?' + subFetchQS({u: s.u, lang: s.lang}, 'srt', s.shift || 0, s.scale || 1));
   if (r.error) return alert(r.error);
   const base = String(PLAY.fname || PLAY.title || 'subtitle').replace(/\.[a-z0-9]{2,4}$/i, '').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 120);
