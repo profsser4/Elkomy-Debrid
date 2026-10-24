@@ -233,8 +233,18 @@ video{border-radius:14px}
 body.setopen{overflow:hidden}
 body.setopen #setPage{display:block}
 #setBody{max-width:800px;margin:0 auto;padding:6px 14px calc(30px + env(safe-area-inset-bottom))}
-#setBody .action-box{margin-top:12px !important}
-#setBody .action-box>summary{font-size:16px;font-weight:700;cursor:pointer;padding:6px 0}
+#setMenu{display:flex;flex-direction:column;gap:10px;padding-top:10px}
+.setm{display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border-radius:14px;border:1px solid #ffffff14;background:var(--panel);color:var(--text);text-align:right;cursor:pointer;font-family:inherit}
+.setm:active,.setm:focus-visible{border-color:#38bdf8;outline:none}
+.seti{flex:none;width:44px;height:44px;display:grid;place-items:center;font-size:22px;border-radius:12px;background:#ffffff0f}
+.sett{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.sett b{font-size:16px}
+.sett small{color:var(--mut);font-size:12px;line-height:1.4}
+.setc{flex:none;font-size:26px;color:var(--mut)}
+#setBody>details{display:none}
+#setPage.sec #setMenu{display:none}
+#setPage.sec #setBody>details.cur{display:block;background:none;border:0;padding:0;margin-top:10px !important}
+#setBody>details.cur>summary{display:none}
 /* ===== صفحة المشغّل المستقلة + شكل الترجمة ===== */
 #pgbar{display:none;position:fixed;top:0;left:0;right:0;z-index:210;height:calc(56px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 12px 0;align-items:center;gap:10px;background:rgba(10,10,15,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid #ffffff14;direction:rtl}
 body.pgopen #pgbar{display:flex}
@@ -449,7 +459,7 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div id="results"></div>
 
 <div id="setPage">
-<div class="sphd"><div class="sprow"><button class="spback" onclick="setBack()" aria-label="رجوع">➡️</button><div style="flex:1;font-weight:800;font-size:17px">⚙️ الإعدادات والإضافات</div></div></div>
+<div class="sphd"><div class="sprow"><button class="spback" onclick="setBack()" aria-label="رجوع">➡️</button><div id="setTitle" style="flex:1;font-weight:800;font-size:17px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">⚙️ الإعدادات والإضافات</div></div></div>
 <div id="setBody">
 <details class="action-box adm" style="text-align:right;margin-top:18px">
 <summary>👥 المستخدمين</summary>
@@ -1572,6 +1582,7 @@ window.addEventListener('popstate', e => {
     else if (top === 'd') closeDetails();
     else if (top === 'b') closeBrowse();
     else if (top === 's') spHide();
+    else if (top === 'g2') setSecHide();
     else if (top === 'g') setHide();
   }
   if (window.spSync) spSync();
@@ -1964,14 +1975,50 @@ async function markCached() {
   }
 }
 // أي نتيجة (تشغيل / سحب / تحميل) بتفتح في صفحة مستقلة فوق الصفحة، فيها زرار رجوع، من غير ما تنزل لتحت
+const SET_DESC = ['إضافة الأعضاء وتعديلهم وصلاحياتهم', 'رتّب صفوف الصفحة الرئيسية', 'مين شاف إيه ومتى', 'حساب Stremio والإضافات', 'TorBox وReal-Debrid وباقي المزوّدين', 'تشخيص AllDebrid', 'مزوّد التشغيل والتحميل لجهازك', 'المزوّد الافتراضي لكل الأعضاء'];
+const setDs = () => [...$('setBody').querySelectorAll(':scope>details')];
+function setBuild() {
+  const body = $('setBody');
+  if (!body || $('setMenu')) return;
+  const m = document.createElement('div');
+  m.id = 'setMenu';
+  setDs().forEach((d, i) => {
+    const t = ((d.querySelector('summary') || {}).textContent || '').trim();
+    const x = /^(\S+)\s+(.*)$/.exec(t);
+    const b = document.createElement('button');
+    b.className = 'setm';
+    b.innerHTML = '<span class="seti">' + esc(x ? x[1] : '⚙️') + '</span><span class="sett"><b>' + esc(x ? x[2] : t) + '</b><small>' + esc(SET_DESC[i] || '') + '</small></span><span class="setc">‹</span>';
+    b.onclick = () => setSec(i);
+    m.appendChild(b);
+  });
+  body.prepend(m);
+}
+function setSec(i) {
+  const ds = setDs();
+  ds.forEach((d, k) => d.classList.toggle('cur', k === i));
+  const d = ds[i];
+  $('setPage').classList.add('sec');
+  $('setTitle').textContent = ((d.querySelector('summary') || {}).textContent || '').trim();
+  if (!d.open) d.open = true;
+  $('setPage').scrollTop = 0;
+  pushView('g2');
+}
+function setSecHide() {
+  $('setPage').classList.remove('sec');
+  $('setTitle').textContent = '⚙️ الإعدادات والإضافات';
+  setDs().forEach(d => d.classList.remove('cur'));
+  $('setPage').scrollTop = 0;
+}
 function setOpen() {
+  setBuild();
+  setSecHide();
   document.body.classList.add('setopen');
   pushView('g');
   const p = $('setPage');
   if (p) p.scrollTop = 0;
 }
-function setHide() { document.body.classList.remove('setopen'); }
-function setBack() { if (VS[VS.length - 1] === 'g') history.back(); else setHide(); }
+function setHide() { document.body.classList.remove('setopen'); setSecHide(); }
+function setBack() { const t = VS[VS.length - 1]; if (t === 'g2' || t === 'g') history.back(); else setHide(); }
 function pgTitle() {
   const t = $('pgt');
   if (!t) return;
