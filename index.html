@@ -530,11 +530,12 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div class="setnote">الطلب بيطلع من المتصفح مباشرة والمفاتيح بتتحفظ على الجهاز ده بس. لو المزوّد فشل بيرجع تلقائي للسيرفر.</div>
 <div class="setcard">
 <label class="lbl">▶ المشاهدة (بيحوّل الفيديو لبث HLS عشان الصوت والصورة يشتغلوا)</label>
-<select id="dbpPlay" class="search-input sv"><option value="server">السيرفر</option><option value="tb">TorBox (الأساسي)</option><option value="ad">AllDebrid</option></select>
+<select id="dbpPlay" class="search-input sv"><option value="server">السيرفر</option><option value="tb">TorBox</option><option value="ad">AllDebrid (الأساسي) + TorBox لو محتاج تحويل</option></select>
 <label class="lbl">⬇ التحميل (لينك الملف الأصلي، غير لينك المشاهدة)</label>
 <select id="dbpDl" class="search-input sv"><option value="server">السيرفر</option><option value="tb">TorBox</option><option value="ad">AllDebrid (الافتراضي)</option></select>
 <label class="lbl">مفتاح AllDebrid</label>
 <input id="dbpAd" type="password" class="search-input ltr sv" placeholder="مفتاح AllDebrid" autocomplete="off">
+<label class="setchk"><input type="checkbox" class="sv" id="dbpOnly"> نسخ TorBox بس (إخفاء نسخ Stremio المباشرة اللي مابتتحوّلش لبث)</label>
 <label class="lbl">مفتاح TorBox</label>
 <input id="dbpTb" type="password" class="search-input ltr sv" placeholder="مفتاح TorBox" autocomplete="off">
 <div class="savebar"><span class="savest"></span><button class="setsave" disabled onclick="secSave(this)">✔ محفوظ</button></div>
@@ -2060,6 +2061,7 @@ function saveDbp() {
   DBP.set('dl', $('dbpDl').value);
   DBP.set('ad', $('dbpAd').value.trim());
   DBP.set('tb', $('dbpTb').value.trim());
+  DBP.set('only', $('dbpOnly').checked ? '1' : '0');
   return true;
 }
 function saveAdvSet() { setAdv($('advChk').checked); return true; }
@@ -2402,9 +2404,10 @@ function processDirectLink() {
 }
 
 // ================= السحب + التقدم =================
+const provShow = n => (typeof ROLE !== 'undefined' && ROLE === 'admin') ? (n || '') : 'السيرفر';
 function progHTML(d) {
   const p = d.progress || 0, size = d.size || 0;
-  return '<div class="pending">⏳ ' + esc(d.provider || '') + ' — ' + esc(d.status || 'جاري التجهيز') +
+  return '<div class="pending">⏳ ' + esc(provShow(d.provider)) + ' — ' + esc(d.status || 'جاري التجهيز') +
     '<div class="bar"><i style="width:' + (p * 100).toFixed(1) + '%"></i></div>' +
     (p * 100).toFixed(1) + '%' + (size ? ' · ' + fmtBytes(p * size) + ' / ' + fmtBytes(size) : '') +
     '<br>⚡ ' + (d.speed ? fmtBytes(d.speed) + '/s' : '—') + ' · ⏱ ' + fmtEta(d.eta) +
@@ -2771,7 +2774,7 @@ function playData(d, base) {
 function linkCard(d, video) {
   const u = esc(d.direct_link);
   const hu = (video && PLAY && PLAY.hls) ? esc(PLAY.hls) : '';   // رابط التشغيل المحوَّل (صوته شغّال)
-  return '<p style="margin:0 0 10px">📡 المصدر: <b>' + esc(d.provider || '') + '</b>' +
+  return '<p style="margin:0 0 10px">📡 المصدر: <b>' + esc(provShow(d.provider)) + '</b>' +
     (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
     (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
     (video && PLAY && PLAY.nw ? warn('المصدر ده مش مناسب للمتصفح. شغّله من المشغّلات الخارجية أو Stremio.') : '') +
@@ -3033,7 +3036,7 @@ function fileRow(f) {
 function packListHTML() {
   return '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">📦 الباك (' +
     pack.files.length + ' حلقة)</h3>' +
-    '<p style="margin:0 0 12px">📡 ' + esc(pack.provider || '') + ' · 💾 ' + fmtSize(pack.total_size) + '</p>' +
+    '<p style="margin:0 0 12px">📡 ' + esc(provShow(pack.provider)) + ' · 💾 ' + fmtSize(pack.total_size) + '</p>' +
     '<div class="row"><button class="search-btn btn-blue" onclick="packZip()">📦 الموسم ZIP</button>' +
     '<button class="search-btn" onclick="packAll()">📋 كل الروابط</button></div>' +
     '<div id="packOut" style="margin-top:12px"></div>' +
@@ -4061,7 +4064,7 @@ async function testProv(id, btn) {
 
 // ================= مزوّدو التشغيل والتحميل (من المتصفح مباشرة، والسيرفر احتياطي) =================
 const DBP = {
-  def: {play: 'tb', dl: 'ad', ad: '', tb: ''},
+  def: {play: 'ad', dl: 'ad', ad: '', tb: '', only: '0'},
   cfg() { try { return Object.assign({}, DBP.def, JSON.parse(localStorage.getItem('dbp') || '{}')); } catch (e) { return Object.assign({}, DBP.def); } },
   set(k, v) { const c = DBP.cfg(); c[k] = v; try { localStorage.setItem('dbp', JSON.stringify(c)); } catch (e) {} },
   prov(mode) {
@@ -4075,6 +4078,7 @@ function dbpInit() {
   if ($('dbpDl')) $('dbpDl').value = c.dl;
   if ($('dbpAd')) $('dbpAd').value = c.ad;
   if ($('dbpTb')) $('dbpTb').value = c.tb;
+  if ($('dbpOnly')) $('dbpOnly').checked = c.only === '1';
 }
 const DB_VID = /\.(mkv|mp4|avi|mov|webm|m4v|ts|wmv)$/i;
 function dbpPick(files, spec) {
@@ -4247,8 +4251,22 @@ async function dbpStart(spec, mode, pv, my) {
   const nm = pv === 'ad' ? 'AllDebrid' : 'TorBox';
   const ui = m => { if (my === pullId) $('results').innerHTML = m; };
   try {
-    ui(pend('جاري التجهيز من ' + nm + '...'));
-    return pv === 'ad' ? await adResolve(spec, mode, my, ui) : await tbResolve(spec, mode, my, ui);
+    ui(pend('جاري التجهيز' + (ROLE === 'admin' ? ' من ' + nm : '') + '...'));
+    if (pv !== 'ad') return await tbResolve(spec, mode, my, ui);
+    // AllDebrid أساسي. لو المشاهدة محتاجة تحويل (AllDebrid ماطلعش بث محوَّل) أو AllDebrid فشل: TorBox مكانه
+    const tbOk = !!DBP.cfg().tb;
+    let r = null, adErr = null;
+    try { r = await adResolve(spec, mode, my, ui); } catch (e) { adErr = e; if (!tbOk || mode !== 'watch') throw e; }
+    if (my !== pullId) return null;
+    if (mode === 'watch' && tbOk && (!r || !r.hls)) {
+      ui(pend(adErr ? 'AllDebrid ماشتغلش، بحوّل من TorBox...' : 'الفيلم محتاج تحويل، بحوّله من TorBox...'));
+      try {
+        const t = await tbResolve(spec, mode, my, ui);
+        if (t && t.hls) return t;
+        if (!r) return t;
+      } catch (e2) { if (!r) throw e2; }
+    }
+    return r;
   } catch (e) {
     console.warn('dbp', e);
     ui(pend(nm + ' ماشتغلش (' + String((e && e.message) || e).slice(0, 80) + ')، بجرّب السيرفر...'));
@@ -4290,6 +4308,7 @@ async function fetchVersions(s, e) {
     const ok = await adInstant(hs);
     if (ok.size) vs = vs.map(v => (v.hash && ok.has(v.hash)) ? Object.assign({}, v, {instant: true, adc: true}) : v);
   }
+  if (DBP.cfg().only === '1' && vs.some(v => v.hash)) vs = vs.filter(v => v.hash);   // TorBox بس: نخفي النسخ المباشرة (بدون hash) لو فيه بديل
   VER.list = verSort(vs);
   VER.err = d.error || '';
   VER.key = VER.list.length ? key : '';
@@ -4445,7 +4464,7 @@ async function dlVersion(i) {
 function showDownload(d) {
   const u = esc(d.direct);
   let h = '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">⬇️ جاهز للتحميل</h3>' +
-    '<p style="margin:0 0 6px">📡 ' + esc(d.provider || '') + (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
+    '<p style="margin:0 0 6px">📡 ' + esc(provShow(d.provider)) + (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
     (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
     '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download">⬇️ تحميل مباشر</a>' +
     '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في مدير التحميل)</button>';
@@ -4538,6 +4557,10 @@ async function startPlay(spec, mode, baseOver) {
   packBase = base;
   playData({direct_link: d.direct, hls: d.hls, provider: d.provider || 'Stremio', name: d.name,
     size: d.size, file_id: d.file_id}, base);
+  if (spec.ref && !d.hls) {
+    const v0 = document.querySelector('#results video');
+    if (v0) v0.addEventListener('error', () => { refRecover('native'); }, {once: true});
+  }
   const pe = $('playErr');
   if (pe && !d.hls && d.stream_note && ROLE === 'admin') pe.innerHTML = warn('تشغيل بدون بث محوَّل: ' + d.stream_note);
   return d;
@@ -4595,6 +4618,20 @@ function retryStream() {
   const v = document.querySelector('#results video');
   if (v) saveProgress(v);
   if (PLAY && PLAY.vh) playByHash(Object.assign({}, PLAY));
+}
+// لو لينك Stremio المباشر خلص/فشل: نرجع للرابط الأصلي (الـref) ونجيب لينك جديد (أو نستغل النسخة اللي في حسابك)، مرة واحدة كل دقيقة لكل نسخة
+const REF_RETRY = {};
+function refRecover(why) {
+  const c = PLAY;
+  if (!c || !c.ref) return false;
+  const now = Date.now();
+  if (REF_RETRY[c.ref] && now - REF_RETRY[c.ref] < 60000) return false;
+  REF_RETRY[c.ref] = now;
+  const v = document.querySelector('#results video');
+  if (v) { try { saveProgress(v); } catch (e) {} }
+  $('results').insertAdjacentHTML('afterbegin', pend('اللينك خلص، بجيب لينك جديد من الأصل...'));
+  playByRef(Object.assign({}, c));
+  return true;
 }
 async function playByRef(it) {
   scrollToResults();
@@ -4780,6 +4817,7 @@ function setupHls(v) {
   if (!url) return;
   if (!/\.m3u8(\?|#|$)/i.test(url) && !/m3u8|playlist/i.test(url)) { v.removeAttribute('crossorigin'); v.src = url; v.load(); v.play().catch(() => {}); return; }
   const fallback = why => {
+    if (refRecover(why)) return;
     if (!AUD.decided) audDecide(!!(PLAY && PLAY.arDub));
     try { if (v._hls) { v._hls.destroy(); v._hls = null; } } catch (e) {}
     v.removeAttribute('src');
