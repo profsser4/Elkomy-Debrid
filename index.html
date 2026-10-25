@@ -4171,8 +4171,15 @@ async function adApi(path, params, o) {
   o = o || {};
   const u = (o.base || 'https://api.alldebrid.com/v4') + path + '?' +
     new URLSearchParams(Object.assign({agent: 'Elkomy', apikey: DBP.cfg().ad}, params || {}));
-  const r = await fetch(u, o.body ? {method: 'POST', body: o.body} : undefined);
-  const j = await r.json();
+  const ctl = new AbortController();
+  const tm = setTimeout(() => ctl.abort(), o.timeout || 15000);
+  let r, j;
+  try {
+    r = await fetch(u, o.body ? {method: 'POST', body: o.body, signal: ctl.signal} : {signal: ctl.signal});
+    j = await r.json();
+  } catch (e) {
+    throw new Error(e && e.name === 'AbortError' ? 'AllDebrid اتأخر في الرد (' + path + ')' : ((e && e.message) || 'فشل الاتصال'));
+  } finally { clearTimeout(tm); }
   if (!j || j.status !== 'success') throw new Error((j && j.error && (j.error.message || j.error.code)) || ('HTTP ' + r.status));
   return j.data;
 }
@@ -4198,6 +4205,7 @@ async function adInstant(hashes) {
   return out;
 }
 async function adResolve(spec, mode, my, ui) {
+  ui(pend('1/4 بضيف الفيلم على AllDebrid...'));
   const up = await adApi('/magnet/upload', {}, {body: new URLSearchParams([['magnets[]', dbpMagnet(spec.hash)]])});
   const m0 = up.magnets && up.magnets[0];
   if (!m0 || m0.error || !m0.id) throw new Error((m0 && m0.error && m0.error.message) || 'فشل إضافة التورنت');
@@ -4216,6 +4224,7 @@ async function adResolve(spec, mode, my, ui) {
     if (my !== pullId) return null;
   }
   if (!st || +st.statusCode !== 4) throw new Error('التورنت لسه مش جاهز على AllDebrid');
+  ui(pend('2/4 بجيب ملفات الفيلم...'));
   const f = await adApi('/magnet/files', {}, {body: new URLSearchParams([['id[]', String(m0.id)]])});
   const files = [];
   const walk = (n, name) => {
@@ -4228,8 +4237,10 @@ async function adResolve(spec, mode, my, ui) {
   walk(f, '');
   const pick = dbpPick(files, spec);
   if (!pick) throw new Error('مالقيتش الملف المطلوب');
+  ui(pend('3/4 بفك الرابط...'));
   const d = await adApi('/link/unlock', {link: pick.l});
   const out = {direct: d.link, name: d.filename || pick.n, size: d.filesize || pick.s, provider: 'AllDebrid'};
+  return out;   // يفتح فوراً بالرابط الأصلي: لو الصوت مش شغّال في المتصفح انقل على VLC (من غير انتظار تحويل)
   if (mode !== 'watch') return out;
   // لو AllDebrid عنده نسخ محوَّلة (صوت AAC شغّال في المتصفح) نستخدمها بدل الأصلي
   const sts = (Array.isArray(d.streams) && d.streams.length ? d.streams : (Array.isArray(d.streaming) ? d.streaming : [])).filter(x => x && x.id);
@@ -4237,10 +4248,10 @@ async function adResolve(spec, mode, my, ui) {
     const q = x => { const m = /\d{3,4}/.exec(String(x.quality || x.id || x.name || '')); return m ? +m[0] : 0; };
     const c = sts.slice().sort((a, b) => q(b) - q(a));
     const best = c.find(x => q(x) && q(x) <= 1080) || c[0];
-    ui(pend('جاري تجهيز نسخة بصوت شغّال في المتصفح...'));
+    ui(pend('4/4 بجهّز نسخة بصوت شغّال في المتصفح...'));
     let s = await adApi('/link/streaming', {id: d.id, stream: best.id});
-    for (let i = 0; s && !s.link && s.delayed && i < 30; i++) {
-      await sleep(3000);
+    for (let i = 0; s && !s.link && s.delayed && i < 12; i++) {
+      await sleep(2500);
       if (my !== pullId) return null;
       s = Object.assign({delayed: s.delayed}, await adApi('/link/delayed', {id: s.delayed}));
       if (+s.status === 3) throw new Error('فشل تحويل الصوت');
@@ -4329,7 +4340,7 @@ async function dbpStart(spec, mode, pv, my) {
     let r = null, adErr = null;
     try { r = await adResolve(spec, mode, my, ui); } catch (e) { adErr = e; if (!tbOk || mode !== 'watch') throw e; }
     if (my !== pullId) return null;
-    if (mode === 'watch' && tbOk && (!r || !r.hls)) {
+    if (mode === 'watch' && tbOk && !r) {
       ui(pend(adErr ? 'AllDebrid ماشتغلش، بحوّل من TorBox...' : 'الفيلم محتاج تحويل، بحوّله من TorBox...'));
       try {
         const t = await tbResolve(spec, mode, my, ui);
