@@ -530,9 +530,9 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div class="setnote">الطلب بيطلع من المتصفح مباشرة والمفاتيح بتتحفظ على الجهاز ده بس. لو المزوّد فشل بيرجع تلقائي للسيرفر.</div>
 <div class="setcard">
 <label class="lbl">▶ المشاهدة (بيحوّل الفيديو لبث HLS عشان الصوت والصورة يشتغلوا)</label>
-<select id="dbpPlay" class="search-input sv"><option value="server">السيرفر</option><option value="tb">TorBox</option><option value="ad">AllDebrid (الأساسي) + TorBox لو محتاج تحويل</option></select>
+<select id="dbpPlay" class="search-input sv"><option value="server">السيرفر (حسب إعداد الأدمن)</option><option value="tb">TorBox</option><option value="ad">AllDebrid</option></select>
 <label class="lbl">⬇ التحميل (لينك الملف الأصلي، غير لينك المشاهدة)</label>
-<select id="dbpDl" class="search-input sv"><option value="server">السيرفر</option><option value="tb">TorBox</option><option value="ad">AllDebrid (الافتراضي)</option></select>
+<select id="dbpDl" class="search-input sv"><option value="server">السيرفر (حسب إعداد الأدمن)</option><option value="tb">TorBox</option><option value="ad">AllDebrid</option></select>
 <label class="lbl">مفتاح AllDebrid</label>
 <input id="dbpAd" type="password" class="search-input ltr sv" placeholder="مفتاح AllDebrid" autocomplete="off">
 <label class="setchk"><input type="checkbox" class="sv" id="dbpOnly"> نسخ TorBox بس (إخفاء نسخ Stremio المباشرة اللي مابتتحوّلش لبث)</label>
@@ -2473,7 +2473,7 @@ function progHTML(d) {
     '<br>⚡ ' + (d.speed ? fmtBytes(d.speed) + '/s' : '—') + ' · ⏱ ' + fmtEta(d.eta) +
     ' · 🌱 ' + (d.seeds || 0) + ' · 👥 ' + (d.peers || 0) +
     (d.file ? '<br><small class="fn" style="display:block">' + esc(d.file) + '</small>' : '') +
-    '<br><small style="color:var(--mut)">متقفلش الصفحة</small></div>';
+    '<br><small style="color:var(--mut)">متقفلش الصفحة</small><br><button class="fc" style="margin-top:8px" onclick="cancelPull()">✖ إلغاء</button></div>';
 }
 const triedHTML = a => (a && a.length)
   ? '<div style="font-size:12px;color:var(--mut);margin-top:10px;text-align:right">' +
@@ -4144,7 +4144,7 @@ async function testProv(id, btn) {
 
 // ================= مزوّدو التشغيل والتحميل (من المتصفح مباشرة، والسيرفر احتياطي) =================
 const DBP = {
-  def: {play: 'ad', dl: 'ad', ad: '', tb: '', only: '0'},
+  def: {play: 'server', dl: 'server', ad: '', tb: '', only: '0'},
   cfg() { try { return Object.assign({}, DBP.def, JSON.parse(localStorage.getItem('dbp') || '{}')); } catch (e) { return Object.assign({}, DBP.def); } },
   set(k, v) { const c = DBP.cfg(); c[k] = v; try { localStorage.setItem('dbp', JSON.stringify(c)); } catch (e) {} },
   prov(mode) {
@@ -4303,12 +4303,12 @@ async function tbResolve(spec, mode, my, ui) {
   fd.append('magnet', dbpMagnet(spec.hash));
   fd.append('seed', '1');
   fd.append('allow_zip', 'false');
-  const c = await (await fetch(B + '/torrents/createtorrent', {method: 'POST', headers: H, body: fd})).json();
+  const c = await (await fetch(B + '/torrents/createtorrent', {method: 'POST', headers: H, body: fd, signal: tmo(20000)})).json();
   const id = c && c.data && (c.data.torrent_id || c.data.queued_id);
   if (!c || !c.success || !id) throw new Error((c && (c.detail || c.error)) || 'فشل إضافة التورنت');
   let t = null;
   for (let i = 0; i < 60; i++) {
-    const r = await (await fetch(B + '/torrents/mylist?bypass_cache=true&id=' + id, {headers: H})).json();
+    const r = await (await fetch(B + '/torrents/mylist?bypass_cache=true&id=' + id, {headers: H, signal: tmo(15000)})).json();
     t = r && r.data;
     if (Array.isArray(t)) t = t[0];
     if (t && (t.download_finished || t.download_present) && (t.files || []).length) break;
@@ -4320,7 +4320,7 @@ async function tbResolve(spec, mode, my, ui) {
   if (!t || !(t.files || []).length) throw new Error('التورنت لسه بيتسحب على TorBox');
   const pick = dbpPick(t.files.map(x => ({n: x.name || x.short_name, s: x.size, id: x.id})), spec);
   if (!pick) throw new Error('مالقيتش الملف المطلوب');
-  const r = await (await fetch(B + '/torrents/requestdl?token=' + encodeURIComponent(key) + '&torrent_id=' + id + '&file_id=' + pick.id, {headers: H})).json();
+  const r = await (await fetch(B + '/torrents/requestdl?token=' + encodeURIComponent(key) + '&torrent_id=' + id + '&file_id=' + pick.id, {headers: H, signal: tmo(15000)})).json();
   if (!r || !r.success || !r.data) throw new Error((r && r.detail) || 'فشل توليد الرابط');
   const out = {direct: r.data, name: pick.n, size: pick.s, provider: 'TorBox', torrent_id: id, file_id: pick.id};
   // المشاهدة: نجيب رابط HLS محوَّل (صوته شغّال). التحميل: بيفضل على الرابط الأصلي (out.direct) من غير تحويل
@@ -4338,32 +4338,27 @@ async function tbResolve(spec, mode, my, ui) {
   return out;
 }
 
+let DBP_ERR = '';
 async function dbpStart(spec, mode, pv, my) {
   const nm = pv === 'ad' ? 'AllDebrid' : 'TorBox';
   const ui = m => { if (my === pullId) $('results').innerHTML = m; };
+  DBP_ERR = '';
   try {
-    ui(pend('جاري التجهيز' + (ROLE === 'admin' ? ' من ' + nm : '') + '...'));
-    if (pv !== 'ad') return await tbResolve(spec, mode, my, ui);
-    // AllDebrid أساسي. لو المشاهدة محتاجة تحويل (AllDebrid ماطلعش بث محوَّل) أو AllDebrid فشل: TorBox مكانه
-    const tbOk = !!DBP.cfg().tb;
-    let r = null, adErr = null;
-    try { r = await adResolve(spec, mode, my, ui); } catch (e) { adErr = e; if (!tbOk || mode !== 'watch') throw e; }
-    if (my !== pullId) return null;
-    if (mode === 'watch' && tbOk && !r) {
-      ui(pend(adErr ? 'AllDebrid ماشتغلش، بحوّل من TorBox...' : 'الفيلم محتاج تحويل، بحوّله من TorBox...'));
-      try {
-        const t = await tbResolve(spec, mode, my, ui);
-        if (t && t.hls) return t;
-        if (!r) return t;
-      } catch (e2) { if (!r) throw e2; }
-    }
-    return r;
+    ui(pend('جاري التجهيز من ' + nm + '...'));
+    return pv === 'ad' ? await adResolve(spec, mode, my, ui) : await tbResolve(spec, mode, my, ui);
   } catch (e) {
     console.warn('dbp', e);
-    ui(pend(nm + ' ماشتغلش (' + String((e && e.message) || e).slice(0, 80) + ')، بجرّب السيرفر...'));
-    await sleep(1500);
+    DBP_ERR = nm + ' ماشتغلش: ' + String((e && e.message) || e).slice(0, 120);
     return null;
   }
+}
+function failBtns() {
+  return '<button class="search-btn" style="margin-top:8px" onclick="startPlay(Object.assign({}, LAST_SP.spec, {_retried: 0}), LAST_SP.mode, LAST_SP.base)">↻ حاول تاني</button>' +
+    (cur && cur.imdb ? '<button class="search-btn" style="margin-top:8px;background:#444" onclick="playOpen(VER.s || undefined, VER.e || undefined)">🔁 غيّر النسخة أو المزوّد</button>' : '');
+}
+function cancelPull() {
+  pullId++;
+  $('results').innerHTML = warn('اتلغى. غيّر المزوّد من القايمة اللي فوق وجرّب تاني.') + (window.LAST_SP ? failBtns() : '');
 }
 dbpInit();
 
@@ -4467,7 +4462,10 @@ function renderVP() {
   const all = VER.list, okAr = v => !VER.arOnly || verLang(v).r >= 3.5;
   const fast = all.filter(v => v.instant && okAr(v)), slow = all.filter(v => !v.instant && okAr(v));
   const t = (cur ? cur.title : '') + (VER.s ? ' · S' + p2(VER.s) + 'E' + p2(VER.e || 1) : '');
-  let h = '<div class="vbox"><button class="vx" onclick="closeVP()">✕</button><h3 style="margin:0 0 12px;color:var(--primary)">' + esc(t) + '</h3>';
+  const c0 = DBP.cfg(), po = (v, x) => '<option value="' + v + '"' + (x === v ? ' selected' : '') + '>' + (v === 'ad' ? 'AllDebrid' : v === 'tb' ? 'TorBox' : 'السيرفر') + '</option>';
+  let h = '<div class="vbox"><button class="vx" onclick="closeVP()">✕</button><h3 style="margin:0 0 12px;color:var(--primary)">' + esc(t) + '</h3>' +
+    '<div class="row" style="margin-bottom:10px"><div><div class="lbl" style="margin:0 0 4px">▶ شاهد من</div><select class="search-input" style="margin:0" onchange="DBP.set(\'play\',this.value);VER.key=\'\'">' + ['ad', 'tb', 'server'].map(v => po(v, c0.play)).join('') + '</select></div>' +
+    '<div><div class="lbl" style="margin:0 0 4px">⬇ حمّل من</div><select class="search-input" style="margin:0" onchange="DBP.set(\'dl\',this.value)">' + ['ad', 'tb', 'server'].map(v => po(v, c0.dl)).join('') + '</select></div></div>';
   if (!all.length) {
     h += warn(VER.err || 'مفيش نسخ متاحة للعمل ده من إضافات Stremio.');
     h += '<button class="search-btn btn-blue" onclick="closeVP();go(' + (VER.s ? VER.s + ',' + (VER.e || 1) : '') + ')">🧲 جرّب بحث التورنت</button>';
@@ -4589,10 +4587,22 @@ async function startPlay(spec, mode, baseOver) {
   scrollToResults();
   $('results').innerHTML = pend('جاري تجهيز النسخة...');
   let tid = null, tries = 0, res, d = null;
+  window.LAST_SP = {spec: spec, mode: mode, base: baseOver};
+  const chosen = DBP.cfg()[mode === 'download' ? 'dl' : 'play'];
+  if ((chosen === 'ad' || chosen === 'tb') && !DBP.cfg()[chosen]) {
+    LAST_ERR = 'اخترت ' + (chosen === 'ad' ? 'AllDebrid' : 'TorBox') + ' بس مفيش مفتاح محفوظ على الجهاز ده (⚙️ ← مزوّد التشغيل والتحميل).';
+    $('results').innerHTML = warn(LAST_ERR) + failBtns();
+    return null;
+  }
   const pv = DBP.prov(mode);
   if (pv !== 'server' && spec.hash) {
     d = await dbpStart(spec, mode, pv, my);
     if (my !== pullId) return null;
+    if (!d) {
+      LAST_ERR = DBP_ERR || 'المزوّد ماردّش';
+      $('results').innerHTML = warn(LAST_ERR + ' — مش هغيّر المزوّد من نفسي.') + failBtns();
+      return null;
+    }
   }
   if (!d) {
     while (true) {
