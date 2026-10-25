@@ -4662,23 +4662,40 @@ function showPick() {
     '<p style="color:var(--mut);font-size:12px;margin:10px 0 0">الترجمة العربي بتتجهّز لوحدها وبتروح مع VLC، ولباقي البرامج حمّلها من الأزرار اللي بتظهر بعد الضغط.</p></div>';
   scrollToResults();
 }
+function extToast(msg) {
+  let t = $('extToast');
+  if (!t) { t = document.createElement('div'); t.id = 'extToast'; t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;z-index:99999;max-width:90%;text-align:center;font-size:14px;direction:rtl;box-shadow:0 4px 20px #0008'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._t);
+  t._t = setTimeout(() => { t.style.display = 'none'; }, 9000);
+}
 async function pickGo(kind) {
   const P = window.PICK;
   if (!P) return;
   if (kind === 'web') return startPlay(P.spec, 'watch');
+  window.EXT_ONLY = true;
   const d = await startPlay(P.spec, 'watch');
+  window.EXT_ONLY = false;
   if (!d || !d.direct) return;
-  const v = document.querySelector('#results video');
-  if (v) { try { v.pause(); } catch (e) {} }
   const u = d.direct, el = {dataset: {u: u}};
-  if (kind === 'vlc') return IS_IOS ? extGo(el, 'vlc') : vlcGo(el);
-  if (kind === 'mx') { location.href = intentUrl(u, 'com.mxtech.videoplayer.ad'); return; }
-  if (kind === 'just') { location.href = intentUrl(u, 'com.brouken.player'); return; }
-  if (kind === 'any') { location.href = intentUrl(u, ''); return; }
-  if (kind === 'infuse') return extGo(el, 'infuse');
-  if (kind === 'nplayer') { location.href = 'nplayer-' + u; return; }
-  if (kind === 'm3u') return dlM3U1();
-  if (kind === 'pot') { location.href = 'potplayer://' + u; return; }
+  const desktop = !IS_ANDROID && !IS_IOS;
+  if (kind === 'vlc') { if (IS_IOS) extGo(el, 'vlc'); else await vlcGo(el); }
+  else if (kind === 'mx') location.href = intentUrl(u, 'com.mxtech.videoplayer.ad');
+  else if (kind === 'just') location.href = intentUrl(u, 'com.brouken.player');
+  else if (kind === 'any') location.href = intentUrl(u, '');
+  else if (kind === 'infuse') extGo(el, 'infuse');
+  else if (kind === 'nplayer') location.href = 'nplayer-' + u;
+  else if (kind === 'm3u') await dlM3U1();
+  else if (kind === 'pot') location.href = 'potplayer://' + u;
+  if (desktop) {
+    extToast(kind === 'm3u' ? 'اضغط على ملف video.m3u اللي نزل (تحت في المتصفح) وVLC هيفتح ويشغّل. عشان يفتح لوحده بعد كده: كليك يمين عليه ← «افتح دايماً» (Always open).' : 'لو البرنامج مافتحش، لازم يكون منصّب عندك.');
+    setTimeout(() => { try { pgBack(); } catch (e) {} }, 900);
+  } else {
+    $('results').innerHTML = '<div class="result-card"><p style="margin:0 0 10px">📲 بفتح البرنامج... لو ماتفتحش تأكد إنه منصّب عندك.</p>' +
+      '<button class="btn-vlc" data-u="' + esc(u) + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط</button>' +
+      '<button class="search-btn" style="margin-top:8px;background:#475569" onclick="pgBack()">↩ رجوع</button></div>';
+  }
 }
 async function dlVersion(i) {
   if (noDl()) return;
@@ -4836,6 +4853,14 @@ async function startPlay(spec, mode, baseOver) {
   base.fname = d.name || base.fname || '';
   curSrc = base.src;
   packBase = base;
+  if (window.EXT_ONLY) {   // فتح في برنامج خارجي: مانشغّلش في المتصفح، بس نجهّز بيانات العمل (للترجمة)
+    window.EXT_ONLY = false;
+    setPlay(base);
+    PLAY.url = d.direct;
+    if (d.hls) PLAY.hls = d.hls;
+    $('results').innerHTML = pend('جاري فتح البرنامج...');
+    return d;
+  }
   try {
     playData({direct_link: d.direct, hls: d.hls, provider: d.provider || 'Stremio', name: d.name,
       size: d.size, file_id: d.file_id}, base);
