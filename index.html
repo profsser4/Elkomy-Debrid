@@ -1125,10 +1125,18 @@ function authFail() {
   localStorage.removeItem('rtok');
   location.reload();
 }
+function wipeCaches() { try { if (window.caches && caches.keys) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {}); } catch (e) {} }
+function releaseMedia() {
+  const v = document.querySelector('#results video');
+  if (!v) return;
+  try { if (v._hls) { v._hls.destroy(); v._hls = null; } } catch (e) {}
+  try { v.pause(); v.removeAttribute('src'); v.querySelectorAll('track').forEach(t => { try { URL.revokeObjectURL(t.src); } catch (e) {} t.remove(); }); v.load(); } catch (e) {}
+}
 function tmo(ms) { try { if (window.AbortController) { const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal; } } catch (e) {} return undefined; }
 async function api(path, opt = {}) {
   const r = await fetch(API + path, {
     ...opt,
+    cache: 'no-store',
     signal: tmo(opt.timeout || 40000),
     headers: {'Content-Type': 'application/json', 'X-Token': TOK}
   });
@@ -1218,13 +1226,14 @@ async function refreshHome() {
 }
 window.addEventListener('pagehide', flushBeacon);
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) flushBeacon();
+  if (document.hidden) { flushBeacon(); wipeCaches(); }
   else refreshHome();
 });
 
 // ================= دخول =================
 window.onload = () => {
   applyView();
+  wipeCaches();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   if (TOK) showMain();
 };
@@ -1643,8 +1652,7 @@ function pushView(v) {
 }
 function stopPlayer() {
   flushBeacon();
-  const v = document.querySelector('#results video');
-  if (v) { try { v.pause(); } catch (e) {} if (v._hls) { try { v._hls.destroy(); } catch (e) {} } }
+  releaseMedia();
   clearCd();
   pullId++;
   pack = null;
@@ -3622,7 +3630,7 @@ async function applySubItem(it, shift, quiet, scale, keepAs) {
   if (st && !quiet) st.innerHTML = pend('جاري تحميل الترجمة...');
   const r = await fetchText('/sub?' + subFetchQS(it, 'vtt', shift, scale));
   if (r.error) { if (st && !quiet) st.innerHTML = warn(r.error); return; }
-  v.querySelectorAll('track').forEach(x => x.remove());
+  v.querySelectorAll('track').forEach(x => { try { URL.revokeObjectURL(x.src); } catch (e) {} x.remove(); });
   const tr = document.createElement('track');
   tr.kind = 'subtitles';
   tr.label = 'ترجمة';
@@ -4607,7 +4615,14 @@ async function startPlay(spec, mode, baseOver) {
     if (!res.r.ok || d.error || !d.direct) {
       if (d.nodl) { LOCK = Math.max(LOCK, d.lock || 1); LOCK_MSG = d.error || LOCK_MSG; $('results').innerHTML = ''; alert(d.error); return null; }
       LAST_ERR = d.error || 'حصل خطأ في التجهيز';
-      $('results').innerHTML = warn(LAST_ERR);
+      if (/انتهى الوقت|timeout|timed out/i.test(LAST_ERR) && !spec._retried && my === pullId) {
+        $('results').innerHTML = pend('انتهى الوقت، بعيد المحاولة تلقائياً...');
+        return startPlay(Object.assign({}, spec, {_retried: 1}), mode, baseOver);
+      }
+      window.LAST_SP = {spec: spec, mode: mode, base: baseOver};
+      $('results').innerHTML = warn(LAST_ERR) +
+        '<button class="search-btn" style="margin-top:8px" onclick="startPlay(Object.assign({}, LAST_SP.spec, {_retried: 0}), LAST_SP.mode, LAST_SP.base)">↻ حاول تاني</button>' +
+        (cur && cur.imdb ? '<button class="search-btn" style="margin-top:8px;background:#444" onclick="playOpen(VER.s || undefined, VER.e || undefined)">🔁 غيّر النسخة</button>' : '');
       return null;
     }
   }
@@ -4901,7 +4916,7 @@ function setupHls(v) {
     if (pm) pm.open = true;
   };
   if (window.Hls && Hls.isSupported()) {
-    const h = new Hls({maxBufferLength: 40});
+    const h = new Hls({maxBufferLength: 15, maxMaxBufferLength: 25, maxBufferSize: 25 * 1000 * 1000, backBufferLength: 0, enableWorker: false});
     v._hls = h;
     try { h.subtitleDisplay = false; h.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => { try { h.subtitleTrack = -1; } catch (e) {} }); } catch (e) {}
     let netTry = 0, medTry = 0;
