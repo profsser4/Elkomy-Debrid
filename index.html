@@ -4352,6 +4352,16 @@ async function dbpStart(spec, mode, pv, my) {
     return null;
   }
 }
+function provBtns() {
+  const sp = window.LAST_SP && LAST_SP.spec;
+  if (!sp || !sp.hash) return '';
+  const c = DBP.cfg(), k = LAST_SP.mode === 'download' ? 'dl' : 'play';
+  let h = '';
+  if (c.ad) h += '<button class="search-btn" style="margin-top:8px;background:#0ea5e9" onclick="DBP.set(\'' + k + '\',\'ad\');startPlay(LAST_SP.spec, LAST_SP.mode, LAST_SP.base)">⬇ سحبها على AllDebrid وشغّلها</button>';
+  if (c.tb) h += '<button class="search-btn" style="margin-top:8px;background:#7c3aed" onclick="DBP.set(\'' + k + '\',\'tb\');startPlay(LAST_SP.spec, LAST_SP.mode, LAST_SP.base)">⬇ سحبها على TorBox وشغّلها</button>';
+  h += '<button class="search-btn" style="margin-top:8px;background:#475569" onclick="startPlay(Object.assign({}, LAST_SP.spec, {slow: true}), LAST_SP.mode, LAST_SP.base)">⬇ سحبها على السيرفر</button>';
+  return h;
+}
 function failBtns() {
   return '<button class="search-btn" style="margin-top:8px" onclick="startPlay(Object.assign({}, LAST_SP.spec, {_retried: 0}), LAST_SP.mode, LAST_SP.base)">↻ حاول تاني</button>' +
     (cur && cur.imdb ? '<button class="search-btn" style="margin-top:8px;background:#444" onclick="playOpen(VER.s || undefined, VER.e || undefined)">🔁 غيّر النسخة أو المزوّد</button>' : '');
@@ -4585,7 +4595,8 @@ async function startPlay(spec, mode, baseOver) {
   LAST_PULL = my;
   clearCd();
   scrollToResults();
-  $('results').innerHTML = pend('جاري تجهيز النسخة...');
+  { const c1 = DBP.cfg(), w1 = c1[mode === 'download' ? 'dl' : 'play'];
+    $('results').innerHTML = pend('جاري تجهيز النسخة من: ' + (w1 === 'ad' && spec.hash ? 'AllDebrid' : w1 === 'tb' && spec.hash ? 'TorBox' : 'السيرفر') + (spec.hash ? '' : ' (نسخة Stremio بتعدّي على السيرفر دايماً)')); }
   let tid = null, tries = 0, res, d = null;
   window.LAST_SP = {spec: spec, mode: mode, base: baseOver};
   const chosen = DBP.cfg()[mode === 'download' ? 'dl' : 'play'];
@@ -4647,7 +4658,7 @@ async function startPlay(spec, mode, baseOver) {
         return startPlay(Object.assign({}, spec, {_retried: 1}), mode, baseOver);
       }
       window.LAST_SP = {spec: spec, mode: mode, base: baseOver};
-      $('results').innerHTML = warn(LAST_ERR) +
+      $('results').innerHTML = warn(LAST_ERR) + (/مش متخزّنة|بتتحمّل/.test(LAST_ERR) ? provBtns() : '') +
         '<button class="search-btn" style="margin-top:8px" onclick="startPlay(Object.assign({}, LAST_SP.spec, {_retried: 0}), LAST_SP.mode, LAST_SP.base)">↻ حاول تاني</button>' +
         (cur && cur.imdb ? '<button class="search-btn" style="margin-top:8px;background:#444" onclick="playOpen(VER.s || undefined, VER.e || undefined)">🔁 غيّر النسخة</button>' : '');
       return null;
