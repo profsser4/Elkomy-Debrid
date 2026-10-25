@@ -4264,6 +4264,7 @@ async function adResolve(spec, mode, my, ui) {
   }
   if (!d || !d.link) throw new Error('AllDebrid ماردّش برابط (الملف مش متاح أو الحساب محجوب مؤقتاً)');
   const out = {direct: d.link, name: d.filename || pick.n, size: d.filesize || pick.s, provider: 'AllDebrid'};
+  ui(pend('4/4 ✅ الرابط جاهز، بفتح المشغّل...'));
   return out;   // يفتح فوراً بالرابط الأصلي: لو الصوت مش شغّال في المتصفح انقل على VLC (من غير انتظار تحويل)
   if (mode !== 'watch') return out;
   // لو AllDebrid عنده نسخ محوَّلة (صوت AAC شغّال في المتصفح) نستخدمها بدل الأصلي
@@ -4722,8 +4723,17 @@ async function startPlay(spec, mode, baseOver) {
   base.fname = d.name || base.fname || '';
   curSrc = base.src;
   packBase = base;
-  playData({direct_link: d.direct, hls: d.hls, provider: d.provider || 'Stremio', name: d.name,
-    size: d.size, file_id: d.file_id}, base);
+  try {
+    playData({direct_link: d.direct, hls: d.hls, provider: d.provider || 'Stremio', name: d.name,
+      size: d.size, file_id: d.file_id}, base);
+  } catch (pe0) {
+    console.warn('playData', pe0);
+    const du = esc(d.direct || '');
+    $('results').innerHTML = warn('الرابط جاهز بس المشغّل وقع: ' + esc(String((pe0 && pe0.message) || pe0).slice(0, 160))) +
+      (du ? '<a href="' + du + '" target="_blank" rel="noopener" class="btn-download">⬇️ فتح / تحميل مباشر</a>' +
+        '<button class="btn-vlc" data-u="' + du + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في VLC أو 1DM)</button>' : '');
+    return d;
+  }
   if (spec.ref && !d.hls && !(baseOver && baseOver._rr)) {
     const v0 = document.querySelector('#results video');
     if (v0) v0.addEventListener('error', () => { refRecover('native'); }, {once: true});
