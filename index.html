@@ -1631,9 +1631,27 @@ async function openDetails(type, id) {
         '<button class="tab" id="tab' + s.n + '" onclick="loadSeason(' + s.n + ')">الموسم ' + s.n + '</button>'
       ).join('') + '</div><div id="eps"></div>';
     }
-    box.innerHTML = h;
+    box.innerHTML = h + '<div id="relBox"></div>';
     if (d.type === 'tv' && d.seasons.length) loadSeason(d.seasons[0].n);
+    loadRelated(d.type, d.id);
   } catch (e) { box.innerHTML = ERR; }
+}
+async function loadRelated(type, id) {
+  try {
+    const {d} = await api('/related?type=' + type + '&id=' + id);
+    const box = $('relBox');
+    if (!d || d.error || !box || !cur || cur.id !== id) return;
+    const row = (items, mark) => '<div class="hrow">' + items.map(t =>
+      '<div class="poster" style="' + (t.id === id ? 'outline:2px solid #38bdf8' : '') + '" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">' +
+      (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '">' : '<div class="noimg">🎬</div>') +
+      '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) + '</div></div></div>').join('') + '</div>';
+    let h = '';
+    if (d.collection && d.collection.length > 1)
+      h += '<div class="lbl" style="margin-top:14px">🎞 ' + esc(d.collection_name || 'أجزاء السلسلة') + ' (' + d.collection.length + ' أجزاء)</div>' + row(d.collection);
+    if (d.similar && d.similar.length)
+      h += '<div class="lbl" style="margin-top:14px">✨ ممكن تعجبك كمان</div>' + row(d.similar);
+    box.innerHTML = h;
+  } catch (e) {}
 }
 function closeDetails() {
   $('details').style.display = 'none';
