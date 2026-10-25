@@ -2228,7 +2228,32 @@ function pgTitle() {
   t.textContent = c ? ((c.title || c.fname || '') + (c.s != null && c.e != null ? ' · S' + p2(c.s) + 'E' + p2(c.e) : ''))
     : ((typeof selected !== 'undefined' && selected && selected.title) || '');
 }
+// على الشاشة: لما الفيديو يفتح بنفضّي صور الصفحة اللي ورا من الذاكرة، ونرجّعها لما نقفل الفيديو
+let TV_FREED = false;
+function tvFree() {
+  if (TV_FREED || !isTv()) return;
+  TV_FREED = true;
+  try {
+    document.querySelectorAll('img').forEach(im => {
+      if (im.closest('#results')) return;
+      if (im.classList.contains('lz') && im.dataset.src) { if (im.getAttribute('src') !== BLANK) im.src = BLANK; }
+      else if (im.getAttribute('src') && !im.dataset.fs) { im.dataset.fs = im.getAttribute('src'); im.removeAttribute('src'); }
+    });
+    _LC.clear();
+  } catch (e) {}
+}
+function tvThaw() {
+  if (!TV_FREED) return;
+  TV_FREED = false;
+  try {
+    document.querySelectorAll('img[data-fs]').forEach(im => { im.src = im.dataset.fs; delete im.dataset.fs; });
+    document.querySelectorAll('img.lz').forEach(im => {
+      if (IO_NEAR && im.dataset.src && im.getAttribute('src') !== im.dataset.src) { IO_NEAR.unobserve(im); IO_NEAR.observe(im); }
+    });
+  } catch (e) {}
+}
 function pgOpen() {
+  tvFree();
   const r = $('results');
   r.classList.remove('vid');
   if (!r.classList.contains('pg')) { r.classList.add('pg'); r.scrollTop = 0; }
@@ -2237,6 +2262,7 @@ function pgOpen() {
   pgTitle();
 }
 function pgClose() {
+  tvThaw();
   const r = $('results');
   r.classList.remove('pg', 'vid');
   document.body.classList.remove('pgopen');
