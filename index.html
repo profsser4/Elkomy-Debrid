@@ -1137,7 +1137,7 @@ async function api(path, opt = {}) {
   const r = await fetch(API + path, {
     ...opt,
     cache: 'no-store',
-    signal: tmo(opt.timeout || 40000),
+    signal: tmo(opt.timeout || 150000),
     headers: {'Content-Type': 'application/json', 'X-Token': TOK}
   });
   if (r.status === 401) authFail();
@@ -4362,6 +4362,23 @@ function provBtns() {
   h += '<button class="search-btn" style="margin-top:8px;background:#475569" onclick="startPlay(Object.assign({}, LAST_SP.spec, {slow: true}), LAST_SP.mode, LAST_SP.base)">⬇ سحبها على السيرفر</button>';
   return h;
 }
+async function provTest(w) {
+  const o = $('provTestOut');
+  if (!o) return;
+  const c = DBP.cfg();
+  if (!c[w]) { o.textContent = (w === 'ad' ? 'AllDebrid' : 'TorBox') + ': مفيش مفتاح محفوظ على الجهاز ده'; return; }
+  o.textContent = 'بفحص...';
+  try {
+    if (w === 'ad') {
+      const d = await adApi('/user', {});
+      const u = (d && d.user) || {};
+      o.textContent = 'AllDebrid ✅ شغّال من المتصفح · ' + (u.username || '') + ' · ' + (u.isPremium ? 'اشتراك فعّال' : 'مفيش اشتراك فعّال');
+    } else {
+      const r = await (await fetch('https://api.torbox.app/v1/api/user/me', {headers: {Authorization: 'Bearer ' + c.tb}, signal: tmo(10000)})).json();
+      o.textContent = r && r.success ? 'TorBox ✅ شغّال من المتصفح · ' + ((r.data && r.data.email) || '') : 'TorBox ❌ ' + ((r && (r.detail || r.error)) || 'رد غريب');
+    }
+  } catch (e) { o.textContent = (w === 'ad' ? 'AllDebrid' : 'TorBox') + ' ❌ ' + String((e && e.message) || e).slice(0, 120); }
+}
 function failBtns() {
   return '<button class="search-btn" style="margin-top:8px" onclick="startPlay(Object.assign({}, LAST_SP.spec, {_retried: 0}), LAST_SP.mode, LAST_SP.base)">↻ حاول تاني</button>' +
     (cur && cur.imdb ? '<button class="search-btn" style="margin-top:8px;background:#444" onclick="playOpen(VER.s || undefined, VER.e || undefined)">🔁 غيّر النسخة أو المزوّد</button>' : '');
@@ -4475,7 +4492,9 @@ function renderVP() {
   const c0 = DBP.cfg(), po = (v, x) => '<option value="' + v + '"' + (x === v ? ' selected' : '') + '>' + (v === 'ad' ? 'AllDebrid' : v === 'tb' ? 'TorBox' : 'السيرفر') + '</option>';
   let h = '<div class="vbox"><button class="vx" onclick="closeVP()">✕</button><h3 style="margin:0 0 12px;color:var(--primary)">' + esc(t) + '</h3>' +
     '<div class="row" style="margin-bottom:10px"><div><div class="lbl" style="margin:0 0 4px">▶ شاهد من</div><select class="search-input" style="margin:0" onchange="DBP.set(\'play\',this.value);VER.key=\'\'">' + ['ad', 'tb', 'server'].map(v => po(v, c0.play)).join('') + '</select></div>' +
-    '<div><div class="lbl" style="margin:0 0 4px">⬇ حمّل من</div><select class="search-input" style="margin:0" onchange="DBP.set(\'dl\',this.value)">' + ['ad', 'tb', 'server'].map(v => po(v, c0.dl)).join('') + '</select></div></div>';
+    '<div><div class="lbl" style="margin:0 0 4px">⬇ حمّل من</div><select class="search-input" style="margin:0" onchange="DBP.set(\'dl\',this.value)">' + ['ad', 'tb', 'server'].map(v => po(v, c0.dl)).join('') + '</select></div></div>' +
+    '<div class="row" style="margin-bottom:6px"><button class="fc" onclick="provTest(\'ad\')">🧪 فحص AllDebrid ' + (c0.ad ? '(مفتاح محفوظ)' : '(مفيش مفتاح)') + '</button><button class="fc" onclick="provTest(\'tb\')">🧪 فحص TorBox ' + (c0.tb ? '(مفتاح محفوظ)' : '(مفيش مفتاح)') + '</button></div>' +
+    '<div id="provTestOut" style="font-size:12px;color:var(--mut);margin-bottom:10px;direction:rtl"></div>';
   if (!all.length) {
     h += warn(VER.err || 'مفيش نسخ متاحة للعمل ده من إضافات Stremio.');
     h += '<button class="search-btn btn-blue" onclick="closeVP();go(' + (VER.s ? VER.s + ',' + (VER.e || 1) : '') + ')">🧲 جرّب بحث التورنت</button>';
@@ -4620,7 +4639,13 @@ async function startPlay(spec, mode, baseOver) {
       try {
         res = await api('/play/start', {method: 'POST',
           body: JSON.stringify(Object.assign({}, spec, {mode: mode, torrent_id: tid}))});
-      } catch (x) { if (my === pullId) $('results').innerHTML = ERR; return null; }
+      } catch (x) {
+        if (my === pullId) {
+          window.LAST_SP = {spec: spec, mode: mode, base: baseOver};
+          $('results').innerHTML = warn('السيرفر ماردّش (غالباً المزوّد اللي وراه واقف أو النت قطع). اختار مزوّد تاني من القايمة وجرّب.') + provBtns() + failBtns();
+        }
+        return null;
+      }
       if (my !== pullId) return null;
       if (res.r.status === 202 && tries < 200) {
         $('results').innerHTML = progHTML(res.d);
