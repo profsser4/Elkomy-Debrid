@@ -4338,17 +4338,18 @@ async function tbResolve(spec, mode, my, ui) {
   return out;
 }
 
-let DBP_ERR = '';
+let DBP_ERR = '', DBP_NET = false;
 async function dbpStart(spec, mode, pv, my) {
   const nm = pv === 'ad' ? 'AllDebrid' : 'TorBox';
   const ui = m => { if (my === pullId) $('results').innerHTML = m; };
-  DBP_ERR = '';
+  DBP_ERR = ''; DBP_NET = false;
   try {
     ui(pend('جاري التجهيز من ' + nm + '...'));
     return pv === 'ad' ? await adResolve(spec, mode, my, ui) : await tbResolve(spec, mode, my, ui);
   } catch (e) {
     console.warn('dbp', e);
     DBP_ERR = nm + ' ماشتغلش: ' + String((e && e.message) || e).slice(0, 120);
+    DBP_NET = pv === 'tb' && /failed to fetch|networkerror|load failed|network request failed/i.test(String((e && e.message) || e));
     return null;
   }
 }
@@ -4628,7 +4629,10 @@ async function startPlay(spec, mode, baseOver) {
   if (pv !== 'server' && spec.hash) {
     d = await dbpStart(spec, mode, pv, my);
     if (my !== pullId) return null;
-    if (!d) {
+    if (!d && DBP_NET) {
+      // الموبايل مش قادر يوصل لـ TorBox مباشرة (شبكة/CORS): نكمّل عن طريق السيرفر بنفس المزوّد بدل ما نقف
+      $('results').innerHTML = pend('الموبايل مش واصل لـ TorBox مباشرة، بكمّل عن طريق السيرفر...');
+    } else if (!d) {
       LAST_ERR = DBP_ERR || 'المزوّد ماردّش';
       $('results').innerHTML = warn(LAST_ERR + ' — مش هغيّر المزوّد من نفسي.') + failBtns();
       return null;
