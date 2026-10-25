@@ -533,10 +533,10 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <select id="dbpPlay" class="search-input sv"><option value="server">السيرفر (حسب إعداد الأدمن)</option><option value="tb">TorBox</option><option value="ad">AllDebrid</option></select>
 <label class="lbl">⬇ التحميل (لينك الملف الأصلي، غير لينك المشاهدة)</label>
 <select id="dbpDl" class="search-input sv"><option value="server">السيرفر (حسب إعداد الأدمن)</option><option value="tb">TorBox</option><option value="ad">AllDebrid</option></select>
-<label class="lbl">مفتاح AllDebrid</label>
+<label class="lbl">مفتاح AllDebrid (بيتحفظ على السيرفر للكل)</label>
 <input id="dbpAd" type="password" class="search-input ltr sv" placeholder="مفتاح AllDebrid" autocomplete="off">
 <label class="setchk"><input type="checkbox" class="sv" id="dbpOnly"> نسخ TorBox بس (إخفاء نسخ Stremio المباشرة اللي مابتتحوّلش لبث)</label>
-<label class="lbl">مفتاح TorBox</label>
+<label class="lbl">مفتاح TorBox (بيتحفظ على السيرفر للكل)</label>
 <input id="dbpTb" type="password" class="search-input ltr sv" placeholder="مفتاح TorBox" autocomplete="off">
 <div class="savebar"><span class="savest"></span><button class="setsave" disabled onclick="secSave(this)">✔ محفوظ</button></div>
 </div>
@@ -2116,13 +2116,27 @@ async function setSaveDirty() {
     toast(ok ? '✅ اتحفظت التعديلات تلقائياً' : '❌ فيه تعديلات ماتحفظتش', !ok);
   }
 }
-function saveDbp() {
-  DBP.set('play', $('dbpPlay').value);
-  DBP.set('dl', $('dbpDl').value);
-  DBP.set('ad', $('dbpAd').value.trim());
-  DBP.set('tb', $('dbpTb').value.trim());
+async function saveDbp() {
   DBP.set('only', $('dbpOnly').checked ? '1' : '0');
-  return true;
+  let ok = true;
+  // المفتاح بيتبعت للسيرفر (للأدمن بس) ومابيتحفظش في المتصفح، فكل الأعضاء يشتغلوا بيه من غير ما يشوفوه
+  for (const [fid, t, nm] of [['dbpAd', 'alldebrid', 'AllDebrid'], ['dbpTb', 'torbox', 'TorBox']]) {
+    const v = $(fid).value.trim();
+    if (!v) continue;
+    try {
+      const old = (await api('/providers')).d.items || [];
+      const {r, d} = await api('/providers', {method: 'POST', body: JSON.stringify({type: t, name: nm, key: v, domains: ''})});
+      if (!r.ok || d.error) { ok = false; alert(nm + ': ' + ((d && d.error) || 'لازم تكون داخل بحساب الأدمن')); continue; }
+      for (const p of old) if (p.type === t && !String(p.id).startsWith('env_')) await api('/providers/' + p.id, {method: 'DELETE'});
+      DBP.set(fid === 'dbpAd' ? 'ad' : 'tb', '');
+      $(fid).value = '';
+      $(fid).placeholder = nm + ' ✅ محفوظ على السيرفر';
+    } catch (e) { ok = false; }
+  }
+  DBP.set('play', 'server');
+  DBP.set('dl', 'server');
+  try { loadProviders(); } catch (e) {}
+  return ok;
 }
 function saveAdvSet() { setAdv($('advChk').checked); return true; }
 function setBuild() {
