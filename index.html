@@ -4916,13 +4916,13 @@ function setupHls(v) {
     if (pm) pm.open = true;
   };
   if (window.Hls && Hls.isSupported()) {
-    const h = new Hls({maxBufferLength: 15, maxMaxBufferLength: 25, maxBufferSize: 25 * 1000 * 1000, backBufferLength: 0, enableWorker: false});
+    const h = new Hls({maxBufferLength: 90, maxMaxBufferLength: 150, maxBufferSize: 120 * 1000 * 1000, maxBufferHole: 0.5, backBufferLength: 10, enableWorker: false, fragLoadingMaxRetry: 8, fragLoadingRetryDelay: 1500, fragLoadingMaxRetryTimeout: 15000, manifestLoadingMaxRetry: 6, levelLoadingMaxRetry: 6});
     v._hls = h;
     try { h.subtitleDisplay = false; h.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => { try { h.subtitleTrack = -1; } catch (e) {} }); } catch (e) {}
     let netTry = 0, medTry = 0;
     h.on(Hls.Events.ERROR, (ev, data) => {
       if (!data || !data.fatal) return;
-      if (data.type === Hls.ErrorTypes.NETWORK_ERROR && netTry++ < 3) { try { h.startLoad(); } catch (e) {} return; }
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR && netTry++ < 10) { try { h.startLoad(); } catch (e) {} return; }
       if (data.type === Hls.ErrorTypes.MEDIA_ERROR && medTry++ < 2) { try { h.recoverMediaError(); } catch (e) {} return; }
       fallback((data.type || '') + ' ' + (data.details || ''));
     });
