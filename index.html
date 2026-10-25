@@ -4180,6 +4180,7 @@ const DBP = {
   cfg() { try { return Object.assign({}, DBP.def, JSON.parse(localStorage.getItem('dbp') || '{}')); } catch (e) { return Object.assign({}, DBP.def); } },
   set(k, v) { const c = DBP.cfg(); c[k] = v; try { localStorage.setItem('dbp', JSON.stringify(c)); } catch (e) {} },
   prov(mode) {
+    if (typeof ROLE !== 'undefined' && ROLE !== 'admin') return 'server';
     const c = DBP.cfg(), p = mode === 'download' ? c.dl : c.play;
     return ((p === 'ad' && c.ad) || (p === 'tb' && c.tb)) ? p : 'server';
   }
@@ -4544,6 +4545,7 @@ function renderVP() {
     '<div><div class="lbl" style="margin:0 0 4px">⬇ حمّل من</div><select class="search-input" style="margin:0" onchange="DBP.set(\'dl\',this.value)">' + ['ad', 'tb', 'server'].map(v => po(v, c0.dl)).join('') + '</select></div></div>' +
     '<div class="row" style="margin-bottom:6px"><button class="fc" onclick="provTest(\'ad\')">🧪 فحص AllDebrid ' + (c0.ad ? '(مفتاح محفوظ)' : '(مفيش مفتاح)') + '</button><button class="fc" onclick="provTest(\'tb\')">🧪 فحص TorBox ' + (c0.tb ? '(مفتاح محفوظ)' : '(مفيش مفتاح)') + '</button></div>' +
     '<div id="provTestOut" style="font-size:12px;color:var(--mut);margin-bottom:10px;direction:rtl"></div>';
+  if (ROLE !== 'admin') { const k0 = h.indexOf('<div class="row" style="margin-bottom:10px">'); if (k0 > 0) h = h.slice(0, k0); }
   if (!all.length) {
     h += warn(VER.err || 'مفيش نسخ متاحة للعمل ده من إضافات Stremio.');
     h += '<button class="search-btn btn-blue" onclick="closeVP();go(' + (VER.s ? VER.s + ',' + (VER.e || 1) : '') + ')">🧲 جرّب بحث التورنت</button>';
@@ -4618,30 +4620,87 @@ function playVersion(i) {
   const v = VER.list[i];
   if (!v) return;
   closeVP();
-  return startPlay(specOf(v), 'watch');
+  window.PICK = {spec: specOf(v)};
+  if (isTv()) return startPlay(window.PICK.spec, 'watch');
+  showPick();
+}
+function showPick() {
+  const b = (label, kind, bg) => '<button class="pl"' + (bg ? ' style="background:' + bg + '"' : '') + ' onclick="pickGo(\'' + kind + '\')">' + label + '</button>';
+  const L = [];
+  if (IS_ANDROID) L.push(b('▶ VLC (مع الترجمة)', 'vlc'), b('▶ MX Player', 'mx'), b('▶ Just Player', 'just'), b('📂 أي مشغّل', 'any'));
+  else if (IS_IOS) L.push(b('▶ VLC', 'vlc'), b('▶ Infuse', 'infuse'), b('▶ nPlayer', 'nplayer'));
+  else L.push(b('▶ VLC (ملف فيه الترجمة)', 'm3u'), b('▶ PotPlayer', 'pot'));
+  $('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 12px;color:var(--primary)">🎬 تحب تشغّله إزاي؟</h3>' +
+    '<button class="search-btn" onclick="pickGo(\'web\')">🌐 تشغيل في المتصفح</button>' +
+    '<div class="lbl" style="margin:14px 0 6px">أو افتحه في برنامج على جهازك:</div><div class="pgrid2">' + L.join('') + '</div>' +
+    '<p style="color:var(--mut);font-size:12px;margin:10px 0 0">الترجمة العربي بتتجهّز لوحدها وبتروح مع VLC، ولباقي البرامج حمّلها من الأزرار اللي بتظهر بعد الضغط.</p></div>';
+  scrollToResults();
+}
+async function pickGo(kind) {
+  const P = window.PICK;
+  if (!P) return;
+  if (kind === 'web') return startPlay(P.spec, 'watch');
+  const d = await startPlay(P.spec, 'watch');
+  if (!d || !d.direct) return;
+  const v = document.querySelector('#results video');
+  if (v) { try { v.pause(); } catch (e) {} }
+  const u = d.direct, el = {dataset: {u: u}};
+  if (kind === 'vlc') return IS_IOS ? extGo(el, 'vlc') : vlcGo(el);
+  if (kind === 'mx') { location.href = intentUrl(u, 'com.mxtech.videoplayer.ad'); return; }
+  if (kind === 'just') { location.href = intentUrl(u, 'com.brouken.player'); return; }
+  if (kind === 'any') { location.href = intentUrl(u, ''); return; }
+  if (kind === 'infuse') return extGo(el, 'infuse');
+  if (kind === 'nplayer') { location.href = 'nplayer-' + u; return; }
+  if (kind === 'm3u') return dlM3U1();
+  if (kind === 'pot') { location.href = 'potplayer://' + u; return; }
 }
 async function dlVersion(i) {
   if (noDl()) return;
   const v = VER.list[i];
   if (!v) return;
   closeVP();
-  const d = await startPlay(specOf(v), 'download');
-  if (d) showDownload(d);
+  const spec = specOf(v);
+  const d = await startPlay(spec, 'download');
+  if (d) {
+    // بنجهّز بيانات العمل عشان الترجمة تتحمّل بنفس اسم الفيلم
+    PLAY = Object.assign({title: '', poster: '', year: '', type: null, tmdb: null, s: null, e: null}, baseFromCur(spec),
+      {fname: d.name || '', url: d.direct, hls: '', resume: 0, sub: null, subx: '', subOff: false});
+    showDownload(d);
+  }
+}
+async function dlBoth(el) {
+  window.open(el.dataset.u, '_blank');
+  try { await dlCurSub(); } catch (e) {}
+}
+function ef2File(u) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['<\r\n' + u + '\r\n>\r\n'], {type: 'text/plain'}));
+  a.download = 'download.ef2';
+  a.click();
 }
 function showDownload(d) {
   const u = esc(d.direct);
+  const L = [];
+  const a = (label, href) => '<a class="pl" href="' + esc(href) + '">' + label + '</a>';
+  if (IS_ANDROID) {
+    L.push(a('⬇️ 1DM+', intentUrl(d.direct, 'idm.internet.download.manager.plus')), a('⬇️ 1DM', intentUrl(d.direct, 'idm.internet.download.manager')),
+      a('⬇️ ADM', intentUrl(d.direct, 'com.dv.adm')), a('📂 أي برنامج تحميل', intentUrl(d.direct, '')));
+  } else if (IS_IOS) {
+    L.push(a('⬇️ Documents', 'rdocs://' + d.direct));
+  } else {
+    L.push('<button class="pl" data-u="' + u + '" onclick="ef2File(this.dataset.u)">⬇️ Internet Download Manager (ملف .ef2)</button>');
+  }
   let h = '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">⬇️ جاهز للتحميل</h3>' +
     '<p style="margin:0 0 6px">📡 ' + esc(provShow(d.provider)) + (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
     (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
-    '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download">⬇️ تحميل مباشر</a>' +
-    '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في مدير التحميل)</button>';
-  if (IS_ANDROID) {
-    h += '<div class="pgrid2" style="margin-top:10px">' +
-      '<a class="pl" href="' + esc(intentUrl(d.direct, 'idm.internet.download.manager.plus')) + '">1DM+</a>' +
-      '<a class="pl" href="' + esc(intentUrl(d.direct, 'com.dv.adm')) + '">ADM</a>' +
-      '<a class="pl" href="' + esc(intentUrl(d.direct, '')) + '">أي تطبيق</a></div>';
-  }
-  h += '<p style="color:var(--mut);font-size:12px;margin-top:10px">ده الملف الأصلي. لو صوته DTS أو AC3 ممكن مايشتغلش على بعض الأجهزة من غير مشغّل زي VLC.</p></div>';
+    '<button class="btn-download" style="width:100%;border:none;cursor:pointer" data-u="' + u + '" onclick="dlBoth(this)">⬇️ تحميل الفيلم + الترجمة العربي</button>' +
+    '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download" style="margin-top:8px;display:block">⬇️ تحميل الفيلم بس (المتصفح)</a>' +
+    '<div class="lbl" style="margin:12px 0 6px">' + (IS_ANDROID || IS_IOS ? 'أو افتحه في برنامج التحميل:' : 'أو حمّله بمدير التحميل:') + '</div>' +
+    '<div class="pgrid2">' + L.join('') + '</div>' +
+    '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في أي مدير تحميل)</button>' +
+    '<div class="pgrid2" style="margin-top:8px"><button class="pl" style="background:#475569" onclick="dlCurSub()">⬇️ تحميل الترجمة (SRT)</button>' +
+    '<button class="pl" style="background:#475569" onclick="copySubLink()">📋 نسخ رابط الترجمة</button></div>';
+  h += '<p style="color:var(--mut);font-size:12px;margin-top:10px">الترجمة بتتحمّل بنفس اسم الفيلم، حطّها جنبه في نفس الفولدر والمشغّل هيلقطها لوحده. ده الملف الأصلي، ولو صوته DTS أو AC3 شغّله من VLC.</p></div>';
   $('results').innerHTML = h;
   scrollToResults();
 }
