@@ -4650,11 +4650,7 @@ async function startPlay(spec, mode, baseOver) {
   let tid = null, tries = 0, res, d = null;
   window.LAST_SP = {spec: spec, mode: mode, base: baseOver};
   const chosen = DBP.cfg()[mode === 'download' ? 'dl' : 'play'];
-  if ((chosen === 'ad' || chosen === 'tb') && !DBP.cfg()[chosen]) {
-    LAST_ERR = 'اخترت ' + (chosen === 'ad' ? 'AllDebrid' : 'TorBox') + ' بس مفيش مفتاح محفوظ على الجهاز ده (⚙️ ← مزوّد التشغيل والتحميل).';
-    $('results').innerHTML = warn(LAST_ERR) + failBtns();
-    return null;
-  }
+  // لو مفيش مفتاح على الجهاز ده، DBP.prov بيرجّع 'server' والسيرفر هو اللي يشتغل بمفتاح الأدمن
   const pv = DBP.prov(mode);
   if (pv !== 'server' && spec.hash) {
     d = await dbpStart(spec, mode, pv, my);
