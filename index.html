@@ -3045,7 +3045,7 @@ async function playItem(key) {
   const h0 = it.vh || ((/btih:([a-fA-F0-9]{40})/.exec(it.src || '') || [])[1] || '').toLowerCase();
   if (h0) return playByHash(Object.assign({}, it, {vh: h0}));
   if (it.ref) return playByRef(it);
-  if (it.dr && it.src) {
+  if (it.dr && it.src && !/^r:/.test(it.src)) {
     clearCd();
     pullId++;
     pack = null;
@@ -4615,6 +4615,23 @@ async function startPlay(spec, mode, baseOver) {
     if (!res.r.ok || d.error || !d.direct) {
       if (d.nodl) { LOCK = Math.max(LOCK, d.lock || 1); LOCK_MSG = d.error || LOCK_MSG; $('results').innerHTML = ''; alert(d.error); return null; }
       LAST_ERR = d.error || 'حصل خطأ في التجهيز';
+      if (spec.ref && !spec._rec && /الرابط انتهى|دوّر على النتايج|دور على النتايج/.test(LAST_ERR) && my === pullId) {
+        $('results').innerHTML = pend('الرابط القديم انتهى، بجيب رابط جديد من الأصل...');
+        try {
+          const b = baseOver || {};
+          if (b.tmdb) await ensureCur(b.tmdb, b.type, b.qn);
+          if (cur && cur.imdb && (!b.tmdb || cur.id === b.tmdb)) {
+            VER.s = spec.s != null ? spec.s : null;
+            VER.e = spec.e != null ? spec.e : null;
+            VER.key = '';
+            const list = await fetchVersions(VER.s, VER.e);
+            const nm = String(spec.name || '').toLowerCase();
+            const v = list.find(x => x.instant && String(x.title || '').toLowerCase() === nm) ||
+                      list.find(x => x.instant && !FAILED.has(x.hash || x.ref));
+            if (v && my === pullId) return startPlay(Object.assign({}, specOf(v), {_rec: 1}), mode, baseOver);
+          }
+        } catch (x) {}
+      }
       if (/انتهى الوقت|timeout|timed out/i.test(LAST_ERR) && !spec._retried && my === pullId) {
         $('results').innerHTML = pend('انتهى الوقت، بعيد المحاولة تلقائياً...');
         return startPlay(Object.assign({}, spec, {_retried: 1}), mode, baseOver);
@@ -4633,7 +4650,7 @@ async function startPlay(spec, mode, baseOver) {
   base.note = d.stream_note || '';
   base.vh = spec.hash || '';
   base.ref = spec.ref || '';
-  base.src = spec.hash ? 'v:' + spec.hash : d.direct;
+  base.src = spec.hash ? 'v:' + spec.hash : (spec.ref ? 'r:' + spec.ref : d.direct);   // بنحفظ الأصل بس، الرابط المباشر بيتجاب جديد كل مرة
   base.dr = !spec.hash;
   base.nw = false;
   base.arDub = isArDubTitle(spec.name);
@@ -4723,7 +4740,7 @@ async function playByRef(it) {
   const d = await startPlay({ref: it.ref, name: it.fname || it.title,
     s: it.s != null ? it.s : null, e: it.e != null ? it.e : null}, 'watch', baseOf(it));
   if (!d && pullId === LAST_PULL) {
-    if (it.dr && it.src && !it._srcTried) {        // آخر محاولة: الرابط المحفوظ نفسه
+    if (it.dr && it.src && !/^r:/.test(it.src) && !it._srcTried) {        // آخر محاولة: الرابط المحفوظ نفسه
       curSrc = it.src;
       const b = baseOf(it);
       packBase = b;
