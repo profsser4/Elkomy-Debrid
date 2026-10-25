@@ -4247,7 +4247,22 @@ async function adResolve(spec, mode, my, ui) {
   const pick = dbpPick(files, spec);
   if (!pick) throw new Error('مالقيتش الملف المطلوب');
   ui(pend('3/4 بفك الرابط...'));
-  const d = await adApi('/link/unlock', {link: pick.l});
+  let d;
+  try { d = await adApi('/link/unlock', {link: pick.l}, {timeout: 25000}); }
+  catch (e1) {
+    if (!/اتأخر/.test(String((e1 && e1.message) || e1))) throw e1;
+    ui(pend('3/4 AllDebrid اتأخر، بعيد المحاولة...'));
+    d = await adApi('/link/unlock', {link: pick.l}, {timeout: 25000});
+  }
+  for (let i = 0; d && !d.link && d.delayed && i < 20; i++) {
+    ui(pend('3/4 AllDebrid بيجهّز الرابط... (' + (i * 3) + ' ث)'));
+    await sleep(3000);
+    if (my !== pullId) return null;
+    const x = await adApi('/link/delayed', {id: d.delayed});
+    if (+x.status === 3) throw new Error('AllDebrid فشل فك الرابط');
+    if (+x.status === 2 && x.link) { d = Object.assign({}, d, x); break; }
+  }
+  if (!d || !d.link) throw new Error('AllDebrid ماردّش برابط (الملف مش متاح أو الحساب محجوب مؤقتاً)');
   const out = {direct: d.link, name: d.filename || pick.n, size: d.filesize || pick.s, provider: 'AllDebrid'};
   return out;   // يفتح فوراً بالرابط الأصلي: لو الصوت مش شغّال في المتصفح انقل على VLC (من غير انتظار تحويل)
   if (mode !== 'watch') return out;
