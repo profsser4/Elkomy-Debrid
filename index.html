@@ -1641,7 +1641,7 @@ async function loadRelated(type, id) {
     const {d} = await api('/related?type=' + type + '&id=' + id);
     const box = $('relBox');
     if (!d || d.error || !box || !cur || cur.id !== id) return;
-    const row = (items, mark) => '<div class="hrow">' + items.map(t =>
+    const row = (items, mark) => '<div class="hrow"' + (isTv() ? ' style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;overflow:visible;flex-wrap:nowrap"' : '') + '>' + items.map(t =>
       '<div class="poster" style="' + (t.id === id ? 'outline:2px solid #38bdf8' : '') + '" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">' +
       (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '">' : '<div class="noimg">🎬</div>') +
       '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) + '</div></div></div>').join('') + '</div>';
@@ -5036,7 +5036,7 @@ function setupHls(v) {
     if (pm) pm.open = true;
   };
   if (window.Hls && Hls.isSupported()) {
-    const h = new Hls({maxBufferLength: 90, maxMaxBufferLength: 150, maxBufferSize: 120 * 1000 * 1000, maxBufferHole: 0.5, backBufferLength: 10, enableWorker: false, fragLoadingMaxRetry: 8, fragLoadingRetryDelay: 1500, fragLoadingMaxRetryTimeout: 15000, manifestLoadingMaxRetry: 6, levelLoadingMaxRetry: 6});
+    const h = new Hls(Object.assign({maxBufferLength: 90, maxMaxBufferLength: 150, maxBufferSize: 120 * 1000 * 1000, maxBufferHole: 0.5, backBufferLength: 10, enableWorker: false, fragLoadingMaxRetry: 8, fragLoadingRetryDelay: 1500, fragLoadingMaxRetryTimeout: 15000, manifestLoadingMaxRetry: 6, levelLoadingMaxRetry: 6}, isTv() ? {maxBufferLength: 20, maxMaxBufferLength: 30, maxBufferSize: 25 * 1000 * 1000, backBufferLength: 3} : {}));
     v._hls = h;
     try { h.subtitleDisplay = false; h.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => { try { h.subtitleTrack = -1; } catch (e) {} }); } catch (e) {}
     let netTry = 0, medTry = 0;
