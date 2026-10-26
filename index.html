@@ -6069,5 +6069,133 @@ function nfxEnded() {
   window.addEventListener('keydown', e => { put(); d.textContent = 'key=' + e.key + ' code=' + e.code + ' keyCode=' + e.keyCode; }, true);
 })();
 </script>
+
+<script>
+/* ===== شاشة فقط: Spotlight (عرض تلقائي زي نتفلكس) + عدّاد الذاكرة ===== */
+(function () {
+  var IDLE_MS = 5000, STEP_MS = 6000, MAX_STEPS = 12;   // غيّر الأرقام دي لو عاوز أسرع أو أبطأ
+  var css = document.createElement('style');
+  css.textContent =
+    '#spot{position:fixed;inset:0;z-index:9000;display:none;opacity:0;transition:opacity .35s;direction:rtl;' +
+    'background:linear-gradient(90deg,#0b1220 0%,#0f172a 45%,#020617 100%);align-items:center;justify-content:center;gap:56px;padding:0 6vw}' +
+    '#spot.on{opacity:1}' +
+    '#spot .sp-img{height:78vh;aspect-ratio:2/3;object-fit:cover;border-radius:14px;background:#1e293b;box-shadow:0 0 0 2px #ffffff22}' +
+    '#spot .sp-txt{max-width:46vw}' +
+    '#spot .sp-row{color:#38bdf8;font-size:22px;font-weight:700;margin-bottom:14px}' +
+    '#spot .sp-t{color:#fff;font-size:clamp(34px,5vw,72px);font-weight:800;line-height:1.25;margin:0 0 14px;text-shadow:0 2px 14px #000}' +
+    '#spot .sp-y{color:#cbd5e1;font-size:26px;margin-bottom:26px}' +
+    '#spot .sp-h{color:#94a3b8;font-size:20px}' +
+    '#spot .sp-d{display:flex;gap:8px;margin-top:22px}#spot .sp-d i{width:10px;height:10px;border-radius:50%;background:#ffffff33}#spot .sp-d i.on{background:#fff}' +
+    '#memhud{position:fixed;top:6px;left:6px;z-index:9999;background:#000b;color:#a7f3d0;font:13px/1.5 monospace;padding:4px 10px;border-radius:8px;direction:ltr;pointer-events:none;display:none}' +
+    '#memhud.warn{color:#fca5a5}';
+  document.head.appendChild(css);
+
+  var sp = document.createElement('div');
+  sp.id = 'spot';
+  sp.innerHTML = '<img class="sp-img" alt="" src="' + BLANK + '"><div class="sp-txt"><div class="sp-row"></div><div class="sp-t"></div><div class="sp-y"></div><div class="sp-h">OK = فتح · أي زرار = رجوع</div><div class="sp-d"></div></div>';
+  document.body.appendChild(sp);
+  var el = { img: sp.querySelector('.sp-img'), row: sp.querySelector('.sp-row'), t: sp.querySelector('.sp-t'), y: sp.querySelector('.sp-y'), d: sp.querySelector('.sp-d') };
+
+  var idleT = null, stepT = null, shown = false, cur = null, steps = 0;
+
+  function canShow() {
+    var mc = document.getElementById('main-content');
+    return isTv() && !document.hidden && mc && mc.offsetParent !== null &&
+      !document.body.classList.contains('pgopen') && !document.querySelector('video');
+  }
+  function focusedPoster() {
+    var a = document.activeElement;
+    return (a && a.classList && a.classList.contains('poster') && !a.classList.contains('mtile')) ? a : null;
+  }
+  function fill(p) {
+    cur = p;
+    var im = p.querySelector('img'), src = im ? (im.dataset.src || im.getAttribute('src')) : '';
+    el.img.style.visibility = (src && src !== BLANK) ? 'visible' : 'hidden';
+    el.img.src = (src && src !== BLANK) ? src : BLANK;      // نفس الصورة المحمّلة أصلاً: صورة واحدة بس وبتتبدّل
+    var t = p.querySelector('.t'), y = p.querySelector('.y');
+    el.t.textContent = t ? (t.firstChild ? t.firstChild.textContent : '') : '';
+    el.y.textContent = y ? y.textContent : '';
+    var h = p.parentElement && p.parentElement.previousElementSibling;
+    el.row.textContent = (h && h.classList.contains('sec')) ? h.textContent : '';
+    var sib = p.parentElement ? p.parentElement.querySelectorAll('.poster:not(.mtile)').length : 0, idx = 0, n = p;
+    while ((n = n.previousElementSibling)) idx++;
+    el.d.innerHTML = Array.apply(null, {length: Math.min(sib, 12)}).map(function (_, j) { return '<i class="' + (j === idx ? 'on' : '') + '"></i>'; }).join('');
+  }
+  function show(p) {
+    shown = true; steps = 0;
+    fill(p);
+    sp.style.display = 'flex';
+    requestAnimationFrame(function () { sp.classList.add('on'); });
+    schedStep();
+  }
+  function schedStep() {
+    clearTimeout(stepT);
+    stepT = setTimeout(function () {
+      if (!shown || !cur) return;
+      var n = cur.nextElementSibling;
+      if (!n || n.classList.contains('mtile') || !n.classList.contains('poster') || ++steps > MAX_STEPS) return;  // وقف عند آخر عمل في الصف
+      try { n.focus(); } catch (e) {}
+      fill(n);
+      schedStep();
+    }, STEP_MS);
+  }
+  function hide() {
+    if (!shown) return;
+    shown = false; clearTimeout(stepT);
+    sp.classList.remove('on');
+    sp.style.display = 'none';
+    el.img.src = BLANK;                                       // تفضية الصورة من الذاكرة
+  }
+  function arm() {
+    clearTimeout(idleT);
+    idleT = setTimeout(function () {
+      if (shown || !canShow()) { arm(); return; }
+      var p = focusedPoster();
+      if (p) show(p); else arm();
+    }, IDLE_MS);
+  }
+  window.addEventListener('keydown', function (e) {
+    if (shown) {
+      hide();
+      if (e.key !== 'Enter' && e.keyCode !== 13) { e.preventDefault(); e.stopImmediatePropagation(); }
+    }
+    arm();
+  }, true);
+  ['mousemove', 'mousedown', 'wheel', 'touchstart'].forEach(function (ev) {
+    window.addEventListener(ev, function () { if (shown) hide(); arm(); }, true);
+  });
+  arm();
+
+  /* ---- عدّاد الذاكرة/التخزين على الشاشة (زرار 0 أو الأحمر يخفيه/يظهره) ---- */
+  var hud = document.createElement('div');
+  hud.id = 'memhud';
+  document.body.appendChild(hud);
+  var hudOn = true;
+  try { hudOn = localStorage.getItem('memhud') !== '0'; } catch (e) {}
+  var stUsed = null;
+  function hudTick() {
+    if (!isTv() || !hudOn) { hud.style.display = 'none'; return; }
+    var nodes = document.getElementsByTagName('*').length, imgs = 0, all = document.images;
+    for (var i = 0; i < all.length; i++) { var a = all[i].getAttribute('src'); if (a && a !== BLANK) imgs++; }
+    var ls = 0;
+    try { for (var k in localStorage) if (localStorage.hasOwnProperty(k)) ls += (k.length + String(localStorage[k]).length) * 2; } catch (e) {}
+    var heap = (performance && performance.memory) ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null;
+    if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(function (r) { stUsed = Math.round((r.usage || 0) / 1048576); }).catch(function () {});
+    hud.textContent = 'RAM ' + (heap === null ? '—' : heap + 'MB') + ' · DOM ' + nodes + ' · IMG ' + imgs + ' · LS ' + Math.round(ls / 1024) + 'KB' + (stUsed === null ? '' : ' · DISK ' + stUsed + 'MB');
+    hud.className = (nodes > 4000 || imgs > 60 || (heap !== null && heap > 150)) ? 'warn' : '';
+    hud.style.display = 'block';
+  }
+  setInterval(hudTick, 2000); hudTick();
+  window.addEventListener('keydown', function (e) {
+    if (e.keyCode === 48 || e.keyCode === 403 || e.key === '0') {
+      var t = e.target && e.target.tagName;
+      if (t === 'INPUT' || t === 'TEXTAREA') return;
+      hudOn = !hudOn;
+      try { localStorage.setItem('memhud', hudOn ? '1' : '0'); } catch (x) {}
+      hudTick();
+    }
+  });
+})();
+</script>
 </body>
 </html>
