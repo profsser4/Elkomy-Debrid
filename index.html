@@ -2374,12 +2374,27 @@ const SOURCES = [
      if (!r.ok) throw new Error('Archive.org: HTTP ' + r.status);
      const j = await r.json();
      return ((j.response && j.response.docs) || []).filter(d => d.identifier).map(d => ({
-       title: d.title || d.identifier, owner: Array.isArray(d.creator) ? d.creator[0] : (d.creator || ''),
+       id: d.identifier, title: d.title || d.identifier, owner: Array.isArray(d.creator) ? d.creator[0] : (d.creator || ''),
        thumb: 'https://archive.org/services/img/' + d.identifier, duration: 0, size: +d.item_size || 0,
        url: 'https://archive.org/details/' + d.identifier}));
    },
    title: t => t.title, thumb: t => t.thumb || '', meta: t => t.owner || '',
-   open: t => pullSource(t.url, {src: t.url, title: t.title}, null)},
+   open: async t => {
+     let url = t.url;
+     try {
+       $('results').innerHTML = pend('بختار ملف الفيديو من Archive.org...');
+       const r = await fetch('https://archive.org/metadata/' + enc(t.id), {signal: tmo(15000)});
+       const j = await r.json();
+       const vs = ((j && j.files) || []).filter(f => /\.(mp4|m4v|mkv|webm|avi|mov|ogv|mpe?g)$/i.test(f.name || '') && !/thumb/i.test(f.name));
+       const pool = vs.filter(f => /\.(mp4|m4v|mkv|webm)$/i.test(f.name)).length ? vs.filter(f => /\.(mp4|m4v|mkv|webm)$/i.test(f.name)) : vs;
+       pool.sort((a, b) => (+b.size || 0) - (+a.size || 0));
+       if (pool[0]) {
+         url = 'https://archive.org/download/' + enc(t.id) + '/' + pool[0].name.split('/').map(enc).join('/');
+         $('results').innerHTML = pend('الملف: ' + esc(pool[0].name) + (pool[0].size ? ' · 💾 ' + esc(fmtSize(+pool[0].size)) : ''));
+       }
+     } catch (e) {}
+     pullSource(url, {src: url, title: t.title}, null);
+   }},
   {id: 'rt', icon: '🇷🇺', name: 'Rutube', color: '#0e1d2b', quiet: true,
    search: async q => {
      const r = await fetch('https://rutube.ru/api/search/video/?format=json&query=' + enc(q), {signal: tmo(12000)});
@@ -2595,6 +2610,7 @@ const triedHTML = a => (a && a.length)
     a.map(x => '• ' + esc(x)).join('<br>') + '</div>' : '';
 
 async function getLink(body, id) {
+  getLink._rt = 0;
   let tid = body.torrent_id || null, tries = 0;
   while (true) {
     let res;
@@ -2604,6 +2620,7 @@ async function getLink(body, id) {
       return {r: {status: 0}, d: {error: 'مش قادر أوصل للسيرفر.'}};
     }
     if (id !== pullId) return null;
+    if (tid && !body.torrent_id && !getLink._rt && (res.r.status === 404 || res.r.status === 410)) { getLink._rt = 1; tid = null; continue; }
     if (res.r.status === 202 && tries < 400) {
       $('results').innerHTML = progHTML(res.d) + triedHTML(res.d.tried);
       tid = res.d.torrent_id || tid;
