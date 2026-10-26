@@ -439,7 +439,7 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div class="row" id="sbLink" style="display:none">
 <button class="search-btn" onclick="processDirectLink()">سحب الرابط الآن 🚀</button>
 </div>
-<p style="color:var(--mut);font-size:12px;margin:8px 0 0">البحث بيشمل الأعمال والتورنت وDailymotion مرة واحدة. أو الصق رابط مباشر / magnet وهيتحوّل على طول.</p>
+<p style="color:var(--mut);font-size:12px;margin:8px 0 0">البحث بيشمل الأعمال والتورنت وDailymotion وArchive.org وRutube مرة واحدة. أو الصق رابط مباشر / magnet وهيتحوّل على طول.</p>
 </div>
 
 <div id="titles"></div>
@@ -1644,7 +1644,7 @@ async function loadRelated(type, id) {
     if (!d || d.error || !box || !cur || cur.id !== id) return;
     const row = (items, mark) => '<div class="hrow"' + (isTv() ? ' style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;overflow:visible;flex-wrap:nowrap"' : '') + '>' + items.map(t =>
       '<div class="poster" style="' + (t.id === id ? 'outline:2px solid #38bdf8' : '') + '" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">' +
-      (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '">' : '<div class="noimg">🎬</div>') +
+      (t.poster ? '<img ' + lzA(t.poster) + ' alt="">' : '<div class="noimg">🎬</div>') +
       '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) + '</div></div></div>').join('') + '</div>';
     let h = '';
     if (d.collection && d.collection.length > 1)
@@ -2319,6 +2319,7 @@ function pullTorrent(i) {
 // لإضافة مصدر جديد: ضيف عنصر في SOURCES فيه: id, icon, name, color,
 //   search(q) -> مصفوفة نتايج (وترمي Error لو فشل), title(t), thumb(t), meta(t), open(t) عند الضغط.
 const enc = encodeURIComponent;
+const spCap = id => isTv() ? ({titles: 10, torrent: 20}[id] || 10) : 1e9;
 const SOURCES = [
   {id: 'titles', icon: '🎬', name: 'أعمال', color: '#8b5cf6',
    search: async q => {
@@ -2360,6 +2361,36 @@ const SOURCES = [
    title: t => t.title, thumb: t => t.thumb || '',
    meta: t => (t.owner || '') + (t.duration ? ' · ⏱ ' + dmDur(t.duration) : ''),
    open: t => pullSource(t.url, {src: t.url, title: t.title}, null)},
+  {id: 'arc', icon: '🏛', name: 'Archive.org', color: '#64748b', quiet: true,
+   search: async q => {
+     const w = q.replace(/["():\[\]{}^~*?\\\/!&|+\-]/g, ' ').trim().split(/\s+/).filter(Boolean).slice(0, 8);
+     if (!w.length) return [];
+     const p = new URLSearchParams();
+     p.set('q', 'title:(' + w.join(' AND ') + ') AND mediatype:(movies)');
+     ['identifier', 'title', 'creator', 'year'].forEach(f => p.append('fl[]', f));
+     p.append('sort[]', 'downloads desc');
+     p.set('rows', '20'); p.set('output', 'json');
+     const r = await fetch('https://archive.org/advancedsearch.php?' + p.toString(), {signal: tmo(15000)});
+     if (!r.ok) throw new Error('Archive.org: HTTP ' + r.status);
+     const j = await r.json();
+     return ((j.response && j.response.docs) || []).filter(d => d.identifier).map(d => ({
+       title: d.title || d.identifier, owner: Array.isArray(d.creator) ? d.creator[0] : (d.creator || ''),
+       thumb: 'https://archive.org/services/img/' + d.identifier, duration: 0,
+       url: 'https://archive.org/details/' + d.identifier}));
+   },
+   title: t => t.title, thumb: t => t.thumb || '', meta: t => t.owner || '',
+   open: t => pullSource(t.url, {src: t.url, title: t.title}, null)},
+  {id: 'rt', icon: '🇷🇺', name: 'Rutube', color: '#0e1d2b', quiet: true,
+   search: async q => {
+     const r = await fetch('https://rutube.ru/api/search/video/?format=json&query=' + enc(q), {signal: tmo(12000)});
+     if (!r.ok) throw new Error('Rutube: HTTP ' + r.status);
+     const j = await r.json();
+     return (j.results || []).filter(v => v.video_url || v.id).map(v => ({
+       title: v.title || '', owner: (v.author && v.author.name) || '', thumb: v.thumbnail_url || '',
+       duration: v.duration || 0, url: v.video_url || ('https://rutube.ru/video/' + v.id + '/')}));
+   },
+   title: t => t.title, thumb: t => t.thumb || '', meta: t => t.owner || '',
+   open: t => pullSource(t.url, {src: t.url, title: t.title}, null)},
 ];
 let ALL = [], SRCERR = {}, SRCF = 'all', USEQ = 0;
 function dmDur(s) {
@@ -2371,18 +2402,20 @@ function dmDur(s) {
 const SPG = {open: false, sy: 0, rt: {}};
 const spCat = x => x.s.id === 'titles' ? x.t.type : x.s.id;          // movie | tv | torrent | dm
 const spKey = x => spCat(x) + ':' + (x.t.id || x.t.imdb || x.t.title);
-const SP_TABS = [['all', 'الكل'], ['movie', '🎬 أفلام'], ['tv', '📺 مسلسلات'], ['torrent', '🧲 تورنت'], ['dm', '▶️ Dailymotion']];
+const SP_TABS = [['all', 'الكل'], ['movie', '🎬 أفلام'], ['tv', '📺 مسلسلات'], ['torrent', '🧲 تورنت'], ['dm', '▶️ Dailymotion'], ['arc', '🏛 Archive.org'], ['rt', '🇷🇺 Rutube']];
 const fmtMin = m => { m = Math.round(+m || 0); return !m ? '' : (m >= 60 ? Math.floor(m / 60) + 'س' + (m % 60 ? ' ' + (m % 60) + 'د' : '') : m + 'د'); };
 function spOpen(q) {
   const o = $('sp');
   if (!o) return;
   $('spInput').value = q || '';
   if (!SPG.open) { SPG.open = true; SPG.sy = 0; if (VS[VS.length - 1] !== 's') pushView('s'); }
+  if (isTv()) { try { tvFree(); } catch (e) {} }
   spSync();
   o.scrollTop = 0;
 }
-function spHide() { SPG.open = false; spSync(); }
-function spReset() { SPG.open = false; spSync(); }
+function spThaw() { if (isTv() && !document.body.classList.contains('pgopen')) { try { tvThaw(); } catch (e) {} } }
+function spHide() { SPG.open = false; spSync(); spThaw(); }
+function spReset() { SPG.open = false; spSync(); spThaw(); }
 function spBack() { if (VS[VS.length - 1] === 's') history.back(); else spHide(); }
 // بتظهر لما نكون في وضع البحث ومفيش تفاصيل/مشغّل/نسخ تورنت مفتوحة، وبتختفي لما تفتح عمل وترجع لما ترجع
 function spSync() {
@@ -2396,6 +2429,7 @@ function spSync() {
   if (was) SPG.sy = o.scrollTop;
   o.style.display = show ? 'block' : 'none';
   document.body.classList.toggle('sp-on', show);
+  if (show && isTv()) { try { tvFree(); } catch (e) {} }
   if (show) o.scrollTop = SPG.sy || 0;
 }
 function spGo() {
@@ -2423,19 +2457,21 @@ async function unifiedSearch() {
     try {
       const items = await s.search(q);
       if (my !== USEQ) return;
-      items.forEach(t => ALL.push({s: s, t: t}));
+      items.slice(0, spCap(s.id)).forEach(t => ALL.push({s: s, t: t}));
     } catch (e) {
-      if (my === USEQ) SRCERR[s.id] = (e && e.message) || 'فشل البحث';
+      if (my === USEQ && !s.quiet) SRCERR[s.id] = (e && e.message) || 'فشل البحث';
+      try { console.warn('search source failed:', s.id, e); } catch (x) {}
     } finally {
       if (my === USEQ) { left--; renderAll(left > 0); if (s.id === 'titles') spFillRt(my); }
     }
   }));
 }
 function setSrcF(id) { SRCF = id; renderAll(false); const o = $('sp'); if (o) o.scrollTop = 0; }
+const spImg = u => (u && isTv()) ? String(u).replace(/\/t\/p\/(?:w\d+|original)\//, '/t/p/w185/') : u;
 function spCard(x, i) {
-  const t = x.t, c = spCat(x), th = x.s.thumb(t), key = spKey(x);
+  const t = x.t, c = spCat(x), th = spImg(x.s.thumb(t)), key = spKey(x);
   return '<div class="spc" tabindex="0" onclick="srcOpen(' + i + ')">' +
-    '<div class="spi">' + (th ? '<img src="' + esc(th) + '" alt="" loading="lazy" decoding="async">' : '<div class="noimg">🎬</div>') +
+    '<div class="spi">' + (th ? '<img ' + lzA(th) + ' alt="">' : '<div class="noimg">🎬</div>') +
     '<span class="spk ' + c + '">' + (c === 'tv' ? '📺 مسلسل' : '🎬 فيلم') + '</span></div>' +
     '<div class="spt">' + esc(t.title) + '</div>' +
     '<div class="spm">' + esc(t.year || '') + '</div>' +
@@ -2452,12 +2488,19 @@ function spTor(x, i) {
 function spDm(x, i) {
   const t = x.t, th = x.s.thumb(t);
   return '<div class="spr" tabindex="0" onclick="srcOpen(' + i + ')"><div class="spth">' +
-    (th ? '<img src="' + esc(th) + '" alt="" loading="lazy" decoding="async">' : '<div class="noimg">▶️</div>') +
+    (th ? '<img ' + lzA(th) + ' alt="">' : '<div class="noimg">▶️</div>') +
     (t.duration ? '<b>⏱ ' + dmDur(t.duration) + '</b>' : '') + '</div><div class="sprb">' +
-    '<div class="sprt2">' + esc(t.title) + '</div><div class="sprm"><span class="spb">' + esc(t.owner || 'Dailymotion') + '</span>' +
+    '<div class="sprt2">' + esc(t.title) + '</div><div class="sprm"><span class="spb">' + esc(t.owner || x.s.name) + '</span>' +
     (t.duration ? '<span class="spb sz">⏱ ' + dmDur(t.duration) + '</span>' : '') + '</div></div></div>';
 }
+let _raT = 0, _raL = false;
 function renderAll(loading) {
+  _raL = !!loading;
+  if (!isTv()) return renderAllNow(_raL);
+  clearTimeout(_raT);
+  _raT = setTimeout(() => renderAllNow(_raL), 180);
+}
+function renderAllNow(loading) {
   const order = s => SOURCES.indexOf(s);
   ALL.sort((a, b) => order(a.s) - order(b.s));
   const idx = ALL.map((x, i) => ({x: x, i: i}));
@@ -2466,12 +2509,12 @@ function renderAll(loading) {
   $('spBar').innerHTML = '<div class="fbar">' + SP_TABS.map(tb =>
     '<button class="fc' + (f === tb[0] ? ' on' : '') + '" onclick="setSrcF(\'' + tb[0] + '\')">' + tb[1] + ' (' + (tb[0] === 'all' ? ALL.length : by(tb[0]).length) + ')</button>').join('') + '</div>';
   let h = '';
-  [['movie', '🎬 الأفلام'], ['tv', '📺 المسلسلات'], ['torrent', '🧲 التورنت'], ['dm', '▶️ Dailymotion']].forEach(g => {
+  [['movie', '🎬 الأفلام'], ['tv', '📺 المسلسلات'], ['torrent', '🧲 التورنت'], ['dm', '▶️ Dailymotion'], ['arc', '🏛 Archive.org'], ['rt', '🇷🇺 Rutube']].forEach(g => {
     const c = g[0];
     if (f !== 'all' && f !== c) return;
     const l = by(c);
     if (!l.length) return;
-    const lim = (f === 'all' && (c === 'torrent' || c === 'dm')) ? 6 : l.length;
+    const lim = (f === 'all' && c !== 'movie' && c !== 'tv') ? 6 : l.length;
     const body = (c === 'movie' || c === 'tv')
       ? '<div class="spg">' + l.map(o => spCard(o.x, o.i)).join('') + '</div>'
       : '<div class="spl">' + l.slice(0, lim).map(o => (c === 'torrent' ? spTor : spDm)(o.x, o.i)).join('') + '</div>';
@@ -2509,7 +2552,7 @@ async function spFillRt(my) {
       } catch (e) {}
     }
   };
-  await Promise.all([worker(), worker(), worker(), worker()]);
+  await Promise.all(Array.from({length: isTv() ? 2 : 4}, () => worker()));
 }
 function srcOpen(i) {
   const x = ALL[i];
@@ -6196,15 +6239,19 @@ function nfxEnded() {
     if (!isTv() || !hudOn) { hud.style.display = 'none'; return; }
     var nodes = document.getElementsByTagName('*').length, imgs = 0, all = document.images;
     for (var i = 0; i < all.length; i++) { var a = all[i].getAttribute('src'); if (a && a !== BLANK) imgs++; }
-    var ls = 0;
-    try { for (var k in localStorage) if (localStorage.hasOwnProperty(k)) ls += (k.length + String(localStorage[k]).length) * 2; } catch (e) {}
+    var ls = window._lsC || 0, nw = Date.now();
+    if (!window._lsT || nw - window._lsT > 30000) {
+      window._lsT = nw; ls = 0;
+      try { for (var k in localStorage) if (localStorage.hasOwnProperty(k)) ls += (k.length + String(localStorage[k]).length) * 2; } catch (e) {}
+      window._lsC = ls;
+    }
     var heap = (performance && performance.memory) ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null;
     if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(function (r) { stUsed = Math.round((r.usage || 0) / 1048576); }).catch(function () {});
     hud.textContent = 'RAM ' + (heap === null ? '—' : heap + 'MB') + ' · DOM ' + nodes + ' · IMG ' + imgs + ' · LS ' + Math.round(ls / 1024) + 'KB' + (stUsed === null ? '' : ' · DISK ' + stUsed + 'MB');
     hud.className = (nodes > 4000 || imgs > 60 || (heap !== null && heap > 150)) ? 'warn' : '';
     hud.style.display = 'block';
   }
-  setInterval(hudTick, 2000); hudTick();
+  setInterval(hudTick, 4000); hudTick();
   window.addEventListener('keydown', function (e) {
     if (e.keyCode === 48 || e.keyCode === 403 || e.key === '0') {
       var t = e.target && e.target.tagName;
