@@ -2367,7 +2367,7 @@ const SOURCES = [
      if (!w.length) return [];
      const p = new URLSearchParams();
      p.set('q', 'title:(' + w.join(' AND ') + ') AND mediatype:(movies)');
-     ['identifier', 'title', 'creator', 'year'].forEach(f => p.append('fl[]', f));
+     ['identifier', 'title', 'creator', 'year', 'item_size'].forEach(f => p.append('fl[]', f));
      p.append('sort[]', 'downloads desc');
      p.set('rows', '20'); p.set('output', 'json');
      const r = await fetch('https://archive.org/advancedsearch.php?' + p.toString(), {signal: tmo(15000)});
@@ -2375,7 +2375,7 @@ const SOURCES = [
      const j = await r.json();
      return ((j.response && j.response.docs) || []).filter(d => d.identifier).map(d => ({
        title: d.title || d.identifier, owner: Array.isArray(d.creator) ? d.creator[0] : (d.creator || ''),
-       thumb: 'https://archive.org/services/img/' + d.identifier, duration: 0,
+       thumb: 'https://archive.org/services/img/' + d.identifier, duration: 0, size: +d.item_size || 0,
        url: 'https://archive.org/details/' + d.identifier}));
    },
    title: t => t.title, thumb: t => t.thumb || '', meta: t => t.owner || '',
@@ -2491,7 +2491,7 @@ function spDm(x, i) {
     (th ? '<img ' + lzA(th) + ' alt="">' : '<div class="noimg">▶️</div>') +
     (t.duration ? '<b>⏱ ' + dmDur(t.duration) + '</b>' : '') + '</div><div class="sprb">' +
     '<div class="sprt2">' + esc(t.title) + '</div><div class="sprm"><span class="spb">' + esc(t.owner || x.s.name) + '</span>' +
-    (t.duration ? '<span class="spb sz">⏱ ' + dmDur(t.duration) + '</span>' : '') + '</div></div></div>';
+    (t.duration ? '<span class="spb sz">⏱ ' + dmDur(t.duration) + '</span>' : '') + (t.size ? '<span class="spb sz">💾 ' + esc(fmtSize(t.size)) + '</span>' : '') + '</div></div></div>';
 }
 let _raT = 0, _raL = false;
 function renderAll(loading) {
