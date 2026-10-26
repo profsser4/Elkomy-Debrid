@@ -2710,6 +2710,18 @@ async function pullSource(src, base, fid) {
   if (!res) return;
   const d = res.d;
   if (!d.direct_link) {
+    // السيرفر فشل في كل مزوّديه: نجرّب AllDebrid من المتصفح (لو عندك مفتاحه) لأي رابط، مش VK بس
+    if (fid == null && !res.d.torrent_id && DBP.cfg().ad && !adTried.length && /^https?:/i.test(src)) {
+      try {
+        $('results').innerHTML = pend('السيرفر فشل، بجرّب AllDebrid...');
+        const dd = await adLinkResolve(src);
+        if (id !== pullId) return;
+        base.src = src;
+        packBase = base;
+        playData(dd, base);
+        return;
+      } catch (e) { adTried.push('AllDebrid (من المتصفح): ' + ((e && e.message) || 'فشل')); }
+    }
     $('results').innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(adTried.concat(d.tried || []));
     return;
   }
@@ -4785,7 +4797,7 @@ async function startPlay(spec, mode, baseOver) {
   window.LAST_SP = {spec: spec, mode: mode, base: baseOver};
   const chosen = DBP.cfg()[mode === 'download' ? 'dl' : 'play'];
   // لو مفيش مفتاح على الجهاز ده، DBP.prov بيرجّع 'server' والسيرفر هو اللي يشتغل بمفتاح الأدمن
-  const pv = DBP.prov(mode);
+  const pv = spec._ad ? 'ad' : DBP.prov(mode);
   if (pv !== 'server' && spec.hash) {
     d = await dbpStart(spec, mode, pv, my);
     if (my !== pullId) return null;
@@ -4846,8 +4858,15 @@ async function startPlay(spec, mode, baseOver) {
         $('results').innerHTML = pend('انتهى الوقت، بعيد المحاولة تلقائياً...');
         return startPlay(Object.assign({}, spec, {_retried: 1}), mode, baseOver);
       }
+      // السيرفر فشل في كل مزوّديه: نجرّب AllDebrid من جهازك (مش من السيرفر) لو عندك مفتاحه
+      if (spec.hash && DBP.cfg().ad && !spec._ad && my === pullId) {
+        $('results').innerHTML = pend('السيرفر فشل، بجرّب AllDebrid من جهازك...');
+        return startPlay(Object.assign({}, spec, {_ad: 1}), mode, baseOver);
+      }
       window.LAST_SP = {spec: spec, mode: mode, base: baseOver};
-      $('results').innerHTML = warn(LAST_ERR) + (/مش متخزّنة|بتتحمّل/.test(LAST_ERR) ? provBtns() : '') +
+      $('results').innerHTML = warn(LAST_ERR) + (/temporarily disabled|site you are trying|torbox\.app\/hosters|فشل السحب من كل/i.test(LAST_ERR)
+        ? '<div class="warn" style="border-color:#38bdf8;color:#e2e8f0;margin-top:8px;line-height:1.9">💡 ده مش عطل في موقعك: TorBox قافل مؤقتاً الموقع اللي الرابط جاي منه.<br>جرّب: <b>🔁 غيّر النسخة</b> واختار نسخة «متخزّنة» (مش رابط موقع)، أو غيّر المزوّد (AllDebrid / Real-Debrid) لو عندك مفتاحه، أو استنى شوية وحاول تاني.<br><a href="https://torbox.app/hosters" target="_blank" rel="noopener" style="color:#38bdf8">حالة المواقع المدعومة على TorBox ↗</a></div>' + provBtns() : '') +
+      (/مش متخزّنة|بتتحمّل/.test(LAST_ERR) ? provBtns() : '') +
         '<button class="search-btn" style="margin-top:8px" onclick="startPlay(Object.assign({}, LAST_SP.spec, {_retried: 0}), LAST_SP.mode, LAST_SP.base)">↻ حاول تاني</button>' +
         (cur && cur.imdb ? '<button class="search-btn" style="margin-top:8px;background:#444" onclick="playOpen(VER.s || undefined, VER.e || undefined)">🔁 غيّر النسخة</button>' : '');
       return null;
