@@ -1492,6 +1492,7 @@ function renderShelvesSoon() {
   _rsT = setTimeout(renderShelves, 250);
 }
 function renderShelves() {
+  if (typeof TV_FREED !== 'undefined' && TV_FREED) return;
   const el = $('shelves');
   if (!PID) { el.innerHTML = ''; return; }
   const its = Object.values(UD.items[PID] || {}).filter(x => !x.del && x.key);
@@ -2240,11 +2241,24 @@ function tvFree() {
       else if (im.getAttribute('src') && !im.dataset.fs) { im.dataset.fs = im.getAttribute('src'); im.removeAttribute('src'); }
     });
     _LC.clear();
+    // حل جذري: نشيل عناصر الصفحة اللي ورا من الـDOM خالص وقت التشغيل (مش بس الصور)
+    window.TV_STASH = {};
+    ['shelves', 'hzb', 'details'].forEach(id => {
+      const e = document.getElementById(id);
+      if (e && e.innerHTML) { window.TV_STASH[id] = e.innerHTML.replace(/ data-o="1"/g, ''); e.innerHTML = ''; }
+    });
   } catch (e) {}
 }
 function tvThaw() {
   if (!TV_FREED) return;
   TV_FREED = false;
+  try {
+    const st = window.TV_STASH || {};
+    Object.keys(st).forEach(id => { const e = document.getElementById(id); if (e && !e.innerHTML) e.innerHTML = st[id]; });
+    window.TV_STASH = null;
+    if (typeof lzScan === 'function') lzScan();
+    if (typeof renderShelves === 'function') renderShelves();
+  } catch (e) {}
   try {
     document.querySelectorAll('img[data-fs]').forEach(im => { im.src = im.dataset.fs; delete im.dataset.fs; });
     document.querySelectorAll('img.lz').forEach(im => {
@@ -5194,12 +5208,14 @@ function renderHero() {
   if (!el) return;
   if (!HERO.length) { el.innerHTML = ''; return; }
   const i = heroI % HERO.length, x = HERO[i];
-  el.innerHTML = '<div class="hz" style="background-image:url(\'' + esc(x.backdrop) + '\')"><div class="hc"><h2>' + esc(x.title) +
+  el.innerHTML = '<div class="hz" style="' + (isTv() ? 'background:linear-gradient(135deg,#1e293b,#0f172a)' : 'background-image:url(\'' + esc(x.backdrop) + '\')') + '"><div class="hc"><h2>' + esc(x.title) +
     '</h2><div class="hm">' + esc((x.type === 'tv' ? 'مسلسل' : 'فيلم') + ' · ' + x.year + ' · ⭐ ' + x.rating) + '</div><p>' + esc(x.overview) +
     '</p><div class="hb"><button class="p" onclick="heroGo(' + i + ',1)">▶ عرض</button><button class="i" onclick="heroGo(' + i +
     ')">المزيد من المعلومات</button><button class="i" onclick="openTrailer(\'' + x.type + '\',' + x.id + ')">🎬 تريلر</button></div></div><div class="dots">' +
     HERO.map((_, j) => '<i class="' + (j === i ? 'on' : '') + '" onclick="heroI=' + j + ';renderHero()"></i>').join('') + '</div></div>';
+  if (!isTv()) {
   heroT = setInterval(() => { if ($('hz').style.display !== 'none') { heroI++; renderHero(); } }, 8000);
+  }
 }
 async function heroGo(i, play) {
   const x = HERO[i];
