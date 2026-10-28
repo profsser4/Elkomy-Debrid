@@ -1537,6 +1537,7 @@ function renderShelves() {
   const p = prof(), hr = (p && p.hr) || [];
   let h = '';
   if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
+  h += clibRows();
   if (lst.length) h += row('❤️ قائمتي', lst);
   if (LATEST.length) h += row('🔔 جديد في قائمتي', LATEST);
   FRESH.forEach(r => { h += row(r.title, r.items, r.id); });
@@ -1733,6 +1734,28 @@ function clibRender() {
     (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">🎬</div>') +
     '<div class="t">' + esc(x.title) + '<div class="y">' + esc(x.year || '') + (x.eps.length ? ' ' + x.eps.length + ' حلقة' : '') + '</div></div></div>').join('') + '</div>';
 }
+const CL_TITLES = {movie: '🎬 أفلام هدية من السيد', series: '📺 مسلسلات هدية من السيد', cartoon: '🧸 كرتون هدية من السيد'};
+function clibRows() {
+  if (typeof CL === 'undefined') return '';
+  if (!CL.loaded) { if (!CL.tried) { CL.tried = true; clibLoad().then(renderShelvesSoon); } return ''; }
+  return CL_CATS.map(c => {
+    let list = CL.items.filter(x => x.cat === c[0]);
+    if (!list.length) return '';
+    if (isTv() && list.length > TV_ROW_N) list = list.slice(0, TV_ROW_N);
+    else list = list.slice(0, 20);
+    return '<h3 class="sec">' + CL_TITLES[c[0]] + '</h3><div class="hrow">' + list.map(x =>
+      '<div class="poster" data-id="' + esc(x.id) + '" onclick="clibHomeTap(this.dataset.id)">' +
+      (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">🎬</div>') +
+      '<div class="t">' + esc(x.title) + '<div class="y">' + esc(x.year || '') + (x.eps.length ? ' ' + x.eps.length + ' حلقة' : '') + '</div></div></div>').join('') +
+      '<div class="poster mtile" onclick="clibOpen(\'' + c[0] + '\')">المزيد ‹</div></div>';
+  }).join('');
+}
+function clibHomeTap(id) {
+  const x = clibFind(id);
+  if (!x) return;
+  if (x.kind === 'tv' && x.eps.length) { clibOpen(x.cat); CL.sel = id; clibRender(); }
+  else clibPlay(id);
+}
 function clibTap(id) {
   const x = clibFind(id);
   if (!x) return;
@@ -1893,6 +1916,7 @@ async function clibSave() {
   CL.cat = body.cat; CL.form = null;
   await clibLoad(true);
   clibRender();
+  renderShelves();
 }
 async function clibDel() {
   const f = CL.form;
@@ -1902,6 +1926,7 @@ async function clibDel() {
   CL.form = null;
   await clibLoad(true);
   clibRender();
+  renderShelves();
 }
 // ================= زرار الرجوع (history) =================
 function pushView(v) {
