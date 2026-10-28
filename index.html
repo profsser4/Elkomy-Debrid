@@ -1108,8 +1108,59 @@ function extGo(el, kind) {
   location.href = (kind === 'vlc' ? 'vlc-x-callback://x-callback-url/stream?url=' : 'infuse://x-callback-url/play?url=') + u + sx;
   return false;
 }
-function playerMenu(u, hu) {
-  hu = hu || u;
+// لوحة بديلة لو المشغّل اللي في الصفحة وقع: اختيار مشاهدة أو تحميل + برامج المشاهدة والتحميل (موبايل وكمبيوتر)
+function fallbackPanel(d, base, err) {
+  const raw = d.direct || d.direct_link || '';
+  const hl = d.hls || '';
+  const play = hl || raw;
+  const du = esc(raw), pu = esc(play);
+  const ttl = esc((base && (base.title || base.fname)) || d.name || 'الملف جاهز');
+  const a = (label, href, extra) => '<a class="pl" href="' + esc(href) + '"' + (extra || '') + '>' + label + '</a>';
+  const btn = (label, js, bg) => '<button class="pl"' + (bg ? ' style="background:' + bg + '"' : '') + ' ' + js + '>' + label + '</button>';
+  const W = [], D = [];
+  if (!raw) return warn('الرابط مش جاهز: ' + esc(String((err && err.message) || err).slice(0, 120)));
+  // برامج المشاهدة
+  try { W.push(playerMenuLite(play, hl)); } catch (e) {}
+  W.push(btn('📋 نسخ رابط المشاهدة', 'data-u="' + pu + '" onclick="copyText(this.dataset.u)"', '#475569'));
+  W.push(btn('🌐 فتح في المتصفح', 'data-u="' + pu + '" onclick="window.open(this.dataset.u,\'_blank\')"', '#475569'));
+  // برامج التحميل
+  D.push(a('⬇️ تحميل مباشر', raw, ' target="_blank" rel="noopener" download'));
+  if (IS_ANDROID) {
+    D.push(a('⬇️ 1DM', intentUrl(raw, 'idm.internet.download.manager')));
+    D.push(a('⬇️ ADM', intentUrl(raw, 'com.dv.adm')));
+    D.push(a('⬇️ أي برنامج تحميل', intentUrl(raw, '')));
+  } else if (IS_IOS) {
+    D.push(btn('📋 انسخ الرابط والصقه في برنامج التحميل', 'data-u="' + du + '" onclick="copyText(this.dataset.u)"', '#475569'));
+  } else {
+    D.push(btn('📋 نسخ الرابط (IDM / JDownloader)', 'data-u="' + du + '" onclick="copyText(this.dataset.u)"', '#475569'));
+  }
+  return '<div class="result-card"><h3 style="margin:0 0 6px;color:var(--success)">✅ ' + ttl + '</h3>' +
+    '<p style="margin:0 0 10px;color:var(--mut);font-size:13px">المشغّل اللي في الصفحة ما اشتغلش، اختار تشاهد ولا تحمّل ببرنامج:</p>' +
+    '<details class="pm" open><summary>▶ مشاهدة</summary><div class="pgrid2">' + W.join('') + '</div></details>' +
+    '<details class="pm" open><summary>⬇️ تحميل</summary><div class="pgrid2">' + D.join('') + '</div></details>' +
+    '<button class="btn-vlc" style="background:#334155;margin-top:8px" onclick="retryStream()">🔄 جرّب المشغّل تاني</button></div>';
+}
+function playerMenuLite(u, hls) {
+  const a = (label, href, extra) => '<a class="pl" href="' + esc(href) + '"' + (extra || '') + '>' + label + '</a>';
+  const du = ' data-u="' + esc(u) + '"';
+  const L = [];
+  if (IS_ANDROID) {
+    L.push(a('▶ VLC', intentUrl(u, 'org.videolan.vlc'), du + ' onclick="return vlcGo(this)"'));
+    L.push(a('▶ Just Player', intentUrl(u, 'com.brouken.player')));
+    L.push(a('📂 أي مشغّل', intentUrl(u, '')));
+    L.push(a('📺 Web Video Caster', 'wvc-x-callback://open?url=' + encodeURIComponent(u), du + ' onclick="return wvcGo(this)"'));
+  } else if (IS_IOS) {
+    L.push(a('▶ VLC', 'vlc-x-callback://x-callback-url/stream?url=' + encodeURIComponent(u), du + ' onclick="return extGo(this,\'vlc\')"'));
+    L.push(a('▶ Infuse', 'infuse://x-callback-url/play?url=' + encodeURIComponent(u), du + ' onclick="return extGo(this,\'infuse\')"'));
+    L.push(a('▶ nPlayer', 'nplayer-' + u));
+  } else {
+    L.push('<button class="pl" onclick="dlM3U1()">▶ VLC / أي مشغّل (ملف M3U)</button>');
+    L.push(a('▶ PotPlayer', 'potplayer://' + u));
+  }
+  return L.join('');
+}
+function playerMenu(u, hls) {
+  hls = hls || '';
   const L = [];
   const a = (label, href, extra) => '<a class="pl" href="' + esc(href) + '"' + (extra || '') + '>' + label + '</a>';
   const du = ' data-u="' + esc(u) + '"';
@@ -5360,10 +5411,7 @@ async function startPlay(spec, mode, baseOver) {
       size: d.size, file_id: d.file_id}, base);
   } catch (pe0) {
     console.warn('playData', pe0);
-    const du = esc(d.direct || '');
-    $('results').innerHTML = warn('الرابط جاهز بس المشغّل وقع: ' + esc(String((pe0 && pe0.message) || pe0).slice(0, 160))) +
-      (du ? '<a href="' + du + '" target="_blank" rel="noopener" class="btn-download">⬇️ فتح / تحميل مباشر</a>' +
-        '<button class="btn-vlc" data-u="' + du + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في VLC أو 1DM)</button>' : '');
+    $('results').innerHTML = fallbackPanel(d, base, pe0);
     return d;
   }
   if (spec.ref && !d.hls && !(baseOver && baseOver._rr)) {
