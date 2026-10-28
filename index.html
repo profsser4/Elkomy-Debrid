@@ -1615,7 +1615,7 @@ async function searchTitles() {
 // ================= صفحة التفاصيل =================
 const chips = (a, sc) => '<div class="chips' + (sc ? ' scroll' : '') + '">' +
   a.map(x => '<span class="chip">' + esc(x) + '</span>').join('') + '</div>';
-const stOK = () => ST.n > 0 && !!cur && !!cur.imdb;
+const stOK = () => (ST.n > 0 || ROLE !== 'admin') && !!cur && !!cur.imdb;   // الأعضاء: السيرفر هو اللي يقرر، مش عدّاد الإضافات في المتصفح
 const stBtn = (s, e) => stOK()
   ? '<button class="btn-st" onclick="stGo(' + s + ',' + e + ')">🧩</button>' : '';
 const playBtn = (s, e) => (cur && cur.imdb)
@@ -2165,7 +2165,7 @@ function go(s, e, auto, skipSt, skipNew) {
     return;
   }
   if (auto && !skipNew && cur && cur.imdb) return playBest(s, e);
-  if (auto && !skipSt && ST.n > 0 && cur && cur.imdb) return stGo(s, e, true);
+  if (auto && !skipSt && (ST.n > 0 || ROLE !== 'admin') && cur && cur.imdb) return stGo(s, e, true);
   want = s ? {s: s, e: e || null} : null;
   let nm = (cur.qname || cur.search_title || '').trim();
   altQ = (cur.alt || []).filter(x => x.toLowerCase() !== nm.toLowerCase()).slice(0, 3);
