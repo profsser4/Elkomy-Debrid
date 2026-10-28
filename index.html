@@ -1754,13 +1754,13 @@ function clibHomeTap(id) {
   const x = clibFind(id);
   if (!x) return;
   if (x.kind === 'tv' && x.eps.length) { clibOpen(x.cat); CL.sel = id; clibRender(); }
-  else clibPlay(id);
+  else clibAsk(id);
 }
 function clibTap(id) {
   const x = clibFind(id);
   if (!x) return;
   if (x.kind === 'tv' && x.eps.length) { CL.sel = id; clibRender(); $('cl').scrollTop = 0; return; }
-  clibPlay(id);
+  clibAsk(id);
 }
 function clibEpMark(id, e) {
   const it = getItem('c:' + id + ':' + e.s + ':' + e.e);
@@ -1777,10 +1777,10 @@ function clibDetailRender(box) {
   let go = x.eps[0];
   if (last) { const i = x.eps.indexOf(last.e); go = last.done ? (x.eps[i + 1] || last.e) : last.e; }
   box.innerHTML = '<h2 style="margin:6px 0 10px">' + esc(x.title) + '</h2>' +
-    '<button class="search-btn" onclick="clibPlay(\'' + esc(x.id) + '\',' + go.s + ',' + go.e + ')">▶ ' + (last ? 'كمّل ' + clibEpTag(go) : 'ابدأ المشاهدة') + '</button>' +
+    '<button class="search-btn" onclick="clibAsk(\'' + esc(x.id) + '\',' + go.s + ',' + go.e + ')">▶ ' + (last ? 'كمّل ' + clibEpTag(go) : 'ابدأ المشاهدة') + '</button>' +
     '<div style="margin-top:12px">' + x.eps.map(e =>
       '<div class="clep"><div>' + clibEpTag(e) + clibEpMark(x.id, e) + '</div>' +
-      '<button class="fc" onclick="clibPlay(\'' + esc(x.id) + '\',' + e.s + ',' + e.e + ')">▶ شغّل</button></div>').join('') + '</div>';
+      '<button class="fc" onclick="clibAsk(\'' + esc(x.id) + '\',' + e.s + ',' + e.e + ')">▶ شغّل</button></div>').join('') + '</div>';
 }
 // ---------- التشغيل ----------
 async function clibGet(body, id) {
@@ -1804,12 +1804,11 @@ async function clibGet(body, id) {
     return res;
   }
 }
-async function clibPlay(id, s, e, fid, skip) {
-  if (noWatch()) return;
+async function clibResolve(id, s, e, skip, mode) {
   await clibLoad();
   let it = clibFind(id);
   if (!it) { await clibLoad(true); it = clibFind(id); }
-  if (!it) return alert('العنصر ده اتحذف');
+  if (!it) { alert('العنصر ده اتحذف'); return null; }
   const eps = it.kind === 'tv' && it.eps.length > 0;
   if (eps && (s == null || e == null)) { s = it.eps[0].s; e = it.eps[0].e; }
   clearCd();
@@ -1819,19 +1818,24 @@ async function clibPlay(id, s, e, fid, skip) {
   skip = skip || [];
   const base = {title: it.title, poster: it.poster || '', year: it.year || '', type: it.kind === 'tv' ? 'tv' : 'movie',
     cl: id, cle: eps ? 1 : 0, s: eps ? s : null, e: eps ? e : null, src: ''};
-  const res = await clibGet({id: id, s: s, e: e, skip: skip}, my);
-  if (!res) return;
+  const res = await clibGet({id: id, s: s, e: e, skip: skip, mode: mode || 'watch'}, my);
+  if (!res) return null;
   const d = res.d;
-  if (!d.direct_link) { $('results').innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(d.tried); return; }
+  if (d.nodl) { LOCK = Math.max(LOCK, d.lock || 1); LOCK_MSG = d.error || LOCK_MSG; $('results').innerHTML = ''; alert(d.error); return null; }
+  if (!d.direct_link) { $('results').innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(d.tried); return null; }
   skip = res.skip || skip;
   base.li = d.li; base.cln = d.n; base.clskip = skip;
+  return {it: it, eps: eps, s: s, e: e, d: d, base: base, my: my, skip: skip};
+}
+async function clibStart(c, fid) {
+  const d = c.d, base = c.base, my = c.my, eps = c.eps, s = c.s, e = c.e;
   packBase = base;
   curSrc = '';
   if (d.pack && d.files && base.type !== 'movie') {
     const f = fid != null ? d.files.find(x => x.id === fid)
       : (eps ? d.files.find(x => x.episode === e && (x.season == null || x.season === s)) : null);
-    if (f) { pack = d; return playPackFile(f); }
     pack = d;
+    if (f) return playPackFile(f);
     return showPack(d);
   }
   await ensureHls(d, d.file_id, my);
@@ -1845,6 +1849,99 @@ async function clibPlay(id, s, e, fid, skip) {
       clibAlt(cur0);
     }, 2500));
   }
+}
+async function clibPlay(id, s, e, fid, skip) {
+  if (noWatch()) return;
+  const c = await clibResolve(id, s, e, skip, 'watch');
+  if (c) return clibStart(c, fid);
+}
+// ---------- سؤال: مشاهدة ولا تحميل؟ (زي باقي الموقع) ----------
+function clibAsk(id, s, e) {
+  if (isTv()) return clibPlay(id, s, e);
+  const it = clibFind(id);
+  if (!it) return;
+  window.CLASK = {id: id, s: s, e: e};
+  const tag = (it.kind === 'tv' && s != null && e != null) ? ' · ' + clibEpTag({s: s, e: e}) : '';
+  scrollToResults();
+  $('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 6px;color:var(--primary)">🎬 ' + esc(it.title) + esc(tag) + '</h3>' +
+    '<p style="margin:0 0 12px;color:var(--mut)">عايز تشاهد ولا تحمّل؟</p>' +
+    '<button class="search-btn" onclick="clibAskGo(\'watch\')">▶ مشاهدة</button>' +
+    '<button class="search-btn" style="margin-top:8px;background:#16a34a" onclick="clibAskGo(\'dl\')">⬇️ تحميل</button></div>';
+}
+async function clibAskGo(kind) {
+  const A = window.CLASK;
+  if (!A) return;
+  if (kind === 'dl') {
+    if (noDl()) return;
+    const c = await clibResolve(A.id, A.s, A.e, [], 'download');
+    if (!c) return;
+    if (c.d.pack && c.d.files && c.base.type !== 'movie') { packBase = c.base; pack = c.d; return showPack(c.d); }
+    return clibShowDownload(c);
+  }
+  if (noWatch()) return;
+  const c = await clibResolve(A.id, A.s, A.e, [], 'watch');
+  if (!c) return;
+  if (c.d.pack && c.d.files && c.base.type !== 'movie') return clibStart(c);   // باك: قايمة الملفات
+  window.CLCTX = c;
+  // بنجهّز PLAY عشان VLC ياخد الاسم ومكان الاستكمال
+  setPlay(Object.assign({}, c.base, {fname: c.d.name || '', url: c.d.direct_link, hls: '', sub: null, subx: '', subOff: false}));
+  clibPickShow();
+}
+function clibPickShow() {
+  const b = (label, kind) => '<button class="pl" onclick="clibPickGo(\'' + kind + '\')">' + label + '</button>';
+  const L = [];
+  if (IS_ANDROID) L.push(b('▶ VLC', 'vlc'), b('▶ MX Player', 'mx'), b('▶ Just Player', 'just'), b('📂 أي مشغّل', 'any'));
+  else if (IS_IOS) L.push(b('▶ VLC', 'vlc'), b('▶ Infuse', 'infuse'), b('▶ nPlayer', 'nplayer'));
+  else L.push(b('▶ VLC', 'm3u'), b('▶ PotPlayer', 'pot'));
+  $('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 12px;color:var(--primary)">🎬 تحب تشغّله إزاي؟</h3>' +
+    '<button class="search-btn" onclick="clibPickGo(\'web\')">🌐 تشغيل في المتصفح</button>' +
+    '<div class="lbl" style="margin:14px 0 6px">أو افتحه في برنامج على جهازك:</div><div class="pgrid2">' + L.join('') + '</div></div>';
+  scrollToResults();
+}
+async function clibPickGo(kind) {
+  const c = window.CLCTX;
+  if (!c) return;
+  if (kind === 'web') return clibStart(c);
+  const u = c.d.direct_link, el = {dataset: {u: u}};
+  const desktop = !IS_ANDROID && !IS_IOS;
+  if (kind === 'vlc') { if (IS_IOS) extGo(el, 'vlc'); else await vlcGo(el); }
+  else if (kind === 'mx') location.href = intentUrl(u, 'com.mxtech.videoplayer.ad');
+  else if (kind === 'just') location.href = intentUrl(u, 'com.brouken.player');
+  else if (kind === 'any') location.href = intentUrl(u, '');
+  else if (kind === 'infuse') extGo(el, 'infuse');
+  else if (kind === 'nplayer') location.href = 'nplayer-' + u;
+  else if (kind === 'm3u') await dlM3U1();
+  else if (kind === 'pot') location.href = 'potplayer://' + u;
+  if (desktop) {
+    extToast(kind === 'm3u' ? 'اضغط على ملف video.m3u اللي نزل (تحت في المتصفح) وVLC هيفتح ويشغّل.' : 'لو البرنامج مافتحش، لازم يكون منصّب عندك.');
+    setTimeout(() => { try { pgBack(); } catch (er) {} }, 900);
+  } else {
+    $('results').innerHTML = '<div class="result-card"><p style="margin:0 0 10px">📲 بفتح البرنامج... لو ماتفتحش تأكد إنه منصّب عندك.</p>' +
+      '<button class="btn-vlc" data-u="' + esc(u) + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط</button>' +
+      '<button class="search-btn" style="margin-top:8px;background:#475569" onclick="pgBack()">↩ رجوع</button></div>';
+  }
+}
+function clibShowDownload(c) {
+  const d = c.d, raw = d.direct_link, u = esc(raw);
+  const L = [];
+  const a = (label, href) => '<a class="pl" href="' + esc(href) + '">' + label + '</a>';
+  if (IS_ANDROID) {
+    L.push(a('⬇️ 1DM+', intentUrl(raw, 'idm.internet.download.manager.plus')), a('⬇️ 1DM', intentUrl(raw, 'idm.internet.download.manager')),
+      a('⬇️ ADM', intentUrl(raw, 'com.dv.adm')), a('📂 أي برنامج تحميل', intentUrl(raw, '')));
+  } else if (IS_IOS) {
+    L.push(a('⬇️ Documents', 'rdocs://' + raw));
+  } else {
+    L.push('<button class="pl" data-u="' + u + '" onclick="ef2File(this.dataset.u)">⬇️ Internet Download Manager (ملف .ef2)</button>');
+  }
+  $('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">⬇️ جاهز للتحميل</h3>' +
+    '<p style="margin:0 0 6px">📡 ' + esc(provShow(d.provider)) + (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
+    (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
+    '<div class="lbl" style="margin:12px 0 6px">تحمّل بإيه؟</div>' +
+    '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download" style="display:block">⬇️ تحميل من المتصفح</a>' +
+    '<div class="lbl" style="margin:12px 0 6px">' + (IS_ANDROID || IS_IOS ? 'أو افتحه في برنامج التحميل:' : 'أو حمّله بمدير التحميل:') + '</div>' +
+    '<div class="pgrid2">' + L.join('') + '</div>' +
+    '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في أي مدير تحميل)</button></div>';
+  scrollToResults();
 }
 function clibAlt(c) {
   if (!c || !c.cl) return;
@@ -1913,6 +2010,7 @@ async function clibSave() {
     poster: $('cfP').value, links_text: $('cfL').value, eps_text: $('cfE') ? $('cfE').value : ''};
   const {r, d} = await api('/clib/save', {method: 'POST', body: JSON.stringify(body)});
   if (!r.ok || d.error) return alert(d.error || 'مقدرتش أحفظ');
+  if (d.warming) alert('بدأ تحميل ' + d.warming + ' تورنت على الدابريت. اتركهم يخلصوا قبل ما حد يشغّلهم.');
   CL.cat = body.cat; CL.form = null;
   await clibLoad(true);
   clibRender();
