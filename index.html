@@ -125,6 +125,16 @@ body.m-tv .hrow>.poster,body.m-tv .hrow>.cw{content-visibility:auto;contain-intr
 img.lz{background:#0b1220}
 /* ===== صفحة البحث (شاشة لوحدها) ===== */
 body.sp-on{overflow:hidden}
+#cl{display:none;position:fixed;inset:0;z-index:100;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;direction:rtl;color:var(--text)}
+body.cl-on{overflow:hidden}
+#cl .search-input{margin:0;flex:1;min-width:0;height:44px;padding:0 14px}
+.clgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.clgrid .poster{flex:none}
+.cled{position:absolute;top:4px;left:4px;z-index:2;width:30px;height:30px;border-radius:8px;border:0;background:#000a;color:#fff;font-size:14px;cursor:pointer}
+.clep{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border:1px solid #334155;border-radius:10px;margin:6px 0;background:var(--panel)}
+.clep small{display:block;color:var(--mut);margin-top:2px}
+#clBody label{display:block;margin:12px 0 4px;color:var(--mut);font-size:13px}
+#clBody textarea.search-input{height:auto;min-height:96px;padding:10px 14px;direction:ltr;text-align:left}
 #sp{display:none;position:fixed;inset:0;z-index:100;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;direction:rtl;color:var(--text)}
 .sphd{position:sticky;top:0;z-index:2;background:var(--bg);padding:10px 12px 6px;border-bottom:1px solid #ffffff14}
 .sprow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
@@ -442,6 +452,12 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <p style="color:var(--mut);font-size:12px;margin:8px 0 0">البحث بيشمل الأعمال والتورنت وDailymotion وArchive.org وRutube مرة واحدة. أو الصق رابط مباشر / magnet وهيتحوّل على طول.</p>
 </div>
 
+<div class="row" id="clHome" style="margin:0 0 14px;gap:8px">
+<button class="search-btn" onclick="clibOpen('movie')">🎬 أفلام</button>
+<button class="search-btn" onclick="clibOpen('series')">📺 مسلسلات</button>
+<button class="search-btn" onclick="clibOpen('cartoon')">🧸 كرتون</button>
+</div>
+
 <div id="titles"></div>
 <div id="details"></div>
 <div id="browse"></div>
@@ -472,6 +488,18 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 <div id="spBar"></div>
 </div>
 <div id="spResults" class="spbody"></div>
+</div>
+
+<div id="cl">
+<div class="sphd">
+<div class="sprow">
+<button class="spback" onclick="clibBack()" aria-label="رجوع">➡️</button>
+<input id="clQ" class="search-input" placeholder="ابحث في مكتبتي..." oninput="CL.q=this.value.trim();clibRender()">
+<button class="spgo adm" onclick="clibAdd()" aria-label="إضافة">➕</button>
+</div>
+<div class="tabs" id="clTabs"></div>
+</div>
+<div id="clBody" class="spbody"></div>
 </div>
 
 <div id="pgbar"><button class="pgb" onclick="pgBack()" aria-label="رجوع">➡️ رجوع</button><div class="pgt" id="pgt"></div></div>
@@ -1419,6 +1447,7 @@ function nextEpOf(c) {
 }
 function cwOK(x) {
   if (x.hide) return false;
+  if (x.cl) return !x.done || !!x.next;
   if (!x.done) return true;
   return x.type === 'tv' && !!(x.next || nextEpOf(x));
 }
@@ -1498,7 +1527,7 @@ function renderShelves() {
   const its = Object.values(UD.items[PID] || {}).filter(x => !x.del && x.key);
   const groups = new Map();
   its.filter(x => x.key[0] !== 'l').forEach(x => {
-    const g = (x.type === 'tv' && x.tmdb) ? 'tv' + x.tmdb : x.key;
+    const g = x.cl ? 'cl' + x.cl : (x.type === 'tv' && x.tmdb) ? 'tv' + x.tmdb : x.key;
     const o = groups.get(g);
     if (!o || x.t > o.t) groups.set(g, x);
   });
@@ -1664,6 +1693,216 @@ function closeDetails() {
   renderShelves();
   if (window.spSync) spSync();
 }
+
+// ================= مكتبتي الخاصة (أفلام / مسلسلات / كرتون) — الأدمن بس بيضيف، والروابط مخفية عن الباقي =================
+const CL = {open: false, cat: 'movie', items: [], loaded: false, q: '', sel: null, form: null};
+const CL_CATS = [['movie', '🎬 أفلام'], ['series', '📺 مسلسلات'], ['cartoon', '🧸 كرتون']];
+async function clibLoad(force) {
+  if (CL.loaded && !force) return;
+  try { const {d} = await api('/clib/list'); CL.items = d.items || []; CL.loaded = true; } catch (e) {}
+}
+function clibOpen(cat) {
+  CL.cat = cat || CL.cat; CL.open = true; CL.sel = null; CL.form = null; CL.q = '';
+  $('clQ').value = '';
+  $('cl').style.display = 'block';
+  document.body.classList.add('cl-on');
+  if (VS[VS.length - 1] !== 'c') pushView('c');
+  clibRender();
+  clibLoad(true).then(clibRender);
+  $('cl').scrollTop = 0;
+}
+function clibHide() { CL.open = false; $('cl').style.display = 'none'; document.body.classList.remove('cl-on'); }
+function clibBack() {
+  if (CL.sel || CL.form) { CL.sel = null; CL.form = null; clibRender(); return; }
+  if (VS[VS.length - 1] === 'c') history.back(); else clibHide();
+}
+const clibFind = id => CL.items.find(x => x.id === id);
+const clibEpTag = e => 'S' + p2(e.s) + 'E' + p2(e.e);
+function clibRender() {
+  if (!CL.open) return;
+  $('clTabs').innerHTML = CL_CATS.map(c => '<button class="tab' + (CL.cat === c[0] ? ' on' : '') + '" onclick="CL.cat=\'' + c[0] + '\';CL.sel=null;CL.form=null;clibRender()">' + c[1] + '</button>').join('');
+  const box = $('clBody');
+  if (CL.form) return clibFormRender(box);
+  if (CL.sel) return clibDetailRender(box);
+  const q = CL.q.toLowerCase();
+  const list = CL.items.filter(x => x.cat === CL.cat && (!q || x.title.toLowerCase().includes(q)));
+  if (!list.length) { box.innerHTML = '<p style="color:var(--mut);text-align:center;margin-top:40px">' + (CL.loaded ? 'لسه مفيش حاجة هنا' + (ROLE === 'admin' ? ' — دوس ➕ فوق' : '') : '⏳ جاري التحميل...') + '</p>'; return; }
+  box.innerHTML = '<div class="clgrid">' + list.map(x =>
+    '<div class="poster" data-id="' + esc(x.id) + '" onclick="clibTap(this.dataset.id)">' +
+    (ROLE === 'admin' ? '<button class="cled" onclick="event.stopPropagation();clibEdit(this.parentNode.dataset.id)">✏️</button>' : '') +
+    (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">🎬</div>') +
+    '<div class="t">' + esc(x.title) + '<div class="y">' + esc(x.year || '') + (x.eps.length ? ' ' + x.eps.length + ' حلقة' : '') + '</div></div></div>').join('') + '</div>';
+}
+function clibTap(id) {
+  const x = clibFind(id);
+  if (!x) return;
+  if (x.kind === 'tv' && x.eps.length) { CL.sel = id; clibRender(); $('cl').scrollTop = 0; return; }
+  clibPlay(id);
+}
+function clibEpMark(id, e) {
+  const it = getItem('c:' + id + ':' + e.s + ':' + e.e);
+  if (!it || it.del) return '';
+  if (it.done) return ' <span style="color:var(--success)">✓ شوهدت</span>';
+  const pc = Math.max(0, Math.min(100, Math.round((it.pos || 0) / (it.dur || 1) * 100)));
+  return ' <span style="color:#f59e0b">▶ ' + pc + '%</span>';
+}
+function clibDetailRender(box) {
+  const x = clibFind(CL.sel);
+  if (!x) { CL.sel = null; return clibRender(); }
+  let last = null;
+  x.eps.forEach(e => { const it = getItem('c:' + x.id + ':' + e.s + ':' + e.e); if (it && !it.del && (!last || it.t > last.t)) last = {t: it.t, e: e, done: it.done}; });
+  let go = x.eps[0];
+  if (last) { const i = x.eps.indexOf(last.e); go = last.done ? (x.eps[i + 1] || last.e) : last.e; }
+  box.innerHTML = '<h2 style="margin:6px 0 10px">' + esc(x.title) + '</h2>' +
+    '<button class="search-btn" onclick="clibPlay(\'' + esc(x.id) + '\',' + go.s + ',' + go.e + ')">▶ ' + (last ? 'كمّل ' + clibEpTag(go) : 'ابدأ المشاهدة') + '</button>' +
+    '<div style="margin-top:12px">' + x.eps.map(e =>
+      '<div class="clep"><div>' + clibEpTag(e) + clibEpMark(x.id, e) + '</div>' +
+      '<button class="fc" onclick="clibPlay(\'' + esc(x.id) + '\',' + e.s + ',' + e.e + ')">▶ شغّل</button></div>').join('') + '</div>';
+}
+// ---------- التشغيل ----------
+async function clibGet(body, id) {
+  let tid = null, li = null, tries = 0;
+  while (true) {
+    let res;
+    try { res = await api('/clib/play', {method: 'POST', body: JSON.stringify({...body, torrent_id: tid, li: li})}); }
+    catch (e) { return {r: {status: 0}, d: {error: 'مش قادر أوصل للسيرفر.'}}; }
+    if (id !== pullId) return null;
+    if (res.d.more && tries < 12) { body = {...body, skip: res.d.skip}; tid = null; li = null; tries++; continue; }
+    if (res.r.status === 202 && tries < 400) {
+      $('results').innerHTML = progHTML(res.d);
+      tid = res.d.torrent_id || tid;
+      if (res.d.li != null) li = res.d.li;
+      tries++;
+      await sleep(3000);
+      if (id !== pullId) return null;
+      continue;
+    }
+    res.skip = body.skip || [];
+    return res;
+  }
+}
+async function clibPlay(id, s, e, fid, skip) {
+  if (noWatch()) return;
+  await clibLoad();
+  let it = clibFind(id);
+  if (!it) { await clibLoad(true); it = clibFind(id); }
+  if (!it) return alert('العنصر ده اتحذف');
+  const eps = it.kind === 'tv' && it.eps.length > 0;
+  if (eps && (s == null || e == null)) { s = it.eps[0].s; e = it.eps[0].e; }
+  clearCd();
+  const my = ++pullId;
+  scrollToResults();
+  $('results').innerHTML = pend('جاري التجهيز...');
+  skip = skip || [];
+  const base = {title: it.title, poster: it.poster || '', year: it.year || '', type: it.kind === 'tv' ? 'tv' : 'movie',
+    cl: id, cle: eps ? 1 : 0, s: eps ? s : null, e: eps ? e : null, src: ''};
+  const res = await clibGet({id: id, s: s, e: e, skip: skip}, my);
+  if (!res) return;
+  const d = res.d;
+  if (!d.direct_link) { $('results').innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(d.tried); return; }
+  skip = res.skip || skip;
+  base.li = d.li; base.cln = d.n; base.clskip = skip;
+  packBase = base;
+  curSrc = '';
+  if (d.pack && d.files && base.type !== 'movie') {
+    const f = fid != null ? d.files.find(x => x.id === fid)
+      : (eps ? d.files.find(x => x.episode === e && (x.season == null || x.season === s)) : null);
+    if (f) { pack = d; return playPackFile(f); }
+    pack = d;
+    return showPack(d);
+  }
+  await ensureHls(d, d.file_id, my);
+  if (my !== pullId) return;
+  playData(d, base);
+  const v = document.querySelector('#results video'), cur0 = PLAY;
+  if (v && d.n > 1) {
+    v.addEventListener('error', () => setTimeout(() => {
+      if (PLAY !== cur0 || cur0._clTry || !v.error) return;
+      cur0._clTry = true;
+      clibAlt(cur0);
+    }, 2500));
+  }
+}
+function clibAlt(c) {
+  if (!c || !c.cl) return;
+  const skip = (c.clskip || []).concat(c.li != null ? [c.li] : []);
+  if (skip.length >= (c.cln || 1)) return alert('جرّبت كل الروابط المتاحة ومفيش واحد اشتغل');
+  clibPlay(c.cl, c.s, c.e, c.cle ? null : c.fid, skip);
+}
+function clibNextTarget(c) {
+  const it = clibFind(c.cl);
+  if (!it || !it.eps.length) return null;
+  const i = it.eps.findIndex(x => x.s === c.s && x.e === c.e);
+  const n = i >= 0 ? it.eps[i + 1] : null;
+  return n ? {kind: 'clib', s: n.s, e: n.e, label: clibEpTag(n)} : null;
+}
+async function clibResume(it) {
+  await clibLoad();
+  if (!clibFind(it.cl)) return alert('العنصر ده اتحذف');
+  if (it.cle) {
+    if (it.done) { if (!it.next) return alert('خلصت كل الحلقات 🎉'); return clibPlay(it.cl, it.next.s, it.next.e); }
+    return clibPlay(it.cl, it.s, it.e);
+  }
+  if (it.type === 'tv') {
+    if (it.done && !it.next) return alert('خلصت كل الحلقات 🎉');
+    return clibPlay(it.cl, null, null, it.done ? it.next.fid : it.fid);
+  }
+  clibPlay(it.cl);
+}
+// ---------- الأدمن: إضافة وتعديل ----------
+function clibAdd() {
+  CL.sel = null;
+  CL.form = {id: '', cat: CL.cat, kind: CL.cat === 'series' ? 'tv' : 'movie', title: '', year: '', poster: '', links_text: '', eps_text: ''};
+  clibRender();
+}
+async function clibEdit(id) {
+  const {r, d} = await api('/clib/item?id=' + encodeURIComponent(id));
+  if (!r.ok || d.error) return alert(d.error || 'مقدرتش أفتحه');
+  CL.sel = null;
+  CL.form = d;
+  clibRender();
+}
+function clibFormRender(box) {
+  const f = CL.form, tv = f.kind === 'tv';
+  const opt = (v, t, cur) => '<option value="' + v + '"' + (cur === v ? ' selected' : '') + '>' + t + '</option>';
+  box.innerHTML = '<h3 style="margin:6px 0">' + (f.id ? '✏️ تعديل' : '➕ إضافة جديد') + '</h3>' +
+    '<label>القسم</label><select id="cfCat" class="search-input">' + CL_CATS.map(c => opt(c[0], c[1], f.cat)).join('') + '</select>' +
+    '<label>النوع</label><select id="cfKind" class="search-input" onchange="clibKindSw()">' + opt('movie', 'فيلم / ملف واحد', f.kind) + opt('tv', 'مسلسل / حلقات', f.kind) + '</select>' +
+    '<label>الاسم</label><input id="cfT" class="search-input" value="' + esc(f.title) + '">' +
+    '<label>السنة (اختياري)</label><input id="cfY" class="search-input" value="' + esc(f.year || '') + '">' +
+    '<label>رابط الصورة</label><input id="cfP" class="search-input ltr" placeholder="https://..." value="' + esc(f.poster || '') + '">' +
+    '<label id="cfLL">' + (tv ? 'رابط باك كامل (فولدر/تورنت فيه كل الحلقات) — اختياري لو هتكتب الحلقات تحت' : 'الروابط — كل رابط في سطر. الأول هو الأساسي، لو وقف السيرفر يجرّب اللي بعده') + '</label>' +
+    '<textarea id="cfL" class="search-input" placeholder="https://...\nmagnet:?xt=...">' + esc(f.links_text || '') + '</textarea>' +
+    '<div id="cfEW" style="display:' + (tv ? 'block' : 'none') + '"><label>الحلقات — كل سطر حلقة. أكتر من رابط في نفس السطر (افصل بمسافة أو |) = بدائل لنفس الحلقة. ممكن تبدأ السطر بـ S01E05 أو تسيبه وهيترقّم لوحده، وS02 لوحده في سطر بيبدأ موسم جديد</label>' +
+    '<textarea id="cfE" class="search-input" style="min-height:200px" placeholder="https://hoster/ep1 | magnet:?xt=...\nhttps://hoster/ep2\nS02\nhttps://hoster/s2e1">' + esc(f.eps_text || '') + '</textarea></div>' +
+    '<div class="row" style="margin-top:14px"><button class="search-btn" onclick="clibSave()">💾 حفظ</button>' +
+    '<button class="search-btn" style="background:#475569" onclick="clibBack()">إلغاء</button></div>' +
+    (f.id ? '<button class="search-btn" style="background:var(--danger);margin-top:10px" onclick="clibDel()">🗑 حذف</button>' : '');
+}
+function clibKindSw() {
+  const tv = $('cfKind').value === 'tv';
+  $('cfEW').style.display = tv ? 'block' : 'none';
+  $('cfLL').textContent = tv ? 'رابط باك كامل (فولدر/تورنت فيه كل الحلقات) — اختياري لو هتكتب الحلقات تحت' : 'الروابط — كل رابط في سطر. الأول هو الأساسي، لو وقف السيرفر يجرّب اللي بعده';
+}
+async function clibSave() {
+  const f = CL.form;
+  const body = {id: f.id, cat: $('cfCat').value, kind: $('cfKind').value, title: $('cfT').value, year: $('cfY').value,
+    poster: $('cfP').value, links_text: $('cfL').value, eps_text: $('cfE') ? $('cfE').value : ''};
+  const {r, d} = await api('/clib/save', {method: 'POST', body: JSON.stringify(body)});
+  if (!r.ok || d.error) return alert(d.error || 'مقدرتش أحفظ');
+  CL.cat = body.cat; CL.form = null;
+  await clibLoad(true);
+  clibRender();
+}
+async function clibDel() {
+  const f = CL.form;
+  if (!f || !f.id || !confirm('تحذف «' + f.title + '» نهائي؟')) return;
+  const {r, d} = await api('/clib/delete', {method: 'POST', body: JSON.stringify({id: f.id})});
+  if (!r.ok || d.error) return alert(d.error || 'فشل الحذف');
+  CL.form = null;
+  await clibLoad(true);
+  clibRender();
+}
 // ================= زرار الرجوع (history) =================
 function pushView(v) {
   VS.push(v);
@@ -1692,6 +1931,7 @@ window.addEventListener('popstate', e => {
     if (top === 'p') stopPlayer();
     else if (top === 'd') closeDetails();
     else if (top === 'b') closeBrowse();
+    else if (top === 'c') clibHide();
     else if (top === 's') spHide();
     else if (top === 'g2') setSecHide();
     else if (top === 'g') setHide();
@@ -2655,7 +2895,7 @@ async function smapTry(prev, s, e) {
 }
 function smapUI() {
   const c = PLAY;
-  if (!c || ROLE !== 'admin') return;
+  if (!c || ROLE !== 'admin' || c.cl) return;
   const pe = $('playErr');
   if (!pe) return;
   let box = $('smapBox');
@@ -2810,6 +3050,7 @@ function setPlay(o) {
   }
 }
 function keyOf(c) {
+  if (c.cl) return 'c:' + c.cl + ((c.s != null && c.e != null) ? ':' + c.s + ':' + c.e : '');
   if (c.tmdb && c.type === 'tv' && c.s != null && c.e != null) return 'e:' + c.tmdb + ':' + c.s + ':' + c.e;
   if (c.tmdb && c.type === 'movie') return 'm:' + c.tmdb;
   return 'u:' + hash(c.src || c.title || '') + (c.fid != null ? ':' + c.fid : '');
@@ -2872,6 +3113,7 @@ function vchk() {
 }
 function changeVersion() {
   if (!PLAY) return;
+  if (PLAY.cl) return clibAlt(PLAY);
   if (!PLAY.tmdb) return alert('الفيديو ده مالوش بيانات عشان أجيب نسخة تانية');
   tryNextVersion();
 }
@@ -3012,11 +3254,12 @@ function saveProgress(v, ended) {
   const c = PLAY, n = nextTarget();
   setItem({
     key: c.key, title: c.title, poster: c.poster, year: c.year, type: c.type,
-    tmdb: c.tmdb, s: c.s, e: c.e, eps: c.eps, ms: c.ms, src: c.src,
+    tmdb: c.tmdb, s: c.s, e: c.e, eps: c.eps, ms: c.ms, src: c.src, cl: c.cl || '', cle: c.cle || 0,
     fid: c.fid, fname: c.fname, qn: c.qn || '', pos: Math.floor(pos), dur: Math.floor(v.duration),
     done: done, sub: c.sub || null, dr: !!c.dr, imdb: c.imdb || '', vh: c.vh || '', ref: c.ref || '',
     next: (n && n.kind === 'pack')
-      ? {fid: n.f.id, s: n.f.season, e: n.f.episode, name: n.f.name} : null
+      ? {fid: n.f.id, s: n.f.season, e: n.f.episode, name: n.f.name}
+      : (n && n.kind === 'clib') ? {s: n.s, e: n.e} : null
   });
 }
 function nfxAutoplayBlocked() {
@@ -3098,6 +3341,7 @@ async function probeCurrent() {
 function nextTarget() {
   const c = PLAY;
   if (!c || c.type === 'movie') return null;
+  if (c.cl) { if (c.cle) return clibNextTarget(c); if (!(pack && pack.files && c.fid != null)) return null; }
   if (c.tmdb && c.s != null && c.e != null) {
     const ne = nextEpOf(c);
     if (ne && smapSpec(c.tmdb, ne.s, ne.e)) return {kind: 'map', s: ne.s, e: ne.e, label: 'S' + p2(ne.s) + 'E' + p2(ne.e)};
@@ -3172,6 +3416,7 @@ async function playNext() {
   clearCd();
   const n = nextTarget();
   if (!n) return;
+  if (n.kind === 'clib') return clibPlay(PLAY.cl, n.s, n.e);
   if (n.kind === 'map' && await smapTry(PLAY, n.s, n.e)) return;
   if (n.kind === 'pack') return playPackFile(n.f);
   if (await nextSameSource(PLAY, n.s, n.e)) return;
@@ -3184,6 +3429,7 @@ async function playItem(key) {
   if (noWatch()) return;
   const it = getItem(key);
   if (!it || it.del) return;
+  if (it.cl) return clibResume(it);
   scrollToResults();
   if (it.done && it.type === 'tv') return playAfter(it);
   const h0 = it.vh || ((/btih:([a-fA-F0-9]{40})/.exec(it.src || '') || [])[1] || '').toLowerCase();
@@ -5457,7 +5703,9 @@ setInterval(() => { if (PID && !document.hidden) { loadFresh(); loadLatest(); } 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && PID && Date.now() - FRESH_T > 10 * 60 * 1000) { loadFresh(); loadLatest(); }
 });
-const retryBtn = () => (PLAY && PLAY.tmdb)
+const retryBtn = () => (PLAY && PLAY.cl && PLAY.cln > 1)
+  ? '<button class="search-btn" style="margin-top:8px" onclick="clibAlt(PLAY)">🔁 جرّب الرابط التالي</button>'
+  : (PLAY && PLAY.tmdb)
   ? '<button class="search-btn" style="margin-top:8px" onclick="tryNextVersion()">🔁 جرّب نسخة تانية</button>' : '';
 async function altVersion(info, failedKey) {
   if (failedKey) FAILED.add(failedKey);
