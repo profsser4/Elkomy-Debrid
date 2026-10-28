@@ -3370,15 +3370,20 @@ function setSpeed(x) {
 
 // ================= المشغّل: حفظ التقدم + الاستكمال + الحلقة التالية =================
 function saveProgress(v, ended) {
-  if (!PLAY || !PID || !v || !isFinite(v.duration) || v.duration < 60) return;
-  const pos = ended ? v.duration : v.currentTime;
-  if (!ended && pos < 5) return;
-  const done = !!ended || pos / v.duration >= 0.92;
+  if (!PLAY || !PID || !v) return;
   const c = PLAY, n = nextTarget();
+  const oldIt = getItem(c.key) || {};
+  const fin = isFinite(v.duration) && v.duration > 0;
+  if (fin && v.duration < 60) return;
+  const dur = fin ? v.duration : (oldIt.dur || 0);       // البث المحوَّل ممكن مدته مجهولة: نحفظ المكان برضه
+  if (ended && !dur) return;
+  const pos = ended ? dur : v.currentTime;
+  if (!ended && (!(pos >= 5) || (!fin && pos < 30))) return;
+  const done = !!ended || (dur > 0 && pos / dur >= 0.92);
   setItem({
     key: c.key, title: c.title, poster: c.poster, year: c.year, type: c.type,
     tmdb: c.tmdb, s: c.s, e: c.e, eps: c.eps, ms: c.ms, src: c.src, cl: c.cl || '', cle: c.cle || 0,
-    fid: c.fid, fname: c.fname, qn: c.qn || '', pos: Math.floor(pos), dur: Math.floor(v.duration),
+    fid: c.fid, fname: c.fname, qn: c.qn || '', pos: Math.floor(pos), dur: Math.floor(dur),
     done: done, sub: c.sub || null, dr: !!c.dr, imdb: c.imdb || '', vh: c.vh || '', ref: c.ref || '',
     next: (n && n.kind === 'pack')
       ? {fid: n.f.id, s: n.f.season, e: n.f.episode, name: n.f.name}
@@ -3402,14 +3407,22 @@ function attachPlayer() {
   lastSave = 0;
   const r = PLAY.resume || 0;
   let seeked = false;
+  const t0 = Date.now();
   const seek = () => {
-    if (!seeked && r > 0 && isFinite(v.duration)) {
+    if (seeked || !(r > 0)) return;
+    if (isFinite(v.duration) && v.duration > 0) {
       seeked = true;
       v.currentTime = Math.max(0, Math.min(r, v.duration - 5));
+      return;
     }
+    // مدة مجهولة (HLS): نستنى لحد ما المتاح للتقديم يوصل لمكان الاستكمال (أقصى 20 ثانية)
+    try {
+      if (!v.seekable || !v.seekable.length) return;
+      const end = v.seekable.end(v.seekable.length - 1);
+      if (end >= r || Date.now() - t0 > 20000) { seeked = true; v.currentTime = Math.max(0, Math.min(r, end)); }
+    } catch (e) {}
   };
-  v.addEventListener('loadedmetadata', seek);
-  v.addEventListener('canplay', seek);
+  ['loadedmetadata', 'canplay', 'durationchange', 'progress', 'timeupdate'].forEach(n => v.addEventListener(n, seek));
   v.addEventListener('timeupdate', () => {
     const now = Date.now();
     if (now - lastSave > 10000) { lastSave = now; saveProgress(v); }
@@ -3419,6 +3432,7 @@ function attachPlayer() {
   v.addEventListener('ended', () => { saveProgress(v, true); onEnded(); });
   v.addEventListener('error', () => {
     if (v.dataset.cors === '1' && !v._hls) return;   // محاولة CORS لسه هتتعاد من غيرها، مش خطأ حقيقي
+    if (PLAY && !PLAY.hls && autoRenew(v)) return;
     const b = $('playErr');
     if (b) b.dataset.err = 'media';
     if (b) b.innerHTML = warn('المتصفح مش قادر يشغّل الملف ده. دوس «🔬 فحص» تعرف السبب، أو «🔁 غيّر النسخة».') +
@@ -3448,6 +3462,24 @@ function attachPlayer() {
   if (PLAY.hls) setupHls(v);
   if (isTv()) { try { v.focus(); } catch (e) {} }
   try { nfxInit(v); } catch (e) { console.error('nfx', e); }
+}
+const RENEW_T = {};
+// اللينك المباشر وقع/خلص أثناء المشاهدة: نحفظ المكان ونجيب لينك جديد من الأصل (hash / ref / مكتبة / رابط محفوظ)، مرة كل دقيقة لكل عمل
+function autoRenew(v) {
+  const c = PLAY;
+  if (!c || !c.key) return false;
+  const now = Date.now();
+  if (RENEW_T[c.key] && now - RENEW_T[c.key] < 60000) return false;
+  const can = c.cl || c.vh || c.ref || (c.src && !/^[vr]:/.test(c.src));
+  if (!can) return false;
+  RENEW_T[c.key] = now;
+  try { saveProgress(v); } catch (e) {}
+  $('results').insertAdjacentHTML('afterbegin', pend('اللينك خلص، بجدده من الأصل وبكمّل من نفس المكان...'));
+  if (c.cl) { clibPlay(c.cl, c.s, c.e, c.cle ? null : c.fid); return true; }
+  if (c.vh) { playByHash(Object.assign({}, c)); return true; }
+  if (c.ref) { playByRef(Object.assign({}, c, {_rr: 1})); return true; }
+  pullSource(c.src, baseOf(c), c.fid != null ? c.fid : null);
+  return true;
 }
 let AUTO_N = 0;
 async function probeCurrent() {
