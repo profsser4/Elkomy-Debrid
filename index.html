@@ -1161,12 +1161,14 @@ function playerMenuLite(u, hls) {
 }
 function playerMenu(u, hls) {
   hls = hls || '';
+  const orig = u;
+  u = hls || u;   // المشاهدة: الرابط المحوَّل (يشتغل على أي مشغّل) لو موجود، وإلا الأصلي
   const L = [];
   const a = (label, href, extra) => '<a class="pl" href="' + esc(href) + '"' + (extra || '') + '>' + label + '</a>';
   const du = ' data-u="' + esc(u) + '"';
   if (IS_ANDROID) {
     L.push(a('▶ VLC (يكمّل من مكانك + الترجمة)', intentUrl(u, 'org.videolan.vlc'), du + ' onclick="return vlcGo(this)"'));
-    if (hls) L.push(a('▶ VLC (البث المحوَّل - احتياطي)', intentUrl(hls, 'org.videolan.vlc'), ' data-u="' + esc(hls) + '" onclick="return vlcGo(this)"'));
+    if (hls) L.push(a('▶ VLC (الرابط الأصلي - احتياطي)', intentUrl(orig, 'org.videolan.vlc'), ' data-u="' + esc(orig) + '" onclick="return vlcGo(this)"'));
     L.push(a('▶ Just Player', intentUrl(u, 'com.brouken.player')));
     L.push(a('📂 أي مشغّل', intentUrl(u, '')));
     L.push(a('📺 Web Video Caster (كاست للتلفزيون)', 'wvc-x-callback://open?url=' + encodeURIComponent(u), du + ' onclick="return wvcGo(this)"'));
@@ -1187,7 +1189,11 @@ function playerMenu(u, hls) {
   L.push('<button class="pl" style="background:#475569" onclick="fsVideo()">⛶ ملء الشاشة</button>');
   L.push('<button class="pl" style="background:#475569" onclick="dlCurSub()">⬇️ تحميل الترجمة (SRT)</button>');
   L.push('<button class="pl" style="background:#475569" onclick="copySubLink()">📋 نسخ رابط الترجمة</button>');
+  const D = [a('⬇️ تحميل مباشر (الرابط الأصلي)', orig, ' target="_blank" rel="noopener" download')];
+  if (IS_ANDROID) { D.push(a('⬇️ 1DM', intentUrl(orig, 'idm.internet.download.manager'))); D.push(a('⬇️ ADM', intentUrl(orig, 'com.dv.adm'))); D.push(a('⬇️ أي برنامج تحميل', intentUrl(orig, ''))); }
+  else D.push('<button class="pl" style="background:#475569" data-u="' + esc(orig) + '" onclick="copyText(this.dataset.u)">📋 نسخ رابط التحميل (IDM / JDownloader)</button>');
   return '<details class="pm" open><summary>🎬 مشغّلات خارجية (بتشغّل أي صيغة وأي صوت)</summary><div class="pgrid2">' + L.join('') + '</div>' +
+    '<details class="pm" open><summary>⬇️ برامج التحميل (الملف الأصلي)</summary><div class="pgrid2">' + D.join('') + '</div></details>' +
     '<p style="color:var(--mut);font-size:12px;margin:8px 0 0">الترجمة العربي بتتجهّز لوحدها، واضغط VLC وهتيجي معاه. لو عايز ترجمة تانية اختارها من زرار 💬.</p></details>';
 }
 async function copyText(t) {
