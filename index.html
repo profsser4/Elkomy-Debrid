@@ -474,7 +474,7 @@ h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:lin
 <div id="main-content">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
 <h1 style="color:var(--primary);margin:0;font-size:20px">Elkomy VIP 🚀</h1>
-<div style="display:flex;gap:8px"><button class="fc" onclick="openView()">🖥</button><button class="fc" onclick="openInterests()">⭐</button><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button class="fc adm" onclick="setOpen()" aria-label="الإعدادات والإضافات">⚙️</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
+<div style="display:flex;gap:8px"><button class="fc" onclick="openView()">🖥</button><button class="fc" onclick="openInterests()">⭐</button><button id="dlbtn" class="fc" style="display:none" onclick="AndroidPlayer.openDownloads()" aria-label="التحميلات">⬇</button><script>try{if(window.AndroidPlayer&&typeof AndroidPlayer.openDownloads!=="undefined")document.getElementById("dlbtn").style.display=""}catch(e){}</script><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button class="fc adm" onclick="setOpen()" aria-label="الإعدادات والإضافات">⚙️</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
 </div>
 
 <div class="action-box" id="searchBox">
