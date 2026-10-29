@@ -1045,6 +1045,7 @@ function stremioLink(web) {
 }
 async function dlM3U1() {
   if (!PLAY || !PLAY.url) return;
+  markExternal();
   const sx = AUD.ar ? '' : await subxWarm();
   const v = document.querySelector('#results video');
   const t = Math.floor((v && v.currentTime) || PLAY.resume || 0);
@@ -1056,6 +1057,31 @@ async function dlM3U1() {
   a.download = 'video.m3u';
   a.click();
 }
+// تسجيل المشاهدة في «كمّل المشاهدة» لما الفتح يكون من برنامج خارجي (VLC وغيره): مفيش عنصر فيديو في الصفحة يسجّل المكان
+function markExternal() {
+  try {
+    if (!PLAY || !PID || !PLAY.key) return;
+    const c = PLAY, old = getItem(c.key) || {};
+    const v = document.querySelector('#results video');
+    const pos = Math.floor(Math.max((v && v.currentTime) || 0, c.resume || 0, (!old.done && old.pos) || 0));
+    setItem({
+      key: c.key, title: c.title, poster: c.poster, year: c.year, type: c.type,
+      tmdb: c.tmdb, s: c.s, e: c.e, eps: c.eps, ms: c.ms, src: c.src, cl: c.cl || '', cle: c.cle || 0,
+      fid: c.fid, fname: c.fname, qn: c.qn || '', pos: pos, dur: old.dur || 0,
+      done: false, sub: c.sub || null, dr: !!c.dr, imdb: c.imdb || '', vh: c.vh || '', ref: c.ref || '',
+      next: old.next || null, ext: 1
+    });
+    clearTimeout(pushT);
+    doPush();
+  } catch (e) {}
+}
+document.addEventListener('click', e => {
+  const a = e.target && e.target.closest && e.target.closest('a.pl');
+  if (!a) return;
+  const h = a.getAttribute('href') || '', tx = a.textContent || '';
+  if (/⬇|تحميل/.test(tx) || a.hasAttribute('download')) return;
+  if (/^(intent:|vlc-x-callback:|infuse:|nplayer-|potplayer:|wvc-x-callback:)/i.test(h)) markExternal();
+}, true);
 function extFail(name, u) {
   const box = document.getElementById('extFail') || (function () {
     const d = document.createElement('div'); d.id = 'extFail';
@@ -1264,8 +1290,9 @@ function mergeInto(a, b) {
 async function syncUD() {
   try {
     const {r, d} = await api('/ud/merge', {method: 'POST', body: JSON.stringify(UD)});
-    if (r.ok && d.profiles) { mergeInto(UD, d); saveLocal(); }
+    if (r.ok && d.profiles) { mergeInto(UD, d); saveLocal(); return true; }
   } catch (e) {}
+  return false;
 }
 const prof = () => (PID && UD.profiles[PID] && !UD.profiles[PID].del) ? UD.profiles[PID] : null;
 const profList = () => Object.values(UD.profiles).filter(p => !p.del).sort((a, b) => (a.c || 0) - (b.c || 0));
@@ -1371,10 +1398,17 @@ async function showMain() {
   } catch (e) { return alert('مش قادر أوصل للسيرفر'); }
   loadLocal();
   applyRole();
-  await syncUD();
+  const synced = await syncUD();
   const id = localStorage.getItem('pid:' + UNAME);
   if (id && UD.profiles[id] && !UD.profiles[id].del) enterProfile(id);
-  else showProfiles();
+  else if (synced && !profList().length) {
+    // عضو جديد مالوش بروفايل: بنعمله واحد تلقائي عشان «كمّل المشاهدة» تتسجّل من أول مشاهدة
+    const np = {id: Math.random().toString(36).slice(2, 10), c: Date.now(), auto: true, sl: 'AR',
+      name: String(UNAME || 'أنا').slice(0, 20), emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
+      color: COLORS[Math.floor(Math.random() * COLORS.length)], pin: ''};
+    saveProfileObj(np);
+    enterProfile(np.id);
+  } else showProfiles();
 }
 
 // ================= البروفايلات =================
@@ -4943,10 +4977,11 @@ async function tbResolve(spec, mode, my, ui) {
   if (!r || !r.success || !r.data) throw new Error((r && r.detail) || 'فشل توليد الرابط');
   const out = {direct: r.data, name: pick.n, size: pick.s, provider: 'TorBox', torrent_id: id, file_id: pick.id};
   // المشاهدة: نجيب رابط HLS محوَّل (صوته شغّال). التحميل: بيفضل على الرابط الأصلي (out.direct) من غير تحويل
-  if (mode === 'watch') {
-    for (let k = 0; k < 1 && !out.hls; k++) {
+  {
+    for (let k = 0; k < 2 && !out.hls; k++) {
+      if (k) await sleep(1500);
       try {
-        const sr = await (await fetch(B + '/stream/createstream?id=' + id + '&file_id=' + pick.id + '&type=torrent', {headers: H, signal: tmo(8000)})).json();
+        const sr = await (await fetch(B + '/stream/createstream?id=' + id + '&file_id=' + pick.id + '&type=torrent', {headers: H, signal: tmo(20000)})).json();
         const u = sr && sr.success && sr.data && (sr.data.hls_url || sr.data.hlsUrl);
         if (u) out.hls = u;
         else out.stream_note = (sr && (sr.detail || sr.error)) || 'TorBox رجّع رد من غير رابط HLS';
@@ -5284,7 +5319,11 @@ function showDownload(d) {
     '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download" style="margin-top:8px;display:block">⬇️ تحميل الفيلم بس (المتصفح)</a>' +
     '<div class="lbl" style="margin:12px 0 6px">' + (IS_ANDROID || IS_IOS ? 'أو افتحه في برنامج التحميل:' : 'أو حمّله بمدير التحميل:') + '</div>' +
     '<div class="pgrid2">' + L.join('') + '</div>' +
-    '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في أي مدير تحميل)</button>' +
+    '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ لينك التحميل (الأصلي)</button>' +
+    '<div class="lbl" style="margin:14px 0 6px">▶ لينك المشاهدة (غير لينك التحميل):</div>' +
+    (d.hls ? '<div class="pgrid2">' + (function () { try { return playerMenuLite(d.hls, d.hls); } catch (e) { return ''; } })() + '</div>' +
+      '<button class="btn-vlc" style="background:#7c3aed" data-u="' + esc(d.hls) + '" onclick="copyText(this.dataset.u)">📋 نسخ لينك المشاهدة (HLS)</button>'
+      : '<p style="color:var(--mut);font-size:12px">لينك المشاهدة مش متاح للملف ده دلوقتي (' + esc(d.stream_note || 'TorBox ماجهّزش البث') + ').</p>') +
     '<div class="pgrid2" style="margin-top:8px"><button class="pl" style="background:#475569" onclick="dlCurSub()">⬇️ تحميل الترجمة (SRT)</button>' +
     '<button class="pl" style="background:#475569" onclick="copySubLink()">📋 نسخ رابط الترجمة</button></div>';
   h += '<p style="color:var(--mut);font-size:12px;margin-top:10px">الترجمة بتتحمّل بنفس اسم الفيلم، حطّها جنبه في نفس الفولدر والمشغّل هيلقطها لوحده. ده الملف الأصلي، ولو صوته DTS أو AC3 شغّله من VLC.</p></div>';
@@ -5391,6 +5430,14 @@ async function startPlay(spec, mode, baseOver) {
     }
   }
   // مفيش انتظار للبث المحوَّل: بنفتح الرابط على طول، ولو الصوت مش شغّال في المتصفح استخدم VLC أو زرار «🔁 جرّب البث المحوَّل تاني»
+  if (!d.hls && d.torrent_id && /^\d+$/.test(String(d.torrent_id))) {
+    try {
+      const hh = {hls: '', torrent_id: d.torrent_id, file_id: d.file_id, direct_link: d.direct};
+      await ensureHls(hh, d.file_id, my);
+      if (hh.hls) d.hls = hh.hls; else if (!d.stream_note) d.stream_note = hh.stream_note || '';
+    } catch (e) {}
+    if (my !== pullId) return null;
+  }
   if (mode === 'download') { $('results').innerHTML = ''; return d; }
   const base = baseOver ? Object.assign({}, baseOver) : baseFromCur(spec);
   base.hls = d.hls || '';
