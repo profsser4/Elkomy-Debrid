@@ -390,6 +390,32 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 .nfx-center{pointer-events:none!important}
 .nfx-center>*{pointer-events:auto}
 
+
+/* ===== Magazine look ===== */
+:root{--bg:#0b1020;--panel:#151c30;--primary:#38bdf8;--accent:#f59e0b;--rad:16px}
+body{background:radial-gradient(1200px 500px at 50% -10%,#16264a 0,var(--bg) 60%) fixed,var(--bg)}
+#main-content{max-width:860px}
+@media(min-width:900px){#main-content{max-width:1180px}}
+h3.sec{font-size:19px;font-weight:800;letter-spacing:.2px;margin:22px 0 12px;color:var(--text);display:flex;align-items:center;gap:10px}
+h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:linear-gradient(var(--primary),var(--accent));flex:none}
+.hrow{scroll-snap-type:x proximity;scrollbar-width:none;gap:14px;padding:4px 2px 14px;-webkit-overflow-scrolling:touch}
+.hrow::-webkit-scrollbar{display:none}
+.poster,.cw{flex:0 0 132px;scroll-snap-align:start;border-radius:var(--rad);border:0;background:var(--panel);box-shadow:0 6px 18px #0007;transition:transform .22s ease,box-shadow .22s ease}
+.poster img,.cw img{transition:transform .35s ease}
+.poster:active,.cw:active{transform:scale(.96)}
+@media(hover:hover){.poster:hover,.cw:hover{transform:translateY(-6px);box-shadow:0 14px 28px #000a}.poster:hover img{transform:scale(1.05)}}
+.poster .t,.cw .t{font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.9em}
+.hrow:first-of-type .poster,.hrow:first-of-type .cw{flex-basis:168px}
+.hero{height:260px;border-radius:20px;box-shadow:0 12px 34px #000a;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,#000d 0,#0000 70%);z-index:0}
+.hero>*{position:relative;z-index:1}
+.action-box,.result-card,.tor,.ep,.selbox{border-radius:var(--rad)}
+.tor,.ep{transition:border-color .2s,transform .2s}
+.tor:active,.ep:active{transform:scale(.99)}
+.btn-vlc,.btn-download,.search-btn,.login-btn{border-radius:12px;transition:filter .15s,transform .15s}
+.btn-vlc:active,.btn-download:active,.search-btn:active{transform:scale(.98);filter:brightness(.92)}
+.chip,.tab,.fc{transition:background .2s}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
@@ -2022,7 +2048,7 @@ async function clibAskGo(kind) {
 function clibPickShow() {
   const b = (label, kind) => '<button class="pl" onclick="clibPickGo(\'' + kind + '\')">' + label + '</button>';
   const L = [];
-  if (IS_ANDROID) L.push(b('▶ VLC', 'vlc'), b('▶ MX Player', 'mx'), b('▶ Just Player', 'just'), b('📂 أي مشغّل', 'any'));
+  if (IS_ANDROID) L.push(b('▶ VLC', 'vlc'), b('▶ MX Player', 'mx'), b('▶ Just Player', 'just'), b('▶ mpv', 'mpv'), b('▶ Next Player', 'next'), b('📂 أي مشغّل', 'any'));
   else if (IS_IOS) L.push(b('▶ VLC', 'vlc'), b('▶ Infuse', 'infuse'), b('▶ nPlayer', 'nplayer'));
   else L.push(b('▶ VLC', 'm3u'), b('▶ PotPlayer', 'pot'));
   $('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 12px;color:var(--primary)">🎬 تحب تشغّله إزاي؟</h3>' +
@@ -2039,6 +2065,8 @@ async function clibPickGo(kind) {
   if (kind === 'vlc') { if (IS_IOS) extGo(el, 'vlc'); else await vlcGo(el); }
   else if (kind === 'mx') location.href = intentUrl(u, 'com.mxtech.videoplayer.ad');
   else if (kind === 'just') location.href = intentUrl(u, 'com.brouken.player');
+  else if (kind === 'mpv') location.href = intentUrl(u, 'is.xyz.mpv');
+  else if (kind === 'next') location.href = intentUrl(u, 'dev.anilbeesetti.nextplayer');
   else if (kind === 'any') location.href = intentUrl(u, '');
   else if (kind === 'infuse') extGo(el, 'infuse');
   else if (kind === 'nplayer') location.href = 'nplayer-' + u;
@@ -5288,7 +5316,7 @@ function playVersion(i) {
 function showPick() {
   const b = (label, kind, bg) => '<button class="pl"' + (bg ? ' style="background:' + bg + '"' : '') + ' onclick="pickGo(\'' + kind + '\')">' + label + '</button>';
   const L = [];
-  if (IS_ANDROID) L.push(b('▶ VLC (مع الترجمة)', 'vlc'), b('▶ MX Player', 'mx'), b('▶ Just Player', 'just'), b('📂 أي مشغّل', 'any'));
+  if (IS_ANDROID) L.push(b('▶ VLC (مع الترجمة)', 'vlc'), b('▶ MX Player', 'mx'), b('▶ Just Player', 'just'), b('▶ mpv', 'mpv'), b('▶ Next Player', 'next'), b('📂 أي مشغّل', 'any'));
   else if (IS_IOS) L.push(b('▶ VLC', 'vlc'), b('▶ Infuse', 'infuse'), b('▶ nPlayer', 'nplayer'));
   else L.push(b('▶ VLC (ملف فيه الترجمة)', 'm3u'), b('▶ PotPlayer', 'pot'));
   $('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 12px;color:var(--primary)">🎬 تحب تشغّله إزاي؟</h3>' +
@@ -5318,6 +5346,8 @@ async function pickGo(kind) {
   if (kind === 'vlc') { if (IS_IOS) extGo(el, 'vlc'); else await vlcGo(el); }
   else if (kind === 'mx') location.href = intentUrl(u, 'com.mxtech.videoplayer.ad');
   else if (kind === 'just') location.href = intentUrl(u, 'com.brouken.player');
+  else if (kind === 'mpv') location.href = intentUrl(u, 'is.xyz.mpv');
+  else if (kind === 'next') location.href = intentUrl(u, 'dev.anilbeesetti.nextplayer');
   else if (kind === 'any') location.href = intentUrl(u, '');
   else if (kind === 'infuse') extGo(el, 'infuse');
   else if (kind === 'nplayer') location.href = 'nplayer-' + u;
