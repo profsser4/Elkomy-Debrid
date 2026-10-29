@@ -128,6 +128,16 @@ body.sp-on{overflow:hidden}
 #cl{display:none;position:fixed;inset:0;z-index:100;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;direction:rtl;color:var(--text)}
 body.cl-on{overflow:hidden}
 #cl .search-input{margin:0;flex:1;min-width:0;height:44px;padding:0 14px}
+.clhero{position:relative;border-radius:16px;overflow:hidden;min-height:190px;margin:0 0 12px;background:#15151d center/cover no-repeat;display:flex;align-items:flex-end}
+.clhero .hb{width:100%;padding:14px;background:linear-gradient(0deg,#000d 10%,#0000);color:#fff}
+.clhero .hb b{display:block;font-size:20px;margin-bottom:2px}.clhero .hb small{color:#cbd5e1}
+.clhero .hrw{display:flex;gap:8px;margin-top:10px}.clhero .hrw .search-btn{margin:0;flex:1}
+.clchips{display:flex;gap:6px;overflow-x:auto;margin:0 0 12px}
+.clchips button{white-space:nowrap;border:1px solid #334155;background:var(--panel);color:var(--text);border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer}
+.clchips button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.pbadge{position:absolute;top:4px;right:4px;z-index:2;background:#ef4444;color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px}
+.pbadge.ok{background:var(--success)}
+.pgb{position:absolute;left:0;right:0;bottom:0;height:4px;background:#0008}.pgb i{display:block;height:100%;background:#f59e0b}
 .clgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
 .clgrid .poster{flex:none}
 .cled{position:absolute;top:4px;left:4px;z-index:2;width:30px;height:30px;border-radius:8px;border:0;background:#000a;color:#fff;font-size:14px;cursor:pointer}
@@ -529,7 +539,7 @@ body.m-tv .nfx-ib:focus-visible,body.m-tv .nfx-it:focus-visible{outline:3px soli
 </details>
 
 <details class="action-box adm" id="provSec" data-save="saveAdvSet" style="text-align:right;margin-top:18px">
-<summary>⚙️ المزوّدين (TorBox / Real-Debrid / ...)</summary>
+<summary>⚙️ المزوّدين (TorBox / AllDebrid / ...)</summary>
 <div class="setcard"><label class="setchk"><input type="checkbox" class="sv" id="advChk"> إظهار الأزرار القديمة (بحث التورنت وStremio القديم)</label><div class="savebar"><span class="savest"></span><button class="setsave" disabled onclick="secSave(this)">✔ محفوظ</button></div></div>
 <div id="provList" style="margin:14px 0"></div>
 <select id="provType" class="search-input"></select>
@@ -1817,13 +1827,44 @@ function clibRender() {
   if (CL.form) return clibFormRender(box);
   if (CL.sel) return clibDetailRender(box);
   const q = CL.q.toLowerCase();
-  const list = CL.items.filter(x => x.cat === CL.cat && (!q || x.title.toLowerCase().includes(q)));
+  let list = CL.items.filter(x => x.cat === CL.cat && (!q || x.title.toLowerCase().includes(q)));
   if (!list.length) { box.innerHTML = '<p style="color:var(--mut);text-align:center;margin-top:40px">' + (CL.loaded ? 'لسه مفيش حاجة هنا' + (ROLE === 'admin' ? ' — دوس ➕ فوق' : '') : '⏳ جاري التحميل...') + '</p>'; return; }
-  box.innerHTML = '<div class="clgrid">' + list.map(x =>
-    '<div class="poster" data-id="' + esc(x.id) + '" onclick="clibTap(this.dataset.id)">' +
-    (ROLE === 'admin' ? '<button class="cled" onclick="event.stopPropagation();clibEdit(this.parentNode.dataset.id)">✏️</button>' : '') +
-    (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">🎬</div>') +
-    '<div class="t">' + esc(x.title) + '<div class="y">' + esc(x.year || '') + (x.eps.length ? ' ' + x.eps.length + ' حلقة' : '') + '</div></div></div>').join('') + '</div>';
+  const srt = CL.sort || 'new', pr = x => clibProg(x);
+  list = list.slice();
+  if (srt === 'az') list.sort((x, y) => String(x.title).localeCompare(String(y.title), 'ar'));
+  else if (srt === 'cont') list.sort((x, y) => { const a = pr(x), b = pr(y); return ((b && !b.done) ? b.t : 0) - ((a && !a.done) ? a.t : 0); });
+  else list.sort((x, y) => (y.t || 0) - (x.t || 0));
+  const hero = (!q && srt !== 'az') ? list[0] : null;
+  const chips = [['new', '🆕 الأحدث'], ['cont', '▶ كمّلت'], ['az', '🔤 أ - ي']].map(c =>
+    '<button class="' + (srt === c[0] ? 'on' : '') + '" onclick="CL.sort=\'' + c[0] + '\';clibRender()">' + c[1] + '</button>').join('') +
+    '<button onclick="clibRandom()">🎲 فاجئني</button>';
+  const card = x => {
+    const p = pr(x), isNew = x.t && (Date.now() / 1000 - x.t) < 14 * 86400;
+    return '<div class="poster" data-id="' + esc(x.id) + '" onclick="clibTap(this.dataset.id)">' +
+      (ROLE === 'admin' ? '<button class="cled" onclick="event.stopPropagation();clibEdit(this.parentNode.dataset.id)">✏️</button>' : '') +
+      (p && p.done ? '<span class="pbadge ok">✓ شوهد</span>' : (isNew ? '<span class="pbadge">جديد</span>' : '')) +
+      (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">🎬</div>') +
+      (p && !p.done && p.pct > 0 ? '<div class="pgb"><i style="width:' + p.pct + '%"></i></div>' : '') +
+      '<div class="t">' + esc(x.title) + '<div class="y">' + esc(x.year || '') + (x.eps.length ? ' ' + x.eps.length + ' حلقة' : '') + '</div></div></div>';
+  };
+  box.innerHTML = '<div class="clchips">' + chips + '</div>' +
+    (hero ? '<div class="clhero" style="background-image:url(\'' + esc(hero.poster || '') + '\')"><div class="hb"><b>' + esc(hero.title) + '</b><small>' + esc(hero.year || '') + (hero.eps.length ? ' · ' + hero.eps.length + ' حلقة' : '') + '</small>' +
+      '<div class="hrw"><button class="search-btn" data-id="' + esc(hero.id) + '" onclick="clibTap(this.dataset.id)">▶ شغّل</button><button class="fc" onclick="clibRandom()">🎲 فاجئني</button></div></div></div>' : '') +
+    '<div class="clgrid">' + list.map(card).join('') + '</div>';
+}
+// أعلى تقدّم لعمل في المكتبة (آخر حلقة اتشافت للمسلسل)
+function clibProg(x) {
+  let best = null;
+  if (x.kind === 'tv') x.eps.forEach(e => { const it = getItem('c:' + x.id + ':' + e.s + ':' + e.e); if (it && !it.del && (!best || it.t > best.t)) best = it; });
+  else { const it = getItem('c:' + x.id); if (it && !it.del) best = it; }
+  if (!best) return null;
+  return {done: !!best.done && x.kind !== 'tv', pct: best.done ? 100 : Math.max(0, Math.min(100, Math.round((best.pos || 0) / (best.dur || 1) * 100))), t: best.t || 0};
+}
+function clibRandom() {
+  const pool = CL.items.filter(x => x.cat === CL.cat && !(clibProg(x) || {}).done);
+  const src = pool.length ? pool : CL.items.filter(x => x.cat === CL.cat);
+  if (!src.length) return;
+  clibTap(src[Math.floor(Math.random() * src.length)].id);
 }
 const CL_TITLES = {movie: '🎬 أفلام هدية من السيد', series: '📺 مسلسلات هدية من السيد', cartoon: '🧸 كرتون هدية من السيد'};
 function clibRows() {
@@ -2545,7 +2586,7 @@ const SET_META = [
   {d: 'مين شاف إيه ومتى'},
   {g: 'الصفحة الرئيسية', d: 'رتّب صفوف الصفحة الرئيسية'},
   {g: 'المصادر والمزوّدين', d: 'حساب Stremio والإضافات'},
-  {d: 'TorBox وReal-Debrid وباقي المزوّدين'},
+  {d: 'TorBox وAllDebrid وباقي المزوّدين'},
   {d: 'المشاهدة (TorBox + HLS) والتحميل لكل الأعضاء'},
   {d: 'مزوّد التشغيل والتحميل ومفاتيحك على الجهاز ده'},
   {g: 'أدوات', d: 'تشخيص AllDebrid'}
@@ -3490,9 +3531,24 @@ function nfxAutoplayBlocked() {
     try { if (NFX && NFX.show) NFX.show(); } catch (e) {}
   }, 0);
 }
+function mediaSess(v) {
+  if (!('mediaSession' in navigator) || !PLAY) return;
+  const c = PLAY;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({title: c.title || c.fname || '',
+      artist: (c.s != null && c.e != null) ? 'S' + p2(c.s) + 'E' + p2(c.e) : '',
+      artwork: c.poster ? [{src: c.poster, sizes: '512x512'}] : []});
+  } catch (e) {}
+  const h = (n, f) => { try { navigator.mediaSession.setActionHandler(n, f); } catch (e) {} };
+  h('play', () => v.play()); h('pause', () => v.pause());
+  h('seekbackward', d => { v.currentTime = Math.max(0, v.currentTime - ((d && d.seekOffset) || 10)); });
+  h('seekforward', d => { v.currentTime = v.currentTime + ((d && d.seekOffset) || 10); });
+  h('seekto', d => { if (d && d.seekTime != null) v.currentTime = d.seekTime; });
+}
 function attachPlayer() {
   const v = document.querySelector('#results video');
   if (!v || !PLAY) return;
+  try { mediaSess(v); } catch (e) {}
   clearCd();
   nextShown = false;
   lastSave = 0;
@@ -5394,6 +5450,7 @@ async function startPlay(spec, mode, baseOver) {
     if (!res.r.ok || d.error || !d.direct) {
       if (d.nodl) { LOCK = Math.max(LOCK, d.lock || 1); LOCK_MSG = d.error || LOCK_MSG; $('results').innerHTML = ''; alert(d.error); return null; }
       LAST_ERR = d.error || 'حصل خطأ في التجهيز';
+      if (/copyright|infring|removed from debrid/i.test(LAST_ERR)) LAST_ERR += ' — المزوّد حجب الملف ده (حقوق نشر). جرّب «🔁 غيّر النسخة» أو مزوّد تاني (TorBox / AllDebrid).';
       if (spec.ref && !spec._rec && /الرابط انتهى|دوّر على النتايج|دور على النتايج/.test(LAST_ERR) && my === pullId) {
         $('results').innerHTML = pend('الرابط القديم انتهى، بجيب رابط جديد من الأصل...');
         try {
@@ -5423,7 +5480,7 @@ async function startPlay(spec, mode, baseOver) {
       window.LAST_SP = {spec: spec, mode: mode, base: baseOver};
       $('results').innerHTML = warn(LAST_ERR) + (/temporarily disabled|site you are trying|torbox\.app\/hosters|فشل السحب من كل/i.test(LAST_ERR)
         ? '<div class="warn" style="border-color:#38bdf8;color:#e2e8f0;margin-top:8px;line-height:1.9">💡 ده مش عطل في موقعك: TorBox قافل مؤقتاً الموقع اللي الرابط جاي منه.<br>جرّب: <b>🔁 غيّر النسخة</b> واختار نسخة «متخزّنة» (مش رابط موقع)، أو غيّر المزوّد (AllDebrid / Real-Debrid) لو عندك مفتاحه، أو استنى شوية وحاول تاني.<br><a href="https://torbox.app/hosters" target="_blank" rel="noopener" style="color:#38bdf8">حالة المواقع المدعومة على TorBox ↗</a></div>' + provBtns() : '') +
-      (/مش متخزّنة|بتتحمّل/.test(LAST_ERR) ? provBtns() : '') +
+      (/مش متخزّنة|بتتحمّل|حجب الملف ده/.test(LAST_ERR) ? provBtns() : '') +
         '<button class="search-btn" style="margin-top:8px" onclick="startPlay(Object.assign({}, LAST_SP.spec, {_retried: 0}), LAST_SP.mode, LAST_SP.base)">↻ حاول تاني</button>' +
         (cur && cur.imdb ? '<button class="search-btn" style="margin-top:8px;background:#444" onclick="playOpen(VER.s || undefined, VER.e || undefined)">🔁 غيّر النسخة</button>' : '');
       return null;
