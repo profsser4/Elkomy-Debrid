@@ -532,6 +532,14 @@ h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:lin
 <p style="color:var(--mut);font-size:12px;margin:8px 0 0">البحث بيشمل الأعمال والتورنت وDailymotion وArchive.org وRutube مرة واحدة. أو الصق رابط مباشر / magnet وهيتحوّل على طول.</p>
 </div>
 
+<div class="action-box adm" id="wsBox" style="display:none">
+<h2 style="margin-top:0">🌐 بحث روابط (ويب)</h2>
+<input id="wsQ" class="search-input" placeholder="اسم العمل (مثلاً: دافنينه سوا الحلقة 3)" onkeydown="if(event.key==='Enter')wsGo()">
+<div class="row"><button class="search-btn" onclick="wsGo()">🔎 دوّر على روابط مدعومة</button></div>
+<p style="color:var(--mut);font-size:12px;margin:8px 0 0">بيدوّر في جوجل ويفتح الصفحات ويطلّع الروابط اللي موقعها مدعوم عند TorBox وAllDebrid وباقي مزوّديك. دوس "سحب" على أي رابط وهيتحوّل زي أي رابط ملصوق.</p>
+<div id="wsOut"></div>
+</div>
+
 <div class="row" id="clHome" style="margin:0 0 14px;gap:8px">
 <button class="search-btn" onclick="clibOpen('movie')">🎬 أفلام</button>
 <button class="search-btn" onclick="clibOpen('series')">📺 مسلسلات</button>
@@ -3207,6 +3215,50 @@ function processDirectLink() {
   if (!link.startsWith('http') && !link.startsWith('magnet:')) link = 'https://' + link;
   scrollToResults();
   pullSource(link, {src: link, title: ''}, null);
+}
+
+
+// ================= بحث روابط من الويب (للأدمن) =================
+let WS_LINKS = [];
+async function wsGo(deep) {
+  const q = $('wsQ').value.trim();
+  if (!q) return alert('اكتب اسم العمل الأول');
+  const box = $('wsOut');
+  box.innerHTML = pend('بدوّر وبفتح الصفحات... (ممكن ياخد نص دقيقة)');
+  try {
+    const {d} = await api('/websearch', {method: 'POST', body: JSON.stringify({q: q, deep: !!deep}), timeout: 90000});
+    if (d.error) return box.innerHTML = warn(d.error);
+    WS_LINKS = [];
+    let o = '<p style="color:var(--mut);font-size:12px;margin:10px 0">🔎 ' + d.searched + ' نتيجة · 📄 ' + d.pages.length +
+      ' صفحة اتفتحت · ✅ ' + d.hosts + ' موقع مدعوم · 🔗 ' + d.total + ' رابط</p>';
+    (d.notes || []).forEach(n => { o += warn(n); });
+    if (!d.total) o += warn('مفيش روابط مدعومة ظاهرة في الصفحات اللي اتفتحت. غالباً المواقع مخبّية الروابط أو العمل لسه جديد.') +
+      '<button class="fc" onclick="wsGo(true)">🔁 بحث أعمق (استعلام زيادة)</button>';
+    (d.groups || []).forEach(g => {
+      o += '<h4 style="margin:14px 0 6px;direction:ltr;text-align:left">' + esc(g.host) + ' (' + g.links.length + ')</h4>';
+      g.links.forEach(l => {
+        const i = WS_LINKS.push(l.url) - 1;
+        o += '<div class="pcard" style="padding:10px;margin:6px 0;background:var(--panel);border-radius:10px">' +
+          '<div style="direction:ltr;text-align:left;font-size:12px;word-break:break-all">' + esc(l.url) + '</div>' +
+          '<div style="color:var(--mut);font-size:12px;margin:4px 0">من: ' + esc(l.title || l.page) + '</div>' +
+          '<button class="fc" onclick="wsPull(' + i + ')">🚀 سحب</button> ' +
+          '<button class="fc" style="background:#475569" onclick="copyText(WS_LINKS[' + i + '])">📋 نسخ</button></div>';
+      });
+    });
+    if ((d.pages || []).length) {
+      o += '<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--mut)">الصفحات اللي اتفتحت (' + d.pages.length + ')</summary>' +
+        d.pages.map(p => '<div style="font-size:12px;margin:6px 0;direction:ltr;text-align:left">' + esc(p.status) + ' · ' + p.found + ' رابط · ' +
+          '<a href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--primary)">' + esc(p.title || p.url) + '</a></div>').join('') + '</details>';
+    }
+    box.innerHTML = o;
+  } catch (e) { box.innerHTML = ERR; }
+}
+function wsPull(i) {
+  const u = WS_LINKS[i];
+  if (!u) return;
+  $('searchInput').value = u;
+  sbSync();
+  processDirectLink();
 }
 
 // ================= السحب + التقدم =================
