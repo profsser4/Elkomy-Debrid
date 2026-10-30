@@ -417,6 +417,38 @@ h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:lin
 .btn-vlc:active,.btn-download:active,.search-btn:active{transform:scale(.98);filter:brightness(.92)}
 .chip,.tab,.fc{transition:background .2s}
 :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+/* ===== شكل الأزرار الجديد ===== */
+.vseg{display:flex;background:#15151d;border:.5px solid #26263a;border-radius:14px;padding:4px;gap:2px;margin-bottom:12px;overflow-x:auto}
+.vsg{flex:1;padding:8px 10px;border:.5px solid transparent;border-radius:10px;background:transparent;color:#9a9aab;font-size:13px;cursor:pointer;white-space:nowrap}
+.vsg b{font-weight:400;font-size:11px;margin-inline-start:4px;opacity:.7}
+.vsg.on{background:#2a1520;border-color:var(--primary);color:#ff8fa3}
+.vsplit{display:flex;height:56px;border-radius:16px;overflow:hidden;border:.5px solid var(--primary);margin-bottom:12px}
+.vsp{flex:1;border:0;background:var(--primary);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer}
+.vsd{width:64px;border:0;border-inline-start:.5px solid var(--primary);background:#2a1520;color:#ff8fa3;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.vsp svg,.vsd svg{width:22px;height:22px}
+.vrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:#15151d;border:.5px solid #26263a;border-radius:16px;padding:10px;margin-bottom:10px}
+.vrow.best{border-color:var(--primary)}
+.vq{flex:none;width:62px;height:62px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}
+.vq span{font-size:19px;font-weight:700}.vq small{font-size:11px;opacity:.8}
+.vq.q4k{background:#2b1d44;color:#d8b4fe}.vq.q1080{background:#12301f;color:#86efac}.vq.q720{background:#102a3a;color:#7dd3fc}.vq.qx{background:#1f1f2c;color:#9a9aab}
+.vi{flex:1;min-width:0}
+.vsz{font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.vrow .badge{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:400}
+.vrow .vt{margin:5px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.va{flex:none;display:flex;gap:7px}
+.vcp,.vcd{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.vcp{border:0;background:var(--primary);color:#fff}
+.vcd{border:.5px solid #3a3a54;background:#1b1b27;color:#ff8fa3}
+.vcp svg,.vcd svg{width:22px;height:22px}
+.vx2{flex-basis:100%;display:flex;gap:8px}
+.vx2 button{flex:1;padding:9px;border:0;border-radius:10px;color:#fff;font-weight:700;cursor:pointer;font-size:13px}
+.ep .eb{width:40px;height:40px;padding:0;border-radius:12px;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.ep .eb svg{width:20px;height:20px}
+.ep .eb.p{background:var(--primary);color:#fff}
+.ep .eb.d{background:#2a1520;color:#ff8fa3}
+.ep .eb.g{background:#1f1f2c;color:#9a9aab}
+.vcp:active,.vcd:active,.vsp:active,.vsd:active,.eb:active{transform:scale(.96)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
@@ -1734,15 +1766,21 @@ async function searchTitles() {
 }
 
 // ================= صفحة التفاصيل =================
+const IC_P = {
+  play: '<path d="M7 4v16l13-8z" fill="currentColor"/>',
+  dl: '<path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M7 11l5 5l5-5"/><path d="M12 4v12"/>',
+  opts: '<circle cx="14" cy="6" r="2"/><path d="M4 6h8"/><path d="M16 6h4"/><circle cx="8" cy="12" r="2"/><path d="M4 12h2"/><path d="M10 12h10"/><circle cx="17" cy="18" r="2"/><path d="M4 18h11"/><path d="M19 18h1"/>'
+};
+const IC = n => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC_P[n] + '</svg>';
 const chips = (a, sc) => '<div class="chips' + (sc ? ' scroll' : '') + '">' +
   a.map(x => '<span class="chip">' + esc(x) + '</span>').join('') + '</div>';
 const stOK = () => (ST.n > 0 || ROLE !== 'admin') && !!cur && !!cur.imdb;   // الأعضاء: السيرفر هو اللي يقرر، مش عدّاد الإضافات في المتصفح
 const stBtn = (s, e) => stOK()
   ? '<button class="btn-st" onclick="stGo(' + s + ',' + e + ')">🧩</button>' : '';
 const playBtn = (s, e) => (cur && cur.imdb)
-  ? '<button class="btn-pl2" onclick="quickPlay(' + s + ',' + e + ')">▶</button>' +
-    '<button class="btn-pl2" style="background:#0ea5e9 !important" onclick="quickDownload(' + s + ',' + e + ')">⬇</button>' +
-    '<button class="btn-pl2" style="background:#475569 !important" onclick="playOpen(' + s + ',' + e + ')">⚙</button>' : '';
+  ? '<button class="eb p" aria-label="تشغيل" onclick="quickPlay(' + s + ',' + e + ')">' + IC('play') + '</button>' +
+    '<button class="eb d" aria-label="تحميل" onclick="quickDownload(' + s + ',' + e + ')">' + IC('dl') + '</button>' +
+    '<button class="eb g" aria-label="خيارات" onclick="playOpen(' + s + ',' + e + ')">' + IC('opts') + '</button>' : '';
 
 async function openDetails(type, id) {
   if (!VS.includes('d')) pushView('d');
@@ -5233,19 +5271,23 @@ function qOf(v) {
 }
 function verRow(v, i, best) {
   const dub = langBadge(v), ql = qOf(v);
-  const qc = ql === '4K' ? '#a855f7' : ql === '1080p' ? '#16a34a' : ql === '720p' ? '#0ea5e9' : '#64748b';
-  return '<div class="vrow' + (best ? ' best' : '') + '"><div class="vm">' +
-    '<span class="badge" style="background:' + qc + ';color:#fff;font-size:15px;padding:4px 12px">' + ql + '</span>' +
-    '<b>💾 ' + fmtSize(v.size) + '</b>' + dub +
-    (best ? '<span class="badge" style="background:#22c55e;color:#000">🎯 الأفضل</span>' : '') +
-    (v.instant ? '' : '<span class="badge" style="background:#475569;color:#fff">⏳ بطيء</span>') +
-    ((v.risky && !v.hash && !window.AndroidPlayer) ? '<span class="badge" style="background:#ef4444;color:#fff">⚠️ الصوت ممكن مايشتغلش</span>' : '') +
-    (v.seeders ? '<span style="color:var(--mut)">🌱 ' + v.seeders + '</span>' : '') + '</div>' +
-    '<div class="vt">' + esc(v.title) + '</div><div class="vb">' +
-    '<button class="vw" onclick="playVersion(' + i + ')">▶ ' + (v.instant ? 'تشغيل' : 'سحب وتشغيل') + '</button>' +
-    '<button class="vd" onclick="dlVersion(' + i + ')">⬇ تحميل</button>' +
-    (ROLE === 'admin' && cur && cur.type === 'tv' && VER.s && v.hash ? '<button class="vd" style="background:#0ea5e9" onclick="seasonFromVersion(' + i + ')">📌 الموسم كله</button>' : '') +
-    (ROLE === 'admin' ? '<button class="vg" onclick="diagVersion(' + i + ')">🧪</button>' : '') + '</div></div>';
+  const cls = ql === '4K' ? 'q4k' : ql === '1080p' ? 'q1080' : ql === '720p' ? 'q720' : 'qx';
+  const big = ql === '4K' ? '4K' : ql === '1080p' ? '1080' : ql === '720p' ? '720' : ql === '480p' ? '480' : '؟';
+  const tag = ql === '4K' ? 'UHD' : ql === '1080p' ? 'FHD' : ql === '720p' ? 'HD' : ql === '480p' ? 'SD' : '';
+  const adm = ROLE === 'admin';
+  const ex = (adm && cur && cur.type === 'tv' && VER.s && v.hash ? '<button style="background:#0ea5e9" onclick="seasonFromVersion(' + i + ')">📌 الموسم كله</button>' : '') +
+    (adm ? '<button style="background:#475569" onclick="diagVersion(' + i + ')">🧪 فحص</button>' : '');
+  return '<div class="vrow' + (best ? ' best' : '') + '">' +
+    '<div class="vq ' + cls + '"><span>' + big + '</span><small>' + tag + '</small></div>' +
+    '<div class="vi"><div class="vsz">' + fmtSize(v.size) + dub +
+    (best ? '<span class="badge" style="background:#3a1620;color:#ffb3c1">⭐ الأفضل</span>' : '') +
+    (v.instant ? '' : '<span class="badge" style="background:#3a2a10;color:#fcd34d">⏳ بطيء</span>') +
+    ((v.risky && !v.hash && !window.AndroidPlayer) ? '<span class="badge" style="background:#3a1620;color:#fca5a5">⚠️ الصوت ممكن مايشتغلش</span>' : '') +
+    (v.seeders ? '<span class="badge" style="background:#1f1f2c;color:#9a9aab">🌱 ' + v.seeders + '</span>' : '') + '</div>' +
+    '<div class="vt">' + esc(v.title) + '</div></div>' +
+    '<div class="va"><button class="vcd" aria-label="تحميل" onclick="dlVersion(' + i + ')">' + IC('dl') + '</button>' +
+    '<button class="vcp" aria-label="' + (v.instant ? 'تشغيل' : 'سحب وتشغيل') + '" onclick="playVersion(' + i + ')">' + IC('play') + '</button></div>' +
+    (ex ? '<div class="vx2">' + ex + '</div>' : '') + '</div>';
 }
 function renderVP() {
   const el = $('vpanel');
@@ -5273,10 +5315,11 @@ function renderVP() {
     h += '<button class="fc' + (VER.arOnly ? ' on' : '') + '" style="margin-bottom:10px" onclick="VER.arOnly=!VER.arOnly;renderVP()">🇪🇬 ' + (VER.arOnly ? 'عرض كل النسخ' : 'عربي بس (مدبلج / ترجمة مدمجة)') + '</button>';
     if (VER.arOnly && !fast.length && !slow.length) h += warn('مفيش نسخة عربي لده. دوس «عرض كل النسخ».');
     const qs = ['4K', '1080p', '720p', '480p', 'أخرى'].filter(k => cnt[k]);
-    if (qs.length > 1) h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="fc' + (!VER.qf ? ' on' : '') + '" onclick="VER.qf=\'\';renderVP()">الكل</button>' +
-      qs.map(k => '<button class="fc' + (VER.qf === k ? ' on' : '') + '" onclick="VER.qf=\'' + k + '\';renderVP()">' + k + ' (' + cnt[k] + ')</button>').join('') + '</div>';
-    if (fast.length) h += '<div class="row" style="margin-bottom:12px"><button class="search-btn" onclick="playVersion(' + all.indexOf(fast[0]) + ')">▶ تشغيل الأفضل</button>' +
-      '<button class="search-btn" style="background:#0ea5e9" onclick="dlVersion(' + all.indexOf(fast[0]) + ')">⬇ تحميل الأفضل</button></div>';
+    const qn = k => k === '1080p' ? '1080' : k === '720p' ? '720' : k === '480p' ? '480' : k;
+    if (qs.length > 1) h += '<div class="vseg"><button class="vsg' + (!VER.qf ? ' on' : '') + '" onclick="VER.qf=\'\';renderVP()">الكل</button>' +
+      qs.map(k => '<button class="vsg' + (VER.qf === k ? ' on' : '') + '" onclick="VER.qf=\'' + k + '\';renderVP()">' + qn(k) + '<b>' + cnt[k] + '</b></button>').join('') + '</div>';
+    if (fast.length) h += '<div class="vsplit"><button class="vsp" onclick="playVersion(' + all.indexOf(fast[0]) + ')">' + IC('play') + 'تشغيل الأفضل</button>' +
+      '<button class="vsd" aria-label="تحميل الأفضل" onclick="dlVersion(' + all.indexOf(fast[0]) + ')">' + IC('dl') + '</button></div>';
     else h += warn('مفيش نسخة فورية. تقدر تسحب نسخة (هتاخد وقت).');
     h += fast.map(v => verRow(v, all.indexOf(v), v === fast[0])).join('');
     if (slow.length) {
