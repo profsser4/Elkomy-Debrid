@@ -1041,7 +1041,9 @@ const T_FOREIGN = /(\b(?:russian|rus|polish|german|ger|deu|french|fre|fra|vff|vf
 const _LC = new Map();
 // الترتيب: 6 مدبلج مصري ← 5 مدبلج عربي ← 4 مترجم عربي (مدمج) ← 3.5 موقع عربي ← 3 ترجمات ← 2 الأصلي ← 1 لغة تانية ← 0 دبلجة أجنبية
 function verLang(t) {
-  const s = String(typeof t === 'string' ? t : ((t && t.title) || '')).replace(/_/g, ' ');
+  let s = String(typeof t === 'string' ? t : ((t && t.title) || '')).replace(/_/g, ' ');
+  // السيرفر بيشوف كلمة "مدبلج/مصري" في باقي نص الإضافة واسم الملف، مش في العنوان بس
+  if (t && typeof t === 'object' && (t.dub || t.eg) && !T_DUB.test(s)) s += (t.eg ? ' مدبلج مصري' : ' مدبلج عربي');
   let r = _LC.get(s);
   if (r) return r;
   const dub = T_DUB.test(s), ar = T_AR.test(s) || T_AR_SCRIPT.test(s), cyr = T_CYR.test(s);
@@ -2551,7 +2553,7 @@ function visible() {
   if (stMode) return {base, good: base};
   const words = qWords(lastQ);
   const good = base.filter(t => titleOK(t, words) && yearOK(t) && wantOK(t) &&
-    (t.seeders > 0 || t.cached));
+    (t.seeders > 0 || t.cached || t.ref || t.dub || t.eg));
   return {base, good};
 }
 
