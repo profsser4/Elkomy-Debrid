@@ -2045,7 +2045,15 @@ async function clibStart(c, fid) {
 async function clibPlay(id, s, e, fid, skip) {
   if (noWatch()) return;
   const c = await clibResolve(id, s, e, skip, 'watch');
-  if (c) return clibStart(c, fid);
+  if (!c) return;
+  if (window.AndroidPlayer && !(c.d.pack && c.d.files && c.base.type !== 'movie')) {
+    window.CLCTX = c;
+    setPlay(Object.assign({}, c.base, {fname: c.d.name || '', url: c.d.direct_link, hls: '', sub: null, subx: '', subOff: false}));
+    await nativePlay(c.d.direct_link);
+    try { pgBack(); } catch (x) {}
+    return;
+  }
+  return clibStart(c, fid);
 }
 // ---------- سؤال: مشاهدة ولا تحميل؟ (زي باقي الموقع) ----------
 function clibAsk(id, s, e) {
@@ -2080,6 +2088,7 @@ async function clibAskGo(kind) {
   clibPickShow();
 }
 function clibPickShow() {
+  if (window.AndroidPlayer) { clibPickGo('native'); return; }   // أندرويد: يفتح المشغّل الداخلي على طول من غير قائمة
   const b = (label, kind) => '<button class="pl" onclick="clibPickGo(\'' + kind + '\')">' + label + '</button>';
   const L = [];
   if (IS_ANDROID) L.push(b('▶ VLC', 'vlc'), b('▶ MX Player', 'mx'), ...(window.AndroidPlayer ? [b('⭐ المشغّل الداخلي', 'native')] : []), b('▶ Just Player', 'just'), b('▶ mpv', 'mpv'), b('▶ Next Player', 'next'), b('📂 أي مشغّل', 'any'));
@@ -2100,7 +2109,7 @@ async function clibPickGo(kind) {
   else if (kind === 'mx') location.href = intentUrl(u, 'com.mxtech.videoplayer.ad');
   else if (kind === 'just') location.href = intentUrl(u, 'com.brouken.player');
   else if (kind === 'mpv') location.href = intentUrl(u, 'is.xyz.mpv');
-  else if (kind === 'native') nativePlay(u);
+  else if (kind === 'native') { await nativePlay(u); try { pgBack(); } catch (er) {} return; }
   else if (kind === 'next') location.href = intentUrl(u, 'dev.anilbeesetti.nextplayer');
   else if (kind === 'any') location.href = intentUrl(u, '');
   else if (kind === 'infuse') extGo(el, 'infuse');
@@ -5391,6 +5400,7 @@ function playVersion(i) {
   return startPlay(window.PICK.spec, 'watch');
 }
 function showPick() {
+  if (window.AndroidPlayer) { pickGo('native'); return; }   // أندرويد: المشغّل الداخلي بدون قائمة
   const b = (label, kind, bg) => '<button class="pl"' + (bg ? ' style="background:' + bg + '"' : '') + ' onclick="pickGo(\'' + kind + '\')">' + label + '</button>';
   const L = [];
   if (IS_ANDROID) L.push(b('▶ VLC (مع الترجمة)', 'vlc'), b('▶ MX Player', 'mx'), ...(window.AndroidPlayer ? [b('⭐ المشغّل الداخلي', 'native')] : []), b('▶ Just Player', 'just'), b('▶ mpv', 'mpv'), b('▶ Next Player', 'next'), b('📂 أي مشغّل', 'any'));
