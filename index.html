@@ -69,6 +69,8 @@ body.g-grid .hrow{flex-wrap:wrap;overflow:visible}
 .selbox{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--primary);border-radius:10px;padding:10px;margin-bottom:12px}
 .selbox img{width:60px;aspect-ratio:2/3;object-fit:cover;border-radius:6px}
 .fbar{display:flex;gap:8px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px}
+#dlbtn{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;font-size:18px;padding:8px 14px;position:relative;box-shadow:0 2px 10px rgba(34,197,94,.45)}
+#dlbadge{position:absolute;top:-6px;left:-6px;min-width:18px;height:18px;line-height:18px;border-radius:9px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;text-align:center;padding:0 4px}
 .fc{padding:7px 13px;border-radius:18px;border:1px solid #334155;background:var(--panel);color:var(--mut);white-space:nowrap;cursor:pointer;font-size:13px}
 .fc.on{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
 .tor{display:flex;gap:12px;background:var(--panel);border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:10px}
@@ -506,7 +508,7 @@ h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:lin
 <div id="main-content">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
 <h1 style="color:var(--primary);margin:0;font-size:20px">Elkomy VIP 🚀</h1>
-<div style="display:flex;gap:8px"><button class="fc" onclick="openView()">🖥</button><button class="fc" onclick="openInterests()">⭐</button><button id="dlbtn" class="fc" style="display:none" onclick="AndroidPlayer.openDownloads()" aria-label="التحميلات">⬇</button><script>try{if(window.AndroidPlayer&&typeof AndroidPlayer.openDownloads!=="undefined")document.getElementById("dlbtn").style.display=""}catch(e){}</script><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button class="fc adm" onclick="setOpen()" aria-label="الإعدادات والإضافات">⚙️</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
+<div style="display:flex;gap:8px"><button id="dlbtn" class="fc" style="display:none" onclick="AndroidPlayer.openDownloads()" aria-label="التحميلات">⬇️<span id="dlbadge" style="display:none"></span></button><script>try{if(window.AndroidPlayer&&typeof AndroidPlayer.openDownloads!=="undefined"){document.getElementById("dlbtn").style.display="";setInterval(function(){try{var n=AndroidPlayer.dlActive(),b=document.getElementById("dlbadge");b.textContent=n>0?n:"";b.style.display=n>0?"":"none"}catch(e){}},1500)}}catch(e){}</script><button class="fc" onclick="openView()">🖥</button><button class="fc" onclick="openInterests()">⭐</button><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button class="fc adm" onclick="setOpen()" aria-label="الإعدادات والإضافات">⚙️</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
 </div>
 
 <div class="action-box" id="searchBox">
@@ -1212,6 +1214,7 @@ function fallbackPanel(d, base, err) {
   W.push(btn('📋 نسخ رابط المشاهدة', 'data-u="' + pu + '" onclick="copyText(this.dataset.u)"', '#475569'));
   W.push(btn('🌐 فتح في المتصفح', 'data-u="' + pu + '" onclick="window.open(this.dataset.u,\'_blank\')"', '#475569'));
   // برامج التحميل
+  if (window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined') D.push(btn('⬇️ تحميل ببرنامج التطبيق (سريع)', 'data-u="' + du + '" data-n="' + ttl + '" onclick="dlApp(this)"', '#22c55e'));
   D.push(a('⬇️ تحميل مباشر', raw, ' target="_blank" rel="noopener" download'));
   if (IS_ANDROID) {
     D.push(a('⬇️ 1DM', intentUrl(raw, 'idm.internet.download.manager')));
@@ -1278,11 +1281,44 @@ function playerMenu(u, hls) {
   L.push('<button class="pl" style="background:#475569" onclick="dlCurSub()">⬇️ تحميل الترجمة (SRT)</button>');
   L.push('<button class="pl" style="background:#475569" onclick="copySubLink()">📋 نسخ رابط الترجمة</button>');
   const D = [a('⬇️ تحميل مباشر (الرابط الأصلي)', orig, ' target="_blank" rel="noopener" download')];
+  if (window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined') D.unshift('<button class="pl" style="background:#22c55e" data-u="' + esc(orig) + '" data-n="' + esc((typeof PLAY !== 'undefined' && PLAY && (PLAY.fname || PLAY.title)) || '') + '" onclick="dlApp(this)">⬇️ تحميل ببرنامج التطبيق (سريع)</button>');
   if (IS_ANDROID) { D.push(a('⬇️ 1DM', intentUrl(orig, 'idm.internet.download.manager'))); D.push(a('⬇️ ADM', intentUrl(orig, 'com.dv.adm'))); D.push(a('⬇️ أي برنامج تحميل', intentUrl(orig, ''))); }
   else D.push('<button class="pl" style="background:#475569" data-u="' + esc(orig) + '" onclick="copyText(this.dataset.u)">📋 نسخ رابط التحميل (IDM / JDownloader)</button>');
   return '<details class="pm" open><summary>🎬 مشغّلات خارجية (بتشغّل أي صيغة وأي صوت)</summary><div class="pgrid2">' + L.join('') + '</div>' +
     '<details class="pm" open><summary>⬇️ برامج التحميل (الملف الأصلي)</summary><div class="pgrid2">' + D.join('') + '</div></details>' +
     '<p style="color:var(--mut);font-size:12px;margin:8px 0 0">الترجمة العربي بتتجهّز لوحدها، واضغط VLC وهتيجي معاه. لو عايز ترجمة تانية اختارها من زرار 💬.</p></details>';
+}
+// بيجدّد رابط التحميل (debrid) لما التطبيق يطلب ده وإنت بتكمّل تحميل قديم
+window.dlRefresh = async function (id, srcJson) {
+  let sv = '';
+  try { sv = $('results') ? $('results').innerHTML : ''; } catch (e) {}
+  let url = '';
+  try {
+    const src = JSON.parse(srcJson);
+    if (src.k === 'spec') {
+      const d = await startPlay(src.spec, 'download');
+      url = (d && d.direct) || '';
+    } else if (src.k === 'q') {
+      try { const r = await getLink({query: src.q}, ++pullId); url = (r && r.d && r.d.direct_link) || ''; } catch (e) {}
+      if (!url && DBP.cfg().ad && /^https?:/i.test(src.q)) {
+        try { const dd = await adLinkResolve(src.q); url = (dd && dd.direct_link) || ''; } catch (e) {}
+      }
+    }
+  } catch (e) {}
+  try { if (sv && $('results')) $('results').innerHTML = sv; } catch (e) {}
+  try {
+    if (url) AndroidPlayer.setLink(id, url);
+    else AndroidPlayer.refreshFail(id, 'ماقدرتش أجدّد الرابط');
+  } catch (e) {}
+};
+function dlApp(el) {
+  const nm = el.dataset.n || 'video.mkv';
+  try {
+    const src = (typeof curSrc !== 'undefined' && curSrc) ? JSON.stringify({k: 'q', q: curSrc}) : '';
+    if (typeof AndroidPlayer.downloadR !== 'undefined') window.AndroidPlayer.downloadR(el.dataset.u, nm, src);
+    else window.AndroidPlayer.download(el.dataset.u, nm);
+    toast('⬇️ بدأ التحميل — تابعه من زرار التحميلات الأخضر', false);
+  } catch (e) { toast('❌ مقدرتش أبدأ التحميل', true); }
 }
 async function copyText(t) {
   try { await navigator.clipboard.writeText(t); alert('تم النسخ!'); }
@@ -2141,7 +2177,9 @@ function clibShowDownload(c) {
     '<p style="margin:0 0 6px">📡 ' + esc(provShow(d.provider)) + (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
     (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
     '<div class="lbl" style="margin:12px 0 6px">تحمّل بإيه؟</div>' +
-    '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download" style="display:block">⬇️ تحميل من المتصفح</a>' +
+    (window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined'
+      ? '<button class="btn-download" style="width:100%;border:none;cursor:pointer;display:block;font-size:16px" data-u="' + u + '" data-n="' + esc(d.name || '') + '" onclick="dlApp(this)">⬇️ تحميل ببرنامج التطبيق <small style="font-weight:normal;opacity:.85">(سريع · اتصالات متعددة)</small></button>'
+      : '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download" style="display:block">⬇️ تحميل من المتصفح</a>') +
     '<div class="lbl" style="margin:12px 0 6px">' + (IS_ANDROID || IS_IOS ? 'أو افتحه في برنامج التحميل:' : 'أو حمّله بمدير التحميل:') + '</div>' +
     '<div class="pgrid2">' + L.join('') + '</div>' +
     '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في أي مدير تحميل)</button></div>';
@@ -5461,13 +5499,17 @@ async function dlVersion(i) {
     // بنجهّز بيانات العمل عشان الترجمة تتحمّل بنفس اسم الفيلم
     PLAY = Object.assign({title: '', poster: '', year: '', type: null, tmdb: null, s: null, e: null}, baseFromCur(spec),
       {fname: d.name || '', url: d.direct, hls: '', resume: 0, sub: null, subx: '', subOff: false});
-    await dlAuto(d);
+    await dlAuto(d, spec);
   }
 }
-async function dlAuto(d) {
+async function dlAuto(d, spec) {
   if (window.AndroidPlayer) {
     const nm = d.name || 'video.mkv';
-    window.AndroidPlayer.download(d.direct, nm);
+    if (spec && typeof AndroidPlayer.downloadR !== 'undefined') {
+      let sj = '';
+      try { sj = JSON.stringify({k: 'spec', spec: spec}); } catch (e) {}
+      window.AndroidPlayer.downloadR(d.direct, nm, sj);
+    } else window.AndroidPlayer.download(d.direct, nm);
     try { await subxWarm(); if (PLAY && PLAY.sub) await dlCurSub(nm.replace(/\.[a-z0-9]{2,4}$/i, '')); } catch (e) {}
     try { pgBack(); } catch (e) {}
     return;
