@@ -3230,7 +3230,8 @@ async function wsGo(deep) {
     if (d.error) return box.innerHTML = warn(d.error);
     WS_LINKS = [];
     let o = '<p style="color:var(--mut);font-size:12px;margin:10px 0">🔎 ' + d.searched + ' نتيجة · 📄 ' + d.pages.length +
-      ' صفحة اتفتحت · ✅ ' + d.hosts + ' موقع مدعوم · 🔗 ' + d.total + ' رابط</p>';
+      ' صفحة اتفتحت · ✅ ' + d.hosts + ' موقع مدعوم' + (d.off ? ' (استبعدت ' + d.off + ' معطّل)' : '') + ' · 🔗 ' + d.total + ' رابط' +
+      (d.dropped ? ' · 🗑 ' + d.dropped + ' رابط مالوش علاقة' : '') + '</p>';
     (d.notes || []).forEach(n => { o += warn(n); });
     if (!d.total) o += warn('مفيش روابط مدعومة ظاهرة في الصفحات اللي اتفتحت. غالباً المواقع مخبّية الروابط أو العمل لسه جديد.') +
       '<button class="fc" onclick="wsGo(true)">🔁 بحث أعمق (استعلام زيادة)</button>';
@@ -3238,7 +3239,7 @@ async function wsGo(deep) {
       o += '<h4 style="margin:14px 0 6px;direction:ltr;text-align:left">' + esc(g.host) + ' (' + g.links.length + ')</h4>';
       g.links.forEach(l => {
         const i = WS_LINKS.push(l.url) - 1;
-        o += '<div class="pcard" style="padding:10px;margin:6px 0;background:var(--panel);border-radius:10px">' +
+        o += '<div style="padding:10px;margin:6px 0;background:var(--panel);border-radius:10px;width:100%;box-sizing:border-box">' +
           '<div style="direction:ltr;text-align:left;font-size:12px;word-break:break-all">' + esc(l.url) + '</div>' +
           '<div style="color:var(--mut);font-size:12px;margin:4px 0">من: ' + esc(l.title || l.page) + '</div>' +
           '<button class="fc" onclick="wsPull(' + i + ')">🚀 سحب</button> ' +
