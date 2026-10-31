@@ -6735,6 +6735,7 @@ function catTabs() {
   if (!el) return;
   if (!el.children.length) {
     el.innerHTML = CATS.map(c => '<button class="cat" data-c="' + c[0] + '" onclick="setCat(this.dataset.c)">' + c[1] + '</button>').join('') +
+      '<button class="cat" id="catLib" onclick="clibOpen(\'movie\')">📚 المكتبة</button>' +
       '<button class="cat" id="catIv" style="display:' + (IV.cfg ? '' : 'none') + '" onclick="ivOpen()">📡 IPTV</button>';
   }
   el.querySelectorAll('.cat[data-c]').forEach(b => b.classList.toggle('on', b.dataset.c === CAT));
@@ -7940,7 +7941,7 @@ function nfxEnded() {
     const el = $('layBox');
     if (!el) return;
     const B = (cls, fn, i, txt, t) => '<button class="lyb ' + cls + '" title="' + (t || '') + '" onclick="' + fn + '(' + i + ')">' + txt + '</button>';
-    let h = (window._persist !== true ? '<div class="lyr" style="border-color:#f59e0b;color:#fbbf24;font-size:13px;line-height:1.8">⚠️ السيرفر ' + (window._persist === false ? 'مش متوصّل بقاعدة بيانات دائمة (Upstash Redis)' : 'لسه بالنسخة القديمة من bot.py (أو مش بيرد بحالة التخزين)') + '، فالترتيب بيضيع منه. الترتيب هنا محفوظ على الجهاز ده بس (المتصفح والتطبيق كل واحد لوحده).</div>' : '') + '<div class="lybar"><span id="laySt">الترتيب بيتحفظ تلقائي</span><small style="opacity:.5">v9</small>' +
+    let h = (window._persist !== true ? '<div class="lyr" style="border-color:#f59e0b;color:#fbbf24;font-size:13px;line-height:1.8">⚠️ السيرفر ' + (window._persist === false ? 'مش متوصّل بقاعدة بيانات دائمة (Upstash Redis)' : 'لسه بالنسخة القديمة من bot.py (أو مش بيرد بحالة التخزين)') + '، فالترتيب بيضيع منه. الترتيب هنا محفوظ على الجهاز ده بس (المتصفح والتطبيق كل واحد لوحده).</div>' : '') + '<div class="lybar"><span id="laySt">الترتيب بيتحفظ تلقائي</span><small style="opacity:.5">v10</small>' +
       '<button class="lysv" onclick="laySave(this)">💾 حفظ</button></div>';
     h += LAY.map((r, i) =>
       '<div class="lyr' + (r.on ? '' : ' off') + '"><div class="lyh">' +
@@ -8025,6 +8026,7 @@ h3.sec{font-size:19px;font-weight:800;margin:20px 0 10px}
 .lyb{background:#7aa2e8;color:#06122e;border:0;border-radius:10px;padding:10px 2px;font-size:14px;min-width:0;font-weight:800}
 .lyb.sel{background:#7c3aed;color:#fff}
 .lyb.del{background:#ef4444;color:#fff}
+#clHome{display:none!important}
 </style>
 </body>
 </html>
