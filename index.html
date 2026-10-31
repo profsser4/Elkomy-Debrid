@@ -1708,7 +1708,7 @@ function setAuto(b) {
 // ================= الصفحة الرئيسية (كمّل المشاهدة / قائمتي / مكتبة Stremio / صفوف الجديد) =================
 async function loadRows() {
   if (!ROWS) {
-    try { const {d} = await api('/rows'); ROWS = d.rows || []; }
+    try { const {d} = await api('/rows'); ROWS = layApply(d.rows || []); }
     catch (e) { ROWS = []; }
   }
   loadHero();
@@ -1818,11 +1818,11 @@ function renderShelves() {
   const p = prof(), hr = (p && p.hr) || [];
   let h = '';
   if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
+  try { h += ivHomeHTML(); } catch (e) {}
   h += clibRows();
   const hasFor = AROWS_PID === PID && AROWS.length;
   if (hasFor) AROWS.slice(0, isTv() ? 5 : 12).forEach(r => { h += row(r.title, isTv() ? r.items.slice(0, TV_ROW_N) : r.items); });
   IROWS.forEach(r => { h += row('⭐ ' + r.title.replace(/^⭐\s*/, ''), r.items, r.id); });
-  try { h += ivHomeHTML(); } catch (e) {}
   if (lst.length) h += row('❤️ قائمتي', lst);
   if (LATEST.length) h += row('🔔 جديد في قائمتي', LATEST);
   h += stRow();
@@ -6862,7 +6862,7 @@ function renderHero() {
   el.innerHTML = '<div class="hz" style="' + (isTv() ? 'background:linear-gradient(135deg,#1e293b,#0f172a)' : 'background-image:url(\'' + esc(x.backdrop) + '\')') + '"><div class="hc"><h2>' + esc(x.title) +
     '</h2><div class="hm">' + esc((x.type === 'tv' ? 'مسلسل' : 'فيلم') + ' · ' + x.year + ' · ⭐ ' + x.rating) + '</div><p>' + esc(x.overview) +
     '</p><div class="hb"><button class="p" onclick="heroGo(' + i + ',1)">▶ شغّل الآن</button><button class="i" onclick="heroGo(' + i +
-    ')">المزيد من المعلومات</button><button class="i" onclick="openTrailer(\'' + x.type + '\',' + x.id + ')">🎬 تريلر</button></div></div><div class="dots">' +
+    ')">المزيد من المعلومات</button><button class="i" onclick="openTrailer(\'' + x.type + '\',' + x.id + ')">🎬 تريلر</button><button class="i" onclick="heroAdd(' + i + ')">＋ قائمتي</button></div></div><div class="dots">' +
     L.map((_, j) => '<i class="' + (j === i ? 'on' : '') + '" onclick="heroI=' + j + ';renderHero()"></i>').join('') + '</div></div>';
   if (!isTv()) {
   heroT = setInterval(() => { if ($('hz').style.display !== 'none') { heroI++; renderHero(); } }, 8000);
@@ -7856,5 +7856,159 @@ function nfxEnded() {
   });
 })();
 </script>
+
+<script>
+/* ===== v2: حفظ ترتيب الرئيسية تلقائي + نسخة على الجهاز + شكل جديد ===== */
+(function () {
+  const LK = () => 'layout:' + (typeof UNAME !== 'undefined' ? UNAME : '');
+  const lsGet = () => { try { return JSON.parse(localStorage.getItem(LK()) || 'null'); } catch (e) { return null; } };
+  const clean = () => LAY.map(r => { const o = Object.assign({}, r); delete o._sel; return o; });
+  const sig = rows => (rows || []).map(r => r.k + (r.on ? '1' : '0') + (r.t || '') + ((r.m || []).length)).join('|');
+  const setSt = (m, c) => { const e = document.getElementById('laySt'); if (e) { e.textContent = m; e.style.color = c || ''; } };
+  let _t = 0;
+
+  async function push(manual) {
+    const rows = clean();
+    try { localStorage.setItem(LK(), JSON.stringify({t: Date.now(), rows: rows})); } catch (e) {}
+    setSt('⏳ بيحفظ...');
+    try {
+      const {d} = await api('/home/layout', {method: 'POST', body: JSON.stringify({rows: rows})});
+      if (d.error) { setSt('❌ ' + d.error, '#ef4444'); return false; }
+      const v = await api('/home/layout');
+      if (sig(v.d.rows) === sig(rows)) { setSt('✅ اتحفظ', '#22c55e'); ROWS = null; return true; }
+      setSt('⚠️ السيرفر مش بيثبّت الترتيب — محفوظ على جهازك وبيتطبّق تلقائي', '#f59e0b');
+    } catch (e) { setSt('⚠️ مفيش اتصال — محفوظ على جهازك', '#f59e0b'); }
+    return false;
+  }
+  const auto = () => { clearTimeout(_t); _t = setTimeout(push, 600); };
+
+  window.layApply = function (rows) {
+    const l = lsGet();
+    if (!l || !l.rows || !rows) return rows;
+    const pos = r => l.rows.findIndex(x => x.k === r.id || x.k === r.k || x.t === r.title);
+    const keep = rows.filter(r => { const p = pos(r); return p < 0 || l.rows[p].on !== false; });
+    return keep.map((r, i) => ({r: r, i: i, p: pos(r)}))
+      .sort((a, b) => (a.p < 0 ? 1e6 + a.i : a.p) - (b.p < 0 ? 1e6 + b.i : b.p)).map(x => x.r);
+  };
+
+  window.loadLayout = async function () {
+    const el = $('layBox');
+    if (el) el.innerHTML = pend('جاري التحميل...');
+    try {
+      const [a, b] = await Promise.all([api('/home/layout'), api('/home/catalogs')]);
+      LAY = a.d.rows || []; DUBST = a.d.dub || null; LCATS = b.d.items || []; window._persist = a.d.persist;
+    } catch (e) { if (el) el.innerHTML = ERR; return; }
+    const l = lsGet();
+    if (l && l.rows && l.rows.length && sig(l.rows) !== sig(LAY)) {
+      const st = {}; LAY.forEach(r => { st[r.k] = r.stat; });
+      LAY = l.rows.map(r => Object.assign({}, r, {stat: st[r.k]}));
+      renderLayout(); auto(); return;
+    }
+    renderLayout();
+  };
+
+  window.laySave = async function (btn) {
+    if (btn) btn.disabled = true;
+    const ok = await push(true);
+    if (btn) btn.disabled = false;
+    if (ok) loadRows();
+  };
+
+  ['layMove', 'layTop', 'layDel', 'layRename', 'layMerge', 'laySplit', 'layAdd', 'layOn'].forEach(n => {
+    const o = window[n];
+    if (typeof o !== 'function') return;
+    window[n] = function () { const r = o.apply(this, arguments); auto(); return r; };
+  });
+
+  window.renderLayout = function () {
+    const el = $('layBox');
+    if (!el) return;
+    const B = (cls, fn, i, txt, t) => '<button class="lyb ' + cls + '" title="' + (t || '') + '" onclick="' + fn + '(' + i + ')">' + txt + '</button>';
+    let h = (window._persist === false ? '<div class="lyr" style="border-color:#f59e0b;color:#fbbf24;font-size:13px">⚠️ السيرفر مش متوصّل بقاعدة بيانات دائمة (Upstash Redis)، فبيضيّع الترتيب كل فترة. الترتيب محفوظ على جهازك لحد ما تضيف KV_REST_API_URL و KV_REST_API_TOKEN في Vercel.</div>' : '') + '<div class="lybar"><span id="laySt">الترتيب بيتحفظ تلقائي</span>' +
+      '<button class="lysv" onclick="laySave(this)">💾 حفظ</button></div>';
+    h += LAY.map((r, i) =>
+      '<div class="lyr' + (r.on ? '' : ' off') + '"><div class="lyh">' +
+      '<input type="checkbox" ' + (r.on ? 'checked ' : '') + 'onchange="layOn(' + i + ',this.checked)">' +
+      '<div class="lyt">' + esc(r.t) + ((r.m || []).length ? ' <span class="badge b2">🔗 ' + (r.m.length + 1) + '</span>' : '') + layStat(r) + '</div>' +
+      '<span class="lyn">' + (i + 1) + '</span></div>' +
+      '<div class="lyg">' +
+      B('', 'layTop', i, '⏫', 'للأول') + B('', 'layMove', i + ',-1', '▲').replace('(' + i + ',-1)', '(' + i + ',-1)') +
+      B('', 'layMove', i + ',1', '▼') +
+      '<button class="lyb' + (r._sel ? ' sel' : '') + '" onclick="layPick(' + i + ')">' + (r._sel ? '✔ دمج' : 'دمج') + '</button>' +
+      ((r.m || []).length ? B('sel', 'laySplit', i, 'فك') : '') +
+      B('', 'layRename', i, '✏️') + B('del', 'layDel', i, '🗑') + '</div></div>').join('')
+      || warn('مفيش صفوف. ضيف إضافات فيها كتالوجات (زي Cinemeta) من قسم Stremio.');
+    h += '<button class="search-btn" style="margin-top:6px;background:#7c3aed" onclick="layMerge()">🔗 دمج الصفوف المعلّمة في صف واحد</button>' +
+      '<button class="search-btn btn-blue" style="margin-top:8px" onclick="dubRefresh(this)">🔄 فحص المدبلج بالمصري دلوقتي</button>';
+    if (LCATS.length) {
+      h += '<h3 class="sec" style="margin-top:16px">➕ إضافة صف</h3>' +
+        '<select id="layCat" class="search-input" onchange="layGenres()">' + LCATS.map((c, i) =>
+          '<option value="' + i + '">' + esc(c.an + ' · ' + c.name + ' (' + (c.ty === 'movie' ? 'أفلام' : 'مسلسلات') + ')') + '</option>').join('') + '</select>' +
+        '<select id="layGen" class="search-input"></select>' +
+        '<button class="search-btn btn-blue" onclick="layAdd()">➕ إضافة الصف</button>';
+    }
+    el.innerHTML = h;
+    layGenres();
+  };
+
+  window.heroAdd = function (i) {
+    const x = heroList()[i];
+    if (!x) return;
+    const key = 'l:' + x.type + ':' + x.id, o = getItem(key);
+    if (o && !o.del) setItem({key: key, del: true});
+    else setItem({key: key, type: x.type, tmdb: x.id, title: x.title, poster: x.poster || x.img || '', year: x.year});
+    renderShelves();
+    const b = event && event.target; if (b) { const t = b.textContent; b.textContent = (o && !o.del) ? '＋ قائمتي' : '✔ في قائمتي'; }
+  };
+})();
+</script>
+<style>
+/* ===== شكل جديد (MorphTV-style) + ضبط الموبايل ===== */
+html,body{overflow-x:hidden;max-width:100%}
+img{max-width:100%}
+#main-content{padding:12px;max-width:1180px}
+.topbar{padding:8px 14px;gap:6px 10px;border-radius:26px}
+.topbar h1{font-size:18px!important;white-space:nowrap}
+.cats{gap:6px}
+.cats button,.cats .cat{border-radius:99px;white-space:nowrap;padding:8px 14px;font-size:14px;font-weight:700}
+#clHome{display:flex;flex-wrap:nowrap!important;overflow-x:auto;gap:8px;scrollbar-width:none;padding-bottom:4px}
+#clHome::-webkit-scrollbar{display:none}
+#clHome .search-btn{flex:0 0 auto;width:auto;margin:0;padding:10px 18px;border-radius:99px;white-space:nowrap}
+.action-box{border-radius:16px;padding:16px 14px}
+#hz{margin:6px 0 20px}
+.hz{min-height:clamp(300px,64vw,500px);border-radius:22px;align-items:flex-end;background-position:center top}
+.hz:before{background:linear-gradient(0deg,#070d1f 4%,#070d1f66 45%,#070d1f00 80%),linear-gradient(270deg,#070d1fcc,#070d1f00 70%)}
+.hz .hc{padding:18px 16px 38px;max-width:680px;width:100%}
+.hz h2{font-size:clamp(24px,6.4vw,46px);line-height:1.2}
+.hz .hm{font-size:13px;font-weight:700;color:#5eead4;margin-bottom:6px}
+.hz p{-webkit-line-clamp:2;font-size:14px;line-height:1.7;margin-bottom:12px}
+.hz .hb{gap:8px}
+.hz .hb button{padding:10px 18px;font-size:14px;border-radius:99px}
+.hz .hb .p{background:#fff;color:#0b1020}
+.hz .hb .i{background:#0b133099;border:1.5px solid #7aa2e8}
+h3.sec{font-size:19px;font-weight:800;margin:20px 0 10px}
+.hrow{gap:12px;padding:4px 2px 12px;scroll-snap-type:x proximity}
+.poster,.cw{flex:0 0 124px;border-radius:16px}
+.hrow:first-of-type .poster,.hrow:first-of-type .cw{flex-basis:150px}
+.poster .rt{top:8px;left:8px;right:auto;background:#0b1020cc;color:#fbbf24;border-radius:8px;padding:2px 7px;font-size:12px;font-weight:800}
+.poster .t{font-size:12.5px;padding:34px 9px 8px}
+.poster .y{font-size:11px;color:#cbd5e1}
+@media(min-width:700px){.poster,.cw{flex-basis:158px}.hrow:first-of-type .poster,.hrow:first-of-type .cw{flex-basis:190px}}
+@media(max-width:480px){.hz .hb button{flex:1 1 auto;padding:10px 12px}.topbar{border-radius:20px}}
+/* شاشة ترتيب الرئيسية */
+.lybar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;justify-content:space-between;background:#0b1020f2;padding:10px 4px;margin-bottom:8px;font-size:13px;font-weight:700;border-bottom:1px solid #334155}
+.lysv{background:#22c55e;color:#04210f;border:0;border-radius:10px;padding:9px 16px;font-weight:800}
+.lyr{background:var(--panel);border:1px solid #334155;border-radius:14px;padding:10px;margin-bottom:8px}
+.lyr.off{opacity:.55}
+.lyh{display:flex;align-items:center;gap:10px}
+.lyh input{width:22px;height:22px;flex:none}
+.lyt{flex:1;min-width:0;font-weight:700;font-size:14px;line-height:1.5;word-break:break-word}
+.lyt small{display:block;color:var(--mut);font-weight:400}
+.lyn{color:var(--mut);font-size:12px}
+.lyg{display:grid;grid-template-columns:repeat(auto-fit,minmax(48px,1fr));gap:6px;margin-top:8px}
+.lyb{background:#7aa2e8;color:#06122e;border:0;border-radius:10px;padding:10px 4px;font-size:15px;font-weight:800}
+.lyb.sel{background:#7c3aed;color:#fff}
+.lyb.del{background:#ef4444;color:#fff}
+</style>
 </body>
 </html>
