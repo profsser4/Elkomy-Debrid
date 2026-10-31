@@ -5531,6 +5531,14 @@ function layGenres() {
   g.style.display = (c.genres || []).length ? '' : 'none';
 }
 function layOn(i, v) { LAY[i].on = !!v; }
+function layPick(i) { LAY[i]._sel = !LAY[i]._sel; renderLayout(); }
+function layTop(i) {
+  if (i <= 0) return;
+  const r = LAY.splice(i, 1)[0];
+  LAY.unshift(r);
+  renderLayout();
+  window.scrollTo(0, 0);
+}
 function layMove(i, d) {
   const j = i + d;
   if (j < 0 || j >= LAY.length) return;
@@ -5553,7 +5561,7 @@ function layAdd() {
 async function laySave(btn) {
   btn.disabled = true;
   try {
-    const {d} = await api('/home/layout', {method: 'POST', body: JSON.stringify({rows: LAY})});
+    const {d} = await api('/home/layout', {method: 'POST', body: JSON.stringify({rows: LAY.map(r => { const o = Object.assign({}, r); delete o._sel; return o; })})});
     if (d.error) alert(d.error);
     else { alert('تم الحفظ ✅'); ROWS = null; loadRows(); }
   } catch (e) { alert('مش قادر أوصل للسيرفر'); }
@@ -6980,8 +6988,9 @@ function renderLayout() {
   let h = LAY.map((r, i) =>
     '<div class="ep"><input type="checkbox" ' + (r.on ? 'checked ' : '') + 'onchange="layOn(' + i + ',this.checked)">' +
     '<div class="b">' + esc(r.t) + ((r.m || []).length ? ' <span class="badge b2">🔗 ' + (r.m.length + 1) + '</span>' : '') + layStat(r) + '</div>' +
-    '<label style="font-size:12px;color:var(--mut)"><input type="checkbox" ' + (r._sel ? 'checked ' : '') + 'onchange="LAY[' + i + ']._sel=this.checked"> دمج</label>' +
-    '<button onclick="layMove(' + i + ',-1)">▲</button>' +
+    '<button style="min-width:64px;padding:10px 8px;border-radius:10px;border:2px solid ' + (r._sel ? '#a78bfa' : '#475569') + ';background:' + (r._sel ? '#7c3aed' : 'transparent') + ';color:#fff;font-weight:700" onclick="layPick(' + i + ')">' + (r._sel ? '✔ دمج' : 'دمج') + '</button>' +
+    '<button title="للأول" onclick="layTop(' + i + ')">⏫</button>' +
+    '<button style="margin-inline-start:4px" onclick="layMove(' + i + ',-1)">▲</button>' +
     '<button ' + btn + '" onclick="layMove(' + i + ',1)">▼</button>' +
     ((r.m || []).length ? '<button ' + btn + 'background:#7c3aed;color:#fff" onclick="laySplit(' + i + ')">فك</button>' : '') +
     '<button ' + btn + 'background:#475569;color:#fff" onclick="layRename(' + i + ')">✏️</button>' +
