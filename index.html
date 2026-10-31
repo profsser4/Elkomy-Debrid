@@ -5496,7 +5496,7 @@ async function loadLayout() {
   const el = $('layBox');
   if (el) el.innerHTML = pend('جاري التحميل...');
   try {
-    const [a, b] = await Promise.all([api('/home/layout'), api('/home/catalogs')]);
+    const [a, b] = await Promise.all([api('/home/layout2'), api('/home/catalogs')]);
     LAY = a.d.rows || [];
     DUBST = a.d.dub || null;
     LCATS = b.d.items || [];
@@ -5561,7 +5561,7 @@ function layAdd() {
 async function laySave(btn) {
   btn.disabled = true;
   try {
-    const {d} = await api('/home/layout', {method: 'POST', body: JSON.stringify({rows: LAY.map(r => { const o = Object.assign({}, r); delete o._sel; return o; })})});
+    const {d} = await api('/home/layout2', {method: 'POST', body: JSON.stringify({rows: LAY.map(r => { const o = Object.assign({}, r); delete o._sel; return o; })})});
     if (d.error) alert(d.error);
     else { alert('تم الحفظ ✅'); ROWS = null; loadRows(); }
   } catch (e) { alert('مش قادر أوصل للسيرفر'); }
@@ -7879,12 +7879,13 @@ function nfxEnded() {
     try { localStorage.setItem(LK(), JSON.stringify({t: Date.now(), rows: rows})); } catch (e) {}
     setSt('⏳ بيحفظ...');
     try {
-      const r = await fetch(API + '/home/layout', {method: 'POST', cache: 'no-store', headers: {'Content-Type': 'application/json', 'X-Token': TOK}, body: JSON.stringify({rows: rows})});
+      const r = await fetch(API + '/home/layout2', {method: 'POST', cache: 'no-store', headers: {'Content-Type': 'application/json', 'X-Token': TOK}, body: JSON.stringify({rows: rows})});
       const raw = await r.text(); let d = {}; try { d = JSON.parse(raw); } catch (e) {}
       window._rawPost = 'POST ' + r.status + (r.redirected ? ' (redirect)' : '') + ' ' + raw.slice(0, 90).replace(/\s+/g, ' ');
       if (d.error || !r.ok) { setSt('❌ ' + (d.error || ('السيرفر رد بخطأ ' + r.status + ' (الحفظ فشل)')), '#ef4444'); return false; }
-      const v = await api('/home/layout');
-      const dg = ' {' + window._rawPost + '} [سيرفر: ' + (d.kv === undefined ? 'نسخة قديمة' : (d.kv ? 'Redis ✓ حفظ ' + d.n : 'بدون Redis')) + ' · رجّع ' + (v.d.rows || []).length + ' · عندك ' + rows.length + (v.d.src === 'default' ? ' · السيرفر مش لاقي المحفوظ: ' + (v.d.err || 'مفيش بيانات') : '') + ']';
+      const v = await api('/home/layout2');
+      let pg = ''; try { const pp = await api('/home/ping'); pg = pp.r.ok ? ' ping:' + pp.d.v + ' kv=' + pp.d.kv : ' ping:' + pp.r.status; } catch (e) { pg = ' ping:خطأ'; }
+      const dg = pg + ' {' + window._rawPost + '} [سيرفر: ' + (d.kv === undefined ? 'نسخة قديمة' : (d.kv ? 'Redis ✓ حفظ ' + d.n : 'بدون Redis')) + ' · رجّع ' + (v.d.rows || []).length + ' · عندك ' + rows.length + (v.d.src === 'default' ? ' · السيرفر مش لاقي المحفوظ: ' + (v.d.err || 'مفيش بيانات') : '') + ']';
       const c = cmp(rows, v.d.rows);
       if (c.ok) { setSt('✅ اتحفظ' + (c.miss || c.extra ? ' (' + c.miss + ' صف السيرفر مش بيقبله، ' + c.extra + ' زيادة منه)' : '') + dg, '#22c55e'); ROWS = null; return true; }
       setSt('⚠️ السيرفر رجّع ترتيب مختلف (' + c.miss + ' ناقص، ' + c.extra + ' زيادة)' + c.d + dg + ' — محفوظ على جهازك', '#f59e0b');
@@ -7906,7 +7907,7 @@ function nfxEnded() {
     const el = $('layBox');
     if (el) el.innerHTML = pend('جاري التحميل...');
     try {
-      const [a, b] = await Promise.all([api('/home/layout'), api('/home/catalogs')]);
+      const [a, b] = await Promise.all([api('/home/layout2'), api('/home/catalogs')]);
       LAY = a.d.rows || []; DUBST = a.d.dub || null; LCATS = b.d.items || []; window._persist = a.d.persist;
     } catch (e) { if (el) el.innerHTML = ERR; return; }
     const l = lsGet();
@@ -7935,7 +7936,7 @@ function nfxEnded() {
     const el = $('layBox');
     if (!el) return;
     const B = (cls, fn, i, txt, t) => '<button class="lyb ' + cls + '" title="' + (t || '') + '" onclick="' + fn + '(' + i + ')">' + txt + '</button>';
-    let h = (window._persist !== true ? '<div class="lyr" style="border-color:#f59e0b;color:#fbbf24;font-size:13px;line-height:1.8">⚠️ السيرفر ' + (window._persist === false ? 'مش متوصّل بقاعدة بيانات دائمة (Upstash Redis)' : 'لسه بالنسخة القديمة من bot.py (أو مش بيرد بحالة التخزين)') + '، فالترتيب بيضيع منه. الترتيب هنا محفوظ على الجهاز ده بس (المتصفح والتطبيق كل واحد لوحده).</div>' : '') + '<div class="lybar"><span id="laySt">الترتيب بيتحفظ تلقائي</span><small style="opacity:.5">v7</small>' +
+    let h = (window._persist !== true ? '<div class="lyr" style="border-color:#f59e0b;color:#fbbf24;font-size:13px;line-height:1.8">⚠️ السيرفر ' + (window._persist === false ? 'مش متوصّل بقاعدة بيانات دائمة (Upstash Redis)' : 'لسه بالنسخة القديمة من bot.py (أو مش بيرد بحالة التخزين)') + '، فالترتيب بيضيع منه. الترتيب هنا محفوظ على الجهاز ده بس (المتصفح والتطبيق كل واحد لوحده).</div>' : '') + '<div class="lybar"><span id="laySt">الترتيب بيتحفظ تلقائي</span><small style="opacity:.5">v8</small>' +
       '<button class="lysv" onclick="laySave(this)">💾 حفظ</button></div>';
     h += LAY.map((r, i) =>
       '<div class="lyr' + (r.on ? '' : ' off') + '"><div class="lyh">' +
