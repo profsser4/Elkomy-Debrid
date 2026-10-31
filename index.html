@@ -7924,7 +7924,7 @@ function nfxEnded() {
     const el = $('layBox');
     if (!el) return;
     const B = (cls, fn, i, txt, t) => '<button class="lyb ' + cls + '" title="' + (t || '') + '" onclick="' + fn + '(' + i + ')">' + txt + '</button>';
-    let h = (window._persist === false ? '<div class="lyr" style="border-color:#f59e0b;color:#fbbf24;font-size:13px">⚠️ السيرفر مش متوصّل بقاعدة بيانات دائمة (Upstash Redis)، فبيضيّع الترتيب كل فترة. الترتيب محفوظ على جهازك لحد ما تضيف KV_REST_API_URL و KV_REST_API_TOKEN في Vercel.</div>' : '') + '<div class="lybar"><span id="laySt">الترتيب بيتحفظ تلقائي</span>' +
+    let h = (window._persist !== true ? '<div class="lyr" style="border-color:#f59e0b;color:#fbbf24;font-size:13px;line-height:1.8">⚠️ السيرفر ' + (window._persist === false ? 'مش متوصّل بقاعدة بيانات دائمة (Upstash Redis)' : 'لسه بالنسخة القديمة من bot.py (أو مش بيرد بحالة التخزين)') + '، فالترتيب بيضيع منه. الترتيب هنا محفوظ على الجهاز ده بس (المتصفح والتطبيق كل واحد لوحده).</div>' : '') + '<div class="lybar"><span id="laySt">الترتيب بيتحفظ تلقائي</span><small style="opacity:.5">v2</small>' +
       '<button class="lysv" onclick="laySave(this)">💾 حفظ</button></div>';
     h += LAY.map((r, i) =>
       '<div class="lyr' + (r.on ? '' : ' off') + '"><div class="lyh">' +
