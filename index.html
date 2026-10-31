@@ -478,6 +478,14 @@ body.iv-on{overflow:hidden}
 #ivp video{flex:1;min-height:0;width:100%;background:#000}
 .ivph{display:flex;gap:10px;align-items:center;padding:8px 12px;color:#fff}
 .ivpb{display:flex;gap:8px;padding:8px 12px;justify-content:center;flex-wrap:wrap}
+
+/* ===== شريط الأقسام (زي نتفلكس) ===== */
+.cats{display:flex;gap:8px;overflow-x:auto;margin:0 0 14px;padding:2px 2px 6px;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat{flex:none;padding:10px 20px;border-radius:99px;border:1px solid #ffffff22;background:#ffffff0f;color:#e2e8f0;font-weight:700;font-size:15px;white-space:nowrap;cursor:pointer;font-family:inherit;transition:background .2s}
+.cat.on{background:#fff;color:#000;border-color:#fff}
+.cat:active{transform:scale(.96)}
+body.m-tv .cat{font-size:20px;padding:12px 26px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
@@ -537,6 +545,8 @@ body.iv-on{overflow:hidden}
 <h1 style="color:var(--primary);margin:0;font-size:20px">Elkomy VIP 🚀</h1>
 <div class="topbtns"><button id="dlbtn" class="fc" style="display:none" onclick="AndroidPlayer.openDownloads()" aria-label="التحميلات">⬇️<span id="dlbadge" style="display:none"></span></button><script>try{if(window.AndroidPlayer&&typeof AndroidPlayer.openDownloads!=="undefined"){document.getElementById("dlbtn").style.display="";setInterval(function(){try{var n=AndroidPlayer.dlActive(),b=document.getElementById("dlbadge");b.textContent=n>0?n:"";b.style.display=n>0?"":"none"}catch(e){}},1500)}}catch(e){}</script><button class="fc" onclick="openView()">🖥</button><button class="fc" onclick="openInterests()">⭐</button><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button class="fc adm" onclick="setOpen()" aria-label="الإعدادات والإضافات">⚙️</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
 </div>
+
+<div class="cats" id="cats"></div>
 
 <div class="action-box" id="searchBox">
 <h2 style="margin-top:0">🔍 ابحث أو الصق رابط</h2>
@@ -1639,6 +1649,8 @@ function delForm() {
 }
 function enterProfile(id) {
   PID = id;
+  CAT = 'home';
+  try { catTabs(); } catch (e) {}
   localStorage.setItem('pid:' + UNAME, id);
   applyView();
   $('profile-screen').style.display = 'none';
@@ -1768,6 +1780,7 @@ function renderShelves() {
   if (typeof TV_FREED !== 'undefined' && TV_FREED) return;
   const el = $('shelves');
   if (!PID) { el.innerHTML = ''; return; }
+  if (CAT !== 'home') { el.innerHTML = catView(); tvApply(); return; }
   const its = Object.values(UD.items[PID] || {}).filter(x => !x.del && x.key);
   const groups = new Map();
   its.filter(x => x.key[0] !== 'l').forEach(x => {
@@ -1782,12 +1795,12 @@ function renderShelves() {
   let h = '';
   if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
   h += clibRows();
+  if (AROWS_PID === PID) AROWS.slice(0, isTv() ? 4 : 10).forEach(r => { h += row(r.title, isTv() ? r.items.slice(0, TV_ROW_N) : r.items); });
   try { h += ivHomeHTML(); } catch (e) {}
   if (lst.length) h += row('❤️ قائمتي', lst);
   if (LATEST.length) h += row('🔔 جديد في قائمتي', LATEST);
   FRESH.forEach(r => { h += row(r.title, r.items, r.id); });
   IROWS.forEach(r => { h += row(r.title, r.items, r.id); });
-  if (AROWS_PID === PID) AROWS.slice(0, isTv() ? 3 : 8).forEach(r => { h += row(r.title, isTv() ? r.items.slice(0, TV_ROW_N) : r.items); });
   h += stRow();
   (ROWS || []).forEach(r => { if (!hr.includes(r.id)) h += row(r.title, r.items, r.id); });
   if (ROWS && ROWS.length) {
@@ -2189,6 +2202,7 @@ async function ivHomeLoad(pid) {
   const cfg = await ivCfg();
   const btn = $('ivHomeBtn');
   if (btn) btn.style.display = cfg ? '' : 'none';
+  const ci = $('catIv'); if (ci) ci.style.display = cfg ? '' : 'none';
   if (!cfg) { IV.homeHTML = ''; IV.homePid = pid; return; }
   if (IV.homeFor !== pid) return;
   await ivPinsLoad();
@@ -2543,10 +2557,11 @@ function clibRandom() {
   clibTap(src[Math.floor(Math.random() * src.length)].id);
 }
 const CL_TITLES = {movie: '🎬 أفلام هدية من السيد', series: '📺 مسلسلات هدية من السيد', cartoon: '🧸 كرتون هدية من السيد'};
-function clibRows() {
+function clibRows(only) {
   if (typeof CL === 'undefined') return '';
   if (!CL.loaded) { if (!CL.tried) { CL.tried = true; clibLoad().then(renderShelvesSoon); } return ''; }
   return CL_CATS.map(c => {
+    if (only && c[0] !== only) return '';
     let list = CL.items.filter(x => x.cat === c[0]);
     if (!list.length) return '';
     if (isTv() && list.length > TV_ROW_N) list = list.slice(0, TV_ROW_N);
@@ -6670,6 +6685,128 @@ function setupHls(v) {
   }
 }
 
+// ================= شريط الأقسام: الرئيسية / أفلام / مسلسلات / كرتون / قائمتي =================
+let CAT = 'home';
+const CATS = [['home', '🏠 الرئيسية'], ['movie', '🎬 أفلام'], ['tv', '📺 مسلسلات'], ['cartoon', '🧸 كرتون'], ['list', '❤️ قائمتي']];
+const CAT_GEN = ['action', 'drama', 'comedy', 'crime', 'scifi', 'horror', 'romance', 'family', 'doc'];
+const CAT_TOON = [['cartoon', 'كرتون'], ['family', 'عائلي']];
+const CAT_LIB = {movie: 'movie', tv: 'series', cartoon: 'cartoon'};
+const CATR = {};
+const normTy = t => t === 'series' ? 'tv' : t;
+const catTy = () => (CAT === 'movie' || CAT === 'tv') ? CAT : '';
+function catTabs() {
+  const el = $('cats');
+  if (!el) return;
+  if (!el.children.length) {
+    el.innerHTML = CATS.map(c => '<button class="cat" data-c="' + c[0] + '" onclick="setCat(this.dataset.c)">' + c[1] + '</button>').join('') +
+      '<button class="cat" id="catIv" style="display:' + (IV.cfg ? '' : 'none') + '" onclick="ivOpen()">📡 IPTV</button>';
+  }
+  el.querySelectorAll('.cat[data-c]').forEach(b => b.classList.toggle('on', b.dataset.c === CAT));
+  const ch = $('clHome');
+  if (ch) ch.style.display = CAT === 'home' ? '' : 'none';
+}
+function setCat(c) {
+  if (c === CAT && VS.length <= 1) return;
+  if (VS.length > 1) { history.go(-(VS.length - 1)); setTimeout(() => applyCat(c), 120); }
+  else applyCat(c);
+}
+function applyCat(c) {
+  CAT = c;
+  BR.on = false;
+  heroI = 0;
+  catTabs();
+  closeDetails();
+  renderGenres();
+  renderHero();
+  if (c === 'movie' || c === 'tv' || c === 'cartoon') loadCatRows(c);
+  window.scrollTo(0, 0);
+}
+function heroList() {
+  if (CAT === 'home') return HERO;
+  if (CAT === 'movie' || CAT === 'tv') return HERO.filter(x => normTy(x.type) === CAT);
+  return [];
+}
+async function loadCatRows(c) {
+  const R = CATR[c] || (CATR[c] = {rows: [], st: 0});
+  if (R.st) return;
+  R.st = 1;
+  const ty = (c === 'movie' || c === 'tv') ? c : '';
+  const gens = ty ? CAT_GEN.map(g => [g, (GTILES.find(x => x[0] === g) || [g, g])[1]]) : CAT_TOON;
+  let i = 0;
+  const worker = async () => {
+    while (i < gens.length) {
+      const ix = i++, g = gens[ix];
+      try {
+        const {d} = await api('/browse?genre=' + encodeURIComponent(g[0]) + (ty ? '&type=' + ty : '') + '&skip=0');
+        let items = d.items || [];
+        if (ty) items = items.filter(x => normTy(x.type) === ty);
+        if (items.length) { R.rows.push({ix: ix, g: g[0], title: g[1], items: items}); R.rows.sort((a, b) => a.ix - b.ix); }
+      } catch (e) {}
+      if (CAT === c) renderShelvesSoon();
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  R.st = 2;
+  if (CAT === c) renderShelvesSoon();
+}
+function catView() {
+  const ty = catTy(), its = Object.values((UD.items && UD.items[PID]) || {}).filter(x => !x.del && x.key);
+  const ok = t => !ty || normTy(t.type) === ty;
+  const lst = its.filter(x => x.key[0] === 'l').sort((a, b) => b.t - a.t)
+    .map(x => ({id: x.tmdb, type: x.type, poster: x.poster, title: x.title, year: x.year}));
+  let h = '';
+  if (CAT === 'list') {
+    if (!lst.length) return warn('قائمتك فاضية. افتح أي فيلم أو مسلسل ودوس «أضف لقائمتي».');
+    return '<h3 class="sec">❤️ قائمتي</h3>' + row('', lst).replace('<h3 class="sec"></h3><div class="hrow">', '<div class="bgrid">') +
+      (LATEST.length ? row('🔔 جديد في قائمتي', LATEST) : '');
+  }
+  // كمّل المشاهدة (للقسم ده بس)
+  const groups = new Map();
+  its.filter(x => x.key[0] !== 'l').forEach(x => {
+    const g = x.cl ? 'cl' + x.cl : (x.type === 'tv' && x.tmdb) ? 'tv' + x.tmdb : x.key;
+    const o = groups.get(g);
+    if (!o || x.t > o.t) groups.set(g, x);
+  });
+  const inCat = x => {
+    if (CAT === 'cartoon') { const c = x.cl && clibFind(x.cl); return !!(c && c.cat === 'cartoon'); }
+    if (x.cl) { const c = clibFind(x.cl); if (c && c.cat === 'cartoon') return false; }
+    return normTy(x.type) === ty;
+  };
+  const cw = [...groups.values()].filter(x => cwOK(x) && inCat(x)).sort((a, b) => b.t - a.t).slice(0, 20);
+  if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
+  // تصنيفات القسم
+  if (ty) {
+    h += '<div class="hrow">' + CAT_GEN.map(g => {
+      const n = (GTILES.find(x => x[0] === g) || [g, g])[1];
+      return '<button class="gtile" data-g="' + g + '" data-n="' + esc(n) + '" onclick="openBrowse(\'genre=\' + this.dataset.g + \'&type=' + ty + '\', this.dataset.n, \'' + ty + '\')">' + esc(n) + '</button>';
+    }).join('') + '</div>';
+  }
+  // مكتبتي (هدية)
+  h += clibRows(CAT_LIB[CAT]);
+  const lf = lst.filter(ok);
+  if (lf.length) h += row('❤️ قائمتي', lf);
+  const lt = LATEST.filter(ok);
+  if (lt.length) h += row('🔔 جديد في قائمتي', lt);
+  if (ty) {
+    const p = prof(), hr = (p && p.hr) || [];
+    const add = (r, rid) => { const it = (r.items || []).filter(ok); if (it.length) h += row(r.title, it, rid); };
+    FRESH.forEach(r => add(r, r.id));
+    IROWS.forEach(r => add(r, r.id));
+    if (AROWS_PID === PID) AROWS.forEach(r => add(r));
+    (ROWS || []).forEach(r => { if (!hr.includes(r.id)) add(r, r.id); });
+  }
+  // صفوف التصنيفات (أكشن، دراما...)
+  const R = CATR[CAT];
+  if (R) R.rows.forEach(r => {
+    const more = '<div class="poster mtile" data-q="genre=' + esc(r.g) + (ty ? '&type=' + ty : '') + '" data-t="' + esc(r.title) + '" onclick="openBrowse(this.dataset.q,this.dataset.t,\'' + ty + '\')">المزيد ‹</div>';
+    const rr = row(r.title, r.items.slice(0, isTv() ? TV_ROW_N : 40));
+    h += rr.replace(/<\/div>$/, more + '</div>');
+  });
+  if (!R || R.st !== 2) h += pend('جاري تحميل الأقسام...');
+  else if (!h) h = warn('لسه مفيش حاجة في القسم ده.');
+  return h;
+}
+
 // ================= الشكل الجديد: بانر + "المزيد" =================
 let HERO = [], heroI = 0, heroT = null;
 const BR = {on: false, k: '', title: '', items: [], skip: 0, more: false, busy: false, err: ''};
@@ -6683,28 +6820,29 @@ function renderHero() {
   const el = $('hzb');
   clearInterval(heroT);
   if (!el) return;
-  if (!HERO.length) { el.innerHTML = ''; return; }
-  const i = heroI % HERO.length, x = HERO[i];
+  const L = heroList();
+  if (!L.length) { el.innerHTML = ''; return; }
+  const i = heroI % L.length, x = L[i];
   el.innerHTML = '<div class="hz" style="' + (isTv() ? 'background:linear-gradient(135deg,#1e293b,#0f172a)' : 'background-image:url(\'' + esc(x.backdrop) + '\')') + '"><div class="hc"><h2>' + esc(x.title) +
     '</h2><div class="hm">' + esc((x.type === 'tv' ? 'مسلسل' : 'فيلم') + ' · ' + x.year + ' · ⭐ ' + x.rating) + '</div><p>' + esc(x.overview) +
     '</p><div class="hb"><button class="p" onclick="heroGo(' + i + ',1)">▶ عرض</button><button class="i" onclick="heroGo(' + i +
     ')">المزيد من المعلومات</button><button class="i" onclick="openTrailer(\'' + x.type + '\',' + x.id + ')">🎬 تريلر</button></div></div><div class="dots">' +
-    HERO.map((_, j) => '<i class="' + (j === i ? 'on' : '') + '" onclick="heroI=' + j + ';renderHero()"></i>').join('') + '</div></div>';
+    L.map((_, j) => '<i class="' + (j === i ? 'on' : '') + '" onclick="heroI=' + j + ';renderHero()"></i>').join('') + '</div></div>';
   if (!isTv()) {
   heroT = setInterval(() => { if ($('hz').style.display !== 'none') { heroI++; renderHero(); } }, 8000);
   }
 }
 async function heroGo(i, play) {
-  const x = HERO[i];
+  const x = heroList()[i];
   if (!x) return;
   await openDetails(x.type, x.id);
   if (play && x.type === 'movie') playOpen();
 }
 function openMore(k, title) {
-  return openBrowse(k.indexOf('int:') === 0 ? 'int=' + encodeURIComponent(k.slice(4)) : k.indexOf('fresh:') === 0 ? 'fresh=' + encodeURIComponent(k.slice(6)) : 'k=' + encodeURIComponent(k), title);
+  return openBrowse(k.indexOf('int:') === 0 ? 'int=' + encodeURIComponent(k.slice(4)) : k.indexOf('fresh:') === 0 ? 'fresh=' + encodeURIComponent(k.slice(6)) : 'k=' + encodeURIComponent(k), title, catTy());
 }
-async function openBrowse(q, title) {
-  Object.assign(BR, {on: true, q: q, title: title, items: [], skip: 0, more: true, busy: false, err: ''});
+async function openBrowse(q, title, ty) {
+  Object.assign(BR, {on: true, q: q, title: title, ty: ty || '', items: [], skip: 0, more: true, busy: false, err: ''});
   pushView('b');
   $('hz').style.display = 'none';
   $('shelves').style.display = 'none';
@@ -6722,7 +6860,7 @@ async function brLoad() {
     if (d.error) { BR.more = false; BR.err = d.error; }
     else {
       const key = x => x.imdb || x.id || x.title, seen = new Set(BR.items.map(key));
-      (d.items || []).forEach(x => { if (!seen.has(key(x))) { seen.add(key(x)); BR.items.push(x); } });
+      (d.items || []).filter(x => !BR.ty || normTy(x.type) === BR.ty).forEach(x => { if (!seen.has(key(x))) { seen.add(key(x)); BR.items.push(x); } });
       BR.skip = d.skip;
       BR.more = !!d.more;
     }
@@ -6754,6 +6892,7 @@ const GTILES = [['action', 'أكشن'], ['drama', 'دراما'], ['int:hi', '�
   ['horror', 'رعب'], ['romance', 'رومانسي'], ['cartoon', 'كرتون'], ['family', 'عائلي'], ['doc', 'وثائقي']];
 function renderGenres() {
   const el = $('gtiles');
+  if (CAT !== 'home') { if (el) el.innerHTML = ''; return; }
   if (el) el.innerHTML = '<div class="hrow">' + GTILES.map(g => '<button class="gtile" data-g="' + g[0] + '" data-n="' + g[1] +
     '" onclick="openBrowse((this.dataset.g.indexOf(\'int:\') === 0 ? \'int=\' + this.dataset.g.slice(4) : \'genre=\' + this.dataset.g), this.dataset.n)">' + g[1] + '</button>').join('') + '</div>';
 }
