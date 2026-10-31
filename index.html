@@ -460,6 +460,24 @@ h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:lin
 .ep .eb.d{background:#2a1520;color:#ff8fa3}
 .ep .eb.g{background:#1f1f2c;color:#9a9aab}
 .vcp:active,.vcd:active,.vsp:active,.vsd:active,.eb:active{transform:scale(.96)}
+
+/* ===== IPTV ===== */
+#iv{display:none;position:fixed;inset:0;z-index:100;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;direction:rtl;color:var(--text)}
+body.iv-on{overflow:hidden}
+#iv .search-input{margin:0;flex:1;min-width:0;height:44px;padding:0 14px}
+#iv .sphd{padding-top:calc(10px + env(safe-area-inset-top))}
+.poster{position:relative}
+.poster.ivl img,.poster.ivl .noimg{aspect-ratio:1/1;object-fit:contain;padding:12px;box-sizing:border-box}
+.clgrid.ivg{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+.ivpin{position:absolute;top:4px;left:4px;z-index:2;background:#000a;border:0;border-radius:8px;color:#fff;font-size:14px;padding:3px 7px;cursor:pointer}
+.ivd{color:var(--success);font-size:13px;font-weight:700}.ivd.low{color:#ef4444}
+.ivdet{display:flex;gap:14px;align-items:flex-start;margin-bottom:6px}
+.ivdet img{width:120px;border-radius:12px;flex:none;aspect-ratio:2/3;object-fit:cover;background:#0b1220}
+.ivdet h2{margin:0 0 6px}.ivdet p{color:var(--mut);font-size:13px;line-height:1.7}
+#ivp{position:fixed;inset:0;z-index:300;background:#000;display:flex;flex-direction:column;direction:rtl}
+#ivp video{flex:1;min-height:0;width:100%;background:#000}
+.ivph{display:flex;gap:10px;align-items:center;padding:8px 12px;color:#fff}
+.ivpb{display:flex;gap:8px;padding:8px 12px;justify-content:center;flex-wrap:wrap}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
@@ -545,6 +563,7 @@ h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:lin
 <button class="search-btn" onclick="clibOpen('movie')">🎬 أفلام</button>
 <button class="search-btn" onclick="clibOpen('series')">📺 مسلسلات</button>
 <button class="search-btn" onclick="clibOpen('cartoon')">🧸 كرتون</button>
+<button id="ivHomeBtn" class="search-btn" style="display:none;background:#0ea5e9" onclick="ivOpen()">📡 IPTV</button>
 </div>
 
 <div id="titles"></div>
@@ -591,6 +610,17 @@ h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:lin
 <div id="clBody" class="spbody"></div>
 </div>
 
+<div id="iv">
+<div class="sphd">
+<div class="sprow">
+<button class="spback" onclick="ivBack()" aria-label="رجوع">➡️</button>
+<input id="ivQ" class="search-input" placeholder="ابحث في الـIPTV..." enterkeyhint="search" oninput="ivSetQ(this.value)">
+</div>
+<div class="tabs" id="ivTabs"></div>
+</div>
+<div id="ivBody" class="spbody"></div>
+</div>
+
 <div id="pgbar"><button class="pgb" onclick="pgBack()" aria-label="رجوع">➡️ رجوع</button><div class="pgt" id="pgt"></div></div>
 <div id="results"></div>
 
@@ -600,6 +630,11 @@ h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:lin
 <details class="action-box adm" style="text-align:right;margin-top:18px">
 <summary>👥 المستخدمين</summary>
 <div id="usBox" style="margin:14px 0"></div>
+</details>
+
+<details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)ivAdmLoad()">
+<summary>📡 اشتراكات IPTV (لكل عضو)</summary>
+<div id="ivAdm" style="margin:14px 0"></div>
 </details>
 
 <details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadActivity()">
@@ -891,7 +926,7 @@ function evKey(e) {
 }
 const FOCUSABLE = 'button:not([disabled]),a[href],input:not([type=hidden]),select,summary,[tabindex="0"]';
 function navScope() {
-  for (const id of ['login-screen', 'pform', 'viewbox', 'vpanel', 'profile-screen']) {
+  for (const id of ['ivp', 'login-screen', 'pform', 'viewbox', 'vpanel', 'profile-screen', 'iv']) {
     const el = $(id);
     if (el && getComputedStyle(el).display !== 'none') return el;
   }
@@ -1747,6 +1782,7 @@ function renderShelves() {
   let h = '';
   if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
   h += clibRows();
+  try { h += ivHomeHTML(); } catch (e) {}
   if (lst.length) h += row('❤️ قائمتي', lst);
   if (LATEST.length) h += row('🔔 جديد في قائمتي', LATEST);
   FRESH.forEach(r => { h += row(r.title, r.items, r.id); });
@@ -1913,6 +1949,516 @@ function closeDetails() {
 }
 
 // ================= مكتبتي الخاصة (أفلام / مسلسلات / كرتون) — الأدمن بس بيضيف، والروابط مخفية عن الباقي =================
+// ================= IPTV: حساب خاص لكل عضو (الأدمن بس هو اللي بيضيف الهوست/اليوزر/الباس) =================
+// الطلبات بتطلع من جهاز العضو نفسه (التطبيق عن طريق الجسر AndroidPlayer.httpGet) عشان الآيبي مصري ومن غير CORS.
+const IV = {cfg: null, loaded: false, ck: '', L: {}, C: {}, pins: {live: [], cats: []}, pinsPid: null, homeFor: null, homePid: null, homeHTML: '',
+  open: false, tab: 'vod', cat: '', q: '', lim: 90, sort: 'new', sel: null, ss: null, flat: [], flatSid: null, rt: 0, info: null};
+const IV_PEND = {};
+let _ivN = 0, _ivPT = null;
+const ivApp = () => !!(window.AndroidPlayer && typeof AndroidPlayer.httpGet !== 'undefined');
+const IV_ACT = {vod: 'get_vod_streams', series: 'get_series', live: 'get_live_streams'};
+const IV_CATACT = {vod: 'get_vod_categories', series: 'get_series_categories', live: 'get_live_categories'};
+const IV_KEEP = {
+  get_live_streams: 'stream_id,name,stream_icon,category_id,num',
+  get_vod_streams: 'stream_id,name,stream_icon,category_id,added,rating,container_extension',
+  get_series: 'series_id,name,cover,category_id,last_modified,rating'
+};
+// رد الجسر: الأندرويد بينادي __nh(id, status) وبعدين بناخد النص بـ httpTake
+window.__nh = function (id, st) {
+  const p = IV_PEND[id];
+  if (!p) { try { AndroidPlayer.httpTake(id); } catch (e) {} return; }
+  delete IV_PEND[id];
+  let t = '';
+  try { t = AndroidPlayer.httpTake(id); } catch (e) {}
+  if (st >= 200 && st < 300) {
+    try { p.ok(JSON.parse(t)); } catch (e) { p.no('رد غير مفهوم من الـIPTV'); }
+  } else p.no(st ? 'الـIPTV رد بكود ' + st : 'تعذّر الاتصال بالـIPTV' + (t ? ' · ' + t : ''));
+};
+function ivFetch(url, keep, ttl) {
+  if (ivApp()) return new Promise((ok, no) => {
+    const id = 'h' + (++_ivN) + '_' + Date.now();
+    const tm = setTimeout(() => { if (IV_PEND[id]) { delete IV_PEND[id]; no(new Error('الـIPTV اتأخر في الرد')); } }, 110000);
+    IV_PEND[id] = {ok: v => { clearTimeout(tm); ok(v); }, no: m => { clearTimeout(tm); no(new Error(m)); }};
+    try { AndroidPlayer.httpGet(id, url, keep || '', ttl || 0); } catch (e) { clearTimeout(tm); delete IV_PEND[id]; no(e); }
+  });
+  if (location.protocol === 'https:' && /^http:/i.test(url)) return Promise.reject(new Error('المتصفح بيمنع هوست http من صفحة https. استخدم تطبيق الأندرويد (أو VLC).'));
+  return fetch(url, {signal: tmo(60000)}).then(r => {
+    if (!r.ok) throw new Error('الـIPTV رد بكود ' + r.status);
+    return r.json();
+  }).catch(e => {
+    if (e && /Failed to fetch|NetworkError|Load failed/i.test(e.message || '')) throw new Error('المتصفح مش قادر يكلم الـIPTV (CORS/آيبي). استخدم تطبيق الأندرويد.');
+    throw e;
+  });
+}
+function ivUrl(action, params) {
+  const c = IV.cfg;
+  let u = c.host + '/player_api.php?username=' + encodeURIComponent(c.user) + '&password=' + encodeURIComponent(c.pass);
+  if (action) u += '&action=' + action;
+  for (const k in (params || {})) u += '&' + k + '=' + encodeURIComponent(params[k]);
+  return u;
+}
+const ivApi = (action, params, keep, ttl) => ivFetch(ivUrl(action, params), keep, ttl);
+function ivList(action, catId) {
+  const k = action + '|' + (catId || '');
+  if (IV.L[k]) return IV.L[k];
+  const p = ivApi(action, catId ? {category_id: catId} : null, IV_KEEP[action] || '', 30)
+    .then(v => Array.isArray(v) ? v : []).catch(e => { delete IV.L[k]; throw e; });
+  IV.L[k] = p;
+  return p;
+}
+function ivCats(kind) {
+  if (IV.C[kind]) return IV.C[kind];
+  const p = ivApi(IV_CATACT[kind], null, '', 120).then(v => Array.isArray(v) ? v : []).catch(e => { delete IV.C[kind]; throw e; });
+  IV.C[kind] = p;
+  return p;
+}
+async function ivCfg(force) {
+  if (IV.loaded && !force) return IV.cfg;
+  if (IV._cp) return IV._cp;
+  IV._cp = (async () => {
+    try {
+      const {d} = await api('/iptv/cfg');
+      IV.cfg = d && d.set ? d : null;
+      IV.loaded = true;
+      const ck = IV.cfg ? IV.cfg.host + '|' + IV.cfg.user : '';
+      if (ck !== IV.ck) { IV.ck = ck; IV.L = {}; IV.C = {}; }
+    } catch (e) { IV.loaded = false; }
+    IV._cp = null;
+    return IV.cfg;
+  })();
+  return IV._cp;
+}
+// ---------- التثبيتات (لكل بروفايل) ----------
+async function ivPinsLoad() {
+  if (IV.pinsPid === PID) return;
+  const pid = PID;
+  try {
+    const {d} = await api('/iptv/pins?pid=' + encodeURIComponent(pid));
+    IV.pins = {live: (d.pins && d.pins.live) || [], cats: (d.pins && d.pins.cats) || []};
+    IV.pinsPid = pid;
+  } catch (e) { IV.pins = {live: [], cats: []}; }
+}
+function ivPinsSave() {
+  clearTimeout(_ivPT);
+  const pid = PID;
+  _ivPT = setTimeout(() => {
+    api('/iptv/pins', {method: 'POST', body: JSON.stringify({pid: pid, pins: IV.pins})}).catch(() => {});
+    ivHomeLoad(PID);
+  }, 700);
+}
+const ivPinned = id => IV.pins.live.includes(String(id));
+function ivTogglePin(id, btn) {
+  id = String(id);
+  const i = IV.pins.live.indexOf(id);
+  if (i >= 0) IV.pins.live.splice(i, 1); else IV.pins.live.unshift(id);
+  if (btn) btn.textContent = ivPinned(id) ? '⭐' : '📌';
+  toast(i >= 0 ? 'اتشالت من المثبّتات' : 'اتثبّتت ⭐');
+  ivPinsSave();
+  if (IV.open && IV.cat === '__pin') ivRender();
+}
+const ivCatPinned = (k, id) => IV.pins.cats.some(c => c.k === k && c.id === String(id));
+function ivToggleCat(k, id, n) {
+  id = String(id);
+  const i = IV.pins.cats.findIndex(c => c.k === k && c.id === id);
+  if (i >= 0) IV.pins.cats.splice(i, 1); else IV.pins.cats.unshift({k: k, id: id, n: n});
+  toast(i >= 0 ? 'القسم اتشال من المثبّتات' : 'القسم اتثبّت ⭐');
+  ivPinsSave();
+  ivRender();
+}
+// ---------- حالة الاشتراك (باقي كام يوم) ----------
+function ivDays(st) {
+  if (!st || !st.t) return null;
+  if (!st.exp) return Infinity;
+  return Math.ceil((st.exp * 1000 - Date.now()) / 864e5);
+}
+function ivDaysTxt(st) {
+  const d = ivDays(st);
+  if (d === null) return '';
+  if (d === Infinity) return 'اشتراك مفتوح';
+  if (d <= 0) return 'الاشتراك انتهى';
+  return 'باقي ' + d + ' يوم';
+}
+async function ivStatRefresh() {
+  if (!IV.cfg) return;
+  try {
+    const v = await ivFetch(ivUrl('', null), '', 0);
+    const ui = v && v.user_info;
+    if (!ui) return;
+    const st = {exp: +ui.exp_date || 0, maxc: +ui.max_connections || 0, active: +ui.active_cons || 0,
+      status: String(ui.status || ''), trial: ui.is_trial === '1' || ui.is_trial === 1};
+    IV.cfg.stat = Object.assign({t: Date.now() / 1000}, st);
+    api('/iptv/stat', {method: 'POST', body: JSON.stringify(st)}).catch(() => {});
+    if (IV.open && IV.tab === 'me' && !IV.sel) ivRender(); else if (IV.open) ivHead();
+    renderShelvesSoon();
+  } catch (e) {}
+}
+// ---------- روابط التشغيل والتحميل ----------
+const ivEnc = encodeURIComponent;
+const ivLiveUrl = id => IV.cfg.host + '/live/' + ivEnc(IV.cfg.user) + '/' + ivEnc(IV.cfg.pass) + '/' + id + (ivApp() ? '.ts' : '.m3u8');
+const ivMovieUrl = (id, ext) => IV.cfg.host + '/movie/' + ivEnc(IV.cfg.user) + '/' + ivEnc(IV.cfg.pass) + '/' + id + '.' + (ext || 'mp4');
+const ivEpUrl = (id, ext) => IV.cfg.host + '/series/' + ivEnc(IV.cfg.user) + '/' + ivEnc(IV.cfg.pass) + '/' + id + '.' + (ext || 'mp4');
+const ivClean = n => String(n || 'video').replace(/[\\/:*?"<>|]+/g, '_').trim().slice(0, 120) || 'video';
+const p2s = n => String(n).padStart(2, '0');
+// تقدّم المشاهدة (على الجهاز بس)
+function ivPK() { return 'iv_p_' + (UNAME || '') + '_' + (PID || ''); }
+function ivProgAll() { try { return JSON.parse(localStorage.getItem(ivPK()) || '{}'); } catch (e) { return {}; } }
+function ivPosGet(key) { const o = ivProgAll()[key]; return (o && !o.done && o.pos > 10) ? Math.floor(o.pos) : 0; }
+function ivProgress(pos, dur, ended) {
+  const np = window.IV_NP;
+  if (!np || !np.key) return;
+  try {
+    const all = ivProgAll();
+    all[np.key] = {pos: pos, dur: dur, done: ended || (dur > 0 && pos > dur * 0.95), t: Date.now()};
+    const ks = Object.keys(all);
+    if (ks.length > 200) ks.sort((a, b) => all[a].t - all[b].t).slice(0, ks.length - 200).forEach(k => delete all[k]);
+    localStorage.setItem(ivPK(), JSON.stringify(all));
+  } catch (e) {}
+  if (ended && np.next != null && IV.flatSid === np.sid) setTimeout(() => ivPlayEp(np.next), 800);
+}
+function ivPlay(url, title, o) {
+  o = o || {};
+  if (ivApp()) {
+    window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid};
+    AndroidPlayer.play(url, title, o.key ? ivPosGet(o.key) : 0);
+    return;
+  }
+  ivWebPlay(url, title, o);
+}
+function ivDownload(url, name) {
+  if (window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined') { AndroidPlayer.download(url, name); return; }
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast('اتبعت للمتصفح. لو ما بدأش انسخ الرابط وحمّله من VLC أو IDM');
+}
+function ivCopy(t) {
+  try { navigator.clipboard.writeText(t).then(() => toast('اتنسخ ✅'), () => prompt('انسخ الرابط:', t)); } catch (e) { prompt('انسخ الرابط:', t); }
+}
+function ivM3U(url, title) {
+  const b = new Blob(['#EXTM3U\n#EXTINF:-1,' + title + '\n' + url + '\n'], {type: 'audio/x-mpegurl'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = ivClean(title) + '.m3u';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+// مشغّل المتصفح (الأندرويد بيستخدم المشغّل الداخلي)
+function ivWebPlay(url, title, o) {
+  let m = $('ivp');
+  if (m) m.remove();
+  m = document.createElement('div');
+  m.id = 'ivp';
+  m.innerHTML = '<div class="ivph"><button class="spback" onclick="ivWebClose()">✖</button><b>' + esc(title) + '</b></div>' +
+    '<video id="ivpv" controls autoplay playsinline></video><div id="ivpe"></div>' +
+    '<div class="ivpb"><button class="fc" data-u="' + esc(url) + '" onclick="ivCopy(this.dataset.u)">📋 انسخ الرابط</button>' +
+    '<button class="fc" data-u="' + esc(url) + '" data-t="' + esc(title) + '" onclick="ivM3U(this.dataset.u,this.dataset.t)">💾 ملف VLC (.m3u)</button></div>';
+  document.body.appendChild(m);
+  const v = $('ivpv');
+  const err = t => { $('ivpe').innerHTML = '<div class="warn">' + esc(t) + '</div>'; };
+  v.onerror = () => err('المتصفح مش قادر يشغّل الصيغة دي (غالباً mkv أو http). افتح الرابط في VLC، أو استخدم التطبيق.');
+  if (o && o.key) { const p = ivPosGet(o.key); if (p) v.addEventListener('loadedmetadata', () => { try { v.currentTime = p; } catch (e) {} }, {once: true}); }
+  if (/\.m3u8/.test(url) && window.Hls && Hls.isSupported()) {
+    const h = new Hls();
+    m._h = h;
+    h.loadSource(url); h.attachMedia(v);
+    h.on(Hls.Events.ERROR, (e, d) => { if (d && d.fatal) err('القناة مش بتفتح من المتصفح. جرّب التطبيق أو VLC.'); });
+  } else v.src = url;
+}
+function ivWebClose() {
+  const m = $('ivp');
+  if (!m) return;
+  try { if (m._h) m._h.destroy(); } catch (e) {}
+  try { const v = $('ivpv'); v.pause(); v.removeAttribute('src'); v.load(); } catch (e) {}
+  m.remove();
+}
+// ---------- الصفحة الرئيسية: صفوف لكل عضو ----------
+function ivHomeHTML() {
+  if (!PID) return '';
+  if (IV.homeFor !== PID) { IV.homeFor = PID; ivHomeLoad(PID); }
+  return IV.homePid === PID ? IV.homeHTML : '';
+}
+function ivTile(kind, x) {
+  const live = kind === 'live', id = kind === 'series' ? x.series_id : x.stream_id, img = kind === 'series' ? x.cover : x.stream_icon;
+  const isnew = !live && ((+x.added || +x.last_modified || 0) > Date.now() / 1000 - 7 * 86400);
+  return '<div class="poster' + (live ? ' ivl' : '') + '" tabindex="0" role="button" data-k="' + kind + '" data-id="' + esc(id) + '" onclick="ivTap(this)">' +
+    (live ? '<button class="ivpin" tabindex="-1" onclick="event.stopPropagation();ivTogglePin(this.parentNode.dataset.id,this)">' + (ivPinned(id) ? '⭐' : '📌') + '</button>' : (isnew ? '<span class="pbadge">جديد</span>' : '')) +
+    (img ? '<img ' + lzA(img) + ' alt="">' : '<div class="noimg">' + (live ? '📡' : '🎬') + '</div>') +
+    '<div class="t">' + esc(x.name) + '</div></div>';
+}
+const ivMore = (tab, txt) => '<div class="poster mtile" tabindex="0" role="button" data-k="more" data-id="' + tab + '" onclick="ivTap(this)">' + (txt || 'المزيد ⬅') + '</div>';
+const ivCatTile = c => '<div class="poster mtile" tabindex="0" role="button" data-k="cat" data-ck="' + c.k + '" data-id="' + esc(c.id) + '" data-n="' + esc(c.n) + '" onclick="ivTap(this)">⭐ ' + esc(c.n) + '</div>';
+async function ivHomeLoad(pid) {
+  const cfg = await ivCfg();
+  const btn = $('ivHomeBtn');
+  if (btn) btn.style.display = cfg ? '' : 'none';
+  if (!cfg) { IV.homeHTML = ''; IV.homePid = pid; return; }
+  if (IV.homeFor !== pid) return;
+  await ivPinsLoad();
+  ivStatRefresh();
+  const N = isTv() ? TV_ROW_N : 20;
+  let err = '';
+  const bad = e => { err = err || (e && e.message) || 'خطأ'; return []; };
+  const [vod, ser] = await Promise.all([ivList('get_vod_streams').catch(bad), ivList('get_series').catch(bad)]);
+  const pc = k => IV.pins.cats.filter(c => c.k === k).map(ivCatTile).join('');
+  let h = '';
+  const st = ivDaysTxt(cfg.stat);
+  const d = ivDays(cfg.stat);
+  h += '<h3 class="sec">📡 IPTV' + (st ? ' <small class="ivd' + (d !== null && d !== Infinity && d <= 5 ? ' low' : '') + '">' + st + '</small>' : '') + '</h3>';
+  if (err && !vod.length && !ser.length) {
+    h += '<div class="warn">📡 ' + esc(err) + ' <button class="fc" onclick="ivHomeRetry()">🔄 جرّب تاني</button></div>';
+  } else {
+    const mv = vod.slice().sort((a, b) => (+b.added || 0) - (+a.added || 0)).slice(0, N);
+    const sr = ser.slice().sort((a, b) => (+b.last_modified || 0) - (+a.last_modified || 0)).slice(0, N);
+    if (mv.length || pc('vod')) h += '<h3 class="sec">🎬 آخر الأفلام المضافة</h3><div class="hrow">' + pc('vod') + mv.map(x => ivTile('vod', x)).join('') + ivMore('vod') + '</div>';
+    if (sr.length || pc('series')) h += '<h3 class="sec">📺 آخر المسلسلات المضافة</h3><div class="hrow">' + pc('series') + sr.map(x => ivTile('series', x)).join('') + ivMore('series') + '</div>';
+  }
+  // القنوات المباشرة: المثبّت الأول
+  try {
+    let ch = [];
+    if (IV.pins.live.length) {
+      const all = await ivList('get_live_streams');
+      const by = new Map(all.map(x => [String(x.stream_id), x]));
+      ch = IV.pins.live.map(id => by.get(String(id))).filter(Boolean);
+    } else {
+      const cs = await ivCats('live');
+      if (cs[0]) ch = (await ivList('get_live_streams', cs[0].category_id)).slice(0, N);
+    }
+    h += '<h3 class="sec">📡 القنوات المباشرة' + (IV.pins.live.length ? '' : ' <small class="ivd">دوس 📌 على أي قناة عشان تثبّتها</small>') + '</h3><div class="hrow">' +
+      pc('live') + ch.slice(0, isTv() ? N : 40).map(x => ivTile('live', x)).join('') + ivMore('live') + '</div>';
+  } catch (e) {
+    h += '<h3 class="sec">📡 القنوات المباشرة</h3><div class="hrow">' + pc('live') + ivMore('live') + '</div>';
+  }
+  if (IV.homeFor !== pid) return;
+  IV.homePid = pid;
+  IV.homeHTML = h;
+  renderShelvesSoon();
+  setTimeout(() => { try { lzScan(); } catch (e) {} }, 400);
+}
+function ivHomeRetry() { IV.L = {}; IV.C = {}; IV.homePid = null; IV.homeFor = PID; ivHomeLoad(PID); }
+// ---------- صفحة «المزيد» ----------
+function ivOpen(tab, cat) {
+  IV.tab = tab || IV.tab || 'vod';
+  IV.cat = cat || '';
+  IV.q = ''; IV.lim = 90; IV.sel = null;
+  $('ivQ').value = '';
+  IV.open = true;
+  $('iv').style.display = 'block';
+  document.body.classList.add('iv-on');
+  if (VS[VS.length - 1] !== 'iv') pushView('iv');
+  $('iv').scrollTop = 0;
+  ivRender();
+  ivCfg().then(c => { if (IV.open && c) ivPinsLoad().then(() => { if (IV.open && !IV.sel) ivRender(); }); if (IV.open) ivRender(); });
+}
+function ivHide() { IV.open = false; IV.sel = null; $('iv').style.display = 'none'; document.body.classList.remove('iv-on'); renderShelvesSoon(); }
+function ivBack() {
+  if (IV.sel) { IV.sel = null; ivRender(); return; }
+  if (VS[VS.length - 1] === 'iv') history.back(); else ivHide();
+}
+const IV_TABS = [['vod', '🎬 أفلام'], ['series', '📺 مسلسلات'], ['live', '📡 مباشر'], ['me', 'ℹ️ حسابي']];
+function ivHead() {
+  $('ivTabs').innerHTML = IV_TABS.map(t => '<button class="tab' + (IV.tab === t[0] ? ' on' : '') + '" onclick="ivTab(\'' + t[0] + '\')">' + t[1] + '</button>').join('') +
+    (IV.cfg && ivDaysTxt(IV.cfg.stat) ? '<span class="ivd' + (ivDays(IV.cfg.stat) <= 5 ? ' low' : '') + '" style="align-self:center;white-space:nowrap">' + ivDaysTxt(IV.cfg.stat) + '</span>' : '');
+}
+function ivTab(t) { IV.tab = t; IV.cat = ''; IV.sel = null; IV.lim = 90; IV.q = ''; $('ivQ').value = ''; ivRender(); $('iv').scrollTop = 0; }
+function ivSetCat(c) { IV.cat = c; IV.lim = 90; ivRender(); }
+function ivSetQ(v) { IV.q = v.trim(); IV.lim = 90; clearTimeout(IV._qt); IV._qt = setTimeout(ivRender, 250); }
+const ivErr = e => '<div class="warn" style="color:#ef4444">❌ ' + esc((e && e.message) || 'خطأ') + '</div><div style="text-align:center"><button class="search-btn" style="max-width:220px" onclick="IV.L={};IV.C={};ivRender()">🔄 جرّب تاني</button></div>';
+async function ivRender() {
+  if (!IV.open) return;
+  const tok = ++IV.rt;
+  ivHead();
+  const box = $('ivBody');
+  $('ivQ').style.display = (IV.tab === 'me' || IV.sel) ? 'none' : '';
+  if (!IV.loaded) { box.innerHTML = pend('جاري التحميل...'); return; }
+  if (!IV.cfg) { box.innerHTML = '<p style="color:var(--mut);text-align:center;margin-top:40px;line-height:1.9">مفيش اشتراك IPTV على حسابك لسه.<br>كلّم الأدمن عشان يضيفه لك.</p>'; return; }
+  if (IV.sel) return ivDetail(box);
+  if (IV.tab === 'me') return ivMe(box);
+  const kind = IV.tab, q = IV.q.toLowerCase();
+  box.innerHTML = pend('جاري تحميل القايمة... (أول مرة ممكن ياخد شوية)');
+  let cats, list;
+  try {
+    const useCat = IV.cat && IV.cat !== '__pin' && !q;
+    [cats, list] = await Promise.all([ivCats(kind), ivList(IV_ACT[kind], useCat ? IV.cat : '')]);
+    if (kind === 'live' && IV.cat === '__pin') list = await ivList(IV_ACT.live);
+  } catch (e) { if (tok === IV.rt) box.innerHTML = ivErr(e); return; }
+  if (tok !== IV.rt) return;
+  const idk = kind === 'series' ? 'series_id' : 'stream_id';
+  let items = list;
+  if (kind === 'live' && IV.cat === '__pin' && !q) {
+    const by = new Map(list.map(x => [String(x[idk]), x]));
+    items = IV.pins.live.map(id => by.get(String(id))).filter(Boolean);
+  }
+  if (q) items = items.filter(x => String(x.name || '').toLowerCase().includes(q));
+  if (kind !== 'live' || q) {
+    items = items.slice();
+    if (IV.sort === 'az') items.sort((a, b) => String(a.name).localeCompare(String(b.name), 'ar'));
+    else items.sort((a, b) => ((+b.added || +b.last_modified || 0) - (+a.added || +a.last_modified || 0)));
+  }
+  const pinCats = IV.pins.cats.filter(c => c.k === kind);
+  const chip = (id, n, on) => '<button class="' + (on ? 'on' : '') + '" data-c="' + esc(id) + '" onclick="ivSetCat(this.dataset.c)">' + n + '</button>';
+  let chips = chip('', 'الكل', !IV.cat);
+  if (kind === 'live') chips += chip('__pin', '⭐ المثبّت', IV.cat === '__pin');
+  const pset = new Set(pinCats.map(c => c.id));
+  chips += pinCats.map(c => chip(c.id, '⭐ ' + esc(c.n), IV.cat === c.id)).join('');
+  chips += cats.filter(c => !pset.has(String(c.category_id))).map(c => chip(c.category_id, esc(c.category_name), IV.cat === String(c.category_id))).join('');
+  const cur = cats.find(c => String(c.category_id) === IV.cat);
+  const bar = '<div class="clchips">' + chips + '</div>' +
+    '<div class="clchips">' + (kind !== 'live' ? [['new', '🆕 الأحدث'], ['az', '🔤 أ - ي']].map(c => '<button class="' + (IV.sort === c[0] ? 'on' : '') + '" onclick="IV.sort=\'' + c[0] + '\';ivRender()">' + c[1] + '</button>').join('') : '') +
+    (cur ? '<button data-k="' + kind + '" data-i="' + esc(cur.category_id) + '" data-n="' + esc(cur.category_name) + '" onclick="ivToggleCat(this.dataset.k,this.dataset.i,this.dataset.n)">' + (ivCatPinned(kind, cur.category_id) ? '⭐ القسم مثبّت' : '📌 ثبّت القسم') + '</button>' : '') + '</div>';
+  const shown = items.slice(0, IV.lim);
+  box.innerHTML = bar + (items.length ? '<div class="clgrid' + (kind === 'live' ? ' ivg' : '') + '">' + shown.map(x => ivTile(kind, x)).join('') + '</div>' +
+    (items.length > shown.length ? '<div style="text-align:center;margin:14px"><button class="search-btn" style="max-width:260px" onclick="IV.lim+=120;ivRender()">عرض المزيد (' + (items.length - shown.length) + ')</button></div>' : '')
+    : '<p style="color:var(--mut);text-align:center;margin-top:40px">' + (IV.cat === '__pin' ? 'لسه ما ثبّتّش قنوات. دوس 📌 على أي قناة.' : 'مفيش نتائج') + '</p>');
+  try { lzScan(); } catch (e) {}
+  try { tvApply(); } catch (e) {}
+}
+function ivTap(el) {
+  const k = el.dataset.k, id = el.dataset.id;
+  if (k === 'more') return ivOpen(id);
+  if (k === 'cat') return ivOpen(el.dataset.ck, id);
+  if (k === 'live') {
+    const nm = (el.querySelector('.t') || {}).textContent || 'قناة';
+    return ivPlay(ivLiveUrl(id), nm, {});
+  }
+  if (!IV.open) { ivOpen(k); }
+  IV.sel = {k: k, id: id};
+  IV.info = null;
+  IV.ss = null;
+  ivRender();
+  $('iv').scrollTop = 0;
+}
+async function ivDetail(box) {
+  const tok = IV.rt, s = IV.sel;
+  box.innerHTML = pend('جاري التحميل...');
+  try {
+    if (s.k === 'vod') {
+      const v = await ivApi('get_vod_info', {vod_id: s.id}, '', 60);
+      if (tok !== IV.rt || IV.sel !== s) return;
+      const i = v.info || {}, md = v.movie_data || {}, ext = md.container_extension || 'mp4', nm = md.name || i.name || 'فيلم';
+      const url = ivMovieUrl(s.id, ext);
+      box.innerHTML = '<div class="ivdet">' + (i.movie_image ? '<img ' + lzA(i.movie_image) + ' alt="">' : '') + '<div><h2>' + esc(nm) + '</h2>' +
+        '<small>' + [i.releasedate || i.releaseDate, i.genre, i.duration, i.rating ? '⭐ ' + i.rating : ''].filter(Boolean).map(esc).join(' · ') + '</small>' +
+        '<p>' + esc(i.plot || i.description || '') + '</p></div></div>' +
+        '<div class="row" style="gap:8px;margin-top:10px"><button class="search-btn" id="ivPlayBtn">▶ تشغيل</button><button class="search-btn" style="background:#22c55e" id="ivDlBtn">⬇ تحميل</button></div>' +
+        '<div class="row" style="gap:8px"><button class="fc" id="ivCpBtn">📋 انسخ الرابط</button></div>';
+      $('ivPlayBtn').onclick = () => ivPlay(url, nm, {key: 'm:' + s.id});
+      $('ivDlBtn').onclick = () => ivDownload(url, ivClean(nm) + '.' + ext);
+      $('ivCpBtn').onclick = () => ivCopy(url);
+    } else {
+      const v = await ivApi('get_series_info', {series_id: s.id}, '', 30);
+      if (tok !== IV.rt || IV.sel !== s) return;
+      IV.info = v;
+      ivSeriesRender(box);
+    }
+    try { lzScan(); } catch (e) {}
+    try { tvApply(); } catch (e) {}
+  } catch (e) { if (tok === IV.rt) box.innerHTML = ivErr(e); }
+}
+function ivEpisodes(v) {
+  const out = [], eps = v.episodes || {};
+  const add = x => out.push({id: x.id, ext: x.container_extension || 'mp4', s: +x.season || 0, e: +x.episode_num || 0, t: x.title || '', img: (x.info && x.info.movie_image) || '', dur: (x.info && x.info.duration) || ''});
+  if (Array.isArray(eps)) eps.forEach(a => (Array.isArray(a) ? a : [a]).forEach(add));
+  else Object.keys(eps).forEach(sn => (eps[sn] || []).forEach(x => { if (!x.season) x.season = +sn; add(x); }));
+  out.sort((a, b) => a.s - b.s || a.e - b.e);
+  return out;
+}
+function ivSeriesRender(box) {
+  const v = IV.info, i = v.info || {}, nm = i.name || 'مسلسل', all = ivEpisodes(v);
+  IV.flat = all; IV.flatSid = IV.sel.id; IV.flatName = nm;
+  const seasons = [...new Set(all.map(x => x.s))];
+  if (IV.ss == null || !seasons.includes(IV.ss)) IV.ss = seasons[0];
+  const prog = ivProgAll();
+  const eps = all.map((x, ix) => ({x: x, ix: ix})).filter(o => o.x.s === IV.ss);
+  box.innerHTML = '<div class="ivdet">' + (i.cover ? '<img ' + lzA(i.cover) + ' alt="">' : '') + '<div><h2>' + esc(nm) + '</h2>' +
+    '<small>' + [i.releaseDate || i.releasedate, i.genre, i.rating ? '⭐ ' + i.rating : ''].filter(Boolean).map(esc).join(' · ') + '</small><p>' + esc(i.plot || '') + '</p></div></div>' +
+    (all.length ? '<div class="tabs">' + seasons.map(sn => '<button class="tab' + (sn === IV.ss ? ' on' : '') + '" onclick="IV.ss=' + sn + ';ivSeriesRender($(\'ivBody\'))">الموسم ' + sn + '</button>').join('') + '</div>' +
+      '<div class="row" style="gap:8px;margin-bottom:10px"><button class="fc" onclick="ivDlSeason()">⬇ تحميل الموسم ' + IV.ss + ' كله</button></div>' : '<p style="color:var(--mut);text-align:center">مفيش حلقات</p>') +
+    eps.map(o => {
+      const x = o.x, pr = prog['s:' + IV.sel.id + ':' + x.id], pc = pr ? (pr.done ? 100 : Math.min(99, Math.round(pr.pos / (pr.dur || 1) * 100))) : 0;
+      return '<div class="ep"><div class="b">' + esc(x.e + '. ' + (x.t || 'الحلقة ' + x.e)) + (x.dur ? '<small>' + esc(x.dur) + '</small>' : '') +
+        (pr ? '<small style="color:' + (pr.done ? 'var(--success)' : '#f59e0b') + '">' + (pr.done ? '✓ شوهدت' : '▶ ' + pc + '%') + '</small>' : '') + '</div>' +
+        '<button style="background:var(--primary);color:#fff;margin-inline-end:6px" onclick="ivPlayEp(' + o.ix + ')">▶</button>' +
+        '<button style="background:#22c55e;color:#fff" onclick="ivDlEp(' + o.ix + ')">⬇</button></div>';
+    }).join('');
+}
+function ivEpName(x) { return ivClean(IV.flatName + ' S' + p2s(x.s) + 'E' + p2s(x.e)); }
+function ivPlayEp(ix) {
+  const x = IV.flat[ix];
+  if (!x) return;
+  ivPlay(ivEpUrl(x.id, x.ext), IV.flatName + ' · S' + p2s(x.s) + 'E' + p2s(x.e), {key: 's:' + IV.flatSid + ':' + x.id, next: IV.flat[ix + 1] ? ix + 1 : null, sid: IV.flatSid});
+}
+function ivDlEp(ix) {
+  const x = IV.flat[ix];
+  if (x) ivDownload(ivEpUrl(x.id, x.ext), ivEpName(x) + '.' + x.ext);
+}
+function ivDlSeason() {
+  const l = IV.flat.filter(x => x.s === IV.ss);
+  if (!l.length) return;
+  if (!confirm('تحميل ' + l.length + ' حلقة من الموسم ' + IV.ss + '؟ (هتتحمّل ورا بعض)')) return;
+  l.forEach((x, i) => setTimeout(() => ivDownload(ivEpUrl(x.id, x.ext), ivEpName(x) + '.' + x.ext), i * 350));
+}
+function ivMe(box) {
+  const c = IV.cfg, st = c.stat || {}, d = ivDays(st);
+  const m3u = c.host + '/get.php?username=' + ivEnc(c.user) + '&password=' + ivEnc(c.pass) + '&type=m3u_plus&output=ts';
+  box.innerHTML = '<div class="action-box" style="text-align:right">' +
+    '<h3 style="margin-top:0">📡 اشتراكك</h3>' +
+    '<p style="font-size:22px;margin:6px 0;font-weight:800" class="ivd' + (d !== null && d !== Infinity && d <= 5 ? ' low' : '') + '">' + (ivDaysTxt(st) || 'لسه بنجيب الحالة...') + '</p>' +
+    (st.exp ? '<p style="color:var(--mut)">ينتهي: ' + new Date(st.exp * 1000).toLocaleDateString('ar-EG') + '</p>' : '') +
+    (st.maxc ? '<p style="color:var(--mut)">الأجهزة: ' + (st.active || 0) + ' شغّالين من ' + st.maxc + ' (متشغّلش الحساب على جهازين مع بعض)</p>' : '') +
+    (st.status ? '<p style="color:var(--mut)">الحالة: ' + esc(st.status) + (st.trial ? ' · تجريبي' : '') + '</p>' : '') +
+    '<hr style="border-color:#ffffff18;margin:12px 0"><div class="ltr" style="direction:ltr;text-align:left;font-size:13px;line-height:2;word-break:break-all">' +
+    'Host: <b>' + esc(c.host) + '</b><br>User: <b>' + esc(c.user) + '</b><br>Pass: <b id="ivPw">••••••</b> <button class="eye" style="position:static" onclick="$(\'ivPw\').textContent=$(\'ivPw\').dataset.s?\'••••••\':IV.cfg.pass;$(\'ivPw\').dataset.s=$(\'ivPw\').dataset.s?\'\':\'1\'">👁</button></div>' +
+    '<div class="row" style="gap:8px;margin-top:12px"><button class="search-btn" onclick="ivStatRefresh();toast(\'بنحدّث...\')">🔄 تحديث الحالة</button>' +
+    '<button class="fc" data-u="' + esc(m3u) + '" onclick="ivCopy(this.dataset.u)">📋 رابط M3U (لتطبيقات التلفزيون)</button></div></div>';
+  if (!st.t) ivStatRefresh();
+}
+// ---------- لوحة الأدمن ----------
+let IVADM = [];
+async function ivAdmLoad() {
+  const el = $('ivAdm');
+  if (!el) return;
+  el.innerHTML = pend('جاري التحميل...');
+  try { const {d} = await api('/iptv/admin'); IVADM = d.items || []; } catch (e) { el.innerHTML = ERR; return; }
+  ivAdmRender();
+}
+function ivAdmRender() {
+  const el = $('ivAdm');
+  if (!el) return;
+  el.innerHTML = IVADM.map(u => {
+    const d = ivDays(u.stat), tx = u.set ? (ivDaysTxt(u.stat) || 'لسه ما فتحش التطبيق') : 'مفيش اشتراك';
+    return '<div class="ep"><div class="b">👤 ' + esc(u.name) + (u.set ? '<small class="ltr" style="direction:ltr;text-align:left">' + esc(u.host) + ' · ' + esc(u.user) + '</small>' : '') +
+      '<small style="color:' + (!u.set ? 'var(--mut)' : (d !== null && d !== Infinity && d <= 5 ? '#ef4444' : 'var(--success)')) + '">' + esc(tx) +
+      (u.set && u.stat && u.stat.t ? ' · آخر تحديث ' + new Date(u.stat.t * 1000).toLocaleDateString('ar-EG') : '') + '</small></div>' +
+      '<button style="background:#0ea5e9;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="ivAdmEdit(this.dataset.n)">✏️</button>' +
+      (u.set ? '<button style="background:var(--danger);color:#fff" data-n="' + esc(u.name) + '" onclick="ivAdmDel(this.dataset.n)">🗑</button>' : '') + '</div>';
+  }).join('') +
+    '<select id="ivaN" class="search-input">' + IVADM.map(u => '<option value="' + esc(u.name) + '">' + esc(u.name) + '</option>').join('') + '</select>' +
+    '<input id="ivaH" class="search-input ltr" placeholder="الهوست: http://example.com:8080" autocapitalize="off" autocorrect="off">' +
+    '<input id="ivaU" class="search-input ltr" placeholder="اليوزر" autocapitalize="off" autocorrect="off">' +
+    '<input id="ivaP" class="search-input ltr" placeholder="الباس" autocapitalize="off" autocorrect="off">' +
+    '<button class="search-btn" onclick="ivAdmSave(this)">💾 حفظ اشتراك العضو</button>' +
+    '<p style="color:var(--mut);font-size:12px">كل عضو ليه اشتراك خاص بيه. العضو بيشوف الأفلام والمسلسلات والقنوات من الحساب ده بس، والطلبات بتطلع من جهازه (آيبي مصري). باقي الأيام بتظهر له وليك أول ما يفتح التطبيق.</p>';
+}
+function ivAdmEdit(n) {
+  const u = IVADM.find(x => x.name === n) || {};
+  $('ivaN').value = n;
+  $('ivaH').value = u.host || ''; $('ivaU').value = u.user || ''; $('ivaP').value = u.pass || '';
+  $('ivaH').focus();
+}
+async function ivAdmSave(btn) {
+  btn.disabled = true;
+  try {
+    const {d} = await api('/iptv/admin/' + encodeURIComponent($('ivaN').value), {method: 'POST', body: JSON.stringify({host: $('ivaH').value, user: $('ivaU').value, pass: $('ivaP').value})});
+    if (d.error) alert(d.error); else toast('اتحفظ ✅');
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
+  btn.disabled = false;
+  ivAdmLoad();
+  IV.loaded = false; IV.homePid = null; IV.homeFor = null;
+}
+async function ivAdmDel(n) {
+  if (!confirm('مسح اشتراك ' + n + '؟')) return;
+  await api('/iptv/admin/' + encodeURIComponent(n), {method: 'POST', body: JSON.stringify({clear: true})});
+  ivAdmLoad();
+}
+
 const CL = {open: false, cat: 'movie', items: [], loaded: false, q: '', sel: null, form: null};
 const CL_CATS = [['movie', '🎬 أفلام'], ['series', '📺 مسلسلات'], ['cartoon', '🧸 كرتون']];
 async function clibLoad(force) {
@@ -2317,6 +2863,7 @@ window.addEventListener('popstate', e => {
     else if (top === 'd') closeDetails();
     else if (top === 'b') closeBrowse();
     else if (top === 'c') clibHide();
+    else if (top === 'iv') ivHide();
     else if (top === 's') spHide();
     else if (top === 'g2') setSecHide();
     else if (top === 'g') setHide();
@@ -3725,6 +4272,7 @@ function saveProgress(v, ended) {
   });
 }
 async function nativePlay(u) {
+  window.IV_NP = null;
   let p = 0;
   try { p = Math.floor(((PLAY && getItem(PLAY.key)) || {}).pos || 0); } catch (e) {}
   let sx = '';
@@ -3741,6 +4289,7 @@ async function nativeWrap(fn) {
   return d;
 }
 window.nativeProgress = function (pos, dur, ended) {
+  if (window.IV_NP) { try { ivProgress(pos, dur, ended); } catch (e) {} return; }
   try { saveProgress({duration: dur, currentTime: pos}, !!ended); } catch (e) {}
 };
 function nfxAutoplayBlocked() {
