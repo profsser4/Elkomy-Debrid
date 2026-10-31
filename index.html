@@ -486,6 +486,30 @@ body.iv-on{overflow:hidden}
 .cat.on{background:#fff;color:#000;border-color:#fff}
 .cat:active{transform:scale(.96)}
 body.m-tv .cat{font-size:20px;padding:12px 26px}
+/* ===== MorphTV-style look ===== */
+:root{--bg:#070d1f;--panel:#111a33;--primary:#7aa2e8;--rad:18px}
+body{background:radial-gradient(1400px 600px at 50% -10%,#1a2f63 0,#0b1330 55%,#070d1f 100%) fixed,#070d1f}
+.topbar{background:#0e1a3dcc;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1.5px solid #5b7bd466;border-radius:30px;padding:8px 16px;position:sticky;top:8px;z-index:30;flex-wrap:wrap;box-shadow:0 8px 30px #0008}
+.topbar h1{background:linear-gradient(90deg,#a78bfa,#38bdf8);-webkit-background-clip:text;background-clip:text;color:transparent!important;font-weight:900}
+.topbar .cats{margin:0;padding:0;flex:1 1 auto;justify-content:center;overflow-x:auto}
+.cat{padding:8px 16px;font-size:14px;border:0;background:transparent;color:#e5ecff;border-radius:99px}
+.cat:hover{background:#ffffff14}
+.cat.on{background:#7aa2e8;color:#0b1020}
+@media(max-width:760px){.topbar{border-radius:22px}.topbar .cats{order:3;flex-basis:100%;justify-content:flex-start}}
+.hz{border-radius:24px;box-shadow:0 18px 50px #000b;min-height:340px}
+.hz:before{background:linear-gradient(0deg,#070d1f 2%,#070d1f00 65%),linear-gradient(270deg,#070d1fe6,#070d1f00 80%)}
+.hz h2{font-weight:900;letter-spacing:.3px}
+.hz .hm{color:#5eead4;font-weight:700}
+.hz .hb .i{background:#0b1330aa;border:1.5px solid #7aa2e8;color:#fff}
+h3.sec{font-size:22px;font-weight:900}
+h3.sec::before{display:none}
+.hrow{gap:16px}
+.poster,.cw{overflow:hidden;position:relative;border-radius:18px;border:1px solid #ffffff1a;box-shadow:0 8px 22px #0009}
+.poster .t{position:absolute;left:0;right:0;bottom:0;padding:34px 10px 9px;min-height:0;font-size:13px;font-weight:800;color:#fff;text-align:right;background:linear-gradient(0deg,#000f 8%,#000a 50%,#0000)}
+.poster .y{color:#cbd5e1;font-weight:600;font-size:11px;margin-top:2px}
+.poster.mtile{border-style:dashed}
+.poster .rt{position:absolute;top:8px;left:8px;z-index:2;background:#0009;backdrop-filter:blur(6px);border:1px solid #ffffff22;border-radius:8px;padding:2px 7px;font-size:12px;font-weight:800;color:#fbbf24}
+.poster:hover,.poster:focus-visible{border-color:#7aa2e8}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
@@ -543,10 +567,10 @@ body.m-tv .cat{font-size:20px;padding:12px 26px}
 <div id="main-content">
 <div class="topbar">
 <h1 style="color:var(--primary);margin:0;font-size:20px">Elkomy VIP 🚀</h1>
+<div class="cats" id="cats"></div>
 <div class="topbtns"><button id="dlbtn" class="fc" style="display:none" onclick="AndroidPlayer.openDownloads()" aria-label="التحميلات">⬇️<span id="dlbadge" style="display:none"></span></button><script>try{if(window.AndroidPlayer&&typeof AndroidPlayer.openDownloads!=="undefined"){document.getElementById("dlbtn").style.display="";setInterval(function(){try{var n=AndroidPlayer.dlActive(),b=document.getElementById("dlbadge");b.textContent=n>0?n:"";b.style.display=n>0?"":"none"}catch(e){}},1500)}}catch(e){}</script><button class="fc" onclick="openView()">🖥</button><button class="fc" onclick="openInterests()">⭐</button><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button class="fc adm" onclick="setOpen()" aria-label="الإعدادات والإضافات">⚙️</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
 </div>
 
-<div class="cats" id="cats"></div>
 
 <div class="action-box" id="searchBox">
 <h2 style="margin-top:0">🔍 ابحث أو الصق رابط</h2>
@@ -1795,14 +1819,17 @@ function renderShelves() {
   let h = '';
   if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
   h += clibRows();
-  if (AROWS_PID === PID) AROWS.slice(0, isTv() ? 4 : 10).forEach(r => { h += row(r.title, isTv() ? r.items.slice(0, TV_ROW_N) : r.items); });
+  const hasFor = AROWS_PID === PID && AROWS.length;
+  if (hasFor) AROWS.slice(0, isTv() ? 5 : 12).forEach(r => { h += row(r.title, isTv() ? r.items.slice(0, TV_ROW_N) : r.items); });
+  IROWS.forEach(r => { h += row('⭐ ' + r.title.replace(/^⭐\s*/, ''), r.items, r.id); });
   try { h += ivHomeHTML(); } catch (e) {}
   if (lst.length) h += row('❤️ قائمتي', lst);
   if (LATEST.length) h += row('🔔 جديد في قائمتي', LATEST);
-  FRESH.forEach(r => { h += row(r.title, r.items, r.id); });
-  IROWS.forEach(r => { h += row(r.title, r.items, r.id); });
   h += stRow();
-  (ROWS || []).forEach(r => { if (!hr.includes(r.id)) h += row(r.title, r.items, r.id); });
+  if (!cw.length && !hasFor && !IROWS.length) {
+    h += '<p style="color:var(--mut);font-size:13px;margin:10px 0">ابدأ شاهد أي حاجة وهنظهر لك هنا اللي يناسبك. لحد وقتها دي ترشيحات عامة:</p>';
+    (ROWS || []).forEach(r => { if (!hr.includes(r.id)) h += row(r.title, r.items, r.id); });
+  }
   if (ROWS && ROWS.length) {
     h += '<button class="fc" style="margin:6px 0 14px" onclick="toggleCfg()">⚙️ تخصيص الصفوف</button>';
     if (showCfg) h += rowsCfgHTML();
@@ -1847,9 +1874,10 @@ function row(title, list, rid) {
     (t.imdb ? '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">'
       : t.lk ? '<div class="poster" data-q="' + esc(t.title) + '" data-y="' + esc(t.year) + '" data-t="' + esc(t.type) + '" onclick="openLookup(this)">'
       : '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">') +
+    (t.rating > 0 ? '<span class="rt">★ ' + Number(t.rating).toFixed(1) + '</span>' : '') +
     (t.poster ? '<img ' + lzA(t.poster) + ' alt="">'
               : '<div class="noimg">🎬</div>') +
-    '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) + (t.badge ? ' · ' + esc(t.badge) : '') +
+    '<div class="t">' + esc(t.title) + '<div class="y">' + (t.type === 'tv' || t.type === 'series' ? 'مسلسل' : t.type === 'movie' ? 'فيلم' : '') + (t.year ? ' · ' + esc(t.year) : '') + (t.badge ? ' · ' + esc(t.badge) : '') +
     '</div></div></div>').join('') + (rid ? '<div class="poster mtile" data-k="' + esc(rid) + '" data-t="' + esc(title) + '" onclick="openMore(this.dataset.k,this.dataset.t)">المزيد ‹</div>' : '') + '</div>';
 }
 async function searchTitles() {
@@ -6825,7 +6853,7 @@ function renderHero() {
   const i = heroI % L.length, x = L[i];
   el.innerHTML = '<div class="hz" style="' + (isTv() ? 'background:linear-gradient(135deg,#1e293b,#0f172a)' : 'background-image:url(\'' + esc(x.backdrop) + '\')') + '"><div class="hc"><h2>' + esc(x.title) +
     '</h2><div class="hm">' + esc((x.type === 'tv' ? 'مسلسل' : 'فيلم') + ' · ' + x.year + ' · ⭐ ' + x.rating) + '</div><p>' + esc(x.overview) +
-    '</p><div class="hb"><button class="p" onclick="heroGo(' + i + ',1)">▶ عرض</button><button class="i" onclick="heroGo(' + i +
+    '</p><div class="hb"><button class="p" onclick="heroGo(' + i + ',1)">▶ شغّل الآن</button><button class="i" onclick="heroGo(' + i +
     ')">المزيد من المعلومات</button><button class="i" onclick="openTrailer(\'' + x.type + '\',' + x.id + ')">🎬 تريلر</button></div></div><div class="dots">' +
     L.map((_, j) => '<i class="' + (j === i ? 'on' : '') + '" onclick="heroI=' + j + ';renderHero()"></i>').join('') + '</div></div>';
   if (!isTv()) {
