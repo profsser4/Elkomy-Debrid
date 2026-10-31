@@ -7867,7 +7867,9 @@ function nfxEnded() {
   const cmp = (a, b) => {
     const ka = (a || []).map(r => r.k), kb = (b || []).map(r => r.k);
     const ca = (a || []).filter(r => kb.includes(r.k)), cb = (b || []).filter(r => ka.includes(r.k));
-    return {ok: sig(ca) === sig(cb), miss: ka.length - ca.length, extra: kb.length - cb.length};
+    let d = '';
+    for (let i = 0; i < ca.length; i++) if (ca[i].k !== cb[i].k || !ca[i].on !== !cb[i].on) { d = ' — أول اختلاف عند صف ' + (i + 1) + ': «' + (ca[i].t || '') + '» عندك ' + (ca[i].on ? 'مفعّل' : 'مقفول') + ' / السيرفر ' + (cb[i].k === ca[i].k ? (cb[i].on ? 'مفعّل' : 'مقفول') : '«' + (cb[i].t || '') + '»'); break; }
+    return {ok: sig(ca) === sig(cb), miss: ka.length - ca.length, extra: kb.length - cb.length, d: d};
   };
   const setSt = (m, c) => { const e = document.getElementById('laySt'); if (e) { e.textContent = m; e.style.color = c || ''; } };
   let _t = 0;
@@ -7882,7 +7884,7 @@ function nfxEnded() {
       const v = await api('/home/layout');
       const c = cmp(rows, v.d.rows);
       if (c.ok) { setSt('✅ اتحفظ' + (c.miss || c.extra ? ' (' + c.miss + ' صف السيرفر مش بيقبله، ' + c.extra + ' زيادة منه)' : ''), '#22c55e'); ROWS = null; return true; }
-      setSt('⚠️ السيرفر رجّع ترتيب مختلف (' + c.miss + ' ناقص، ' + c.extra + ' زيادة) — محفوظ على جهازك', '#f59e0b');
+      setSt('⚠️ السيرفر رجّع ترتيب مختلف (' + c.miss + ' ناقص، ' + c.extra + ' زيادة)' + c.d + ' — محفوظ على جهازك', '#f59e0b');
     } catch (e) { setSt('⚠️ مفيش اتصال — محفوظ على جهازك', '#f59e0b'); }
     return false;
   }
@@ -7930,7 +7932,7 @@ function nfxEnded() {
     const el = $('layBox');
     if (!el) return;
     const B = (cls, fn, i, txt, t) => '<button class="lyb ' + cls + '" title="' + (t || '') + '" onclick="' + fn + '(' + i + ')">' + txt + '</button>';
-    let h = (window._persist !== true ? '<div class="lyr" style="border-color:#f59e0b;color:#fbbf24;font-size:13px;line-height:1.8">⚠️ السيرفر ' + (window._persist === false ? 'مش متوصّل بقاعدة بيانات دائمة (Upstash Redis)' : 'لسه بالنسخة القديمة من bot.py (أو مش بيرد بحالة التخزين)') + '، فالترتيب بيضيع منه. الترتيب هنا محفوظ على الجهاز ده بس (المتصفح والتطبيق كل واحد لوحده).</div>' : '') + '<div class="lybar"><span id="laySt">الترتيب بيتحفظ تلقائي</span><small style="opacity:.5">v3</small>' +
+    let h = (window._persist !== true ? '<div class="lyr" style="border-color:#f59e0b;color:#fbbf24;font-size:13px;line-height:1.8">⚠️ السيرفر ' + (window._persist === false ? 'مش متوصّل بقاعدة بيانات دائمة (Upstash Redis)' : 'لسه بالنسخة القديمة من bot.py (أو مش بيرد بحالة التخزين)') + '، فالترتيب بيضيع منه. الترتيب هنا محفوظ على الجهاز ده بس (المتصفح والتطبيق كل واحد لوحده).</div>' : '') + '<div class="lybar"><span id="laySt">الترتيب بيتحفظ تلقائي</span><small style="opacity:.5">v4</small>' +
       '<button class="lysv" onclick="laySave(this)">💾 حفظ</button></div>';
     h += LAY.map((r, i) =>
       '<div class="lyr' + (r.on ? '' : ' off') + '"><div class="lyh">' +
