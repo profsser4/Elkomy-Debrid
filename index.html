@@ -535,7 +535,8 @@ h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:lin
 <div class="action-box adm" id="wsBox" style="display:none">
 <h2 style="margin-top:0">🌐 بحث روابط (ويب)</h2>
 <input id="wsQ" class="search-input" placeholder="اسم العمل (مثلاً: دافنينه سوا الحلقة 3)" onkeydown="if(event.key==='Enter')wsGo()">
-<div class="row"><button class="search-btn" onclick="wsGo()">🔎 دوّر على روابط مدعومة</button></div>
+<div class="row"><button class="search-btn" onclick="wsGo()">🔎 دوّر على روابط مدعومة</button>
+<button class="search-btn" style="background:#7c3aed" onclick="mzGo()">🎯 بحث في Moviz</button></div>
 <p style="color:var(--mut);font-size:12px;margin:8px 0 0">بيدوّر في جوجل ويفتح الصفحات ويطلّع الروابط اللي موقعها مدعوم عند TorBox وAllDebrid وباقي مزوّديك. دوس "سحب" على أي رابط وهيتحوّل زي أي رابط ملصوق.</p>
 <div id="wsOut"></div>
 </div>
@@ -3254,6 +3255,35 @@ async function wsGo(deep) {
     box.innerHTML = o;
   } catch (e) { box.innerHTML = ERR; }
 }
+
+// ---- بحث مباشر في موقع MovizLand (روابط التحميل المدعومة) ----
+async function mzGo() {
+  const q = $('wsQ').value.trim();
+  if (!q) return alert('اكتب اسم العمل الأول');
+  const box = $('wsOut');
+  box.innerHTML = pend('بدوّر في Moviz وبفتح الصفحات...');
+  try {
+    const {d} = await api('/sitesearch', {method: 'POST', body: JSON.stringify({q: q}), timeout: 90000});
+    if (d.error) return box.innerHTML = warn(d.error);
+    WS_LINKS = [];
+    let o = '<p style="color:var(--mut);font-size:12px;margin:10px 0">🎯 ' + (d.items || []).length + ' صفحة · 🔗 ' + d.found + ' رابط مدعوم</p>';
+    (d.notes || []).forEach(n => { o += warn(n); });
+    (d.items || []).forEach(it => {
+      o += '<h4 style="margin:14px 0 6px">' + esc(it.title) + '</h4>';
+      it.links.forEach(l => {
+        const i = WS_LINKS.push(l.url) - 1;
+        o += '<div style="padding:10px;margin:6px 0;background:var(--panel);border-radius:10px;width:100%;box-sizing:border-box">' +
+          '<div style="font-size:13px;font-weight:700">' + esc(l.host) + ' · ' + esc(l.quality) + '</div>' +
+          '<div style="direction:ltr;text-align:left;font-size:11px;color:var(--mut);word-break:break-all;margin:4px 0">' + esc(l.url) + '</div>' +
+          '<button class="fc" onclick="wsPull(' + i + ')">🚀 سحب</button> ' +
+          '<button class="fc" style="background:#475569" onclick="copyText(WS_LINKS[' + i + '])">📋 نسخ</button></div>';
+      });
+    });
+    if (!d.found) o += warn('مفيش روابط مدعومة لقيتها في الموقع للاسم ده.');
+    box.innerHTML = o;
+  } catch (e) { box.innerHTML = ERR; }
+}
+
 function wsPull(i) {
   const u = WS_LINKS[i];
   if (!u) return;
