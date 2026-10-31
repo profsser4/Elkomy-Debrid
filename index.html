@@ -7879,8 +7879,8 @@ function nfxEnded() {
     try { localStorage.setItem(LK(), JSON.stringify({t: Date.now(), rows: rows})); } catch (e) {}
     setSt('⏳ بيحفظ...');
     try {
-      const {d} = await api('/home/layout', {method: 'POST', body: JSON.stringify({rows: rows})});
-      if (d.error) { setSt('❌ ' + d.error, '#ef4444'); return false; }
+      const {r, d} = await api('/home/layout', {method: 'POST', body: JSON.stringify({rows: rows})});
+      if (d.error || !r.ok) { setSt('❌ ' + (d.error || ('السيرفر رد بخطأ ' + r.status + ' (الحفظ فشل)')), '#ef4444'); return false; }
       const v = await api('/home/layout');
       const c = cmp(rows, v.d.rows);
       if (c.ok) { setSt('✅ اتحفظ' + (c.miss || c.extra ? ' (' + c.miss + ' صف السيرفر مش بيقبله، ' + c.extra + ' زيادة منه)' : ''), '#22c55e'); ROWS = null; return true; }
@@ -7932,7 +7932,7 @@ function nfxEnded() {
     const el = $('layBox');
     if (!el) return;
     const B = (cls, fn, i, txt, t) => '<button class="lyb ' + cls + '" title="' + (t || '') + '" onclick="' + fn + '(' + i + ')">' + txt + '</button>';
-    let h = (window._persist !== true ? '<div class="lyr" style="border-color:#f59e0b;color:#fbbf24;font-size:13px;line-height:1.8">⚠️ السيرفر ' + (window._persist === false ? 'مش متوصّل بقاعدة بيانات دائمة (Upstash Redis)' : 'لسه بالنسخة القديمة من bot.py (أو مش بيرد بحالة التخزين)') + '، فالترتيب بيضيع منه. الترتيب هنا محفوظ على الجهاز ده بس (المتصفح والتطبيق كل واحد لوحده).</div>' : '') + '<div class="lybar"><span id="laySt">الترتيب بيتحفظ تلقائي</span><small style="opacity:.5">v4</small>' +
+    let h = (window._persist !== true ? '<div class="lyr" style="border-color:#f59e0b;color:#fbbf24;font-size:13px;line-height:1.8">⚠️ السيرفر ' + (window._persist === false ? 'مش متوصّل بقاعدة بيانات دائمة (Upstash Redis)' : 'لسه بالنسخة القديمة من bot.py (أو مش بيرد بحالة التخزين)') + '، فالترتيب بيضيع منه. الترتيب هنا محفوظ على الجهاز ده بس (المتصفح والتطبيق كل واحد لوحده).</div>' : '') + '<div class="lybar"><span id="laySt">الترتيب بيتحفظ تلقائي</span><small style="opacity:.5">v5</small>' +
       '<button class="lysv" onclick="laySave(this)">💾 حفظ</button></div>';
     h += LAY.map((r, i) =>
       '<div class="lyr' + (r.on ? '' : ' off') + '"><div class="lyh">' +
