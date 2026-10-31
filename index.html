@@ -7863,7 +7863,7 @@ function nfxEnded() {
   const LK = () => 'layout:' + (typeof UNAME !== 'undefined' ? UNAME : '');
   const lsGet = () => { try { return JSON.parse(localStorage.getItem(LK()) || 'null'); } catch (e) { return null; } };
   const clean = () => LAY.map(r => { const o = Object.assign({}, r); delete o._sel; return o; });
-  const sig = rows => (rows || []).map(r => r.k + (r.on ? '1' : '0') + (r.t || '') + ((r.m || []).length)).join('|');
+  const sig = rows => (rows || []).map(r => r.k + (r.on ? '1' : '0')).join('|');
   const setSt = (m, c) => { const e = document.getElementById('laySt'); if (e) { e.textContent = m; e.style.color = c || ''; } };
   let _t = 0;
 
@@ -7996,7 +7996,7 @@ h3.sec{font-size:19px;font-weight:800;margin:20px 0 10px}
 @media(min-width:700px){.poster,.cw{flex-basis:158px}.hrow:first-of-type .poster,.hrow:first-of-type .cw{flex-basis:190px}}
 @media(max-width:480px){.hz .hb button{flex:1 1 auto;padding:10px 12px}.topbar{border-radius:20px}}
 /* شاشة ترتيب الرئيسية */
-.lybar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;justify-content:space-between;background:#0b1020f2;padding:10px 4px;margin-bottom:8px;font-size:13px;font-weight:700;border-bottom:1px solid #334155}
+.lybar{position:sticky;bottom:0;z-index:20;display:flex;align-items:center;gap:8px;justify-content:space-between;background:#0b1020;padding:10px 8px;margin:8px 0;border-radius:12px;font-size:13px;font-weight:700;border:1px solid #334155}
 .lysv{background:#22c55e;color:#04210f;border:0;border-radius:10px;padding:9px 16px;font-weight:800}
 .lyr{background:var(--panel);border:1px solid #334155;border-radius:14px;padding:10px;margin-bottom:8px}
 .lyr.off{opacity:.55}
@@ -8005,8 +8005,8 @@ h3.sec{font-size:19px;font-weight:800;margin:20px 0 10px}
 .lyt{flex:1;min-width:0;font-weight:700;font-size:14px;line-height:1.5;word-break:break-word}
 .lyt small{display:block;color:var(--mut);font-weight:400}
 .lyn{color:var(--mut);font-size:12px}
-.lyg{display:grid;grid-template-columns:repeat(auto-fit,minmax(48px,1fr));gap:6px;margin-top:8px}
-.lyb{background:#7aa2e8;color:#06122e;border:0;border-radius:10px;padding:10px 4px;font-size:15px;font-weight:800}
+.lyg{display:grid;grid-template-columns:repeat(auto-fit,minmax(40px,1fr));gap:6px;margin-top:8px}
+.lyb{background:#7aa2e8;color:#06122e;border:0;border-radius:10px;padding:10px 2px;font-size:14px;min-width:0;font-weight:800}
 .lyb.sel{background:#7c3aed;color:#fff}
 .lyb.del{background:#ef4444;color:#fff}
 </style>
