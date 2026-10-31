@@ -2416,7 +2416,11 @@ async function ivAdmLoad() {
   const el = $('ivAdm');
   if (!el) return;
   el.innerHTML = pend('جاري التحميل...');
-  try { const {d} = await api('/iptv/admin'); IVADM = d.items || []; } catch (e) { el.innerHTML = ERR; return; }
+  try {
+    const {r, d} = await api('/iptv/admin');
+    if (!r.ok || !d.items) { el.innerHTML = warn('السيرفر ما بيدعمش الـIPTV لسه (كود ' + r.status + '). ارفع bot.py الجديد وأعد تشغيل السيرفر.'); return; }
+    IVADM = d.items;
+  } catch (e) { el.innerHTML = ERR; return; }
   ivAdmRender();
 }
 function ivAdmRender() {
@@ -2445,9 +2449,19 @@ function ivAdmEdit(n) {
 }
 async function ivAdmSave(btn) {
   btn.disabled = true;
+  const nm = $('ivaN').value;
   try {
-    const {d} = await api('/iptv/admin/' + encodeURIComponent($('ivaN').value), {method: 'POST', body: JSON.stringify({host: $('ivaH').value, user: $('ivaU').value, pass: $('ivaP').value})});
-    if (d.error) alert(d.error); else toast('اتحفظ ✅');
+    const {r, d} = await api('/iptv/admin/' + encodeURIComponent(nm), {method: 'POST', body: JSON.stringify({host: $('ivaH').value, user: $('ivaU').value, pass: $('ivaP').value})});
+    if (r.status === 404 && !d.error) alert('السيرفر ما بيعرفش الـIPTV لسه: ملف bot.py الجديد مش مرفوع أو السيرفر ما اتحدّثش (لازم Redeploy).');
+    else if (d.error) alert(d.error);
+    else if (!r.ok) alert('السيرفر رد بخطأ ' + r.status);
+    else {
+      // نتأكد إن السيرفر فعلاً حفظ (بعض الاستضافات بتمسح الملفات)
+      const c = await api('/iptv/admin');
+      const me = ((c.d && c.d.items) || []).find(x => x.name === nm);
+      if (!me || !me.set) alert('السيرفر قال تم، لكن البيانات ما اتحفظتش فعلياً. الاستضافة بتمسح الملفات الجديدة (iptv.json). ابعتلي الرسالة دي وهظبطها.');
+      else toast('اتحفظ ✅');
+    }
   } catch (e) { alert('مش قادر أوصل للسيرفر'); }
   btn.disabled = false;
   ivAdmLoad();
