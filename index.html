@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
+<!--
+  سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v2: الحلقة التالية في المشغّل الداخلي: زرار برقم الحلقة + عدّاد آخر 250 ثانية + تشغيل ورا بعض في الـIPTV
+-->
 <title>Elkomy Debrid VIP</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
@@ -459,6 +464,15 @@ h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:lin
 .ep .eb.p{background:var(--primary);color:#fff}
 .ep .eb.d{background:#2a1520;color:#ff8fa3}
 .ep .eb.g{background:#1f1f2c;color:#9a9aab}
+/* كارت الحلقة: الصورة + العنوان فوق، والأزرار صف لوحدها تحت (بدل ما العنوان يتعصر ويبقى عمودي) */
+.ep.ept{flex-wrap:wrap;align-items:flex-start}
+.ep.ept .b{flex:1 1 0;min-width:120px;word-break:normal;overflow-wrap:anywhere;line-height:1.7}
+.ep.ept img{width:96px;flex:none}
+.ep .eacts{flex:1 1 100%;display:flex;gap:8px;align-items:stretch}
+.ep .eacts>button{flex:1 1 0;min-width:0;width:auto;height:40px;padding:0;margin:0;border:0;border-radius:12px;font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff}
+.ep .eacts>.btn-st{background:#7c3aed}
+.ep .eacts>.mg{background:#334155}
+.ep .eacts>button:active{transform:scale(.96)}
 .vcp:active,.vcd:active,.vsp:active,.vsd:active,.eb:active{transform:scale(.96)}
 
 /* ===== IPTV ===== */
@@ -514,6 +528,8 @@ h3.sec::before{display:none}
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
+<div id="pageVer" style="position:fixed;top:calc(4px + env(safe-area-inset-top));left:6px;z-index:2147483646;background:rgba(0,0,0,.55);color:#fff;font:11px sans-serif;padding:2px 8px;border-radius:10px;pointer-events:none;direction:ltr"></div>
+<script>window.PAGE_VER=2;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2173,7 +2189,14 @@ function ivProgress(pos, dur, ended) {
     if (ks.length > 200) ks.sort((a, b) => all[a].t - all[b].t).slice(0, ks.length - 200).forEach(k => delete all[k]);
     localStorage.setItem(ivPK(), JSON.stringify(all));
   } catch (e) {}
-  if (ended && np.next != null && IV.flatSid === np.sid) setTimeout(() => ivPlayEp(np.next), 800);
+  if (!ended && np.next != null && IV.flatSid === np.sid && IV.flat && IV.flat[np.next] && window.AndroidPlayer && typeof AndroidPlayer.showNext !== 'undefined') {
+    const nx = IV.flat[np.next];
+    try { AndroidPlayer.showNext('S' + p2s(nx.s) + 'E' + p2s(nx.e), Math.max(0, Math.ceil(dur - pos))); } catch (e) {}
+  }
+  if (ended && np.next != null && IV.flatSid === np.sid && !np.fired) {
+    let pr = null; try { pr = prof(); } catch (e) {}
+    if (np.go || !(pr && pr.auto === false)) { np.fired = 1; setTimeout(() => ivPlayEp(np.next), 800); }
+  }
 }
 function ivPlay(url, title, o) {
   o = o || {};
@@ -3071,12 +3094,12 @@ async function loadSeason(n) {
     if (my !== sReq) return;
     b.innerHTML = (smapKeys(SMAP[cur.id]).length ? '<p style="margin:0 0 10px;color:#38bdf8;font-size:13px">📌 المسلسل متضاف للكل: ' + smapKeys(SMAP[cur.id]).length + ' حلقة بتشتغل ورا بعض</p>' : '') + (ADV() || !cur.imdb ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
       (ROLE === 'admin' && cur.imdb ? '<button class="search-btn" style="margin-bottom:10px;background:#0ea5e9" onclick="playOpen(' + n + ',1)">📌 ضيف الموسم ' + n + ' كله (اختار نسخة)</button>' : '') +
-      d.episodes.map(e => '<div class="ep">' +
+      d.episodes.map(e => '<div class="ep ept">' +
         (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '') +
         '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) + (e.date && e.date > new Date().toISOString().slice(0, 10) ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') +
         (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌 مضافة</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚 مكتبتي</span>' : '') + '</small></div>' +
-        playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
-        (ADV() || !cur.imdb ? '<button onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div>').join('');
+        '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
+        (ADV() || !cur.imdb ? '<button class="mg" aria-label="تورنت" onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div></div>').join('');
   } catch (e) { if (my === sReq) b.innerHTML = ERR; }
 }
 function altChips() {
@@ -4725,15 +4748,15 @@ window.nativeProgress = function (pos, dur, ended) {
   try { nativeNextWatch(pos, dur, !!ended); } catch (e) {}
 };
 // ===== الحلقة التالية في المشغّل الداخلي =====
-// آخر 200 ثانية: نجهّز الحلقة التالية في تسلسل المسلسل (لو مش متضافة) ونبلّغ التطبيق بالعدّاد.
+// آخر 250 ثانية: نجهّز الحلقة التالية في تسلسل المسلسل (لو مش متضافة) ونبلّغ التطبيق بالعدّاد.
 // لما الحلقة تخلص: تشتغل التالية لوحدها (لو التشغيل التلقائي شغّال في البروفايل).
 let NN_CHAIN = 0;
 function nativeNextWatch(pos, dur, ended) {
   const c = PLAY;
   if (!c || c.type !== 'tv' || !(dur > 60)) return;
   const left = dur - pos;
-  if (!ended && left > 0 && left <= 200) {
-    if (!c._nnPre) { c._nnPre = 1; smapEnsureNext(c).catch(() => {}); }
+  if (!ended && left > 0) {
+    if (left <= 250 && !c._nnPre) { c._nnPre = 1; smapEnsureNext(c).catch(() => {}); }
     const n = nextTarget();
     if (n && window.AndroidPlayer && typeof AndroidPlayer.showNext !== 'undefined') {
       try { AndroidPlayer.showNext(n.label, Math.ceil(left)); } catch (e) {}
@@ -4756,7 +4779,12 @@ function nativeNextWatch(pos, dur, ended) {
   }
 }
 // التطبيق يقدر ينادي عليها من زرار «الحلقة التالية» جوّه المشغّل
-window.nativeNext = function () { try { if (PLAY) PLAY._nnGo = 1; clearCd(); playNext(); } catch (e) {} };
+window.nativeNext = function () {
+  try {
+    if (window.IV_NP) { window.IV_NP.go = 1; return; }   // الـIPTV: التطبيق بيبعت بعدها «خلصت» فتشتغل التالية
+    if (PLAY) PLAY._nnGo = 1; clearCd(); playNext();
+  } catch (e) {}
+};
 function nfxAutoplayBlocked() {
   setTimeout(() => {
     const b = document.getElementById('nfx');
