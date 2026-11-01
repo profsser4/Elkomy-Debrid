@@ -1299,13 +1299,14 @@ function fallbackPanel(d, base, err) {
   const W = [], D = [];
   if (!raw) return warn('الرابط مش جاهز: ' + esc(String((err && err.message) || err).slice(0, 120)));
   // برامج المشاهدة
+  if (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined') W.push(btn('⭐ شغّل في المشغّل الداخلي', 'data-u="' + pu + '" onclick="nativeGo(this)"', '#22c55e'));
   try { W.push(playerMenuLite(play, hl)); } catch (e) {}
   W.push(btn('📋 نسخ رابط المشاهدة', 'data-u="' + pu + '" onclick="copyText(this.dataset.u)"', '#475569'));
-  W.push(btn('🌐 فتح في المتصفح', 'data-u="' + pu + '" onclick="window.open(this.dataset.u,\'_blank\')"', '#475569'));
+  if (!window.AndroidPlayer) W.push(btn('🌐 فتح في المتصفح', 'data-u="' + pu + '" onclick="window.open(this.dataset.u,\'_blank\')"', '#475569'));
   // برامج التحميل
   if (window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined') D.push(btn('⬇️ تحميل ببرنامج التطبيق (سريع)', 'data-u="' + du + '" data-n="' + ttl + '" onclick="dlApp(this)"', '#22c55e'));
-  D.push(a('⬇️ تحميل مباشر', raw, ' target="_blank" rel="noopener" download'));
-  if (IS_ANDROID) {
+  if (!(window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined')) D.push(a('⬇️ تحميل مباشر', raw, ' target="_blank" rel="noopener" download'));
+  if (IS_ANDROID && !window.AndroidPlayer) {
     D.push(a('⬇️ 1DM', intentUrl(raw, 'idm.internet.download.manager')));
     D.push(a('⬇️ ADM', intentUrl(raw, 'com.dv.adm')));
     D.push(a('⬇️ أي برنامج تحميل', intentUrl(raw, '')));
@@ -1324,7 +1325,9 @@ function playerMenuLite(u, hls) {
   const a = (label, href, extra) => '<a class="pl" href="' + esc(href) + '"' + (extra || '') + '>' + label + '</a>';
   const du = ' data-u="' + esc(u) + '"';
   const L = [];
-  if (IS_ANDROID) {
+  if (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined') {
+    return '<button class="pl" style="background:#22c55e"' + du + ' onclick="nativeGo(this)">⭐ المشغّل الداخلي</button>';
+  } else if (IS_ANDROID) {
     L.push(a('▶ VLC', intentUrl(u, 'org.videolan.vlc'), du + ' onclick="return vlcGo(this)"'));
     L.push(a('▶ Just Player', intentUrl(u, 'com.brouken.player')));
     L.push(a('📂 أي مشغّل', intentUrl(u, '')));
@@ -1346,7 +1349,9 @@ function playerMenu(u, hls) {
   const L = [];
   const a = (label, href, extra) => '<a class="pl" href="' + esc(href) + '"' + (extra || '') + '>' + label + '</a>';
   const du = ' data-u="' + esc(u) + '"';
-  if (IS_ANDROID) {
+  if (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined') {
+    L.push('<button class="pl" style="background:#22c55e"' + du + ' onclick="nativeGo(this)">⭐ المشغّل الداخلي</button>');
+  } else if (IS_ANDROID) {
     L.push(a('▶ VLC (يكمّل من مكانك + الترجمة)', intentUrl(u, 'org.videolan.vlc'), du + ' onclick="return vlcGo(this)"'));
     if (hls) L.push(a('▶ VLC (الرابط الأصلي - احتياطي)', intentUrl(orig, 'org.videolan.vlc'), ' data-u="' + esc(orig) + '" onclick="return vlcGo(this)"'));
     L.push(a('▶ Just Player', intentUrl(u, 'com.brouken.player')));
@@ -1362,16 +1367,17 @@ function playerMenu(u, hls) {
     L.push(a('▶ PotPlayer', 'potplayer://' + u));
   }
   const sl = stremioLink(false);
-  if (sl) {
+  if (sl && !window.AndroidPlayer) {
     L.push(a('🎬 Stremio', sl));
     L.push(a('🌐 Stremio Web', stremioLink(true), ' target="_blank" rel="noopener"'));
   }
   L.push('<button class="pl" style="background:#475569" onclick="fsVideo()">⛶ ملء الشاشة</button>');
   L.push('<button class="pl" style="background:#475569" onclick="dlCurSub()">⬇️ تحميل الترجمة (SRT)</button>');
   L.push('<button class="pl" style="background:#475569" onclick="copySubLink()">📋 نسخ رابط الترجمة</button>');
-  const D = [a('⬇️ تحميل مباشر (الرابط الأصلي)', orig, ' target="_blank" rel="noopener" download')];
+  const D = (window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined') ? [] : [a('⬇️ تحميل مباشر (الرابط الأصلي)', orig, ' target="_blank" rel="noopener" download')];
   if (window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined') D.unshift('<button class="pl" style="background:#22c55e" data-u="' + esc(orig) + '" data-n="' + esc((typeof PLAY !== 'undefined' && PLAY && (PLAY.fname || PLAY.title)) || '') + '" onclick="dlApp(this)">⬇️ تحميل ببرنامج التطبيق (سريع)</button>');
-  if (IS_ANDROID) { D.push(a('⬇️ 1DM', intentUrl(orig, 'idm.internet.download.manager'))); D.push(a('⬇️ ADM', intentUrl(orig, 'com.dv.adm'))); D.push(a('⬇️ أي برنامج تحميل', intentUrl(orig, ''))); }
+  if (window.AndroidPlayer) { /* التطبيق: التحميل من زرار التطبيق بس */ }
+  else if (IS_ANDROID) { D.push(a('⬇️ 1DM', intentUrl(orig, 'idm.internet.download.manager'))); D.push(a('⬇️ ADM', intentUrl(orig, 'com.dv.adm'))); D.push(a('⬇️ أي برنامج تحميل', intentUrl(orig, ''))); }
   else D.push('<button class="pl" style="background:#475569" data-u="' + esc(orig) + '" onclick="copyText(this.dataset.u)">📋 نسخ رابط التحميل (IDM / JDownloader)</button>');
   return '<details class="pm" open><summary>🎬 مشغّلات خارجية (بتشغّل أي صيغة وأي صوت)</summary><div class="pgrid2">' + L.join('') + '</div>' +
     '<details class="pm" open><summary>⬇️ برامج التحميل (الملف الأصلي)</summary><div class="pgrid2">' + D.join('') + '</div></details>' +
@@ -1698,6 +1704,11 @@ function enterProfile(id) {
   handleDeepLink();
   setRestore();
 }
+function autoToggleHTML() {
+  const p = prof();
+  return '<label style="display:block;margin:0 0 10px;color:var(--mut);font-size:13px"><input type="checkbox" ' +
+    ((!p || p.auto !== false) ? 'checked ' : '') + 'onchange="setAuto(this.checked)"> ⏭ تشغيل تلقائي للحلقة التالية</label>';
+}
 function setAuto(b) {
   const p = prof();
   if (!p) return;
@@ -1938,7 +1949,10 @@ async function openDetails(type, id) {
     const bg = esc(d.backdrop || d.poster || '');
     const cb = (last && !last.done)
       ? '<button class="search-btn" style="margin-bottom:10px" data-k="' + esc(last.key) + '" onclick="playItem(this.dataset.k)">▶ كمّل ' +
-        (last.s != null ? 'S' + p2(last.s) + 'E' + p2(last.e) + ' · ' : '') + fmtTime(last.pos) + '</button>' : '';
+        (last.s != null ? 'S' + p2(last.s) + 'E' + p2(last.e) + ' · ' : '') + fmtTime(last.pos) + '</button>' :
+      ((last && last.done && last.type === 'tv' && (last.next || nextEpOf(last)))
+        ? (() => { const nx = last.next || nextEpOf(last); return '<button class="search-btn" style="margin-bottom:10px" data-k="' + esc(last.key) + '" onclick="playItem(this.dataset.k)">⏭ شغّل الحلقة التالية' +
+            (nx.s != null ? ' · S' + p2(nx.s) + 'E' + p2(nx.e) : '') + '</button>'; })() : '');
     let h = '<div class="hero" style="background-image:linear-gradient(transparent 30%,#0f172a),url(\'' + bg + '\')">' +
       '<button class="back" onclick="goBack()">➡️</button><h2>' + esc(d.title) + '</h2></div>' +
       '<div class="meta">⭐ ' + d.rating + ' · ' + esc(d.year) +
@@ -1948,7 +1962,7 @@ async function openDetails(type, id) {
       '<button class="search-btn" style="background:#334155;margin-bottom:10px" onclick="openTrailer(\'' + d.type + '\',' + d.id + ')">🎬 التريلر</button>' +
       '<button class="search-btn" id="listBtn" style="background:#475569;margin-bottom:10px" onclick="toggleList()">' + listLabel() + '</button>' +
       (ROLE === 'admin' ? '<button class="search-btn" style="background:#0f766e;margin-bottom:10px" onclick="libAddFromCur()">📚 ' + (libFor(d) ? 'عدّل رابط المكتبة' : 'ضيف رابط في المكتبة') + '</button>' : '') +
-      (d.type === 'tv' ? '<p style="color:var(--mut);font-size:12px;margin:-4px 0 10px">لو ضفته لقائمتي بيجيلك إشعار لما ينزل منه حلقة جديدة (فعّل 🔔 من فوق).</p>' : '');
+      (d.type === 'tv' ? '<p style="color:var(--mut);font-size:12px;margin:-4px 0 10px">لو ضفته لقائمتي بيجيلك إشعار لما ينزل منه حلقة جديدة (فعّل 🔔 من فوق).</p>' + autoToggleHTML() : '');
     if (d.type === 'movie') {
       const lib0 = libFor(d);
       if (lib0) h += '<div class="libhit">📚 متوفر في مكتبتك — التشغيل والتحميل بيستخدموا رابط المكتبة الأول، ولو وقع بيحوّل على التورنت تلقائي.</div>';
@@ -1962,6 +1976,7 @@ async function openDetails(type, id) {
     }
     box.innerHTML = h + '<div id="relBox"></div>';
     if (d.type === 'tv' && d.seasons.length) loadSeason(d.seasons[0].n);
+    if (d.type === 'tv' && ROLE === 'admin') setTimeout(() => { if (cur && cur.id === d.id) smapFillSeries(d.id); }, 1500);
     loadRelated(d.type, d.id);
   } catch (e) { box.innerHTML = ERR; }
 }
@@ -2162,7 +2177,7 @@ function ivProgress(pos, dur, ended) {
 }
 function ivPlay(url, title, o) {
   o = o || {};
-  if (ivApp()) {
+  if (ivApp() || (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined')) {
     window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid};
     AndroidPlayer.play(url, title, o.key ? ivPosGet(o.key) : 0);
     return;
@@ -2813,9 +2828,11 @@ function clibShowDownload(c) {
   const d = c.d, raw = d.direct_link, u = esc(raw);
   const L = [];
   const a = (label, href) => '<a class="pl" href="' + esc(href) + '">' + label + '</a>';
-  if (IS_ANDROID) {
+  if (IS_ANDROID && !window.AndroidPlayer) {
     L.push(a('⬇️ 1DM+', intentUrl(raw, 'idm.internet.download.manager.plus')), a('⬇️ 1DM', intentUrl(raw, 'idm.internet.download.manager')),
       a('⬇️ ADM', intentUrl(raw, 'com.dv.adm')), a('📂 أي برنامج تحميل', intentUrl(raw, '')));
+  } else if (window.AndroidPlayer) {
+    /* التطبيق: زرار التحميل الداخلي فوق كفاية */
   } else if (IS_IOS) {
     L.push(a('⬇️ Documents', 'rdocs://' + raw));
   } else {
@@ -4249,6 +4266,117 @@ async function smapAuto() {
     if (r.ok && d.eps) { SMAP[c.tmdb] = d.eps; smapUI(); }
   } catch (e) {}
 }
+// ===== تجميع حلقات المسلسل تلقائي: أي حلقة نزلت ومش متضافة بتتضاف لوحدها وتقف في مكانها بالترتيب =====
+const VH_NAME = {}, SEAS_C = {}, SMAP_BUSY = {}, SMAP_LAST = {};
+const SINGLE_EP_RX = /S\d{1,2}\s?[._-]?\s?E\d{1,3}|\d{1,2}x\d{2,3}|\bE(?:p|pisode)?\s?\d{1,3}\b/i;
+const todayStr = () => new Date().toISOString().slice(0, 10);
+async function seasonEps(id, n) {
+  const k = id + ':' + n, c = SEAS_C[k];
+  if (c && Date.now() - c.t < 600000) return c.eps;
+  try {
+    const {d} = await api('/season?id=' + id + '&n=' + n);
+    const eps = (d.episodes || []).map(x => ({n: x.n, date: x.date || ''}));
+    SEAS_C[k] = {t: Date.now(), eps: eps};
+    return eps;
+  } catch (e) { return []; }
+}
+const airedEp = (eps, e) => { const x = eps.find(y => y.n === e); return !!(x && x.date && x.date <= todayStr()); };
+// بيدوّر على أحسن نسخة فورية للحلقة ويضيفها لتسلسل المسلسل
+async function smapResolveOne(id, imdb, q, s, e) {
+  if (ROLE !== 'admin' || !id || !imdb || s == null || e == null) return false;
+  try {
+    const {d} = await api('/play/versions?type=tv&imdb=' + encodeURIComponent(imdb) + '&tmdb=' + id +
+      '&q=' + encodeURIComponent(q || '') + '&s=' + s + '&e=' + e);
+    let vs = d.versions || [];
+    if (DBP.cfg().only === '1' && vs.some(v => v.hash)) vs = vs.filter(v => v.hash);
+    vs = verSort(vs);
+    const all0 = vs.filter(v => v.instant && !FAILED.has(v.hash || v.ref));
+    const okv = all0.filter(v => v.hash || !(v.risky || /2160|4K/i.test(v.q)));
+    const v = (okv.length ? okv : all0)[0];
+    if (!v) return false;
+    const {r, d: x} = await api('/series/map', {method: 'POST', body: JSON.stringify({id: id, s: s, e: e,
+      spec: {hash: v.hash || '', name: v.title || '', fid: null, src: '', ref: v.hash ? '' : (v.ref || '')}})});
+    if (r.ok && x && x.eps) { SMAP[id] = x.eps; return true; }
+  } catch (er) {}
+  return false;
+}
+// آخر 200 ثانية: نتأكد إن الحلقة اللي بعدها متضافة قبل ما الحالية تخلص
+async function smapEnsureNext(c) {
+  if (ROLE !== 'admin' || !c || c.type !== 'tv' || !c.tmdb || !c.imdb) return;
+  const ne = nextEpOf(c);
+  if (!ne) return;
+  const m = await smapLoad(c.tmdb);
+  if (m[ne.s + ':' + ne.e]) return;
+  const eps = await seasonEps(c.tmdb, ne.s);
+  if (!airedEp(eps, ne.e)) return;
+  await smapResolveOne(c.tmdb, c.imdb, c.qn || c.title, ne.s, ne.e);
+}
+function smapSt(msg) {
+  let b = $('smapAutoSt');
+  if (!b) {
+    const eps = $('eps');
+    if (!eps) return;
+    eps.insertAdjacentHTML('beforebegin', '<div id="smapAutoSt" style="margin:0 0 8px;font-size:12px;color:#38bdf8"></div>');
+    b = $('smapAutoSt');
+  }
+  b.textContent = msg;
+  b.style.display = msg ? '' : 'none';
+}
+async function smapFillSeries(id, force) {
+  if (ROLE !== 'admin' || !id || SMAP_BUSY[id]) return;
+  if (!force && Date.now() - (SMAP_LAST[id] || 0) < 600000) return;
+  let info = (cur && cur.id === id && cur.type === 'tv') ? cur : null;
+  SMAP_BUSY[id] = 1;
+  if (!info) {
+    try {
+      const {d} = await api('/details?type=tv&id=' + id);
+      if (d && !d.error) info = Object.assign({}, d, {qname: (PLAY && PLAY.tmdb === id && PLAY.qn) || d.qname || ''});
+    } catch (er) {}
+  }
+  if (!info || !info.imdb) { SMAP_BUSY[id] = 0; return; }
+  let added = 0, left = 0, capped = false;
+  try {
+    const q = info.qname || info.title || '';
+    let budget = 40;
+    for (const sn of (info.seasons || []).filter(x => x.n > 0)) {
+      await smapLoad(id, true);
+      const eps = await seasonEps(id, sn.n);
+      const missing = () => eps.filter(x => x.date && x.date <= todayStr() && !SMAP[id][sn.n + ':' + x.n]).map(x => x.n);
+      let miss = missing();
+      if (!miss.length) continue;
+      // باك موسم كامل متضاف قبل كده؟ نضيف الباقي منه مرة واحدة
+      const ks = Object.keys(SMAP[id]).filter(k => k.indexOf(sn.n + ':') === 0);
+      const hs = ks.map(k => (SMAP[id][k] || {}).hash).filter(Boolean);
+      const packH = hs.find(h => { const nm = VH_NAME[String(h).toLowerCase()] || ''; return nm && !SINGLE_EP_RX.test(nm); });
+      if (packH) {
+        smapSt('🔄 بجمّع حلقات الموسم ' + sn.n + '...');
+        try {
+          const {r, d} = await api('/series/map/bulk', {method: 'POST', body: JSON.stringify({id: id, s: sn.n, count: sn.eps || eps.length,
+            spec: {hash: packH, name: VH_NAME[String(packH).toLowerCase()] || ''}})});
+          if (r.ok && d && d.eps) { added += d.added || 0; SMAP[id] = d.eps; }
+        } catch (er) {}
+        miss = missing();
+      }
+      for (const e of miss) {
+        if (budget <= 0) { capped = true; break; }
+        if (SMAP[id][sn.n + ':' + e]) continue;
+        budget--;
+        smapSt('🔄 بجمّع الحلقات تلقائي: S' + p2(sn.n) + 'E' + p2(e) + '...');
+        if (await smapResolveOne(id, info.imdb, q, sn.n, e)) added++; else left++;
+        await sleep(1200);
+      }
+      if (capped) break;
+    }
+  } catch (er) {}
+  SMAP_BUSY[id] = 0;
+  if (!capped) SMAP_LAST[id] = Date.now();
+  smapSt(added ? '✅ اتضافت ' + added + ' حلقة تلقائي' + (left ? ' · ' + left + ' لسه مالقتش لهم نسخة فورية (هحاول تاني لوحدي)' : '') :
+    (left ? '⏳ ' + left + ' حلقة لسه مالقتش لهم نسخة فورية — هتتضاف لوحدها أول ما تنزل' : ''));
+  if (added && $('eps') && cur && cur.id === id) {
+    const t = document.querySelector('.tab.on');
+    if (t) loadSeason(+String(t.id).replace('tab', ''));
+  }
+}
 // بيجيب رابط البث المحوَّل (صوته شغّال) للملفات اللي جاية من /generate (TorBox). التحميل مابيتأثرش.
 async function ensureHls(d, fid, id) {
   if (!d || d.hls || !d.torrent_id || !/^(\d+|x:[^:]+:[^:]+:.+)$/.test(String(d.torrent_id))) return;
@@ -4460,7 +4588,38 @@ function playWatch() {
   v.addEventListener('loadedmetadata', () => setTimeout(check, 6000), {once: true});
   v.addEventListener('playing', () => { if (v.videoWidth > 0) { const was = shown; shown = true; const pe = $('playErr'); if (was && pe && my === pullId) pe.innerHTML = ''; } });
 }
+// أندرويد (التطبيق): أي تشغيل بيروح للمشغّل الداخلي على طول، مفيش مشغّل متصفح خالص
+async function nativePlayData(d, base) {
+  if (window.NN_AUTO) { NN_CHAIN++; window.NN_AUTO = false; } else NN_CHAIN = 0;
+  const ov = document.querySelector('#results video');
+  if (ov) { try { if (ov._hls) ov._hls.destroy(); ov.pause(); ov.removeAttribute('src'); ov.load(); } catch (e) {} }
+  pack = (d.files && base.type !== 'movie') ? d : null;
+  if (!base.title) base.title = d.name || '';
+  base.fid = d.file_id != null ? d.file_id : (base.fid != null ? base.fid : null);
+  base.fname = d.name || base.fname || '';
+  setPlay(base);
+  PLAY.url = d.direct_link;
+  if (d.hls) PLAY.hls = d.hls;
+  const my0 = PLAY;
+  setTimeout(() => {
+    if (PLAY !== my0) return;
+    try { if (my0.type === 'tv' && my0.tmdb) smapLoad(my0.tmdb); } catch (e) {}
+    smapAuto().then(() => { if (PLAY === my0 && my0.type === 'tv' && my0.tmdb) smapFillSeries(my0.tmdb); }).catch(() => {});
+  }, 2500);
+  try { await nativePlay(d.direct_link); }
+  catch (e) {
+    $('results').innerHTML = warn('المشغّل الداخلي ما اشتغلش: ' + esc(String((e && e.message) || e).slice(0, 120))) +
+      '<button class="search-btn" style="margin-top:8px" data-u="' + esc(d.direct_link) + '" onclick="nativeGo(this)">🔄 جرّب المشغّل الداخلي تاني</button>' +
+      '<button class="search-btn" style="margin-top:8px;background:#475569" data-u="' + esc(d.direct_link) + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط</button>';
+    return;
+  }
+  try { if (pack) showPack(pack); else pgBack(); } catch (x) {}
+}
+async function nativeGo(el) {
+  try { await nativePlay(el.dataset.u); } catch (e) { toast('❌ المشغّل الداخلي ما اشتغلش', true); }
+}
 function playData(d, base) {
+  if (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined' && d && d.direct_link) { nativePlayData(d, base); return; }
   const ov = document.querySelector('#results video');
   if (ov && ov._hls) { try { ov._hls.destroy(); } catch (e) {} }
   pgOpen();
@@ -4507,7 +4666,9 @@ function linkCard(d, video) {
   return '<p style="margin:0 0 10px">📡 المصدر: <b>' + esc(provShow(d.provider)) + '</b>' +
     (d.size ? ' · 💾 ' + fmtSize(d.size) : '') + '</p>' +
     (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
-    '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download">⬇️ فتح / تحميل مباشر</a>' +
+    ((window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined')
+      ? '<button class="btn-download" style="width:100%;border:none;cursor:pointer;display:block" data-u="' + u + '" data-n="' + esc(d.name || '') + '" onclick="dlApp(this)">⬇️ تحميل ببرنامج التطبيق</button>'
+      : '<a href="' + u + '" target="_blank" rel="noopener" class="btn-download">⬇️ فتح / تحميل مباشر</a>') +
     '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في VLC)</button>';
 }
 function skip(n) {
@@ -4561,7 +4722,41 @@ async function nativeWrap(fn) {
 window.nativeProgress = function (pos, dur, ended) {
   if (window.IV_NP) { try { ivProgress(pos, dur, ended); } catch (e) {} return; }
   try { saveProgress({duration: dur, currentTime: pos}, !!ended); } catch (e) {}
+  try { nativeNextWatch(pos, dur, !!ended); } catch (e) {}
 };
+// ===== الحلقة التالية في المشغّل الداخلي =====
+// آخر 200 ثانية: نجهّز الحلقة التالية في تسلسل المسلسل (لو مش متضافة) ونبلّغ التطبيق بالعدّاد.
+// لما الحلقة تخلص: تشتغل التالية لوحدها (لو التشغيل التلقائي شغّال في البروفايل).
+let NN_CHAIN = 0;
+function nativeNextWatch(pos, dur, ended) {
+  const c = PLAY;
+  if (!c || c.type !== 'tv' || !(dur > 60)) return;
+  const left = dur - pos;
+  if (!ended && left > 0 && left <= 200) {
+    if (!c._nnPre) { c._nnPre = 1; smapEnsureNext(c).catch(() => {}); }
+    const n = nextTarget();
+    if (n && window.AndroidPlayer && typeof AndroidPlayer.showNext !== 'undefined') {
+      try { AndroidPlayer.showNext(n.label, Math.ceil(left)); } catch (e) {}
+    }
+    return;
+  }
+  if (ended && !c._nnGo) {
+    c._nnGo = 1;
+    const p = prof(), n = nextTarget();
+    if (n && !(p && p.auto === false)) {
+      if (NN_CHAIN >= 4) {
+        NN_CHAIN = 0;
+        try { toast('⏸ وقفت التشغيل التلقائي بعد 4 حلقات ورا بعض. دوس على «الحلقة التالية» لو لسه بتتفرج'); } catch (e) {}
+        return;
+      }
+      window.NN_AUTO = true;
+      setTimeout(() => { window.NN_AUTO = false; }, 90000);
+      setTimeout(() => { if (PLAY === c) playNext(); }, 800);
+    }
+  }
+}
+// التطبيق يقدر ينادي عليها من زرار «الحلقة التالية» جوّه المشغّل
+window.nativeNext = function () { try { if (PLAY) PLAY._nnGo = 1; clearCd(); playNext(); } catch (e) {} };
 function nfxAutoplayBlocked() {
   setTimeout(() => {
     const b = document.getElementById('nfx');
@@ -4890,7 +5085,9 @@ async function packAll() {
       '<button class="search-btn btn-blue" onclick="dlM3U()">🎞 ملف M3U</button></div>' +
       '<div style="text-align:right;margin-top:10px;font-size:13px">' + links.map(x =>
         '<div class="ep"><div class="b">' + (x.season != null ? 'S' + p2(x.season) + 'E' + p2(x.episode) + ' · ' : '') +
-        esc(x.name) + '</div><a href="' + esc(x.url) + '" target="_blank" rel="noopener" style="color:var(--primary)">⬇️</a></div>'
+        esc(x.name) + '</div>' + ((window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined')
+          ? '<button class="fc" data-u="' + esc(x.url) + '" data-n="' + esc(x.name) + '" onclick="dlApp(this)">⬇️</button>'
+          : '<a href="' + esc(x.url) + '" target="_blank" rel="noopener" style="color:var(--primary)">⬇️</a>') + '</div>'
       ).join('') + '</div>';
   } catch (e) { $('packOut').innerHTML = ERR; }
 }
@@ -6479,6 +6676,7 @@ async function startPlay(spec, mode, baseOver) {
   LAST_PULL = my;
   clearCd();
   scrollToResults();
+  if (spec && spec.hash && spec.name) VH_NAME[String(spec.hash).toLowerCase()] = spec.name;
   { const c1 = DBP.cfg(), w1 = c1[mode === 'download' ? 'dl' : 'play'];
     $('results').innerHTML = pend('جاري تجهيز النسخة من: ' + (w1 === 'ad' && spec.hash ? 'AllDebrid' : w1 === 'tb' && spec.hash ? 'TorBox' : 'السيرفر') + (spec.hash ? '' : ' (نسخة Stremio بتعدّي على السيرفر دايماً)')); }
   let tid = null, tries = 0, res, d = null;
