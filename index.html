@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v4: إصلاح «الحلقة التالية: مفيش بيانات تشغيل»: الصفحة كانت بتمسح بيانات الحلقة أول ما المشغّل الداخلي يفتح، فمفيش تالية ولا حفظ تقدّم
   v3: شيلت حد الـ4 حلقات (التشغيل التلقائي ورا بعض من غير توقف) + رسالة تشخيص في المشغّل لو الحلقة التالية مش معروفة
   v2: الحلقة التالية في المشغّل الداخلي: زرار برقم الحلقة + عدّاد آخر 250 ثانية + تشغيل ورا بعض في الـIPTV
 -->
@@ -530,7 +531,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;top:calc(4px + env(safe-area-inset-top));left:6px;z-index:2147483646;background:rgba(0,0,0,.55);color:#fff;font:11px sans-serif;padding:2px 8px;border-radius:10px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=3;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=4;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -4630,6 +4631,7 @@ async function nativePlayData(d, base) {
     try { if (my0.type === 'tv' && my0.tmdb) smapLoad(my0.tmdb); } catch (e) {}
     smapAuto().then(() => { if (PLAY === my0 && my0.type === 'tv' && my0.tmdb) smapFillSeries(my0.tmdb); }).catch(() => {});
   }, 2500);
+  window.NP_NEXT = my0;   // الصفحة بتمسح PLAY بعد فتح المشغّل (pgBack)، فنحتفظ بنسخة للتقدّم والحلقة التالية
   try { await nativePlay(d.direct_link); }
   catch (e) {
     $('results').innerHTML = warn('المشغّل الداخلي ما اشتغلش: ' + esc(String((e && e.message) || e).slice(0, 120))) +
@@ -4728,6 +4730,7 @@ function saveProgress(v, ended) {
 }
 async function nativePlay(u) {
   window.IV_NP = null;
+  window.NP_CUR = window.NP_NEXT || null; window.NP_NEXT = null;
   let p = 0;
   try { p = Math.floor(((PLAY && getItem(PLAY.key)) || {}).pos || 0); } catch (e) {}
   let sx = '';
@@ -4745,6 +4748,7 @@ async function nativeWrap(fn) {
 }
 window.nativeProgress = function (pos, dur, ended) {
   if (window.IV_NP) { try { ivProgress(pos, dur, ended); } catch (e) {} return; }
+  if (!PLAY && window.NP_CUR) PLAY = window.NP_CUR;   // رجّع بيانات الحلقة اللي بتتشغّل في المشغّل الداخلي
   try { saveProgress({duration: dur, currentTime: pos}, !!ended); } catch (e) {}
   try { nativeNextWatch(pos, dur, !!ended); } catch (e) {}
 };
