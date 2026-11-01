@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v3: شيلت حد الـ4 حلقات (التشغيل التلقائي ورا بعض من غير توقف) + رسالة تشخيص في المشغّل لو الحلقة التالية مش معروفة
   v2: الحلقة التالية في المشغّل الداخلي: زرار برقم الحلقة + عدّاد آخر 250 ثانية + تشغيل ورا بعض في الـIPTV
 -->
 <title>Elkomy Debrid VIP</title>
@@ -529,7 +530,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;top:calc(4px + env(safe-area-inset-top));left:6px;z-index:2147483646;background:rgba(0,0,0,.55);color:#fff;font:11px sans-serif;padding:2px 8px;border-radius:10px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=2;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=3;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -4751,15 +4752,24 @@ window.nativeProgress = function (pos, dur, ended) {
 // آخر 250 ثانية: نجهّز الحلقة التالية في تسلسل المسلسل (لو مش متضافة) ونبلّغ التطبيق بالعدّاد.
 // لما الحلقة تخلص: تشتغل التالية لوحدها (لو التشغيل التلقائي شغّال في البروفايل).
 let NN_CHAIN = 0;
+let NN_DBG = '';
+function nnDbg(m) {   // رسالة تشخيص بتظهر فوق المشغّل مرة واحدة لكل سبب
+  if (NN_DBG === m) return;
+  NN_DBG = m;
+  try { if (window.AndroidPlayer && typeof AndroidPlayer.showNext !== 'undefined') AndroidPlayer.showNext('!' + m, 0); } catch (e) {}
+}
 function nativeNextWatch(pos, dur, ended) {
-  const c = PLAY;
-  if (!c || c.type !== 'tv' || !(dur > 60)) return;
-  const left = dur - pos;
+  if (!(dur > 60)) return;
+  const c = PLAY, left = dur - pos, near = !ended && left > 0 && left <= 250;
+  if (!c) { if (near) nnDbg('الحلقة التالية: مفيش بيانات تشغيل'); return; }
+  if (c.type !== 'tv') { if (near) nnDbg('الحلقة التالية: النوع مش مسلسل (' + c.type + ')'); return; }
   if (!ended && left > 0) {
     if (left <= 250 && !c._nnPre) { c._nnPre = 1; smapEnsureNext(c).catch(() => {}); }
     const n = nextTarget();
     if (n && window.AndroidPlayer && typeof AndroidPlayer.showNext !== 'undefined') {
       try { AndroidPlayer.showNext(n.label, Math.ceil(left)); } catch (e) {}
+    } else if (!n && near) {
+      nnDbg(c.s == null || c.e == null ? 'الحلقة التالية: رقم الحلقة مش معروف' : 'مفيش حلقة بعد S' + p2(c.s) + 'E' + p2(c.e));
     }
     return;
   }
@@ -4767,11 +4777,6 @@ function nativeNextWatch(pos, dur, ended) {
     c._nnGo = 1;
     const p = prof(), n = nextTarget();
     if (n && !(p && p.auto === false)) {
-      if (NN_CHAIN >= 4) {
-        NN_CHAIN = 0;
-        try { toast('⏸ وقفت التشغيل التلقائي بعد 4 حلقات ورا بعض. دوس على «الحلقة التالية» لو لسه بتتفرج'); } catch (e) {}
-        return;
-      }
       window.NN_AUTO = true;
       setTimeout(() => { window.NN_AUTO = false; }, 90000);
       setTimeout(() => { if (PLAY === c) playNext(); }, 800);
