@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v5: الانتقال للحلقة التالية جوه المشغّل من غير ما يقفل ويرجع للصفحة (شاشة «جاري التجهيز») + إبلاغ المشغّل بإعداد التشغيل التلقائي
   v4: إصلاح «الحلقة التالية: مفيش بيانات تشغيل»: الصفحة كانت بتمسح بيانات الحلقة أول ما المشغّل الداخلي يفتح، فمفيش تالية ولا حفظ تقدّم
   v3: شيلت حد الـ4 حلقات (التشغيل التلقائي ورا بعض من غير توقف) + رسالة تشخيص في المشغّل لو الحلقة التالية مش معروفة
   v2: الحلقة التالية في المشغّل الداخلي: زرار برقم الحلقة + عدّاد آخر 250 ثانية + تشغيل ورا بعض في الـIPTV
@@ -531,7 +532,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;top:calc(4px + env(safe-area-inset-top));left:6px;z-index:2147483646;background:rgba(0,0,0,.55);color:#fff;font:11px sans-serif;padding:2px 8px;border-radius:10px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=4;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=5;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -4746,7 +4747,16 @@ async function nativeWrap(fn) {
   if (d && d.direct) { await nativePlay(d.direct); try { pgBack(); } catch (x) {} }
   return d;
 }
+function nnAuto() {   // المشغّل الداخلي يعرف هل يستنى الحلقة التالية ولا يقفل (حسب إعداد التشغيل التلقائي)
+  try {
+    if (window.AndroidPlayer && typeof AndroidPlayer.setAutoNext !== 'undefined') {
+      const p = prof();
+      AndroidPlayer.setAutoNext(!(p && p.auto === false));
+    }
+  } catch (e) {}
+}
 window.nativeProgress = function (pos, dur, ended) {
+  nnAuto();
   if (window.IV_NP) { try { ivProgress(pos, dur, ended); } catch (e) {} return; }
   if (!PLAY && window.NP_CUR) PLAY = window.NP_CUR;   // رجّع بيانات الحلقة اللي بتتشغّل في المشغّل الداخلي
   try { saveProgress({duration: dur, currentTime: pos}, !!ended); } catch (e) {}
