@@ -7,6 +7,8 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v7: «كمّل مشاهدة» والتشغيل السريع والمكتبة كانوا بيفتحوا المشغّل من غير ما الصفحة تحتفظ ببيانات الحلقة، فمفيش حلقة تالية ولا حفظ مكان؛ اتصلح لكل مسارات المشغّل الداخلي
+  v6: زرار «الحلقة التالية» كان ممكن ما يعملش حاجة لو بيانات الحلقة اتمسحت؛ اتصلح + لو التجهيز فشل بتظهر رسالة بالسبب بدل ما يفضل واقف
   v5: الانتقال للحلقة التالية جوه المشغّل من غير ما يقفل ويرجع للصفحة (شاشة «جاري التجهيز») + إبلاغ المشغّل بإعداد التشغيل التلقائي
   v4: إصلاح «الحلقة التالية: مفيش بيانات تشغيل»: الصفحة كانت بتمسح بيانات الحلقة أول ما المشغّل الداخلي يفتح، فمفيش تالية ولا حفظ تقدّم
   v3: شيلت حد الـ4 حلقات (التشغيل التلقائي ورا بعض من غير توقف) + رسالة تشخيص في المشغّل لو الحلقة التالية مش معروفة
@@ -532,7 +534,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;top:calc(4px + env(safe-area-inset-top));left:6px;z-index:2147483646;background:rgba(0,0,0,.55);color:#fff;font:11px sans-serif;padding:2px 8px;border-radius:10px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=5;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=7;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2204,7 +2206,7 @@ function ivProgress(pos, dur, ended) {
 function ivPlay(url, title, o) {
   o = o || {};
   if (ivApp() || (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined')) {
-    window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid};
+    window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid}; window.NP_PLAYED = Date.now();
     AndroidPlayer.play(url, title, o.key ? ivPosGet(o.key) : 0);
     return;
   }
@@ -4731,7 +4733,9 @@ function saveProgress(v, ended) {
 }
 async function nativePlay(u) {
   window.IV_NP = null;
-  window.NP_CUR = window.NP_NEXT || null; window.NP_NEXT = null;
+  // كل مسارات التشغيل (كمّل مشاهدة / تشغيل سريع / مكتبة / رابط): نحتفظ ببيانات الحلقة لأن الصفحة بتمسحها بعد فتح المشغّل
+  window.NP_CUR = window.NP_NEXT || PLAY || null; window.NP_NEXT = null; window.NP_PLAYED = Date.now();
+  try { const c0 = window.NP_CUR; if (c0 && c0.type === 'tv' && c0.tmdb) smapLoad(c0.tmdb).catch(() => {}); } catch (e) {}
   let p = 0;
   try { p = Math.floor(((PLAY && getItem(PLAY.key)) || {}).pos || 0); } catch (e) {}
   let sx = '';
@@ -4798,11 +4802,23 @@ function nativeNextWatch(pos, dur, ended) {
   }
 }
 // التطبيق يقدر ينادي عليها من زرار «الحلقة التالية» جوّه المشغّل
-window.nativeNext = function () {
+function nnFail(m) {   // فشل تجهيز الحلقة التالية: المشغّل يعرض السبب ويقفل بدل ما يفضل مستني
+  try { if (window.AndroidPlayer && typeof AndroidPlayer.showNext !== 'undefined') AndroidPlayer.showNext('#' + m, 0); } catch (e) {}
+}
+window.nativeNext = async function () {
   try {
     if (window.IV_NP) { window.IV_NP.go = 1; return; }   // الـIPTV: التطبيق بيبعت بعدها «خلصت» فتشتغل التالية
-    if (PLAY) PLAY._nnGo = 1; clearCd(); playNext();
-  } catch (e) {}
+    if (!PLAY && window.NP_CUR) PLAY = window.NP_CUR;       // الصفحة بتمسح PLAY بعد فتح المشغّل
+    if (!PLAY) return nnFail('مفيش بيانات تشغيل للحلقة الحالية');
+    if (!nextTarget()) return nnFail('مفيش حلقة تالية معروفة');
+    PLAY._nnGo = 1;
+    clearCd();
+    const t0 = Date.now();
+    window.NP_PLAYED = 0;
+    const done = playNext();
+    setTimeout(() => { if (!(window.NP_PLAYED >= t0)) nnFail((typeof LAST_ERR === 'string' && LAST_ERR) || 'ما قدرتش أجهّز الحلقة التالية'); }, 50000);
+    await done;
+  } catch (e) { nnFail('خطأ: ' + String((e && e.message) || e).slice(0, 80)); }
 };
 function nfxAutoplayBlocked() {
   setTimeout(() => {
