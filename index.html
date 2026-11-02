@@ -7,6 +7,9 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v12: عدّاد التحميل الفعلي لكل عضو (بايتات اتحمّلت فعليًا من تطبيق الأندرويد) يظهر في الإحصائيات وفي تفاصيل كل يوم (يحتاج bot-34.py + إعادة بناء الـAPK)
+  v11: قسم الـIPTV بشكل خاص (هيدر وشريط تبويبات سفلي وألوان مختلفة) + ترتيب الأقسام فوق/تحت وإخفاؤها لكل تبويب (أفلام/مسلسلات/مباشر)، محفوظ لكل بروفايل (يحتاج bot-33.py المحدّث)
+  v10: نظام الأعضاء (يحتاج bot-33.py): باقة مجاني/مميز بمدة + شارة فوق عند العضو + شاشة للأدمن لتحديد الباقة + إحصائيات المشاهدة والسحب لكل عضو + نسخة احتياطية؛ والـIPTV للأعضاء المميزين بس
   v9: البحث الشامل كان بيفضل «جاري البحث» لحد ما أبطأ مصدر يخلص (لحد 150 ثانية)؛ دلوقتي كل مصدر له مهلة 12 ثانية والنتايج بتظهر أول بأول، والمصدر البطيء لو رجّع بعدين بيتضاف لوحده
   v8: تصميم القايمة العلوية (الاختيار A): أزرار بأسماء + بروفايل فوق + أقسام تحت، وشيلت «كوري» من الأقسام (الصفوف في الرئيسية زي ما هي)
   v7: «كمّل مشاهدة» والتشغيل السريع والمكتبة كانوا بيفتحوا المشغّل من غير ما الصفحة تحتفظ ببيانات الحلقة، فمفيش حلقة تالية ولا حفظ مكان؛ اتصلح لكل مسارات المشغّل الداخلي
@@ -535,8 +538,8 @@ h3.sec::before{display:none}
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
-<div id="pageVer" style="position:fixed;top:calc(3px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.75;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=9;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
+<script>window.PAGE_VER=12;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -589,6 +592,7 @@ h3.sec::before{display:none}
 
 <div id="main-content">
 <div class="topbar">
+<div id="planBar"></div>
 <h1 style="color:var(--primary);margin:0;font-size:20px">Elkomy VIP 🚀</h1>
 <button id="pchip" class="fc" onclick="showProfiles()"></button>
 <div class="cats" id="cats"></div>
@@ -672,11 +676,17 @@ h3.sec::before{display:none}
 <div class="sphd">
 <div class="sprow">
 <button class="spback" onclick="ivBack()" aria-label="رجوع">➡️</button>
-<input id="ivQ" class="search-input" placeholder="ابحث في الـIPTV..." enterkeyhint="search" oninput="ivSetQ(this.value)">
+<div class="ivlogo"><b>IPTV</b><i class="ivdot"></i></div>
+<span id="ivBadge"></span>
+<button id="ivOrdBtn" class="ivib" onclick="ivOrderOpen()" aria-label="ترتيب الأقسام">↕️</button>
 </div>
-<div class="tabs" id="ivTabs"></div>
+<div class="sprow" id="ivQrow"><input id="ivQ" class="search-input" placeholder="ابحث في الـIPTV..." enterkeyhint="search" oninput="ivSetQ(this.value)"></div>
 </div>
 <div id="ivBody" class="spbody"></div>
+<div class="tabs" id="ivTabs"></div>
+<div id="ivOrd"><div class="sphd"><div class="sprow"><button class="spback" onclick="ivOrderClose()" aria-label="إغلاق">✕</button><div id="ivOrdT" style="flex:1;font-weight:800;font-size:16px"></div><button class="fc" onclick="ivOrderReset()">↺ الترتيب الأصلي</button></div>
+<div class="sprow"><input id="ivOrdQ" class="search-input" placeholder="دوّر على قسم..." oninput="IV.ord.q=this.value.trim();ivOrderRender()"></div></div>
+<div id="ivOrdBody" class="spbody"></div></div>
 </div>
 
 <div id="pgbar"><button class="pgb" onclick="pgBack()" aria-label="رجوع">➡️ رجوع</button><div class="pgt" id="pgt"></div></div>
@@ -759,6 +769,7 @@ h3.sec::before{display:none}
 <script>
 const API = "https://elkomy-server-neon.vercel.app";
 let TOK = sessionStorage.getItem('tok') || localStorage.getItem('rtok') || "";
+let PLAN = {state: '', until: 0, left: null};
 let UNAME = '', ROLE = 'user', USERS = [], NOCHK = false, LOCK = 0, LOCK_MSG = '';
 // LOCK: 0 عادي · 1 ممنوع التحميل · 2 تصفح فقط (ممنوع المشاهدة والتحميل). الرسالة من الأدمن.
 function noDl() {                       // تحميل
@@ -1599,6 +1610,7 @@ function eye(id, b) {
   b.textContent = show ? '🙈' : '👁';
 }
 function applyRole() {
+  try { renderPlanBar(); } catch (e) {}
   document.querySelectorAll('.adm').forEach(el => el.style.display = ROLE === 'admin' ? '' : 'none');
   const ac = $('advChk');
   if (ac) ac.checked = ADV();
@@ -1612,6 +1624,7 @@ async function showMain() {
     UNAME = d.user || '';
     ROLE = d.role || 'user';
     LOCK = d.lock || 0; LOCK_MSG = d.lock_msg || '';
+    PLAN = d.plan || {state: ROLE === 'admin' ? 'admin' : 'premium', until: 0, left: null};
   } catch (e) { return alert('مش قادر أوصل للسيرفر'); }
   loadLocal();
   applyRole();
@@ -2035,7 +2048,7 @@ function closeDetails() {
 // ================= مكتبتي الخاصة (أفلام / مسلسلات / كرتون) — الأدمن بس بيضيف، والروابط مخفية عن الباقي =================
 // ================= IPTV: حساب خاص لكل عضو (الأدمن بس هو اللي بيضيف الهوست/اليوزر/الباس) =================
 // الطلبات بتطلع من جهاز العضو نفسه (التطبيق عن طريق الجسر AndroidPlayer.httpGet) عشان الآيبي مصري ومن غير CORS.
-const IV = {cfg: null, loaded: false, ck: '', L: {}, C: {}, pins: {live: [], cats: []}, pinsPid: null, homeFor: null, homePid: null, homeHTML: '',
+const IV = {cfg: null, loaded: false, ck: '', L: {}, C: {}, pins: {live: [], cats: [], order: {}, hidden: {}}, pinsPid: null, homeFor: null, homePid: null, homeHTML: '',
   open: false, tab: 'vod', cat: '', q: '', lim: 90, sort: 'new', sel: null, ss: null, flat: [], flatSid: null, rt: 0, info: null};
 const IV_PEND = {};
 let _ivN = 0, _ivPT = null;
@@ -2118,9 +2131,9 @@ async function ivPinsLoad() {
   const pid = PID;
   try {
     const {d} = await api('/iptv/pins?pid=' + encodeURIComponent(pid));
-    IV.pins = {live: (d.pins && d.pins.live) || [], cats: (d.pins && d.pins.cats) || []};
+    IV.pins = {live: (d.pins && d.pins.live) || [], cats: (d.pins && d.pins.cats) || [], order: (d.pins && d.pins.order) || {}, hidden: (d.pins && d.pins.hidden) || {}};
     IV.pinsPid = pid;
-  } catch (e) { IV.pins = {live: [], cats: []}; }
+  } catch (e) { IV.pins = {live: [], cats: [], order: {}, hidden: {}}; }
 }
 function ivPinsSave() {
   clearTimeout(_ivPT);
@@ -2148,6 +2161,86 @@ function ivToggleCat(k, id, n) {
   toast(i >= 0 ? 'القسم اتشال من المثبّتات' : 'القسم اتثبّت ⭐');
   ivPinsSave();
   ivRender();
+}
+
+// ---------- ترتيب أقسام الـIPTV (لكل تبويب، لكل بروفايل) ----------
+function ivSortCats(kind, cats) {
+  const base = new Map(cats.map((c, i) => [String(c.category_id), i]));
+  const ord = (IV.pins.order || {})[kind];
+  if (ord && ord.length) {
+    const pos = new Map(ord.map((id, i) => [String(id), i]));
+    return cats.slice().sort((a, b) => {
+      const ka = String(a.category_id), kb = String(b.category_id);
+      return (pos.has(ka) ? pos.get(ka) : 1e6 + base.get(ka)) - (pos.has(kb) ? pos.get(kb) : 1e6 + base.get(kb));
+    });
+  }
+  const pins = IV.pins.cats.filter(c => c.k === kind).map(c => c.id);
+  const pset = new Map(pins.map((id, i) => [id, i]));
+  return cats.slice().sort((a, b) => {
+    const ka = String(a.category_id), kb = String(b.category_id);
+    return (pset.has(ka) ? pset.get(ka) : 1e6 + base.get(ka)) - (pset.has(kb) ? pset.get(kb) : 1e6 + base.get(kb));
+  });
+}
+async function ivOrderOpen() {
+  if (!IV.cfg || IV.tab === 'me') return;
+  const kind = IV.tab;
+  let cats;
+  try { cats = await ivCats(kind); } catch (e) { return toast('تعذّر تحميل الأقسام', true); }
+  IV.ord = {kind: kind, cats: cats, q: ''};
+  $('ivOrdQ').value = '';
+  $('ivOrdT').textContent = '↕️ ترتيب أقسام ' + (IV_TABS.find(t => t[0] === kind) || ['', ''])[1].replace(/^\S+\s/, '');
+  $('ivOrd').style.display = 'block';
+  ivOrderRender();
+}
+function ivOrderClose() { $('ivOrd').style.display = 'none'; IV.ord = null; ivRender(); }
+function ivOrderRender() {
+  const o = IV.ord;
+  if (!o) return;
+  const kind = o.kind, list = ivSortCats(kind, o.cats), q = (o.q || '').toLowerCase();
+  const hid = new Set(((IV.pins.hidden || {})[kind] || []).map(String));
+  const box = $('ivOrdBody'), keep = box.scrollTop;
+  const rows = list.map((c, i) => ({c: c, i: i})).filter(x => !q || String(x.c.category_name).toLowerCase().includes(q));
+  box.innerHTML = '<p style="color:var(--mut);font-size:12px;margin:4px 2px 10px;line-height:1.8">رتّب الأقسام براحتك: ⤒ فوق خالص · ▲▼ خطوة · ⤓ تحت خالص · 👁 إخفاء القسم من الشريط (بيفضل ظاهر في «الكل»). بيتحفظ لبروفايلك لوحده.</p>' +
+    (rows.map(x => {
+      const id = esc(x.c.category_id), off = hid.has(String(x.c.category_id));
+      return '<div class="ivor' + (off ? ' off' : '') + '" data-id="' + id + '"><span class="ivn">' + (x.i + 1) + '</span>' +
+        '<span class="ivnm">' + (ivCatPinned(kind, x.c.category_id) ? '⭐ ' : '') + esc(x.c.category_name) + '</span>' +
+        '<button onclick="ivMove(this,\'top\')" aria-label="فوق خالص">⤒</button><button onclick="ivMove(this,\'up\')" aria-label="فوق">▲</button>' +
+        '<button onclick="ivMove(this,\'down\')" aria-label="تحت">▼</button><button onclick="ivMove(this,\'bot\')" aria-label="تحت خالص">⤓</button>' +
+        '<button onclick="ivHideCat(this)" aria-label="إخفاء">' + (off ? '🙈' : '👁') + '</button></div>';
+    }).join('') || '<p style="color:var(--mut);text-align:center;margin-top:30px">مفيش نتائج</p>');
+  box.scrollTop = keep;
+}
+function ivMove(btn, how) {
+  const o = IV.ord, kind = o.kind, id = btn.parentNode.dataset.id;
+  const ids = ivSortCats(kind, o.cats).map(c => String(c.category_id));
+  const i = ids.indexOf(id);
+  if (i < 0) return;
+  ids.splice(i, 1);
+  const j = how === 'top' ? 0 : how === 'bot' ? ids.length : how === 'up' ? Math.max(0, i - 1) : Math.min(ids.length, i + 1);
+  ids.splice(j, 0, id);
+  IV.pins.order = IV.pins.order || {};
+  IV.pins.order[kind] = ids;
+  ivPinsSave();
+  ivOrderRender();
+  if (how === 'top') $('ivOrdBody').scrollTop = 0;
+}
+function ivHideCat(btn) {
+  const kind = IV.ord.kind, id = btn.parentNode.dataset.id;
+  IV.pins.hidden = IV.pins.hidden || {};
+  const h = IV.pins.hidden[kind] = (IV.pins.hidden[kind] || []).map(String);
+  const i = h.indexOf(id);
+  if (i >= 0) h.splice(i, 1); else h.push(id);
+  ivPinsSave();
+  ivOrderRender();
+}
+function ivOrderReset() {
+  if (!IV.ord || !confirm('الرجوع للترتيب الأصلي وإظهار كل الأقسام؟')) return;
+  const kind = IV.ord.kind;
+  if (IV.pins.order) delete IV.pins.order[kind];
+  if (IV.pins.hidden) delete IV.pins.hidden[kind];
+  ivPinsSave();
+  ivOrderRender();
 }
 // ---------- حالة الاشتراك (باقي كام يوم) ----------
 function ivDays(st) {
@@ -2327,6 +2420,7 @@ async function ivHomeLoad(pid) {
 function ivHomeRetry() { IV.L = {}; IV.C = {}; IV.homePid = null; IV.homeFor = PID; ivHomeLoad(PID); }
 // ---------- صفحة «المزيد» ----------
 function ivOpen(tab, cat) {
+  if (!isPremiumOK()) { alert((typeof LOCK_MSG === 'string' && LOCK_MSG) || 'قسم الـIPTV للأعضاء المميزين بس.'); return; }
   IV.tab = tab || IV.tab || 'vod';
   IV.cat = cat || '';
   IV.q = ''; IV.lim = 90; IV.sel = null;
@@ -2346,8 +2440,14 @@ function ivBack() {
 }
 const IV_TABS = [['vod', '🎬 أفلام'], ['series', '📺 مسلسلات'], ['live', '📡 مباشر'], ['me', 'ℹ️ حسابي']];
 function ivHead() {
-  $('ivTabs').innerHTML = IV_TABS.map(t => '<button class="tab' + (IV.tab === t[0] ? ' on' : '') + '" onclick="ivTab(\'' + t[0] + '\')">' + t[1] + '</button>').join('') +
-    (IV.cfg && ivDaysTxt(IV.cfg.stat) ? '<span class="ivd' + (ivDays(IV.cfg.stat) <= 5 ? ' low' : '') + '" style="align-self:center;white-space:nowrap">' + ivDaysTxt(IV.cfg.stat) + '</span>' : '');
+  $('ivTabs').innerHTML = IV_TABS.map(t => {
+    const i = t[1].indexOf(' ');
+    return '<button class="tab' + (IV.tab === t[0] ? ' on' : '') + '" onclick="ivTab(\'' + t[0] + '\')"><i>' + t[1].slice(0, i) + '</i><span>' + t[1].slice(i + 1) + '</span></button>';
+  }).join('');
+  const bd = IV.cfg && ivDaysTxt(IV.cfg.stat);
+  $('ivBadge').innerHTML = bd ? '<span class="ivd' + (ivDays(IV.cfg.stat) <= 5 ? ' low' : '') + '">' + bd + '</span>' : '';
+  $('ivQrow').style.display = (IV.tab === 'me' || IV.sel) ? 'none' : '';
+  $('ivOrdBtn').style.display = (IV.tab === 'me' || IV.sel || !IV.cfg) ? 'none' : '';
 }
 function ivTab(t) { IV.tab = t; IV.cat = ''; IV.sel = null; IV.lim = 90; IV.q = ''; $('ivQ').value = ''; ivRender(); $('iv').scrollTop = 0; }
 function ivSetCat(c) { IV.cat = c; IV.lim = 90; ivRender(); }
@@ -2388,12 +2488,12 @@ async function ivRender() {
   const chip = (id, n, on) => '<button class="' + (on ? 'on' : '') + '" data-c="' + esc(id) + '" onclick="ivSetCat(this.dataset.c)">' + n + '</button>';
   let chips = chip('', 'الكل', !IV.cat);
   if (kind === 'live') chips += chip('__pin', '⭐ المثبّت', IV.cat === '__pin');
-  const pset = new Set(pinCats.map(c => c.id));
-  chips += pinCats.map(c => chip(c.id, '⭐ ' + esc(c.n), IV.cat === c.id)).join('');
-  chips += cats.filter(c => !pset.has(String(c.category_id))).map(c => chip(c.category_id, esc(c.category_name), IV.cat === String(c.category_id))).join('');
+  const hidSet = new Set(((IV.pins.hidden || {})[kind] || []).map(String));
+  chips += ivSortCats(kind, cats).filter(c => !hidSet.has(String(c.category_id)) || IV.cat === String(c.category_id))
+    .map(c => chip(c.category_id, (ivCatPinned(kind, c.category_id) ? '⭐ ' : '') + esc(c.category_name), IV.cat === String(c.category_id))).join('');
   const cur = cats.find(c => String(c.category_id) === IV.cat);
   const bar = '<div class="clchips">' + chips + '</div>' +
-    '<div class="clchips">' + (kind !== 'live' ? [['new', '🆕 الأحدث'], ['az', '🔤 أ - ي']].map(c => '<button class="' + (IV.sort === c[0] ? 'on' : '') + '" onclick="IV.sort=\'' + c[0] + '\';ivRender()">' + c[1] + '</button>').join('') : '') +
+    '<div class="clchips"><button onclick="ivOrderOpen()">↕️ رتّب الأقسام</button>' + (kind !== 'live' ? [['new', '🆕 الأحدث'], ['az', '🔤 أ - ي']].map(c => '<button class="' + (IV.sort === c[0] ? 'on' : '') + '" onclick="IV.sort=\'' + c[0] + '\';ivRender()">' + c[1] + '</button>').join('') : '') +
     (cur ? '<button data-k="' + kind + '" data-i="' + esc(cur.category_id) + '" data-n="' + esc(cur.category_name) + '" onclick="ivToggleCat(this.dataset.k,this.dataset.i,this.dataset.n)">' + (ivCatPinned(kind, cur.category_id) ? '⭐ القسم مثبّت' : '📌 ثبّت القسم') + '</button>' : '') + '</div>';
   const shown = items.slice(0, IV.lim);
   box.innerHTML = bar + (items.length ? '<div class="clgrid' + (kind === 'live' ? ' ivg' : '') + '">' + shown.map(x => ivTile(kind, x)).join('') + '</div>' +
@@ -4751,6 +4851,7 @@ function saveProgress(v, ended) {
 async function nativePlay(u) {
   window.IV_NP = null;
   // كل مسارات التشغيل (كمّل مشاهدة / تشغيل سريع / مكتبة / رابط): نحتفظ ببيانات الحلقة لأن الصفحة بتمسحها بعد فتح المشغّل
+  USG.last = null;
   window.NP_CUR = window.NP_NEXT || PLAY || null; window.NP_NEXT = null; window.NP_PLAYED = Date.now();
   try { const c0 = window.NP_CUR; if (c0 && c0.type === 'tv' && c0.tmdb) smapLoad(c0.tmdb).catch(() => {}); } catch (e) {}
   let p = 0;
@@ -4778,6 +4879,7 @@ function nnAuto() {   // المشغّل الداخلي يعرف هل يستنى 
 }
 window.nativeProgress = function (pos, dur, ended) {
   nnAuto();
+  usageTick(pos); if (ended) usageFlush();
   if (window.IV_NP) { try { ivProgress(pos, dur, ended); } catch (e) {} return; }
   if (!PLAY && window.NP_CUR) PLAY = window.NP_CUR;   // رجّع بيانات الحلقة اللي بتتشغّل في المشغّل الداخلي
   try { saveProgress({duration: dur, currentTime: pos}, !!ended); } catch (e) {}
@@ -4887,6 +4989,7 @@ function attachPlayer() {
   ['loadedmetadata', 'canplay', 'durationchange', 'progress', 'timeupdate'].forEach(n => v.addEventListener(n, seek));
   v.addEventListener('timeupdate', () => {
     const now = Date.now();
+    usageTick(v.currentTime);
     if (now - lastSave > 10000) { lastSave = now; saveProgress(v); }
     checkNext(v);
   });
@@ -5929,8 +6032,9 @@ function renderUsers() {
   const el = $('usBox');
   if (!el) return;
   el.innerHTML = (USERS.map(u =>
-    '<div class="ep"><div class="b">👤 ' + esc(u.name) + (u.lock === 2 ? ' <small style="color:#f59e0b">🔒 تصفح فقط</small>' : (u.lock === 1 ? ' <small style="color:#f59e0b">🚫 ممنوع من التحميل</small>' : '')) +
+    '<div class="ep"><div class="b">👤 ' + esc(u.name) + ' ' + usPlanTag(u) + (u.lock === 2 && u.plan !== 'free' && u.plan !== 'expired' ? ' <small style="color:#f59e0b">🔒 تصفح فقط</small>' : (u.lock === 1 ? ' <small style="color:#f59e0b">🚫 ممنوع من التحميل</small>' : '')) +
     (u.wp ? ' <small style="color:var(--mut)">👁 ' + esc(spName(u.wp)) + '</small>' : '') + (u.dp ? ' <small style="color:var(--mut)">⬇ ' + esc(spName(u.dp)) + '</small>' : '') + '</div>' +
+    '<button style="background:#b45309;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="usPlan(this.dataset.n)" aria-label="الباقة">💎</button>' +
     '<button style="background:#0ea5e9;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="usPerm(this.dataset.n)">🔒</button>' +
     '<button style="background:#475569;color:#fff" data-n="' + esc(u.name) + '" onclick="usPass(this.dataset.n)">🔑</button>' +
     '<button style="background:var(--danger);color:#fff;margin-inline-start:6px" data-n="' + esc(u.name) + '" onclick="usDel(this.dataset.n)">🗑</button></div>').join('')
@@ -5938,6 +6042,7 @@ function renderUsers() {
     '<input id="usName" class="search-input ltr" style="margin-top:10px" placeholder="اسم المستخدم (إنجليزي وأرقام)" autocapitalize="off" autocorrect="off">' +
     '<div class="pw"><input id="usPass" type="password" class="search-input ltr" placeholder="الباسورد"><button type="button" class="eye" onclick="eye(\'usPass\',this)">👁</button></div>' +
     '<button class="search-btn" onclick="usAdd(this)">➕ إضافة مستخدم</button>' +
+    '<button class="search-btn" style="background:#475569;margin-top:8px" onclick="usExport()">💾 نسخة احتياطية للأعضاء (ملف JSON)</button>' +
     '<p style="color:var(--mut);font-size:12px">المستخدم بيدخل ويشاهد بحساباتك من غير ما يشوف المزوّدين أو مفاتيح الـ API أو إضافات Stremio. وكل مستخدم ليه بروفايلاته وسجل مشاهدته الخاص.</p>';
 }
 async function usAdd(btn) {
@@ -5979,6 +6084,112 @@ async function usDel(n) {
   await api('/users/' + encodeURIComponent(n), {method: 'DELETE'});
   loadUsers();
 }
+
+
+// ================= باقة العضو (مجاني / مميز) =================
+const DAY_MS = 86400000;
+function planText(pl) {
+  pl = pl || {};
+  if (pl.state === 'free') return '🆓 عضو مجاني';
+  if (pl.state === 'expired') return '⌛ انتهى الاشتراك المميز';
+  if (pl.state === 'premium') {
+    if (!pl.until) return '💎 عضو مميز · دائم';
+    const l = pl.left == null ? Math.ceil((pl.until * 1000 - Date.now()) / DAY_MS) : pl.left;
+    return '💎 عضو مميز · باقي ' + (l > 60 ? Math.round(l / 30) + ' شهر' : l + ' يوم');
+  }
+  return '';
+}
+function renderPlanBar() {
+  const el = $('planBar');
+  if (!el) return;
+  const pl = PLAN || {};
+  if (ROLE === 'admin' || !pl.state || pl.state === 'admin') { el.innerHTML = ''; return; }
+  let cls = pl.state, extra = '';
+  if (pl.state === 'free') extra = ' <span style="font-weight:400">· المشاهدة والتحميل غير متاحين</span>';
+  if (pl.state === 'expired') extra = ' <span style="font-weight:400">· كلّم الأدمن للتجديد</span>';
+  if (pl.state === 'premium' && pl.until && (pl.left != null ? pl.left : 99) <= 3) { cls = 'warn'; extra = ' <span style="font-weight:400">· قربت تخلص</span>'; }
+  el.innerHTML = '<div class="pbar ' + cls + '">' + esc(planText(pl)) + extra + '</div>';
+}
+const isPremiumOK = () => ROLE === 'admin' || !PLAN || PLAN.state === 'premium' || !PLAN.state;
+function usPlanTag(u) {
+  const st = u.plan || 'premium';
+  const t = st === 'premium' ? planText({state: 'premium', until: u.until, left: u.left}) : planText({state: st});
+  return '<span class="pl-tag ' + st + '">' + esc(t) + '</span>';
+}
+function usPlan(n) {
+  const u = USERS.find(x => x.name === n) || {};
+  const isFree = u.plan === 'free' || u.plan === 'expired';
+  const m = document.createElement('div');
+  m.className = 'plm';
+  m.innerHTML = '<div><h3 style="margin:0 0 8px">باقة ' + esc(n) + '</h3>' +
+    '<div style="color:var(--mut);font-size:13px;margin-bottom:8px">الحالية: ' + usPlanTag(u) + '</div>' +
+    '<label><input type="radio" name="plk" value="premium"' + (isFree ? '' : ' checked') + '> 💎 مميز</label>' +
+    '<div id="plDur" style="display:flex;gap:8px;align-items:center"><input id="plN" class="search-input" type="number" min="1" value="1" style="flex:1;margin:0"><select id="plU" class="search-input" style="flex:1;margin:0"><option value="d">يوم</option><option value="m" selected>شهر</option><option value="p">دائم</option></select></div>' +
+    '<label style="font-size:13px;color:var(--mut)"><input type="checkbox" id="plX"' + (u.plan === 'premium' && u.until ? ' checked' : '') + '> زوّد على المدة الحالية</label>' +
+    '<label><input type="radio" name="plk" value="free"' + (isFree ? ' checked' : '') + '> 🆓 مجاني (مشاهدة وتحميل ممنوعين)</label>' +
+    '<div class="row" style="margin-top:10px"><button class="search-btn" id="plOk">حفظ</button><button class="search-btn" style="background:#475569" id="plNo">إلغاء</button></div></div>';
+  document.body.appendChild(m);
+  const sync = () => { const f = m.querySelector('input[name=plk]:checked').value === 'free'; $('plDur').style.opacity = f ? .4 : 1; $('plDur').style.pointerEvents = f ? 'none' : ''; };
+  m.querySelectorAll('input[name=plk]').forEach(r => r.onchange = sync); sync();
+  $('plNo').onclick = () => m.remove();
+  m.addEventListener('click', e => { if (e.target === m) m.remove(); });
+  $('plOk').onclick = async () => {
+    const plan = m.querySelector('input[name=plk]:checked').value;
+    const un = $('plU').value, num = Math.max(1, parseInt($('plN').value, 10) || 1);
+    const body = {plan: plan, days: un === 'd' ? num : 0, months: un === 'm' ? num : 0, extend: !!$('plX').checked};
+    $('plOk').disabled = true;
+    try {
+      const {d} = await api('/users/' + encodeURIComponent(n) + '/plan', {method: 'POST', body: JSON.stringify(body)});
+      if (d.error) { alert(d.error); $('plOk').disabled = false; return; }
+    } catch (e) { alert('مش قادر أوصل للسيرفر'); $('plOk').disabled = false; return; }
+    m.remove();
+    loadUsers();
+    if ($('actBox') && $('actBox').innerHTML) loadActivity();
+  };
+}
+async function usExport() {
+  try {
+    const r = await fetch(API + '/users/export', {headers: {'X-Token': TOK}});
+    if (!r.ok) return alert('تعذّر التصدير');
+    const b = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = 'elkomy-members-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) { alert('تعذّر التصدير'); }
+}
+
+// ================= تسجيل وقت المشاهدة (للإحصائيات) =================
+const USG = {w: 0, last: null, t: 0};
+function usageTick(pos) {
+  try {
+    if (USG.last != null) { const d = pos - USG.last; if (d > 0 && d <= 30) USG.w += d; }
+    USG.last = pos;
+    if (USG.w >= 30 && Date.now() - USG.t > 45000) usageFlush();
+  } catch (e) {}
+}
+function usageFlush() {
+  const w = Math.min(600, Math.floor(USG.w));
+  if (w < 1 || !TOK) return;
+  USG.w -= w; USG.t = Date.now();
+  api('/usage', {method: 'POST', body: JSON.stringify({w: w}), timeout: 15000}).then(x => { if (x.r && !x.r.ok) USG.w += w; }).catch(() => { USG.w += w; });
+}
+
+// عدّاد التحميل الفعلي: التطبيق بيبعت البايتات، وهنا بنجمّعها ونبعتها للسيرفر (مع إعادة المحاولة لو فشل)
+const DLB = {pend: 0, busy: false};
+try { DLB.pend = parseInt(localStorage.getItem('dlb_pend') || '0') || 0; } catch (e) {}
+function dlbSave() { try { localStorage.setItem('dlb_pend', String(DLB.pend)); } catch (e) {} }
+async function dlbSend() {
+  if (DLB.busy || DLB.pend <= 0 || !TOK) return;
+  const n = DLB.pend; DLB.busy = true; DLB.pend -= n; dlbSave();
+  try {
+    const x = await api('/usage', {method: 'POST', body: JSON.stringify({d: n}), timeout: 15000});
+    if (x.r && !x.r.ok) { DLB.pend += n; dlbSave(); }
+  } catch (e) { DLB.pend += n; dlbSave(); }
+  DLB.busy = false;
+}
+window.nativeDlBytes = function (n) { n = Math.floor(+n || 0); if (n > 0) { DLB.pend += n; dlbSave(); dlbSend(); } };
+setTimeout(dlbSend, 8000);
 
 // ================= ترتيب الصفحة الرئيسية (للأدمن) =================
 let LAY = [], LCATS = [], DUBST = null;
@@ -6073,14 +6284,22 @@ async function loadActivity() {
   el.innerHTML = pend('جاري التحميل...');
   try { const {d} = await api('/activity'); ACT = d.items || []; }
   catch (e) { el.innerHTML = ERR; return; }
-  el.innerHTML = ACT.map(u =>
+  const mem = ACT.filter(u => u.role !== 'admin');
+  const cnt = k => mem.filter(u => u.plan === k).length;
+  const sum = '<div class="action-box" style="text-align:right;margin-bottom:10px;padding:12px;line-height:2">' +
+    '👥 ' + mem.length + ' عضو · 💎 مميز ' + cnt('premium') + ' · 🆓 مجاني ' + cnt('free') + ' · ⌛ منتهي ' + cnt('expired') + '<br>' +
+    '⬇️ إجمالي السحب: ' + fmtSize(ACT.reduce((a, u) => a + (u.bytes || 0), 0)) + ' · 📲 نزّل فعليًا: ' + fmtSize(ACT.reduce((a, u) => a + (u.dl || 0), 0)) + ' · ▶ إجمالي المشاهدة: ' + fmtDur(ACT.reduce((a, u) => a + Math.max(u.tw || 0, u.watch || 0), 0)) + '</div>';
+  el.innerHTML = sum + ACT.map(u =>
     '<div class="action-box" style="text-align:right;margin-bottom:10px;padding:12px">' +
-    '<b>👤 ' + esc(u.name) + (u.role === 'admin' ? ' (أدمن)' : '') + '</b>' +
+    '<b>👤 ' + esc(u.name) + (u.role === 'admin' ? ' (أدمن)' : ' ' + usPlanTag(u)) + '</b>' +
     '<div style="color:var(--mut);font-size:13px;margin-top:6px;line-height:2">' +
     '⬇️ سحب: ' + u.count + ' ملف · ' + (u.bytes ? fmtSize(u.bytes) : '0') + '<br>' +
-    '▶ مشاهدة تقريبية: ' + fmtDur(u.watch) + ' · ' + u.titles + ' عنوان<br>' +
+    '📲 نزّل فعليًا على جهازه: ' + (u.dl ? fmtSize(u.dl) : '0') + '<br>' +
+    '▶ وقت المشاهدة: ' + fmtDur(Math.max(u.tw || 0, u.watch || 0)) + ' · ' + u.titles + ' عنوان<br>' +
+    (u.c ? '📅 انضم: ' + fmtDate(u.c * 1000) + '<br>' : '') +
     '🕒 آخر نشاط: ' + fmtDate(u.last) + '</div>' +
     '<button class="fc" style="margin-top:8px" data-n="' + esc(u.name) + '" onclick="actDetail(this)">📋 التفاصيل</button>' +
+    (u.role !== 'admin' ? ' <button class="fc" style="margin-top:8px" data-n="' + esc(u.name) + '" onclick="usPlan(this.dataset.n)">💎 الباقة</button>' : '') +
     '<div class="actd"></div></div>').join('') || warn('مفيش بيانات.');
 }
 async function actDetail(btn) {
@@ -6099,7 +6318,10 @@ async function actDetail(btn) {
       return '<div class="ep"><div class="b">' + esc(w.title) + esc(ep) + '<small>' + pct +
         (w.profile ? ' · ' + esc(w.profile) : '') + ' · ' + fmtDate(w.t) + '</small></div></div>';
     }).join('');
-    box.innerHTML = '<h3 class="sec" style="margin-top:12px">⬇️ آخر ما سحبه</h3>' + (pulls || warn('لسه مسحبش حاجة.')) +
+    const days = (d.days || []).map(x =>
+      '<div class="ep"><div class="b">' + esc(x.d) + '<small>▶ ' + fmtDur(x.w) + ' · ⬇️ ' + x.n + ' ملف · ' + (x.b ? fmtSize(x.b) : '0') + ' · 📲 ' + (x.dl ? fmtSize(x.dl) : '0') + '</small></div></div>').join('');
+    box.innerHTML = '<h3 class="sec" style="margin-top:12px">📆 آخر 14 يوم</h3>' + days +
+      '<h3 class="sec">⬇️ آخر ما سحبه</h3>' + (pulls || warn('لسه مسحبش حاجة.')) +
       '<h3 class="sec">▶ آخر ما شاهده</h3>' + (seen || warn('لسه مشاهدش حاجة.')) +
       '<p style="color:var(--mut);font-size:12px">سجل المشاهدة بيعرض آخر 150 عنوان لكل بروفايل.</p>';
   } catch (e) { box.innerHTML = ERR; }
@@ -8618,7 +8840,7 @@ body.sopen #searchBox{display:block}
 </style>
 <style id="hdr-a">
 /* ===== القايمة العلوية (تصميم A) ===== */
-.topbar{display:grid!important;grid-template-columns:1fr auto;grid-template-areas:"logo prof" "tools tools" "cats cats";align-items:center;gap:10px 8px;
+.topbar{display:grid!important;grid-template-columns:1fr auto;grid-template-areas:"plan plan" "logo prof" "tools tools" "cats cats";align-items:center;gap:10px 8px;
   position:sticky!important;top:0!important;z-index:50;margin:0 -16px 10px!important;padding:10px 14px 8px!important;border-radius:0 0 22px 22px!important;
   background:linear-gradient(180deg,#0e1a3df2,#0b1330e6)!important;border:1px solid #6b8ce033!important;border-top:0!important;box-shadow:0 10px 30px #0007!important}
 .topbar h1{grid-area:logo;font-size:19px!important;margin:0}
@@ -8636,7 +8858,47 @@ body.sopen #searchBox{display:block}
 .topbar .cat.on{background:#7ea2ec!important;color:#0b1226!important}
 /* لما تنزل بالصفحة: يفضل الشعار والأقسام بس */
 body.tbmin .topbtns{display:none!important}
-body.tbmin .topbar{grid-template-areas:"logo prof" "cats cats"}
+body.tbmin .topbar{grid-template-areas:"plan plan" "logo prof" "cats cats"}
+#planBar{grid-area:plan}#planBar:empty{display:none}
+.pbar{display:flex;align-items:center;justify-content:center;gap:6px;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;line-height:1.4;text-align:center}
+.pbar.free{background:#f59e0b24;color:#fbbf24;border:1px solid #f59e0b55}
+.pbar.premium{background:linear-gradient(90deg,#f59e0b30,#facc1530);color:#fde68a;border:1px solid #facc1566}
+.pbar.expired{background:#ef444422;color:#fca5a5;border:1px solid #ef444455}
+.pbar.warn{background:#f59e0b33;color:#fde68a;border:1px solid #f59e0b88}
+.pl-tag{display:inline-block;padding:1px 8px;border-radius:9px;font-size:11px;font-weight:700}
+.pl-tag.free{background:#f59e0b24;color:#fbbf24}.pl-tag.premium{background:#22c55e22;color:#4ade80}.pl-tag.expired{background:#ef444422;color:#fca5a5}
+.plm{position:fixed;inset:0;z-index:2147483000;background:#000a;display:flex;align-items:center;justify-content:center;padding:16px}
+.plm>div{background:#111a33;border:1px solid #5b7bd466;border-radius:18px;padding:18px;width:100%;max-width:380px;text-align:right}
+.plm label{display:flex;align-items:center;gap:8px;padding:8px 0;font-size:14px}
+.plm .search-input{margin:6px 0}
+</style>
+<style id="iptv-x">
+/* ===== قسم الـIPTV: شكل خاص ومختلف عن باقي التطبيق ===== */
+#iv{--primary:#ff5a36;--panel:#171821;--bg:#07080c;--mut:#9aa0b4;background:radial-gradient(900px 380px at 85% -8%,#3b1220 0,#0a0b11 62%) fixed,#07080c;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+#iv .sphd,#ivOrd .sphd{background:linear-gradient(#0a0b11f5,#0a0b11d9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid #ff5a3626;z-index:20}
+#iv .spback,#iv .ivib{flex:none;width:40px;height:40px;border-radius:50%;background:#ffffff0d;border:1px solid #ffffff14;color:#fff;font-size:17px;cursor:pointer}
+.ivlogo{display:flex;align-items:center;gap:7px;flex:1;min-width:0}
+.ivlogo b{font-size:21px;font-weight:900;letter-spacing:1px;background:linear-gradient(90deg,#ff5a36,#ffb347);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ivdot{width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 0 #ef444488;animation:ivp 1.6s infinite}
+@keyframes ivp{70%{box-shadow:0 0 0 8px #ef444400}100%{box-shadow:0 0 0 0 #ef444400}}
+#ivBadge .ivd{font-size:12px;padding:3px 10px;border-radius:12px;background:#22c55e1f;border:1px solid #22c55e44;white-space:nowrap}
+#ivBadge .ivd.low{background:#ef44441f;border-color:#ef444455}
+#iv #ivTabs{position:fixed;left:0;right:0;bottom:0;margin:0;padding:6px 10px calc(6px + env(safe-area-inset-bottom));display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:#0c0d14f5;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid #ff5a3626;z-index:30;overflow:visible}
+#iv #ivTabs .tab{background:none;border-radius:14px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:700;color:#9aa0b4;font-family:inherit}
+#iv #ivTabs .tab i{font-style:normal;font-size:21px;line-height:1.2}
+#iv #ivTabs .tab.on{color:#fff;background:linear-gradient(135deg,#ff5a3633,#ffb34722)}
+#iv .clchips button,#ivOrd .fc{border-radius:10px;background:#171821;border:1px solid #ffffff12;color:#e5e7ef}
+#iv .clchips button.on{background:linear-gradient(135deg,#ff5a36,#ff8a3d);border:0;color:#fff}
+#iv .poster{border-radius:14px;box-shadow:0 6px 18px #0008}
+#iv .search-input{border-radius:12px;background:#12131b;border:1px solid #ffffff14}
+body.iv-on #pageVer{bottom:82px!important}
+#ivOrd{display:none;position:fixed;inset:0;z-index:110;background:#07080c;overflow-y:auto;direction:rtl;color:var(--text)}
+.ivor{display:flex;align-items:center;gap:5px;padding:8px 10px;margin-bottom:6px;border-radius:12px;background:#14151d;border:1px solid #ffffff10}
+.ivor.off{opacity:.5}
+.ivor .ivn{flex:none;width:28px;text-align:center;color:#ff8a3d;font-weight:800;font-size:12px}
+.ivor .ivnm{flex:1;min-width:0;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ivor button{flex:none;width:34px;height:34px;border-radius:9px;border:1px solid #ffffff14;background:#1d1f2b;color:#e5e7ef;font-size:14px;cursor:pointer;padding:0}
+.ivor button:active{transform:scale(.92);background:#ff5a36}
 </style>
 <script id="nf-js">
 (function(){
