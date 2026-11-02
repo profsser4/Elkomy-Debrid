@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v9: البحث الشامل كان بيفضل «جاري البحث» لحد ما أبطأ مصدر يخلص (لحد 150 ثانية)؛ دلوقتي كل مصدر له مهلة 12 ثانية والنتايج بتظهر أول بأول، والمصدر البطيء لو رجّع بعدين بيتضاف لوحده
   v8: تصميم القايمة العلوية (الاختيار A): أزرار بأسماء + بروفايل فوق + أقسام تحت، وشيلت «كوري» من الأقسام (الصفوف في الرئيسية زي ما هي)
   v7: «كمّل مشاهدة» والتشغيل السريع والمكتبة كانوا بيفتحوا المشغّل من غير ما الصفحة تحتفظ ببيانات الحلقة، فمفيش حلقة تالية ولا حفظ مكان؛ اتصلح لكل مسارات المشغّل الداخلي
   v6: زرار «الحلقة التالية» كان ممكن ما يعملش حاجة لو بيانات الحلقة اتمسحت؛ اتصلح + لو التجهيز فشل بتظهر رسالة بالسبب بدل ما يفضل واقف
@@ -535,7 +536,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;top:calc(3px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.75;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=8;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=9;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -3803,18 +3804,32 @@ async function unifiedSearch(force) {
   $('spBar').innerHTML = '';
   $('spResults').innerHTML = pend('جاري البحث في كل المصادر...');
   let left = SOURCES.length;
-  await Promise.all(SOURCES.map(async s => {
-    try {
-      const items = await s.search(q);
+  const SLOW = 'بطيء… لسه بيحاول وهيظهر لو رجّع';
+  await Promise.all(SOURCES.map(s => new Promise(resolve => {
+    let done = false;
+    const fin = () => {
+      if (done) return;
+      done = true;
+      if (my === USEQ) { left--; renderAll(left > 0); if (s.id === 'titles') spFillRt(my); }
+      resolve();
+    };
+    // مهلة لكل مصدر: ما نستناش أبطأ مصدر عشان نخلّص «جاري البحث»
+    const timer = setTimeout(() => { if (my === USEQ && !s.quiet) SRCERR[s.id] = SLOW; fin(); }, 12000);
+    Promise.resolve().then(() => s.search(q)).then(items => {
+      clearTimeout(timer);
       if (my !== USEQ) return;
       items.slice(0, spCap(s.id)).forEach(t => ALL.push({s: s, t: t}));
-    } catch (e) {
+      if (SRCERR[s.id] === SLOW) delete SRCERR[s.id];
+      if (done) renderAll(left > 0);   // رجّع متأخر: نضيفه للنتايج
+      fin();
+    }).catch(e => {
+      clearTimeout(timer);
       if (my === USEQ && !s.quiet) SRCERR[s.id] = (e && e.message) || 'فشل البحث';
       try { console.warn('search source failed:', s.id, e); } catch (x) {}
-    } finally {
-      if (my === USEQ) { left--; renderAll(left > 0); if (s.id === 'titles') spFillRt(my); }
-    }
-  }));
+      if (done) renderAll(left > 0);
+      fin();
+    });
+  })));
 }
 // ---------- البحث داخل قسم واحد (أفلام / مسلسلات / كوري / كرتون / قائمتي) ----------
 const libNorm = t => String(t || '').toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه')
