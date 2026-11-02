@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v14: IPTV: كاش دائم للقوائم والأقسام (IndexedDB) — القايمة بتفتح فورًا من الكاش وبتتحدّث في الخلفية، ورسالة التحميل بتظهر بس لو التحميل فعلاً طوّل (أول مرة)، وتحسين مكان شارة النسخة عشان ما تغطّيش تبويب «حساب»
   v13: «كمّل المشاهدة» للـIPTV: صف في الرئيسية وفي تبويبي الأفلام/المسلسلات (كروت بشريط تقدّم وزر ✕)، المسلسل بيكمّل من آخر حلقة أو بيقترح الحلقة التالية، زر «كمّل» جوه صفحة الفيلم/المسلسل، شريط تقدّم وعلامة ✓ على الكروت، وحفظ التقدّم + الحلقة التالية في مشغّل المتصفح كمان
   v12: عدّاد التحميل الفعلي لكل عضو (بايتات اتحمّلت فعليًا من تطبيق الأندرويد) يظهر في الإحصائيات وفي تفاصيل كل يوم (يحتاج bot-34.py + إعادة بناء الـAPK)
   v11: قسم الـIPTV بشكل خاص (هيدر وشريط تبويبات سفلي وألوان مختلفة) + ترتيب الأقسام فوق/تحت وإخفاؤها لكل تبويب (أفلام/مسلسلات/مباشر)، محفوظ لكل بروفايل (يحتاج bot-33.py المحدّث)
@@ -540,7 +541,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=13;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=14;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2111,19 +2112,57 @@ function ivUrl(action, params) {
   return u;
 }
 const ivApi = (action, params, keep, ttl) => ivFetch(ivUrl(action, params), keep, ttl);
-function ivList(action, catId) {
-  const k = action + '|' + (catId || '');
-  if (IV.L[k]) return IV.L[k];
-  const p = ivApi(action, catId ? {category_id: catId} : null, IV_KEEP[action] || '', 30)
-    .then(v => Array.isArray(v) ? v : []).catch(e => { delete IV.L[k]; throw e; });
-  IV.L[k] = p;
+// ---- كاش دائم (IndexedDB) : القايمة بتظهر فورًا من الكاش وبتتحدّث في الخلفية ----
+const IV_TTL = 20 * 60 * 1000;
+let _ivDB = null;
+function ivDB() {
+  if (_ivDB) return _ivDB;
+  _ivDB = new Promise(ok => {
+    try {
+      const r = indexedDB.open('iv_cache', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('c');
+      r.onsuccess = () => ok(r.result);
+      r.onerror = r.onblocked = () => ok(null);
+    } catch (e) { ok(null); }
+  });
+  return _ivDB;
+}
+async function ivCget(key) {
+  const db = await ivDB(); if (!db) return null;
+  return new Promise(ok => { try { const q = db.transaction('c').objectStore('c').get(key); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); } catch (e) { ok(null); } });
+}
+async function ivCset(key, val) {
+  const db = await ivDB(); if (!db) return;
+  try { db.transaction('c', 'readwrite').objectStore('c').put({t: Date.now(), v: val}, key); } catch (e) {}
+}
+function ivCached(mk, fetcher, ttl) {
+  const mem = mk[0], k = mk[1], ck = IV.ck;
+  if (mem[k]) return mem[k];
+  const key = ck + '|' + k;
+  const net = () => fetcher().then(v => { v = Array.isArray(v) ? v : []; if (v.length) ivCset(key, v); return v; });
+  const p = (async () => {
+    const hit = await ivCget(key);
+    if (hit && Array.isArray(hit.v) && hit.v.length) {
+      if (Date.now() - hit.t > ttl) {
+        net().then(v => {
+          if (ck !== IV.ck) return;
+          mem[k] = Promise.resolve(v);
+          if (v.length !== hit.v.length && IV.open && !IV.sel && IV.tab !== 'me') ivRender();
+        }).catch(() => {});
+      }
+      return hit.v;
+    }
+    return net();
+  })().catch(e => { delete mem[k]; throw e; });
+  mem[k] = p;
   return p;
 }
+function ivList(action, catId) {
+  const k = action + '|' + (catId || '');
+  return ivCached([IV.L, k], () => ivApi(action, catId ? {category_id: catId} : null, IV_KEEP[action] || '', 30), IV_TTL);
+}
 function ivCats(kind) {
-  if (IV.C[kind]) return IV.C[kind];
-  const p = ivApi(IV_CATACT[kind], null, '', 120).then(v => Array.isArray(v) ? v : []).catch(e => { delete IV.C[kind]; throw e; });
-  IV.C[kind] = p;
-  return p;
+  return ivCached([IV.C, kind], () => ivApi(IV_CATACT[kind], null, '', 120), 60 * 60 * 1000);
 }
 async function ivCfg(force) {
   if (IV.loaded && !force) return IV.cfg;
@@ -2609,13 +2648,14 @@ async function ivRender() {
   if (IV.sel) return ivDetail(box);
   if (IV.tab === 'me') return ivMe(box);
   const kind = IV.tab, q = IV.q.toLowerCase();
-  box.innerHTML = pend('جاري تحميل القايمة... (أول مرة ممكن ياخد شوية)');
+  const _lt = setTimeout(() => { if (tok === IV.rt && !IV.sel) box.innerHTML = pend('جاري تحميل القايمة... (أول مرة بس، بعد كده بتفتح فورًا)'); }, 220);
   let cats, list;
   try {
     const useCat = IV.cat && IV.cat !== '__pin' && !q;
     [cats, list] = await Promise.all([ivCats(kind), ivList(IV_ACT[kind], useCat ? IV.cat : '')]);
     if (kind === 'live' && IV.cat === '__pin') list = await ivList(IV_ACT.live);
-  } catch (e) { if (tok === IV.rt) box.innerHTML = ivErr(e); return; }
+  } catch (e) { clearTimeout(_lt); if (tok === IV.rt) box.innerHTML = ivErr(e); return; }
+  clearTimeout(_lt);
   if (tok !== IV.rt) return;
   const idk = kind === 'series' ? 'series_id' : 'stream_id';
   let items = list;
@@ -9062,6 +9102,8 @@ body.tbmin .topbar{grid-template-areas:"plan plan" "logo prof" "cats cats"}
 #iv .poster{border-radius:14px;box-shadow:0 6px 18px #0008}
 #iv .search-input{border-radius:12px;background:#12131b;border:1px solid #ffffff14}
 body.iv-on #pageVer{bottom:82px!important}
+body.iv-on #appVerBadge{bottom:82px!important}
+#iv #ivTabs{padding-left:max(10px,env(safe-area-inset-left))}
 #ivOrd{display:none;position:fixed;inset:0;z-index:110;background:#07080c;overflow-y:auto;direction:rtl;color:var(--text)}
 .ivor{display:flex;align-items:center;gap:5px;padding:8px 10px;margin-bottom:6px;border-radius:12px;background:#14151d;border:1px solid #ffffff10}
 .ivor.off{opacity:.5}
