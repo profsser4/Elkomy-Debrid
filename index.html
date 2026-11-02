@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v8: تصميم القايمة العلوية (الاختيار A): أزرار بأسماء + بروفايل فوق + أقسام تحت، وشيلت «كوري» من الأقسام (الصفوف في الرئيسية زي ما هي)
   v7: «كمّل مشاهدة» والتشغيل السريع والمكتبة كانوا بيفتحوا المشغّل من غير ما الصفحة تحتفظ ببيانات الحلقة، فمفيش حلقة تالية ولا حفظ مكان؛ اتصلح لكل مسارات المشغّل الداخلي
   v6: زرار «الحلقة التالية» كان ممكن ما يعملش حاجة لو بيانات الحلقة اتمسحت؛ اتصلح + لو التجهيز فشل بتظهر رسالة بالسبب بدل ما يفضل واقف
   v5: الانتقال للحلقة التالية جوه المشغّل من غير ما يقفل ويرجع للصفحة (شاشة «جاري التجهيز») + إبلاغ المشغّل بإعداد التشغيل التلقائي
@@ -533,8 +534,8 @@ h3.sec::before{display:none}
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
-<div id="pageVer" style="position:fixed;top:calc(4px + env(safe-area-inset-top));left:6px;z-index:2147483646;background:rgba(0,0,0,.55);color:#fff;font:11px sans-serif;padding:2px 8px;border-radius:10px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=7;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<div id="pageVer" style="position:fixed;top:calc(3px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.75;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
+<script>window.PAGE_VER=8;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -588,8 +589,9 @@ h3.sec::before{display:none}
 <div id="main-content">
 <div class="topbar">
 <h1 style="color:var(--primary);margin:0;font-size:20px">Elkomy VIP 🚀</h1>
+<button id="pchip" class="fc" onclick="showProfiles()"></button>
 <div class="cats" id="cats"></div>
-<div class="topbtns"><button id="dlbtn" class="fc" style="display:none" onclick="AndroidPlayer.openDownloads()" aria-label="التحميلات">⬇️<span id="dlbadge" style="display:none"></span></button><script>try{if(window.AndroidPlayer&&typeof AndroidPlayer.openDownloads!=="undefined"){document.getElementById("dlbtn").style.display="";setInterval(function(){try{var n=AndroidPlayer.dlActive(),b=document.getElementById("dlbadge");b.textContent=n>0?n:"";b.style.display=n>0?"":"none"}catch(e){}},1500)}}catch(e){}</script><button class="fc" onclick="openView()">🖥</button><button class="fc" onclick="openInterests()">⭐</button><button id="bell" class="fc" onclick="bellClick()" style="display:none">🔕</button><button class="fc adm" onclick="setOpen()" aria-label="الإعدادات والإضافات">⚙️</button><button id="pchip" class="fc" onclick="showProfiles()"></button></div>
+<div class="topbtns"><button id="dlbtn" class="fc" style="display:none" onclick="AndroidPlayer.openDownloads()" data-l="التحميلات" aria-label="التحميلات"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span id="dlbadge" style="display:none"></span></button><script>try{if(window.AndroidPlayer&&typeof AndroidPlayer.openDownloads!=="undefined"){document.getElementById("dlbtn").style.display="";setInterval(function(){try{var n=AndroidPlayer.dlActive(),b=document.getElementById("dlbadge");b.textContent=n>0?n:"";b.style.display=n>0?"":"none"}catch(e){}},1500)}}catch(e){}</script><button class="fc" data-l="العرض" aria-label="العرض" onclick="openView()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button><button class="fc" data-l="اهتماماتي" aria-label="اهتماماتي" onclick="openInterests()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg></button><button id="bell" class="fc" data-l="التنبيهات" onclick="bellClick()" style="display:none">🔕</button><button class="fc adm" data-l="الإعدادات" onclick="setOpen()" aria-label="الإعدادات والإضافات"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button></div>
 </div>
 
 
@@ -7216,7 +7218,7 @@ function setupHls(v) {
 
 // ================= شريط الأقسام: الرئيسية / أفلام / مسلسلات / كرتون / قائمتي =================
 let CAT = 'home';
-const CATS = [['home', '🏠 الرئيسية'], ['movie', '🎬 أفلام'], ['tv', '📺 مسلسلات'], ['korean', '🇰🇷 كوري'], ['cartoon', '🧸 كرتون'], ['list', '❤️ قائمتي']];
+const CATS = [['home', '🏠 الرئيسية'], ['movie', '🎬 أفلام'], ['tv', '📺 مسلسلات'], ['cartoon', '🧸 كرتون'], ['list', '❤️ قائمتي']];
 const CAT_GEN = ['action', 'drama', 'comedy', 'crime', 'scifi', 'horror', 'romance', 'family', 'doc'];
 const CAT_TOON = [['cartoon', 'كرتون'], ['family', 'عائلي']];
 const CAT_LIB = {movie: 'movie', tv: 'series', cartoon: 'cartoon'};
@@ -8599,15 +8601,39 @@ body.sopen #searchBox{display:block}
 #nfpv .b{padding:10px 12px}#nfpv b{display:block;margin-bottom:8px}#nfpv button{background:#fff;color:#000;border:0;border-radius:20px;padding:7px 16px;font-weight:700}
 @media(min-width:700px){#main-content{max-width:1200px!important}.poster{flex-basis:150px}}
 </style>
+<style id="hdr-a">
+/* ===== القايمة العلوية (تصميم A) ===== */
+.topbar{display:grid!important;grid-template-columns:1fr auto;grid-template-areas:"logo prof" "tools tools" "cats cats";align-items:center;gap:10px 8px;
+  position:sticky!important;top:0!important;z-index:50;margin:0 -16px 10px!important;padding:10px 14px 8px!important;border-radius:0 0 22px 22px!important;
+  background:linear-gradient(180deg,#0e1a3df2,#0b1330e6)!important;border:1px solid #6b8ce033!important;border-top:0!important;box-shadow:0 10px 30px #0007!important}
+.topbar h1{grid-area:logo;font-size:19px!important;margin:0}
+#pchip{grid-area:prof;justify-self:end;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:8px;
+  padding:3px 12px 3px 5px!important;border-radius:20px!important;background:#ffffff10!important;border:1px solid #ffffff1a!important;color:#e5ecff!important;font-weight:700;font-size:13px!important}
+.topbtns{grid-area:tools;display:grid!important;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px!important;padding-bottom:17px;max-width:100%}
+.topbtns .fc{position:relative;height:42px;padding:0!important;border-radius:14px!important;background:#ffffff10!important;border:1px solid #ffffff14!important;color:#e5ecff!important;
+  display:grid;place-items:center;font-size:18px!important;min-width:0;box-shadow:none}
+.topbtns .fc svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.topbtns .fc::after{content:attr(data-l);position:absolute;top:calc(100% + 4px);left:-4px;right:-4px;text-align:center;font-size:10.5px;font-weight:600;color:#cbd5e1;white-space:nowrap;line-height:1.2}
+.topbtns #dlbtn{background:linear-gradient(135deg,#16a34a,#22c55e)!important;border:0!important;color:#fff!important;box-shadow:0 4px 14px #22c55e55!important}
+#dlbtn #dlbadge{top:-7px;left:-5px}
+.topbar .cats{grid-area:cats;display:flex;gap:6px;margin:0!important;padding:0 0 2px!important;justify-content:flex-start!important;overflow-x:auto;flex:none}
+.topbar .cat{padding:7px 15px!important;font-size:13px!important;background:#ffffff0e!important;color:#dbe5ff!important;border:0!important}
+.topbar .cat.on{background:#7ea2ec!important;color:#0b1226!important}
+/* لما تنزل بالصفحة: يفضل الشعار والأقسام بس */
+body.tbmin .topbtns{display:none!important}
+body.tbmin .topbar{grid-template-areas:"logo prof" "cats cats"}
+</style>
 <script id="nf-js">
 (function(){
 const yt=k=>'https://www.youtube.com/embed/'+encodeURIComponent(k)+'?autoplay=1&mute=1&controls=0&loop=1&playlist='+encodeURIComponent(k)+'&playsinline=1&modestbranding=1&rel=0&disablekb=1&enablejsapi=1';
 const TK={};
 async function trailerKey(t,id){const k=t+id;if(k in TK)return TK[k];let key='';try{const {d}=await api('/trailer?type='+t+'&id='+id);key=d.key||''}catch(e){}return TK[k]=key}
 const saver=()=>!!(navigator.connection&&navigator.connection.saveData);
+// القايمة العلوية: تصغّر لما تنزل بالصفحة
+(function(){let t=0;addEventListener('scroll',()=>{if(t)return;t=setTimeout(()=>{t=0;document.body.classList.toggle('tbmin',(window.scrollY||document.documentElement.scrollTop)>110)},80)},{passive:true})})();
 // زرار البحث (بدل صناديق البحث اللي كانت واخدة الشاشة)
 const tb=document.querySelector('.topbtns');
-if(tb){const b=document.createElement('button');b.className='fc';b.textContent='🔍';b.setAttribute('aria-label','بحث');
+if(tb){const b=document.createElement('button');b.className='fc';b.dataset.l='بحث';b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7.5"/><path d="M21 21l-4.3-4.3"/></svg>';b.setAttribute('aria-label','بحث');
  b.onclick=()=>{document.body.classList.toggle('sopen');if(document.body.classList.contains('sopen')){window.scrollTo(0,0);const i=$('searchInput');i&&i.focus()}};tb.prepend(b)}
 // ===== هيرو بتريلر يشتغل لوحده =====
 let htok=0;
