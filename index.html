@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v13: «كمّل المشاهدة» للـIPTV: صف في الرئيسية وفي تبويبي الأفلام/المسلسلات (كروت بشريط تقدّم وزر ✕)، المسلسل بيكمّل من آخر حلقة أو بيقترح الحلقة التالية، زر «كمّل» جوه صفحة الفيلم/المسلسل، شريط تقدّم وعلامة ✓ على الكروت، وحفظ التقدّم + الحلقة التالية في مشغّل المتصفح كمان
   v12: عدّاد التحميل الفعلي لكل عضو (بايتات اتحمّلت فعليًا من تطبيق الأندرويد) يظهر في الإحصائيات وفي تفاصيل كل يوم (يحتاج bot-34.py + إعادة بناء الـAPK)
   v11: قسم الـIPTV بشكل خاص (هيدر وشريط تبويبات سفلي وألوان مختلفة) + ترتيب الأقسام فوق/تحت وإخفاؤها لكل تبويب (أفلام/مسلسلات/مباشر)، محفوظ لكل بروفايل (يحتاج bot-33.py المحدّث)
   v10: نظام الأعضاء (يحتاج bot-33.py): باقة مجاني/مميز بمدة + شارة فوق عند العضو + شاشة للأدمن لتحديد الباقة + إحصائيات المشاهدة والسحب لكل عضو + نسخة احتياطية؛ والـIPTV للأعضاء المميزين بس
@@ -539,7 +540,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=12;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=13;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2293,18 +2294,129 @@ const ivClean = n => String(n || 'video').replace(/[\\/:*?"<>|]+/g, '_').trim().
 const p2s = n => String(n).padStart(2, '0');
 // تقدّم المشاهدة (على الجهاز بس)
 function ivPK() { return 'iv_p_' + (UNAME || '') + '_' + (PID || ''); }
-function ivProgAll() { try { return JSON.parse(localStorage.getItem(ivPK()) || '{}'); } catch (e) { return {}; } }
+let IV_PC = null, IV_PCK = '';
+function ivProgAll() {
+  const k = ivPK();
+  if (IV_PC && IV_PCK === k) return IV_PC;
+  IV_PCK = k;
+  try { IV_PC = JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { IV_PC = {}; }
+  return IV_PC;
+}
 function ivPosGet(key) { const o = ivProgAll()[key]; return (o && !o.done && o.pos > 10) ? Math.floor(o.pos) : 0; }
+// حفظ التقدّم + بيانات الكارت (اسم/غلاف/الحلقة الحالية والتالية) عشان صف «كمّل المشاهدة»
+function ivSave(key, pos, dur, ended, meta) {
+  if (!key) return;
+  try {
+    const all = ivProgAll(), old = all[key] || {};
+    all[key] = {pos: pos, dur: dur, done: !!ended || (dur > 0 && pos > dur * 0.95), t: Date.now(), m: meta || old.m};
+    const ks = Object.keys(all);
+    if (ks.length > 200) ks.sort((a, b) => all[a].t - all[b].t).slice(0, ks.length - 200).forEach(k => delete all[k]);
+    IV_PC = all; IV_PCK = ivPK();
+    localStorage.setItem(IV_PCK, JSON.stringify(all));
+    IV._pm = null;
+  } catch (e) {}
+  const n = Date.now();
+  if (ended || n - (IV._rs || 0) > 30000) { IV._rs = n; try { ivCwRefresh(); renderShelvesSoon(); } catch (e) {} }
+}
+// عناصر «كمّل المشاهدة»: فيلم لسه ما خلصش، ومسلسل (آخر حلقة وقفت عندها، أو الحلقة التالية لو خلصت)
+function ivCwItems(only) {
+  const all = ivProgAll(), ser = new Map(), out = [];
+  Object.keys(all).forEach(key => {
+    const o = all[key], m = o && o.m;
+    if (!m) return;
+    if (m.k === 'vod') {
+      if (!o.h && !o.done && o.pos > 10 && (!only || only === 'vod'))
+        out.push({key: key, t: o.t, title: m.n, img: m.img, pct: o.dur ? Math.min(99, o.pos / o.dur * 100) : 0, lbl: fmtTime(o.pos)});
+    } else if (m.k === 'series') {
+      const g = ser.get(String(m.id));
+      if (!g || o.t > g.o.t) ser.set(String(m.id), {key: key, o: o});
+    }
+  });
+  if (!only || only === 'series') ser.forEach(g => {
+    const o = g.o, m = o.m;
+    if (o.h) return;
+    let pct = 0, lbl;
+    if (o.done) {
+      if (!m.nx) return;
+      lbl = '⏭ S' + p2s(m.nx.s) + 'E' + p2s(m.nx.e);
+    } else {
+      if (!(o.pos > 10) || !m.ep) return;
+      pct = o.dur ? Math.min(99, o.pos / o.dur * 100) : 0;
+      lbl = 'S' + p2s(m.ep.s) + 'E' + p2s(m.ep.e) + ' · ' + fmtTime(o.pos);
+    }
+    out.push({key: g.key, t: o.t, title: m.sn, img: m.img, pct: pct, lbl: lbl});
+  });
+  out.sort((a, b) => b.t - a.t);
+  return out.slice(0, 20);
+}
+function ivCwCard(x) {
+  return '<div class="cw" tabindex="0" role="button" data-key="' + esc(x.key) + '" onclick="ivCwTap(this.dataset.key)">' +
+    '<button class="cwx" tabindex="-1" onclick="event.stopPropagation();ivCwHide(this.parentNode.dataset.key)">✕</button>' +
+    (x.img ? '<img ' + lzA(x.img) + ' alt="">' : '<div class="noimg">🎬</div>') +
+    '<div class="cwb"><i style="width:' + x.pct.toFixed(0) + '%"></i></div>' +
+    '<div class="t">' + esc(x.title || '') + '<div class="y">' + esc(x.lbl) + '</div></div></div>';
+}
+function ivCwRow(only) {
+  const l = ivCwItems(only);
+  return l.length ? '<h3 class="sec">▶ كمّل مشاهدة الـIPTV</h3><div class="hrow">' + l.map(ivCwCard).join('') + '</div>' : '';
+}
+function ivCwRefresh() {
+  const el = $('ivCw');
+  if (!el || !IV.open || IV.sel || IV.q || IV.cat || (IV.tab !== 'vod' && IV.tab !== 'series')) return;
+  el.innerHTML = ivCwRow(IV.tab);
+  try { lzScan(); } catch (e) {}
+}
+function ivCwHide(key) {
+  const all = ivProgAll(), o = all[key];
+  if (!o) return;
+  o.h = 1;
+  IV._pm = null;
+  try { localStorage.setItem(ivPK(), JSON.stringify(all)); } catch (e) {}
+  ivCwRefresh();
+  renderShelvesSoon();
+}
+async function ivCwTap(key) {
+  const o = ivProgAll()[key], m = o && o.m;
+  if (!m) return;
+  if (!isPremiumOK()) { alert((typeof LOCK_MSG === 'string' && LOCK_MSG) || 'قسم الـIPTV للأعضاء المميزين بس.'); return; }
+  if (!IV.cfg) await ivCfg();
+  if (!IV.cfg) return;
+  if (m.k === 'vod') {
+    return ivPlay(ivMovieUrl(m.id, m.ext), m.n, {key: key, meta: m});
+  }
+  const ep = o.done ? m.nx : m.ep;
+  if (!ep) return;
+  IV.autoEp = String(ep.id);
+  if (!IV.open) ivOpen('series');
+  IV.tab = 'series';
+  IV.sel = {k: 'series', id: m.id};
+  IV.info = null;
+  IV.ss = null;
+  ivRender();
+  $('iv').scrollTop = 0;
+}
+// علامات على كروت القوائم: شريط تقدّم للي لسه بتتفرّج عليه، و✓ للأفلام الخلصانة
+function ivProgMap() {
+  const all = ivProgAll(), pm = {}, ser = new Map();
+  Object.keys(all).forEach(key => {
+    const o = all[key], m = o && o.m;
+    if (!m) return;
+    if (m.k === 'vod') pm['vod:' + m.id] = o.done ? 'done' : (o.pos > 10 && o.dur ? Math.min(99, Math.round(o.pos / o.dur * 100)) : 0);
+    else if (m.k === 'series') { const g = ser.get(String(m.id)); if (!g || o.t > g.t) ser.set(String(m.id), o); }
+  });
+  ser.forEach((o, id) => { if (!o.done && o.pos > 10 && o.dur) pm['series:' + id] = Math.min(99, Math.round(o.pos / o.dur * 100)); });
+  return pm;
+}
+function ivTileMark(kind, id) {
+  const pm = IV._pm || (IV._pm = ivProgMap()), v = pm[kind + ':' + id];
+  if (v === 'done') return {done: 1, bar: ''};
+  if (v > 0) return {done: 0, bar: '<div class="cwb"><i style="width:' + v + '%"></i></div>'};
+  return {done: 0, bar: ''};
+}
 function ivProgress(pos, dur, ended) {
   const np = window.IV_NP;
   if (!np || !np.key) return;
-  try {
-    const all = ivProgAll();
-    all[np.key] = {pos: pos, dur: dur, done: ended || (dur > 0 && pos > dur * 0.95), t: Date.now()};
-    const ks = Object.keys(all);
-    if (ks.length > 200) ks.sort((a, b) => all[a].t - all[b].t).slice(0, ks.length - 200).forEach(k => delete all[k]);
-    localStorage.setItem(ivPK(), JSON.stringify(all));
-  } catch (e) {}
+  ivSave(np.key, pos, dur, ended, np.meta);
   if (!ended && np.next != null && IV.flatSid === np.sid && IV.flat && IV.flat[np.next] && window.AndroidPlayer && typeof AndroidPlayer.showNext !== 'undefined') {
     const nx = IV.flat[np.next];
     try { AndroidPlayer.showNext('S' + p2s(nx.s) + 'E' + p2s(nx.e), Math.max(0, Math.ceil(dur - pos))); } catch (e) {}
@@ -2317,7 +2429,7 @@ function ivProgress(pos, dur, ended) {
 function ivPlay(url, title, o) {
   o = o || {};
   if (ivApp() || (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined')) {
-    window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid}; window.NP_PLAYED = Date.now();
+    window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid, meta: o.meta}; window.NP_PLAYED = Date.now();
     AndroidPlayer.play(url, title, o.key ? ivPosGet(o.key) : 0);
     return;
   }
@@ -2353,7 +2465,20 @@ function ivWebPlay(url, title, o) {
   const v = $('ivpv');
   const err = t => { $('ivpe').innerHTML = '<div class="warn">' + esc(t) + '</div>'; };
   v.onerror = () => err('المتصفح مش قادر يشغّل الصيغة دي (غالباً mkv أو http). افتح الرابط في VLC، أو استخدم التطبيق.');
-  if (o && o.key) { const p = ivPosGet(o.key); if (p) v.addEventListener('loadedmetadata', () => { try { v.currentTime = p; } catch (e) {} }, {once: true}); }
+  if (o && o.key) {
+    const p = ivPosGet(o.key);
+    if (p) v.addEventListener('loadedmetadata', () => { try { v.currentTime = p; } catch (e) {} }, {once: true});
+    let ls = 0;
+    const sv = ended => { const d = isFinite(v.duration) ? v.duration : 0; if (ended || v.currentTime > 1) ivSave(o.key, v.currentTime, d, ended, o.meta); };
+    m._sv = () => sv(false);
+    v.addEventListener('timeupdate', () => { const n = Date.now(); if (n - ls > 8000) { ls = n; sv(false); } });
+    v.addEventListener('pause', () => sv(false));
+    v.addEventListener('ended', () => {
+      sv(true);
+      let pr = null; try { pr = prof(); } catch (e) {}
+      if (o.next != null && IV.flatSid === o.sid && !(pr && pr.auto === false)) setTimeout(() => ivPlayEp(o.next), 600);
+    });
+  }
   if (/\.m3u8/.test(url) && window.Hls && Hls.isSupported()) {
     const h = new Hls();
     m._h = h;
@@ -2364,6 +2489,7 @@ function ivWebPlay(url, title, o) {
 function ivWebClose() {
   const m = $('ivp');
   if (!m) return;
+  try { if (m._sv) m._sv(); } catch (e) {}
   try { if (m._h) m._h.destroy(); } catch (e) {}
   try { const v = $('ivpv'); v.pause(); v.removeAttribute('src'); v.load(); } catch (e) {}
   m.remove();
@@ -2372,14 +2498,17 @@ function ivWebClose() {
 function ivHomeHTML() {
   if (!PID) return '';
   if (IV.homeFor !== PID) { IV.homeFor = PID; ivHomeLoad(PID); }
-  return IV.homePid === PID ? IV.homeHTML : '';
+  if (IV.homePid !== PID) return '';
+  const hh = IV.homeHTML, cw = ivCwRow(), i = hh.indexOf('</h3>');
+  return (cw && i > -1) ? hh.slice(0, i + 5) + cw + hh.slice(i + 5) : hh;
 }
 function ivTile(kind, x) {
   const live = kind === 'live', id = kind === 'series' ? x.series_id : x.stream_id, img = kind === 'series' ? x.cover : x.stream_icon;
   const isnew = !live && ((+x.added || +x.last_modified || 0) > Date.now() / 1000 - 7 * 86400);
+  const mk = live ? {done: 0, bar: ''} : ivTileMark(kind, id);
   return '<div class="poster' + (live ? ' ivl' : '') + '" tabindex="0" role="button" data-k="' + kind + '" data-id="' + esc(id) + '" onclick="ivTap(this)">' +
-    (live ? '<button class="ivpin" tabindex="-1" onclick="event.stopPropagation();ivTogglePin(this.parentNode.dataset.id,this)">' + (ivPinned(id) ? '⭐' : '📌') + '</button>' : (isnew ? '<span class="pbadge">جديد</span>' : '')) +
-    (img ? '<img ' + lzA(img) + ' alt="">' : '<div class="noimg">' + (live ? '📡' : '🎬') + '</div>') +
+    (live ? '<button class="ivpin" tabindex="-1" onclick="event.stopPropagation();ivTogglePin(this.parentNode.dataset.id,this)">' + (ivPinned(id) ? '⭐' : '📌') + '</button>' : (mk.done ? '<span class="pbadge ok">✓ شوهد</span>' : (isnew ? '<span class="pbadge">جديد</span>' : ''))) +
+    (img ? '<img ' + lzA(img) + ' alt="">' : '<div class="noimg">' + (live ? '📡' : '🎬') + '</div>') + mk.bar +
     '<div class="t">' + esc(x.name) + '</div></div>';
 }
 const ivMore = (tab, txt) => '<div class="poster mtile" tabindex="0" role="button" data-k="more" data-id="' + tab + '" onclick="ivTap(this)">' + (txt || 'المزيد ⬅') + '</div>';
@@ -2448,6 +2577,7 @@ function ivOpen(tab, cat) {
   ivRender();
   ivCfg().then(c => { if (IV.open && c) ivPinsLoad().then(() => { if (IV.open && !IV.sel) ivRender(); }); if (IV.open) ivRender(); });
 }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { try { ivCwRefresh(); } catch (e) {} } });
 function ivHide() { IV.open = false; IV.sel = null; $('iv').style.display = 'none'; document.body.classList.remove('iv-on'); renderShelvesSoon(); }
 function ivBack() {
   if (IV.sel) { IV.sel = null; ivRender(); return; }
@@ -2511,7 +2641,7 @@ async function ivRender() {
     '<div class="clchips"><button onclick="ivOrderOpen()">↕️ رتّب الأقسام</button>' + (kind !== 'live' ? [['new', '🆕 الأحدث'], ['az', '🔤 أ - ي']].map(c => '<button class="' + (IV.sort === c[0] ? 'on' : '') + '" onclick="IV.sort=\'' + c[0] + '\';ivRender()">' + c[1] + '</button>').join('') : '') +
     (cur ? '<button data-k="' + kind + '" data-i="' + esc(cur.category_id) + '" data-n="' + esc(cur.category_name) + '" onclick="ivToggleCat(this.dataset.k,this.dataset.i,this.dataset.n)">' + (ivCatPinned(kind, cur.category_id) ? '⭐ القسم مثبّت' : '📌 ثبّت القسم') + '</button>' : '') + '</div>';
   const shown = items.slice(0, IV.lim);
-  box.innerHTML = bar + (items.length ? '<div class="clgrid' + (kind === 'live' ? ' ivg' : '') + '">' + shown.map(x => ivTile(kind, x)).join('') + '</div>' +
+  box.innerHTML = bar + '<div id="ivCw">' + ((kind === 'vod' || kind === 'series') && !q && !IV.cat ? ivCwRow(kind) : '') + '</div>' + (items.length ? '<div class="clgrid' + (kind === 'live' ? ' ivg' : '') + '">' + shown.map(x => ivTile(kind, x)).join('') + '</div>' +
     (items.length > shown.length ? '<div style="text-align:center;margin:14px"><button class="search-btn" style="max-width:260px" onclick="IV.lim+=120;ivRender()">عرض المزيد (' + (items.length - shown.length) + ')</button></div>' : '')
     : '<p style="color:var(--mut);text-align:center;margin-top:40px">' + (IV.cat === '__pin' ? 'لسه ما ثبّتّش قنوات. دوس 📌 على أي قناة.' : 'مفيش نتائج') + '</p>');
   try { lzScan(); } catch (e) {}
@@ -2544,9 +2674,9 @@ async function ivDetail(box) {
       box.innerHTML = '<div class="ivdet">' + (i.movie_image ? '<img ' + lzA(i.movie_image) + ' alt="">' : '') + '<div><h2>' + esc(nm) + '</h2>' +
         '<small>' + [i.releasedate || i.releaseDate, i.genre, i.duration, i.rating ? '⭐ ' + i.rating : ''].filter(Boolean).map(esc).join(' · ') + '</small>' +
         '<p>' + esc(i.plot || i.description || '') + '</p></div></div>' +
-        '<div class="row" style="gap:8px;margin-top:10px"><button class="search-btn" id="ivPlayBtn">▶ تشغيل</button><button class="search-btn" style="background:#22c55e" id="ivDlBtn">⬇ تحميل</button></div>' +
+        '<div class="row" style="gap:8px;margin-top:10px"><button class="search-btn" id="ivPlayBtn">' + (ivPosGet('m:' + s.id) ? '▶ كمّل من ' + fmtTime(ivPosGet('m:' + s.id)) : '▶ تشغيل') + '</button><button class="search-btn" style="background:#22c55e" id="ivDlBtn">⬇ تحميل</button></div>' +
         '<div class="row" style="gap:8px"><button class="fc" id="ivCpBtn">📋 انسخ الرابط</button></div>';
-      $('ivPlayBtn').onclick = () => ivPlay(url, nm, {key: 'm:' + s.id});
+      $('ivPlayBtn').onclick = () => ivPlay(url, nm, {key: 'm:' + s.id, meta: {k: 'vod', id: s.id, n: nm, img: i.movie_image || '', ext: ext}});
       $('ivDlBtn').onclick = () => ivDownload(url, ivClean(nm) + '.' + ext);
       $('ivCpBtn').onclick = () => ivCopy(url);
     } else {
@@ -2569,13 +2699,19 @@ function ivEpisodes(v) {
 }
 function ivSeriesRender(box) {
   const v = IV.info, i = v.info || {}, nm = i.name || 'مسلسل', all = ivEpisodes(v);
-  IV.flat = all; IV.flatSid = IV.sel.id; IV.flatName = nm;
+  IV.flat = all; IV.flatSid = IV.sel.id; IV.flatName = nm; IV.flatImg = i.cover || '';
+  if (IV.autoEp) {
+    const ax = all.findIndex(x => String(x.id) === IV.autoEp);
+    IV.autoEp = null;
+    if (ax >= 0) { IV.ss = all[ax].s; setTimeout(() => ivPlayEp(ax), 0); }
+  }
   const seasons = [...new Set(all.map(x => x.s))];
   if (IV.ss == null || !seasons.includes(IV.ss)) IV.ss = seasons[0];
   const prog = ivProgAll();
   const eps = all.map((x, ix) => ({x: x, ix: ix})).filter(o => o.x.s === IV.ss);
   box.innerHTML = '<div class="ivdet">' + (i.cover ? '<img ' + lzA(i.cover) + ' alt="">' : '') + '<div><h2>' + esc(nm) + '</h2>' +
     '<small>' + [i.releaseDate || i.releasedate, i.genre, i.rating ? '⭐ ' + i.rating : ''].filter(Boolean).map(esc).join(' · ') + '</small><p>' + esc(i.plot || '') + '</p></div></div>' +
+    ivResumeBtn(all) +
     (all.length ? '<div class="tabs">' + seasons.map(sn => '<button class="tab' + (sn === IV.ss ? ' on' : '') + '" onclick="IV.ss=' + sn + ';ivSeriesRender($(\'ivBody\'))">الموسم ' + sn + '</button>').join('') + '</div>' +
       '<div class="row" style="gap:8px;margin-bottom:10px"><button class="fc" onclick="ivDlSeason()">⬇ تحميل الموسم ' + IV.ss + ' كله</button></div>' : '<p style="color:var(--mut);text-align:center">مفيش حلقات</p>') +
     eps.map(o => {
@@ -2586,11 +2722,29 @@ function ivSeriesRender(box) {
         '<button style="background:#22c55e;color:#fff" onclick="ivDlEp(' + o.ix + ')">⬇</button></div>';
     }).join('');
 }
+// زر «كمّل» أعلى صفحة المسلسل: آخر حلقة وقفت عندها، أو الحلقة التالية لو خلصت
+function ivResumeBtn(all) {
+  const prog = ivProgAll(), sid = String(IV.flatSid);
+  let best = null;
+  all.forEach((x, ix) => { const o = prog['s:' + sid + ':' + x.id]; if (o && (!best || o.t > best.o.t)) best = {o: o, ix: ix}; });
+  if (!best) return '';
+  let ix = best.ix, lbl;
+  if (best.o.done) {
+    if (!all[ix + 1]) return '';
+    ix += 1; lbl = '⏭ شغّل الحلقة التالية S' + p2s(all[ix].s) + 'E' + p2s(all[ix].e);
+  } else {
+    if (!(best.o.pos > 10)) return '';
+    lbl = '▶ كمّل S' + p2s(all[ix].s) + 'E' + p2s(all[ix].e) + ' من ' + fmtTime(best.o.pos);
+  }
+  return '<div class="row" style="gap:8px;margin:10px 0 4px"><button class="search-btn" onclick="ivPlayEp(' + ix + ')">' + lbl + '</button></div>';
+}
 function ivEpName(x) { return ivClean(IV.flatName + ' S' + p2s(x.s) + 'E' + p2s(x.e)); }
 function ivPlayEp(ix) {
   const x = IV.flat[ix];
   if (!x) return;
-  ivPlay(ivEpUrl(x.id, x.ext), IV.flatName + ' · S' + p2s(x.s) + 'E' + p2s(x.e), {key: 's:' + IV.flatSid + ':' + x.id, next: IV.flat[ix + 1] ? ix + 1 : null, sid: IV.flatSid});
+  ivPlay(ivEpUrl(x.id, x.ext), IV.flatName + ' · S' + p2s(x.s) + 'E' + p2s(x.e), {key: 's:' + IV.flatSid + ':' + x.id, next: IV.flat[ix + 1] ? ix + 1 : null, sid: IV.flatSid,
+    meta: {k: 'series', id: IV.flatSid, sn: IV.flatName, img: IV.flatImg || x.img || '', ep: {id: x.id, ext: x.ext, s: x.s, e: x.e},
+      nx: IV.flat[ix + 1] ? {id: IV.flat[ix + 1].id, ext: IV.flat[ix + 1].ext, s: IV.flat[ix + 1].s, e: IV.flat[ix + 1].e} : null}});
 }
 function ivDlEp(ix) {
   const x = IV.flat[ix];
