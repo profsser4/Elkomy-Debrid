@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v18: التلفزيون: كل الحلقات تظهر (شيل content-visibility)، صور الحلقات أخف وبتحمّل مباشرة بدون المراقب الكسول
   v17: التلفزيون: حجم النسخة (جيجا + الجودة) مكتوب جنب زرار التشغيل مباشرة
   v16: التلفزيون: إصلاح تكسير الحلقات (عمود واحد)، كتابة حجم النسخة اللي هتشتغل (جيجا/جودة) قبل التشغيل، وشيل كل أزرار التحميل من الشاشة
   v15: التلفزيون: صفحة المسلسل بنظام نتفلكس (المعلومات والمواسم يمين، الحلقات بصورتها ووصفها ومدتها شمال) + تخفيف التقل (إيقاف التريلر والمعاينة، شيل الضبابية والظلال والحركات والخلفية الثابتة، تحميل أقل)
@@ -544,7 +545,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=17;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=18;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -3416,7 +3417,7 @@ async function disablePush() {
 function tvEp(n, e) {
   const fut = e.date && e.date > new Date().toISOString().slice(0, 10);
   return '<div class="ep ept tve" data-s="' + n + '" data-e="' + e.n + '">' +
-    '<div class="th">' + (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '<div class="noimg">🎬</div>') + '</div>' +
+    '<div class="th">' + (e.still ? '<img loading="lazy" decoding="async" src="' + esc(/image\.tmdb\.org/.test(e.still) ? e.still.replace(/\/t\/p\/[^\/]+\//, '/t/p/w300/') : e.still) + '" alt="" onerror="this.outerHTML=\'<div class=noimg>🎬</div>\'">' : '<div class="noimg">🎬</div>') + '</div>' +
     '<div class="b"><div class="tt"><span>' + e.n + '. ' + esc(e.name || ('حلقة ' + e.n)) + '</span><em>' + (e.runtime ? e.runtime + ' د' : '') + '</em></div>' +
     (e.overview ? '<div class="od">' + esc(e.overview) + '</div>' : '') +
     '<small>' + esc(e.date || '') + (fut ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') + epMark(cur.id, n, e.n) +
@@ -9236,7 +9237,6 @@ body.m-tv *{backdrop-filter:none!important;-webkit-backdrop-filter:none!importan
 body.m-tv .hrow{scroll-snap-type:none!important}
 body.m-tv .topbar{position:static!important}
 body.m-tv .poster:focus,body.m-tv .cw:focus,body.m-tv .gtile:focus,body.m-tv .poster:focus-visible,body.m-tv .cw:focus-visible,body.m-tv .gtile:focus-visible{transform:none!important;outline:4px solid #fff!important;outline-offset:2px}
-body.m-tv .ep{content-visibility:auto;contain-intrinsic-size:auto 130px}
 body.m-tv #nfpv{display:none!important}
 body.m-tv #details .tvd{display:grid;grid-template-columns:minmax(0,38fr) minmax(0,62fr);gap:28px;align-items:start;direction:rtl}
 body.m-tv #details .tvr{min-width:0;position:sticky;top:8px}
@@ -9258,7 +9258,7 @@ body.m-tv .sz,body.m-tv .tvsz{font-size:15px;font-weight:700;color:#86efac;align
 body.m-tv #details .row>.search-btn{width:auto;padding:10px 22px}
 body.m-tv #details .ep.tve{display:grid;grid-template-columns:230px minmax(0,1fr);gap:4px 16px;align-items:start;padding:10px;margin-bottom:10px;background:transparent;border:0;border-radius:10px}
 body.m-tv #details .ep.tve:focus-within{background:#1b2440}
-body.m-tv #details .ep.tve .th{grid-row:1 / span 2;aspect-ratio:16/9;background:#0b1220;border-radius:6px;overflow:hidden}
+body.m-tv #details .ep.tve .th{grid-row:1 / span 2;min-height:110px;aspect-ratio:16/9;background:#0b1220;border-radius:6px;overflow:hidden}
 body.m-tv #details .ep.tve .th img{width:100%;height:100%;object-fit:cover;display:block}
 body.m-tv #details .ep.tve .noimg{height:100%;display:flex;align-items:center;justify-content:center;font-size:30px}
 body.m-tv #details .ep.tve .b{flex:none;min-width:0;word-break:normal;overflow-wrap:anywhere}
