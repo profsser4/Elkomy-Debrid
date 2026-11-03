@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v15: التلفزيون: صفحة المسلسل بنظام نتفلكس (المعلومات والمواسم يمين، الحلقات بصورتها ووصفها ومدتها شمال) + تخفيف التقل (إيقاف التريلر والمعاينة، شيل الضبابية والظلال والحركات والخلفية الثابتة، تحميل أقل)
   v14: IPTV: كاش دائم للقوائم والأقسام (IndexedDB) — القايمة بتفتح فورًا من الكاش وبتتحدّث في الخلفية، ورسالة التحميل بتظهر بس لو التحميل فعلاً طوّل (أول مرة)، وتحسين مكان شارة النسخة عشان ما تغطّيش تبويب «حساب»
   v13: «كمّل المشاهدة» للـIPTV: صف في الرئيسية وفي تبويبي الأفلام/المسلسلات (كروت بشريط تقدّم وزر ✕)، المسلسل بيكمّل من آخر حلقة أو بيقترح الحلقة التالية، زر «كمّل» جوه صفحة الفيلم/المسلسل، شريط تقدّم وعلامة ✓ على الكروت، وحفظ التقدّم + الحلقة التالية في مشغّل المتصفح كمان
   v12: عدّاد التحميل الفعلي لكل عضو (بايتات اتحمّلت فعليًا من تطبيق الأندرويد) يظهر في الإحصائيات وفي تفاصيل كل يوم (يحتاج bot-34.py + إعادة بناء الـAPK)
@@ -541,7 +542,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=14;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=15;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2029,6 +2030,15 @@ async function openDetails(type, id) {
       ).join('') + '</div><div id="eps"></div>';
     }
     box.innerHTML = h + '<div id="relBox"></div>';
+    if (d.type === 'tv' && isTv()) {
+      try {
+        const rel = $('relBox'), eps = $('eps'), W = document.createElement('div'), R = document.createElement('div'), L = document.createElement('div');
+        W.className = 'tvd'; R.className = 'tvr'; L.className = 'tvl';
+        Array.from(box.children).forEach(c => { if (c !== rel && c !== eps) R.appendChild(c); });
+        L.appendChild(eps); W.appendChild(R); W.appendChild(L);
+        box.insertBefore(W, rel);
+      } catch (x) {}
+    }
     if (d.type === 'tv' && d.seasons.length) loadSeason(d.seasons[0].n);
     if (d.type === 'tv' && ROLE === 'admin') setTimeout(() => { if (cur && cur.id === d.id) smapFillSeries(d.id); }, 1500);
     loadRelated(d.type, d.id);
@@ -2039,7 +2049,8 @@ async function loadRelated(type, id) {
     const {d} = await api('/related?type=' + type + '&id=' + id);
     const box = $('relBox');
     if (!d || d.error || !box || !cur || cur.id !== id) return;
-    const row = (items, mark) => '<div class="hrow"' + (isTv() ? ' style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;overflow:visible;flex-wrap:nowrap"' : '') + '>' + items.map(t =>
+    const TVL = isTv() ? 6 : 999;
+    const row = (items, mark) => '<div class="hrow"' + (isTv() ? ' style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;overflow:visible;flex-wrap:nowrap"' : '') + '>' + items.slice(0, TVL).map(t =>
       '<div class="poster" style="' + (t.id === id ? 'outline:2px solid #38bdf8' : '') + '" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">' +
       (t.poster ? '<img ' + lzA(t.poster) + ' alt="">' : '<div class="noimg">🎬</div>') +
       '<div class="t">' + esc(t.title) + '<div class="y">' + esc(t.year) + '</div></div></div>').join('') + '</div>';
@@ -3399,6 +3410,17 @@ async function disablePush() {
   pushState();
 }
 
+function tvEp(n, e) {
+  const fut = e.date && e.date > new Date().toISOString().slice(0, 10);
+  return '<div class="ep ept tve">' +
+    '<div class="th">' + (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '<div class="noimg">🎬</div>') + '</div>' +
+    '<div class="b"><div class="tt"><span>' + e.n + '. ' + esc(e.name || ('حلقة ' + e.n)) + '</span><em>' + (e.runtime ? e.runtime + ' د' : '') + '</em></div>' +
+    (e.overview ? '<div class="od">' + esc(e.overview) + '</div>' : '') +
+    '<small>' + esc(e.date || '') + (fut ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') + epMark(cur.id, n, e.n) +
+    (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚</span>' : '') + '</small></div>' +
+    '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
+    (ADV() || !cur.imdb ? '<button class="mg" aria-label="تورنت" onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div></div>';
+}
 async function loadSeason(n) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab' + n));
   const b = $('eps'), my = ++sReq;
@@ -3411,7 +3433,7 @@ async function loadSeason(n) {
     if (my !== sReq) return;
     b.innerHTML = (smapKeys(SMAP[cur.id]).length ? '<p style="margin:0 0 10px;color:#38bdf8;font-size:13px">📌 المسلسل متضاف للكل: ' + smapKeys(SMAP[cur.id]).length + ' حلقة بتشتغل ورا بعض</p>' : '') + (ADV() || !cur.imdb ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
       (ROLE === 'admin' && cur.imdb ? '<button class="search-btn" style="margin-bottom:10px;background:#0ea5e9" onclick="playOpen(' + n + ',1)">📌 ضيف الموسم ' + n + ' كله (اختار نسخة)</button>' : '') +
-      d.episodes.map(e => '<div class="ep ept">' +
+      d.episodes.map(e => isTv() ? tvEp(n, e) : '<div class="ep ept">' +
         (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '') +
         '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) + (e.date && e.date > new Date().toISOString().slice(0, 10) ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') +
         (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌 مضافة</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚 مكتبتي</span>' : '') + '</small></div>' +
@@ -9127,7 +9149,7 @@ if(tb){const b=document.createElement('button');b.className='fc';b.dataset.l='ب
 // ===== هيرو بتريلر يشتغل لوحده =====
 let htok=0;
 async function heroTrailer(){
-  const my=++htok,hz=document.querySelector('#hzb .hz');if(!hz||saver())return;
+  const my=++htok,hz=document.querySelector('#hzb .hz');if(!hz||saver()||isTv())return;
   const L=heroList();if(!L.length)return;const x=L[heroI%L.length];
   const key=await trailerKey(x.type,x.id);await new Promise(r=>setTimeout(r,1200));
   if(my!==htok||!key||!document.body.contains(hz))return;
@@ -9142,7 +9164,7 @@ const _rh=renderHero;renderHero=function(){_rh.apply(this,arguments);heroTrailer
 const pv=document.createElement('div');pv.id='nfpv';document.body.appendChild(pv);let pt=0;
 function hidePv(){clearTimeout(pt);pv.style.display='none';pv.innerHTML=''}
 function showPv(p){
-  const m=/openDetails\('(\w+)',(\d+)\)/.exec(p.getAttribute('onclick')||'');if(!m||saver())return;
+  const m=/openDetails\('(\w+)',(\d+)\)/.exec(p.getAttribute('onclick')||'');if(!m||saver()||isTv())return;
   clearTimeout(pt);pt=setTimeout(async()=>{
     const key=await trailerKey(m[1],m[2]);if(!key||!document.body.contains(p))return;
     const r=p.getBoundingClientRect(),w=300;let x=r.left+r.width/2-w/2;x=Math.max(8,Math.min(innerWidth-w-8,x));
@@ -9180,6 +9202,41 @@ const _od=openDetails;
 openDetails=async function(t,i){const r=await _od.apply(this,arguments);try{if(cur){record(cur);if(autoKeys().join(',')!==lastA)setTimeout(loadInterestRows,2500)}}catch(e){}return r};
 })();
 </script>
+
+<style id="tv-nfx">
+/* v15: وضع التلفزيون — صفحة المسلسل بنظام نتفلكس + تخفيف التقل */
+body.m-tv{background:#070d1f!important}
+body.m-tv *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important;text-shadow:none!important;transition:none!important;animation:none!important;scroll-behavior:auto!important}
+body.m-tv .hrow{scroll-snap-type:none!important}
+body.m-tv .topbar{position:static!important}
+body.m-tv .poster:focus,body.m-tv .cw:focus,body.m-tv .gtile:focus,body.m-tv .poster:focus-visible,body.m-tv .cw:focus-visible,body.m-tv .gtile:focus-visible{transform:none!important;outline:4px solid #fff!important;outline-offset:2px}
+body.m-tv .ep{content-visibility:auto;contain-intrinsic-size:auto 130px}
+body.m-tv #nfpv{display:none!important}
+body.m-tv #details .tvd{display:grid;grid-template-columns:minmax(0,38fr) minmax(0,62fr);gap:28px;align-items:start;direction:rtl}
+body.m-tv #details .tvr{min-width:0;position:sticky;top:8px}
+body.m-tv #details .tvl{min-width:0}
+body.m-tv #details .hero{height:auto!important;background:none!important;border-radius:0;padding:0 0 8px;display:block;overflow:visible}
+body.m-tv #details .hero h2{font-size:34px;line-height:1.35;margin:10px 0 0}
+body.m-tv #details .hero .back{position:static;margin-bottom:6px}
+body.m-tv #details .meta{font-size:15px;color:#cbd5e1;margin:6px 0 10px}
+body.m-tv #details .ov{font-size:14px;line-height:1.8;color:#cbd5e1;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+body.m-tv #details .tvr .search-btn{width:auto;display:inline-block;margin:0 0 10px 8px;padding:10px 18px}
+body.m-tv #details .tvr .lbl,body.m-tv #details .tvr .lbl+.chips{display:none}
+body.m-tv #details .tvr .tabs{display:flex;flex-direction:column;overflow:visible;gap:6px;margin:10px 0}
+body.m-tv #details .tvr .tab{border-radius:8px;text-align:right;padding:12px 16px;font-size:16px;background:#1b2440}
+body.m-tv #details .tvr .tab.on{background:#fff;color:#000;font-weight:700}
+body.m-tv #details .ep.tve{display:grid;grid-template-columns:230px minmax(0,1fr);gap:4px 16px;align-items:start;padding:10px;margin-bottom:10px;background:transparent;border:0;border-radius:10px}
+body.m-tv #details .ep.tve:focus-within{background:#1b2440}
+body.m-tv #details .ep.tve .th{grid-row:1 / span 2;aspect-ratio:16/9;background:#0b1220;border-radius:6px;overflow:hidden}
+body.m-tv #details .ep.tve .th img{width:100%;height:100%;object-fit:cover;display:block}
+body.m-tv #details .ep.tve .noimg{height:100%;display:flex;align-items:center;justify-content:center;font-size:30px}
+body.m-tv #details .ep.tve .b{flex:none;min-width:0;word-break:normal;overflow-wrap:anywhere}
+body.m-tv #details .ep.tve .tt{display:flex;justify-content:space-between;gap:10px;font-size:17px;font-weight:700;line-height:1.5}
+body.m-tv #details .ep.tve .tt em{font-style:normal;font-weight:400;color:#94a3b8;white-space:nowrap}
+body.m-tv #details .ep.tve .od{font-size:13px;line-height:1.7;color:#94a3b8;margin-top:4px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+body.m-tv #details .ep.tve .eacts{grid-column:2;flex:none;gap:6px}
+body.m-tv #details .ep.tve .eacts>button{flex:0 0 auto;min-width:64px;height:36px;font-size:15px;padding:0 12px}
+</style>
 
 </body>
 </html>
