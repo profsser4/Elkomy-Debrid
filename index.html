@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v17: التلفزيون: حجم النسخة (جيجا + الجودة) مكتوب جنب زرار التشغيل مباشرة
   v16: التلفزيون: إصلاح تكسير الحلقات (عمود واحد)، كتابة حجم النسخة اللي هتشتغل (جيجا/جودة) قبل التشغيل، وشيل كل أزرار التحميل من الشاشة
   v15: التلفزيون: صفحة المسلسل بنظام نتفلكس (المعلومات والمواسم يمين، الحلقات بصورتها ووصفها ومدتها شمال) + تخفيف التقل (إيقاف التريلر والمعاينة، شيل الضبابية والظلال والحركات والخلفية الثابتة، تحميل أقل)
   v14: IPTV: كاش دائم للقوائم والأقسام (IndexedDB) — القايمة بتفتح فورًا من الكاش وبتتحدّث في الخلفية، ورسالة التحميل بتظهر بس لو التحميل فعلاً طوّل (أول مرة)، وتحسين مكان شارة النسخة عشان ما تغطّيش تبويب «حساب»
@@ -543,7 +544,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=16;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=17;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2022,7 +2023,7 @@ async function openDetails(type, id) {
     if (d.type === 'movie') {
       const lib0 = libFor(d);
       if (lib0) h += '<div class="libhit">📚 متوفر في مكتبتك — التشغيل والتحميل بيستخدموا رابط المكتبة الأول، ولو وقع بيحوّل على التورنت تلقائي.</div>';
-      if (d.imdb || lib0) h += '<div class="row" style="margin-bottom:10px"><button class="search-btn" onclick="quickPlay()">▶ تشغيل</button>' + (isTv() ? '' : '<button class="search-btn" style="background:#0ea5e9" onclick="quickDownload()">⬇ تحميل</button>') + '</div>' + (isTv() ? '<div class="tvsz" id="tvMsz"></div>' : '') + '<button class="search-btn" style="background:#334155;margin-bottom:10px" onclick="playOpen()">⚙ اختيار الجودة</button>';
+      if (d.imdb || lib0) h += '<div class="row" style="margin-bottom:10px"><button class="search-btn" onclick="quickPlay()">▶ تشغيل</button>' + (isTv() ? '<span class="tvsz" id="tvMsz"></span>' : '<button class="search-btn" style="background:#0ea5e9" onclick="quickDownload()">⬇ تحميل</button>') + '</div><button class="search-btn" style="background:#334155;margin-bottom:10px" onclick="playOpen()">⚙ اختيار الجودة</button>';
       if (stOK() && (ADV() || !d.imdb)) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
       if ((ADV() || !d.imdb) && !isTv()) h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
     } else {
@@ -3418,10 +3419,9 @@ function tvEp(n, e) {
     '<div class="th">' + (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '<div class="noimg">🎬</div>') + '</div>' +
     '<div class="b"><div class="tt"><span>' + e.n + '. ' + esc(e.name || ('حلقة ' + e.n)) + '</span><em>' + (e.runtime ? e.runtime + ' د' : '') + '</em></div>' +
     (e.overview ? '<div class="od">' + esc(e.overview) + '</div>' : '') +
-    (cur && cur.imdb ? '<div class="sz"></div>' : '') +
     '<small>' + esc(e.date || '') + (fut ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') + epMark(cur.id, n, e.n) +
     (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚</span>' : '') + '</small></div>' +
-    '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
+    '<div class="eacts">' + playBtn(n, e.n) + (cur && cur.imdb ? '<span class="sz"></span>' : '') + (ADV() ? stBtn(n, e.n) : '') +
     (!cur.imdb ? '<button class="mg" aria-label="تشغيل" onclick="go(' + n + ',' + e.n + ',true)">▶</button>' : '') + '</div></div>';
 }
 const TVSZ = {};
@@ -3437,6 +3437,7 @@ async function tvSize(el, s, e) {
     if (cur && cur.id === id) el.textContent = t;
   } catch (x) { el.textContent = ''; }
 }
+function tvSizeFirst() { if (!isTv()) return; const r = document.querySelector('#eps .ep.tve'); if (r && !r.dataset.z) { r.dataset.z = '1'; const z = r.querySelector('.sz'); if (z) tvSize(z, +r.dataset.s, +r.dataset.e); } }
 let _tvSzT = 0;
 document.addEventListener('focusin', ev => {
   if (!isTv()) return;
@@ -3463,6 +3464,7 @@ async function loadSeason(n) {
         (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌 مضافة</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚 مكتبتي</span>' : '') + '</small></div>' +
         '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
         (ADV() || !cur.imdb ? '<button class="mg" aria-label="تورنت" onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div></div>').join('');
+    tvSizeFirst();
   } catch (e) { if (my === sReq) b.innerHTML = ERR; }
 }
 function altChips() {
@@ -9252,7 +9254,8 @@ body.m-tv #details .tvr .tab.on{background:#fff;color:#000;font-weight:700}
 body.m-tv #details .tvl #eps{display:block!important}
 body.m-tv #details .tvl #eps>.ep{margin-bottom:10px}
 body.m-tv .eb.d,body.m-tv .vcd,body.m-tv .btn-download,body.m-tv .tvl #eps>.search-btn{display:none!important}
-body.m-tv .sz,body.m-tv .tvsz{font-size:14px;color:#86efac;margin:4px 0 8px;min-height:1px}
+body.m-tv .sz,body.m-tv .tvsz{font-size:15px;font-weight:700;color:#86efac;align-self:center;white-space:nowrap;margin:0 6px}
+body.m-tv #details .row>.search-btn{width:auto;padding:10px 22px}
 body.m-tv #details .ep.tve{display:grid;grid-template-columns:230px minmax(0,1fr);gap:4px 16px;align-items:start;padding:10px;margin-bottom:10px;background:transparent;border:0;border-radius:10px}
 body.m-tv #details .ep.tve:focus-within{background:#1b2440}
 body.m-tv #details .ep.tve .th{grid-row:1 / span 2;aspect-ratio:16/9;background:#0b1220;border-radius:6px;overflow:hidden}
