@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v22: إصلاح «المزيد» في صفوف الرئيسية (مدبلج بالمصري، صفوف الإضافات): كانت بتفتح فاضية، دلوقتي بتحمّل الصف كامل مع تحميل المزيد (محتاج bot-35.py)
   v21: الموبايل/الأندرويد: كروت حلقات شيك (رقم الحلقة، المدة، الوصف، المساحة، زر تشغيل عريض) + مواسم بشكل أزرار مدوّرة
   v20: الموبايل/الأندرويد والكمبيوتر: مساحة النسخة وجودتها تظهر لكل حلقة (زي التلفزيون) وشارة أوضح
   v19: التلفزيون: مساحة النسخة تظهر لكل الحلقات (بالترتيب واحدة واحدة)، الصفحة بعرض الشاشة كله من غير جوانب سودا، وكروت حلقات أوضح (الحجم والجودة كشارة تحت العنوان، زر تشغيل أكبر، تمييز واضح للحلقة المحددة)
@@ -548,7 +549,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=21;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=22;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -7946,9 +7947,10 @@ async function brLoad() {
     if (d.error) { BR.more = false; BR.err = d.error; }
     else {
       const key = x => x.imdb || x.id || x.title, seen = new Set(BR.items.map(key));
-      (d.items || []).filter(x => !BR.ty || normTy(x.type) === BR.ty).forEach(x => { if (!seen.has(key(x))) { seen.add(key(x)); BR.items.push(x); } });
+      let added = 0;
+      (d.items || []).filter(x => !BR.ty || normTy(x.type) === BR.ty).forEach(x => { if (!seen.has(key(x))) { seen.add(key(x)); BR.items.push(x); added++; } });
       BR.skip = d.skip;
-      BR.more = !!d.more;
+      BR.more = !!d.more && (added > 0 || BR.q.indexOf('k=') !== 0);
     }
   } catch (e) { BR.err = 'مش قادر أوصل للسيرفر'; BR.more = false; }
   BR.busy = false;
