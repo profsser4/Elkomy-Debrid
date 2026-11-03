@@ -7,6 +7,8 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v21: الموبايل/الأندرويد: كروت حلقات شيك (رقم الحلقة، المدة، الوصف، المساحة، زر تشغيل عريض) + مواسم بشكل أزرار مدوّرة
+  v20: الموبايل/الأندرويد والكمبيوتر: مساحة النسخة وجودتها تظهر لكل حلقة (زي التلفزيون) وشارة أوضح
   v19: التلفزيون: مساحة النسخة تظهر لكل الحلقات (بالترتيب واحدة واحدة)، الصفحة بعرض الشاشة كله من غير جوانب سودا، وكروت حلقات أوضح (الحجم والجودة كشارة تحت العنوان، زر تشغيل أكبر، تمييز واضح للحلقة المحددة)
   v18: التلفزيون: كل الحلقات تظهر (شيل content-visibility)، صور الحلقات أخف وبتحمّل مباشرة بدون المراقب الكسول
   v17: التلفزيون: حجم النسخة (جيجا + الجودة) مكتوب جنب زرار التشغيل مباشرة
@@ -546,7 +548,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=19;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=21;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -3444,7 +3446,6 @@ async function tvSize(el, s, e) {
 // يحسب مساحة كل حلقات الموسم، واحدة ورا التانية (السيرفر مش بيتحمّل أكتر)، ويقف لو غيّرت الموسم أو خرجت من الصفحة
 let _tvSzRun = 0;
 async function tvSizeAll(tok) {
-  if (!isTv()) return;
   const run = ++_tvSzRun;
   const rows = Array.from(document.querySelectorAll('#eps .ep.tve')).filter(r => r.querySelector('.sz'));
   const alive = () => run === _tvSzRun && tok === sReq && document.body.contains(rows[0] || document.body);
@@ -3478,10 +3479,12 @@ async function loadSeason(n) {
     if (my !== sReq) return;
     b.innerHTML = (smapKeys(SMAP[cur.id]).length ? '<p style="margin:0 0 10px;color:#38bdf8;font-size:13px">📌 المسلسل متضاف للكل: ' + smapKeys(SMAP[cur.id]).length + ' حلقة بتشتغل ورا بعض</p>' : '') + (!isTv() && (ADV() || !cur.imdb) ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
       (!isTv() && ROLE === 'admin' && cur.imdb ? '<button class="search-btn" style="margin-bottom:10px;background:#0ea5e9" onclick="playOpen(' + n + ',1)">📌 ضيف الموسم ' + n + ' كله (اختار نسخة)</button>' : '') +
-      d.episodes.map(e => isTv() ? tvEp(n, e) : '<div class="ep ept">' +
+      d.episodes.map(e => isTv() ? tvEp(n, e) : '<div class="ep ept tve" data-s="' + n + '" data-e="' + e.n + '">' +
         (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '') +
-        '<div class="b">' + e.n + '. ' + esc(e.name) + '<small>' + esc(e.date) + (e.date && e.date > new Date().toISOString().slice(0, 10) ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') +
-        (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌 مضافة</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚 مكتبتي</span>' : '') + '</small></div>' +
+        '<div class="b"><div class="tt"><span><i class="en">' + e.n + '</i>' + esc(e.name || ('حلقة ' + e.n)) + '</span>' + (e.runtime ? '<em>' + e.runtime + ' د</em>' : '') + '</div><small>' + esc(e.date) + (e.date && e.date > new Date().toISOString().slice(0, 10) ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') +
+        epMark(cur.id, n, e.n) + (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌 مضافة</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚 مكتبتي</span>' : '') + '</small>' +
+        (e.overview ? '<div class="od">' + esc(e.overview) + '</div>' : '') +
+        (cur && cur.imdb && !(e.date && e.date > new Date().toISOString().slice(0, 10)) ? '<div class="sz wait">⏳ في الانتظار...</div>' : '') + '</div>' +
         '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
         (ADV() || !cur.imdb ? '<button class="mg" aria-label="تورنت" onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div></div>').join('');
     tvSizeAll(my);
@@ -9330,6 +9333,39 @@ body.m-tv #details .ep.tve .eacts button:focus{outline:4px solid #fff!important;
 body.m-tv .tvsz{display:inline-flex;align-items:center;padding:6px 16px;border-radius:99px;font-size:16px;font-weight:800;background:#ffffff0d;color:#94a3b8;border:1px solid #ffffff1a;margin:0 10px}
 body.m-tv .tvsz.ok{background:#052e1a;color:#86efac;border-color:#16a34a88}
 body.m-tv .tvsz.bad{background:#2a1a05;color:#fbbf24;border-color:#f59e0b66}
+</style>
+
+
+<style id="m-v20">
+/* v20: شارة المساحة لكل الأجهزة (الموبايل/الأندرويد/الكمبيوتر) */
+body:not(.m-tv) .ep .sz{display:inline-flex;align-items:center;margin-top:6px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:800;background:#ffffff0d;color:#94a3b8;border:1px solid #ffffff1a;white-space:normal}
+body:not(.m-tv) .ep .sz.ok{background:#052e1a;color:#86efac;border-color:#16a34a88}
+body:not(.m-tv) .ep .sz.bad{background:#2a1a05;color:#fbbf24;border-color:#f59e0b66}
+</style>
+
+
+<style id="m-v21">
+/* v21: كروت الحلقات + المواسم للموبايل/الأندرويد/الكمبيوتر */
+body:not(.m-tv) #eps .ep.ept{display:grid;grid-template-columns:128px minmax(0,1fr);gap:8px 12px;align-items:start;padding:12px;margin-bottom:12px;background:linear-gradient(160deg,#18213b,#111a30);border:1px solid #ffffff12;border-radius:18px}
+body:not(.m-tv) #eps .ep.ept img,body:not(.m-tv) #eps .ep.ept>.th{width:128px;aspect-ratio:16/9;object-fit:cover;border-radius:12px;background:#0b1220;grid-row:1}
+body:not(.m-tv) #eps .ep.ept>:not(img):not(.b):not(.eacts):not(.th){grid-column:1}
+body:not(.m-tv) #eps .ep.ept .b{grid-column:2;min-width:0;line-height:1.5}
+body:not(.m-tv) #eps .ep.ept:not(:has(img)) .b{grid-column:1/-1}
+body:not(.m-tv) #eps .ep.ept .tt{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:15px;font-weight:800;color:#fff}
+body:not(.m-tv) #eps .ep.ept .tt .en{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;margin-inline-end:8px;padding:0 6px;border-radius:8px;background:var(--primary);color:#04121f;font-style:normal;font-size:13px;font-weight:900}
+body:not(.m-tv) #eps .ep.ept .tt em{font-style:normal;font-weight:600;font-size:11.5px;color:#cbd5e1;background:#ffffff14;border-radius:99px;padding:1px 9px}
+body:not(.m-tv) #eps .ep.ept small{font-size:12px;color:#94a3b8;margin-top:2px}
+body:not(.m-tv) #eps .ep.ept .od{font-size:12.5px;line-height:1.7;color:#94a3b8;margin-top:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+body:not(.m-tv) #eps .ep.ept .eacts{grid-column:1/-1;gap:8px;margin-top:4px}
+body:not(.m-tv) #eps .ep.ept .eacts .eb.p{flex:3 1 0;background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;height:44px}
+body:not(.m-tv) #eps .ep.ept .eacts .eb.p svg{width:22px;height:22px}
+body:not(.m-tv) #eps .ep.ept .eacts .eb.g,body:not(.m-tv) #eps .ep.ept .eacts .eb.d{flex:1 1 0;height:44px}
+@media(max-width:380px){body:not(.m-tv) #eps .ep.ept{grid-template-columns:104px minmax(0,1fr)}body:not(.m-tv) #eps .ep.ept img{width:104px}}
+/* المواسم: أزرار مدوّرة */
+body:not(.m-tv) #details .tabs{gap:8px;padding:2px 0 8px;scrollbar-width:none}
+body:not(.m-tv) #details .tabs::-webkit-scrollbar{display:none}
+body:not(.m-tv) #details .tab{padding:9px 18px;border-radius:99px;background:#18213b;border:1px solid #ffffff14;color:#cbd5e1;font-weight:700;font-size:14px;font-family:inherit}
+body:not(.m-tv) #details .tab.on{background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;border-color:transparent}
 </style>
 
 </body>
