@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v19: التلفزيون: مساحة النسخة تظهر لكل الحلقات (بالترتيب واحدة واحدة)، الصفحة بعرض الشاشة كله من غير جوانب سودا، وكروت حلقات أوضح (الحجم والجودة كشارة تحت العنوان، زر تشغيل أكبر، تمييز واضح للحلقة المحددة)
   v18: التلفزيون: كل الحلقات تظهر (شيل content-visibility)، صور الحلقات أخف وبتحمّل مباشرة بدون المراقب الكسول
   v17: التلفزيون: حجم النسخة (جيجا + الجودة) مكتوب جنب زرار التشغيل مباشرة
   v16: التلفزيون: إصلاح تكسير الحلقات (عمود واحد)، كتابة حجم النسخة اللي هتشتغل (جيجا/جودة) قبل التشغيل، وشيل كل أزرار التحميل من الشاشة
@@ -545,7 +546,7 @@ h3.sec::before{display:none}
 </head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=18;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=19;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -3421,32 +3422,50 @@ function tvEp(n, e) {
     '<div class="b"><div class="tt"><span>' + e.n + '. ' + esc(e.name || ('حلقة ' + e.n)) + '</span><em>' + (e.runtime ? e.runtime + ' د' : '') + '</em></div>' +
     (e.overview ? '<div class="od">' + esc(e.overview) + '</div>' : '') +
     '<small>' + esc(e.date || '') + (fut ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') + epMark(cur.id, n, e.n) +
-    (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚</span>' : '') + '</small></div>' +
-    '<div class="eacts">' + playBtn(n, e.n) + (cur && cur.imdb ? '<span class="sz"></span>' : '') + (ADV() ? stBtn(n, e.n) : '') +
+    (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚</span>' : '') + '</small>' +
+    (cur && cur.imdb && !fut ? '<div class="sz wait">⏳ في الانتظار...</div>' : '') + '</div>' +
+    '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
     (!cur.imdb ? '<button class="mg" aria-label="تشغيل" onclick="go(' + n + ',' + e.n + ',true)">▶</button>' : '') + '</div></div>';
 }
 const TVSZ = {};
+function tvSzSet(el, t, cls) { if (!el) return; el.textContent = t; el.className = (el.classList.contains('tvsz') ? 'tvsz ' : 'sz ') + (cls || ''); }
 async function tvSize(el, s, e) {
   if (!cur || !el) return;
   const id = cur.id, k = id + ':' + (s || 0) + ':' + (e || 0);
-  if (TVSZ[k]) { el.textContent = TVSZ[k]; return; }
-  el.textContent = '⏳ بحسب حجم النسخة...';
+  if (TVSZ[k]) { tvSzSet(el, TVSZ[k].t, TVSZ[k].c); return; }
+  tvSzSet(el, '⏳ بحسب حجم النسخة...', 'wait');
   try {
     const v = await bestVer(s, e);
-    const t = v ? '📦 النسخة اللي هتشتغل: ' + fmtSize(v.size) + ' · ' + qOf(v) : '⚠️ مفيش نسخة فورية — اضغط ⚙ لاختيار نسخة';
-    TVSZ[k] = t;
-    if (cur && cur.id === id) el.textContent = t;
-  } catch (x) { el.textContent = ''; }
+    const r = v ? {t: '📦 ' + fmtSize(v.size) + ' · ' + qOf(v), c: 'ok'} : {t: '⚠️ مفيش نسخة فورية — اضغط ⚙ لاختيار نسخة', c: 'bad'};
+    TVSZ[k] = r;
+    if (cur && cur.id === id) tvSzSet(el, r.t, r.c);
+  } catch (x) { tvSzSet(el, '🔄 تعذّر حساب الحجم', 'bad'); el.dataset.fail = '1'; }
 }
-function tvSizeFirst() { if (!isTv()) return; const r = document.querySelector('#eps .ep.tve'); if (r && !r.dataset.z) { r.dataset.z = '1'; const z = r.querySelector('.sz'); if (z) tvSize(z, +r.dataset.s, +r.dataset.e); } }
-let _tvSzT = 0;
-document.addEventListener('focusin', ev => {
+// يحسب مساحة كل حلقات الموسم، واحدة ورا التانية (السيرفر مش بيتحمّل أكتر)، ويقف لو غيّرت الموسم أو خرجت من الصفحة
+let _tvSzRun = 0;
+async function tvSizeAll(tok) {
   if (!isTv()) return;
-  const r = ev.target.closest && ev.target.closest('.ep.tve');
-  if (!r || r.dataset.z) return;
-  clearTimeout(_tvSzT);
-  _tvSzT = setTimeout(() => { r.dataset.z = '1'; const z = r.querySelector('.sz'); if (z) tvSize(z, +r.dataset.s, +r.dataset.e); }, 450);
-});
+  const run = ++_tvSzRun;
+  const rows = Array.from(document.querySelectorAll('#eps .ep.tve')).filter(r => r.querySelector('.sz'));
+  const alive = () => run === _tvSzRun && tok === sReq && document.body.contains(rows[0] || document.body);
+  for (let pass = 0; pass < 2; pass++) {
+    for (const r of rows) {
+      if (!alive()) return;
+      const z = r.querySelector('.sz');
+      if (!z || r.dataset.z === 'ok') continue;
+      // لو المستخدم بدأ تشغيل أو فتح قايمة النسخ، نستنى شوية
+      for (let w = 0; w < 40 && alive() && (($('results') && $('results').querySelector('video,.nfx')) || ($('vpanel') && $('vpanel').style.display === 'flex')); w++) await new Promise(f => setTimeout(f, 750));
+      if (!alive()) return;
+      z.dataset.fail = '';
+      await tvSize(z, +r.dataset.s, +r.dataset.e);
+      if (!z.dataset.fail) r.dataset.z = 'ok';
+      await new Promise(f => setTimeout(f, 120));
+    }
+    if (!rows.some(r => r.dataset.z !== 'ok' && r.querySelector('.sz'))) break;
+    await new Promise(f => setTimeout(f, 1500));
+  }
+}
+function tvSizeFirst() {}
 async function loadSeason(n) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab' + n));
   const b = $('eps'), my = ++sReq;
@@ -3465,7 +3484,7 @@ async function loadSeason(n) {
         (e.runtime ? ' · ' + e.runtime + ' د' : '') + epMark(cur.id, n, e.n) + (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌 مضافة</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚 مكتبتي</span>' : '') + '</small></div>' +
         '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
         (ADV() || !cur.imdb ? '<button class="mg" aria-label="تورنت" onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div></div>').join('');
-    tvSizeFirst();
+    tvSizeAll(my);
   } catch (e) { if (my === sReq) b.innerHTML = ERR; }
 }
 function altChips() {
@@ -9267,6 +9286,50 @@ body.m-tv #details .ep.tve .tt em{font-style:normal;font-weight:400;color:#94a3b
 body.m-tv #details .ep.tve .od{font-size:13px;line-height:1.7;color:#94a3b8;margin-top:4px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 body.m-tv #details .ep.tve .eacts{grid-column:2;flex:none;gap:6px}
 body.m-tv #details .ep.tve .eacts>button{flex:0 0 auto;min-width:64px;height:36px;font-size:15px;padding:0 12px}
+</style>
+
+
+<style id="tv-v19">
+/* v19: وضع التلفزيون — عرض كامل + كروت حلقات أوضح + مساحة لكل حلقة */
+html{background:#070d1f}
+body.m-tv{background:#070d1f!important;min-height:100vh}
+body.m-tv #main-content,body.m-tv .spbody,body.m-tv #setBody{max-width:none!important;width:100%;box-sizing:border-box;margin:0}
+body.m-tv #main-content{padding:12px 2.2vw 56px!important}
+body.m-tv .topbar{max-width:none;width:100%;box-sizing:border-box;margin-bottom:18px}
+body.m-tv .result-card,body.m-tv #results.pg>*{max-width:none!important}
+body.m-tv .vbox{max-width:1100px}
+body.m-tv #details .tvd{grid-template-columns:minmax(300px,34%) minmax(0,1fr);gap:34px}
+body.m-tv #details .tvr{top:12px}
+body.m-tv #details .hero h2{font-size:40px;margin-top:14px}
+body.m-tv #details .meta{font-size:18px}
+body.m-tv #details .ov{font-size:16px;line-height:1.9;-webkit-line-clamp:5}
+body.m-tv #details .tvr .tabs{flex-direction:row;flex-wrap:wrap;gap:8px}
+body.m-tv #details .tvr .tab{padding:10px 20px;border-radius:99px;font-size:17px;text-align:center}
+body.m-tv #details .tvr .tab.on{background:#38bdf8;color:#04121f}
+/* كارت الحلقة */
+body.m-tv #details .ep.tve{grid-template-columns:260px minmax(0,1fr);gap:6px 20px;padding:14px;margin-bottom:14px;background:#0f1830;border:2px solid #ffffff10;border-radius:16px;align-items:center}
+body.m-tv #details .ep.tve:focus-within{background:#17264d;border-color:#38bdf8}
+body.m-tv #details .ep.tve .th{min-height:0;border-radius:10px}
+body.m-tv #details .ep.tve .b{align-self:end}
+body.m-tv #details .ep.tve .tt{justify-content:flex-start;align-items:center;flex-wrap:wrap;gap:6px 14px;font-size:20px}
+body.m-tv #details .ep.tve .tt em{background:#ffffff14;color:#cbd5e1;border-radius:99px;padding:2px 12px;font-size:14px}
+body.m-tv #details .ep.tve small{font-size:13px;color:#94a3b8}
+body.m-tv #details .ep.tve .od{font-size:14px;line-height:1.75}
+/* شارة المساحة/الجودة */
+body.m-tv #details .ep.tve .sz{display:inline-flex;align-items:center;gap:6px;margin:8px 0 0;padding:5px 14px;border-radius:99px;font-size:15px;font-weight:800;white-space:normal;background:#ffffff0d;color:#94a3b8;border:1px solid #ffffff1a}
+body.m-tv #details .ep.tve .sz.ok{background:#052e1a;color:#86efac;border-color:#16a34a88}
+body.m-tv #details .ep.tve .sz.bad{background:#2a1a05;color:#fbbf24;border-color:#f59e0b66}
+/* أزرار التشغيل */
+body.m-tv #details .ep.tve .eacts{grid-column:2;align-self:start;gap:10px;margin-top:2px}
+body.m-tv #details .ep.tve .eacts>button,body.m-tv #details .ep.tve .eacts .eb{flex:0 0 auto;width:auto;min-width:64px;height:44px;padding:0 18px;border-radius:12px;font-size:17px}
+body.m-tv #details .ep.tve .eacts .eb.p{min-width:110px;background:#38bdf8;color:#04121f}
+body.m-tv #details .ep.tve .eacts .eb.p svg{width:24px;height:24px}
+body.m-tv #details .ep.tve .eacts .eb.g svg,body.m-tv #details .ep.tve .eacts .eb.d svg{width:22px;height:22px}
+body.m-tv #details .ep.tve .eacts button:focus{outline:4px solid #fff!important;outline-offset:2px}
+/* أفلام: المساحة جنب زر التشغيل */
+body.m-tv .tvsz{display:inline-flex;align-items:center;padding:6px 16px;border-radius:99px;font-size:16px;font-weight:800;background:#ffffff0d;color:#94a3b8;border:1px solid #ffffff1a;margin:0 10px}
+body.m-tv .tvsz.ok{background:#052e1a;color:#86efac;border-color:#16a34a88}
+body.m-tv .tvsz.bad{background:#2a1a05;color:#fbbf24;border-color:#f59e0b66}
 </style>
 
 </body>
