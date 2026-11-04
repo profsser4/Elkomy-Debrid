@@ -6989,6 +6989,46 @@ function verSort(list) {
     (qRank(a.q) - qRank(b.q)) ||                         // H.264+AAC أول، DDP/DTS/HEVC/x265 آخر
     (b.seeders - a.seeders));
 }
+// ===== فلتر الاسم الصارم لنسخ التشغيل (يمنع خلط مسلسل بمسلسل تاني) =====
+const VN_STOP = new Set(['مسلسل','فيلم','المسلسل','الفيلم','حلقات','الحلقات','كامل','كاملة','جميع','الجزء','الموسم','the','of','a','an','and','in','on','to','web','dl','webrip','bluray','hdtv']);
+const vnNorm = t => String(t || '').toLowerCase()
+  .replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه')
+  .replace(/\b(19|20)\d{2}\b/g, ' ');
+const vnToks = t => vnNorm(t).split(/[^\p{L}\p{N}]+/u).filter(w => w && !VN_STOP.has(w) && !/^(s\d+|e\d+|s\d+e\d+|\d{3,4}p|x26[45]|h26[45]|hevc|aac|ddp?\d*|dts|ج\d+|\d+)$/i.test(w));
+const vnAr = t => /[\u0600-\u06FF]/.test(t);
+function vnNames() {
+  if (!cur) return [];
+  const raw = [cur.title, cur.name, cur.qname, cur.search_title, cur.original_title].concat(cur.alt || []);
+  const seen = new Set(), out = [];
+  raw.forEach(n => {
+    n = String(n || '').replace(/\s*\(\d{4}\)\s*$/, '').trim();
+    if (!n) return;
+    const tk = vnToks(n);
+    const k = tk.join(' ');
+    if (!tk.length || seen.has(k)) return;
+    seen.add(k);
+    out.push({ar: vnAr(n), tk: tk});
+  });
+  return out;
+}
+// مطابقة كاملة: كل كلمات الاسم لازم تكون موجودة (بدون ما نقبل اسم مسلسل تاني مشترك في كلمة واحدة)
+function vnMatch(title, names) {
+  const ar = vnAr(title);
+  const same = names.filter(n => n.ar === ar);
+  if (!same.length) return true;          // مفيش اسم بنفس لغة العنوان نقارن بيه: ما نخفيش
+  const set = new Set(vnToks(title));
+  const has = w => set.has(w) || set.has(w.replace(/^ال/, '')) || set.has('ال' + w);
+  return same.some(n => n.tk.every(has));
+}
+function vnSplit(list) {
+  const names = vnNames();
+  if (!names.length) return {ok: list, bad: []};
+  const ok = [], bad = [];
+  list.forEach(v => (vnMatch(String(v.title || v.name || ''), names) ? ok : bad).push(v));
+  return {ok: ok, bad: bad};
+}
+function toggleMis() { VER.mis = !VER.mis; VER.list = VER.mis ? VER.full : VER.matched; renderVP(); }
+
 async function fetchVersions(s, e) {
   const key = (cur ? cur.type + cur.id : '') + ':' + (s || '') + ':' + (e || '');
   if (VER.key === key && VER.list.length) return VER.list;
@@ -7013,7 +7053,14 @@ async function fetchVersions(s, e) {
     if (ok.size) vs = vs.map(v => (v.hash && ok.has(v.hash)) ? Object.assign({}, v, {instant: true, adc: true}) : v);
   }
   if (DBP.cfg().only === '1' && vs.some(v => v.hash)) vs = vs.filter(v => v.hash);   // TorBox بس: نخفي النسخ المباشرة (بدون hash) لو فيه بديل
-  VER.list = verSort(vs);
+  {
+    const sp = vnSplit(vs);
+    VER.full = verSort(vs);
+    VER.matched = sp.ok.length ? verSort(sp.ok) : VER.full;      // لو مفيش ولا نسخة مطابقة نعرض الكل بدل شاشة فاضية
+    VER.hid = sp.ok.length ? sp.bad.length : 0;
+    VER.mis = false;
+  }
+  VER.list = VER.matched;
   VER.err = d.error || '';
   VER.key = VER.list.length ? key : '';
   return VER.list;
@@ -7121,6 +7168,7 @@ function renderVP() {
     if (fast.length) h += '<div class="vsplit"><button class="vsp" onclick="playVersion(' + all.indexOf(fast[0]) + ')">' + IC('play') + 'تشغيل الأفضل</button>' +
       '<button class="vsd" aria-label="تحميل الأفضل" onclick="dlVersion(' + all.indexOf(fast[0]) + ')">' + IC('dl') + '</button></div>';
     else h += warn('مفيش نسخة فورية. تقدر تسحب نسخة (هتاخد وقت).');
+    if (VER.hid) h += '<button class="fc' + (VER.mis ? ' on' : '') + '" style="margin:0 0 10px" onclick="toggleMis()">' + (VER.mis ? 'إخفاء النسخ غير المطابقة للاسم' : 'عرض نسخ باسم مختلف (' + VER.hid + ' مخفية)') + '</button>';
     h += fast.map(v => verRow(v, all.indexOf(v), v === fast[0])).join('');
     if (slow.length) {
       h += '<button class="fc" style="margin:6px 0 10px" onclick="VER.showSlow=!VER.showSlow;renderVP()">' +
