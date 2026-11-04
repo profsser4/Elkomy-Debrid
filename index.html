@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v24: نظام «مفضلتي» لكل عضو: منصات (نتفلكس/شاهد/...)، لغات، أنواع، أنمي (كل واحد صفّين أفلام+مسلسلات) + «مش عايز أشوف» + اختيار صفوف الإضافات + الجديد أجنبي/عربي/كرتون (محتاج bot-37.py)
   v23: الرئيسية = «الجديد فقط» (أفلام/مسلسلات/كرتون جديدة، هندي وكوري وغيره، تتمسح تلقائي بعد 3 أسابيع) + بانر + تصنيف عمري (عائلي/+13/+18) + منع التريلر التلقائي للأعمال +17 وغير المصنّفة (محتاج bot-36.py)
   v22: إصلاح «المزيد» في صفوف الرئيسية (مدبلج بالمصري، صفوف الإضافات): كانت بتفتح فاضية، دلوقتي بتحمّل الصف كامل مع تحميل المزيد (محتاج bot-35.py)
   v21: الموبايل/الأندرويد: كروت حلقات شيك (رقم الحلقة، المدة، الوصف، المساحة، زر تشغيل عريض) + مواسم بشكل أزرار مدوّرة
@@ -562,10 +563,22 @@ body .nwhome .sec{font-size:19px;font-weight:800;margin:22px 2px 10px}
 @media(min-width:700px){body .nwhome{--nwpw:220px;--nwcw:250px}}
 body.m-tv .nwhome{--nwpw:240px;--nwcw:260px}
 body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-size:240px 400px!important}
+</style><style id="fav-css">
+.favbar{margin:14px 0 4px}.fbh{display:flex;justify-content:space-between;align-items:center;gap:10px}.fbh b{font-size:19px}
+.fbh .fc{padding:8px 16px;font-weight:800}
+.fbc{display:flex;gap:8px;overflow-x:auto;padding:10px 0 4px;scrollbar-width:none}.fbc::-webkit-scrollbar{display:none}
+.fcp{flex:0 0 auto;display:flex;align-items:center;gap:7px;background:#ffffff14;border:1px solid #ffffff2a;border-radius:99px;padding:8px 15px;color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+.fbn{color:var(--mut);font-size:13px;margin:8px 0 0;line-height:1.7}
+.plg{width:22px;height:22px;border-radius:6px;object-fit:cover;vertical-align:middle;margin-inline-end:6px;background:#fff1}
+.fcp .plg{margin:0}
+.favp{max-height:88vh;overflow-y:auto}.favp .fph{margin:18px 0 6px;font-size:16px}.favp .fps{color:var(--mut);font-size:12.5px;margin:0 0 8px;line-height:1.7}
+.favp .chips{display:flex;flex-wrap:wrap;gap:8px}
+.favp .chips .fc{display:inline-flex;align-items:center}
+.favp .chips .fc.xl.on{background:#dc2626;border-color:#dc2626;color:#fff}
 </style></head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=23;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=24;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -1802,7 +1815,7 @@ async function loadRows() {
     catch (e) { ROWS = []; }
   }
   loadHero();
-  if (HOME_ONLY_NEW) { renderGenres(); loadLatest(); renderShelves(); return; }
+  if (HOME_ONLY_NEW) { renderGenres(); loadLatest(); renderShelves(); homeBoot(); return; }
   renderGenres();
   loadLatest();
   loadFresh();
@@ -7002,6 +7015,7 @@ function vpEl() {
   return el;
 }
 function closeVP() {
+  if (FAV_OPEN) { closeFav(); return; }
   const el = $('vpanel');
   if (el) { el.style.display = 'none'; if (el.innerHTML.indexOf('<iframe') >= 0) el.innerHTML = ''; }
   if (INT_OPEN) {
@@ -7815,8 +7829,9 @@ function applyCat(c) {
   window.scrollTo(0, 0);
 }
 function heroList() {
-  if (CAT === 'home') return HERO;
-  if (CAT === 'movie' || CAT === 'tv') return HERO.filter(x => normTy(x.type) === CAT);
+  const HX = HOME_ONLY_NEW ? xlFilter(HERO) : HERO;
+  if (CAT === 'home') return HX;
+  if (CAT === 'movie' || CAT === 'tv') return HX.filter(x => normTy(x.type) === CAT);
   return [];
 }
 // ---- الكوري: بيتضاف في الأفلام والمسلسلات (صف + زرار) وكمان له قسم لوحده ----
@@ -7928,7 +7943,8 @@ async function loadNew(force) {
     if (d && d.rows) { NEWD = d; NEW_T = Date.now(); HERO = d.hero || []; }
   } catch (e) {}
   NEW_BUSY = false;
-  if (CAT === 'home') { renderHero(); renderShelves(); }
+  if (CAT === 'home' && !FAV_OPEN) { renderHero(); renderShelves(); }
+  try { homeBoot(); } catch (e) {}
 }
 function cwRowHTML() {
   const its = Object.values(UD.items[PID] || {}).filter(x => !x.del && x.key);
@@ -7941,14 +7957,144 @@ function cwRowHTML() {
   const cw = [...groups.values()].filter(cwOK).sort((a, b) => b.t - a.t).slice(0, isTv() ? 8 : 12);
   return cw.length ? '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>' : '';
 }
+// ================= مفضلتي: نظام الرئيسية لكل عضو =================
+let FAVL = null, FAVD = {}, FAV_BUSY = {}, ARD_LOADED = false, FAV_OPEN = false, FAV_ASKED = false, _favT = 0;
+const XL_GROUPS = {ar: ['ar'], ko: ['ko'], in: ['hi', 'ta', 'te', 'ml', 'kn', 'bn', 'mr', 'pa'], tr: ['tr'], ja: ['ja'], zh: ['zh', 'cn'], th: ['th'], en: ['en']};
+const XL_NAMES = [['ar', '🇪🇬 عربي'], ['ko', '🇰🇷 كوري'], ['in', '🇮🇳 هندي'], ['tr', '🇹🇷 تركي'], ['ja', '🇯🇵 ياباني'], ['zh', '🇨🇳 صيني'], ['th', '🇹🇭 تايلاندي'], ['en', '🇺🇸 إنجليزي']];
+const NEWROW_NAMES = [['new-for', '🌍 جديد أجنبي'], ['new-ar', '🇪🇬 جديد عربي'], ['new-toon', '🧸 كرتون وأنمي جديد']];
+const pf = () => { const p = prof() || {}; return {fav: p.fav || [], xl: p.xl || [], ar: p.ar || [], hn: p.hn || []}; };
+function xlSet() { const s = new Set(); pf().xl.forEach(g => (XL_GROUPS[g] || []).forEach(c => s.add(c))); return s; }
+function xlFilter(items) { const s = xlSet(); return s.size ? (items || []).filter(x => !s.has(x.lg)) : (items || []); }
+const favId = k => String(k).replace(/[^a-z0-9]/gi, '_');
+function favInfo(k) {
+  if (FAVL) {
+    const all = [].concat(FAVL.platforms || [], FAVL.langs || [], FAVL.genres || [], FAVL.special || []);
+    const f = all.find(x => x.k === k);
+    if (f) return f;
+  }
+  return {k: k, name: k.replace(/^[a-z]:/, '')};
+}
+async function ensureFavList() {
+  if (FAVL) return;
+  try { const {d} = await api('/fav/list'); if (d && d.platforms) FAVL = d; } catch (e) {}
+  if (CAT === 'home' && !FAV_OPEN) renderShelvesSoon();
+}
+async function ensureAddonRows() {
+  if (ARD_LOADED) return;
+  ARD_LOADED = true;
+  try { const {d} = await api('/rows'); ROWS = layApply(d.rows || []); } catch (e) { ROWS = ROWS || []; ARD_LOADED = false; }
+  if (CAT === 'home' && !FAV_OPEN) renderShelvesSoon();
+}
+async function loadFav(force) {
+  const ks = pf().fav.slice();
+  let i = 0;
+  const worker = async () => {
+    while (i < ks.length) {
+      const k = ks[i++], c = FAVD[k];
+      if ((!force && c && Date.now() - c.t < 20 * 60 * 1000) || FAV_BUSY[k]) continue;
+      FAV_BUSY[k] = 1;
+      try { const {d} = await api('/fav/rows?k=' + encodeURIComponent(k)); FAVD[k] = {t: Date.now(), rows: d.rows || []}; } catch (e) {}
+      FAV_BUSY[k] = 0;
+      if (CAT === 'home' && !FAV_OPEN) renderShelvesSoon();
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+}
+function seedFavMaybe() {
+  const p = prof();
+  if (!p || p.fav !== undefined) return;
+  const GKS = ['action', 'drama', 'comedy', 'crime', 'scifi', 'horror', 'romance', 'cartoon', 'family', 'doc'];
+  if ((p.int || []).length) { p.fav = p.int.map(k => GKS.includes(k) ? 'g:' + k : 'l:' + k); saveProfileObj(p); loadFav(); return; }
+  if (!FAV_ASKED) { FAV_ASKED = true; setTimeout(() => { if (prof() && prof().fav === undefined && CAT === 'home') openFav(); }, 1500); }
+}
+function homeBoot() {
+  ensureFavList(); loadFav(); seedFavMaybe();
+  if (pf().ar.length) ensureAddonRows();
+}
+function favBarHTML() {
+  const f = pf().fav;
+  return '<div class="favbar"><div class="fbh"><b>⭐ مفضلتي</b><button class="fc" onclick="openFav()">＋ ضيف / عدّل</button></div>' +
+    (f.length ? '<div class="fbc">' + f.map(k => { const i = favInfo(k);
+        return '<button class="fcp" data-k="' + esc(k) + '" onclick="favGo(this.dataset.k)">' + (i.logo ? '<img class="plg" src="' + esc(i.logo) + '" alt="">' : '') + esc(i.name) + '</button>'; }).join('') + '</div>'
+      : '<p class="fbn">اختار منصاتك ولغاتك وأنواعك المفضلة، وكل واحد هيطلع لك <b>صفّين: أفلام + مسلسلات</b>.</p>') + '</div>';
+}
+function favGo(k) { const el = document.getElementById('favs-' + favId(k)); if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
 function newHomeHTML() {
-  let h = '';
+  const P = pf();
+  let h = favBarHTML();
   try { h += cwRowHTML(); } catch (e) {}
-  if (!NEWD) return '<div class="nwhome">' + h + pend('جاري تحميل الجديد...') + '</div>';
-  const rows = (NEWD.rows || []).filter(r => r.items && r.items.length);
-  if (!rows.length) h += '<p style="color:var(--mut);text-align:center;margin:40px 0">مفيش جديد نزل دلوقتي 🙌 هيظهر هنا أول ما ينزل.</p>';
-  else h += rows.map(r => row(r.title, isTv() ? r.items.slice(0, 12) : r.items)).join('');
+  if (!NEWD) h += pend('جاري تحميل الجديد...');
+  else {
+    let any = false;
+    (NEWD.rows || []).filter(r => !P.hn.includes(r.id)).forEach(r => {
+      const it = xlFilter(r.items);
+      if (it.length) { any = true; h += row(r.title, isTv() ? it.slice(0, 12) : it); }
+    });
+    if (!any) h += '<p style="color:var(--mut);text-align:center;margin:30px 0">مفيش جديد نزل دلوقتي 🙌 هيظهر هنا أول ما ينزل.</p>';
+  }
+  P.fav.forEach(k => {
+    h += '<div id="favs-' + favId(k) + '"></div>';
+    const c = FAVD[k];
+    if (!c) { if (FAV_BUSY[k]) h += pend('جاري تحميل ' + favInfo(k).name + '...'); return; }
+    c.rows.forEach(r => { const it = xlFilter(r.items); if (it.length) h += row(r.title, it, r.id); });
+  });
+  if (P.ar.length && ROWS) ROWS.filter(r => P.ar.includes(r.id)).forEach(r => { h += row(r.title, isTv() ? r.items.slice(0, TV_ROW_N) : r.items, r.id); });
   return '<div class="nwhome">' + h + '</div>';
+}
+// ---- نافذة الاختيار ----
+async function openFav() {
+  const p = prof();
+  if (!p) return;
+  FAV_OPEN = true;
+  vpEl().style.display = 'flex';
+  vpEl().innerHTML = '<div class="vbox favp"><button class="vx" onclick="closeVP()">✕</button>' + pend('جاري التحميل...') + '</div>';
+  await ensureFavList();
+  drawFav();
+  ensureAddonRows().then(() => { if (FAV_OPEN) { const y = (vpEl().querySelector('.vbox') || {}).scrollTop || 0; drawFav(); const b = vpEl().querySelector('.vbox'); if (b) b.scrollTop = y; } });
+}
+function favChip(f, k, label, on, cls, logo) {
+  return '<button class="fc' + (on ? ' on' : '') + (cls ? ' ' + cls : '') + '" data-f="' + f + '" data-k="' + esc(k) + '" onclick="favTog(this)">' +
+    (logo ? '<img class="plg" src="' + esc(logo) + '" alt="">' : '') + esc(label) + '</button>';
+}
+function drawFav() {
+  const P = pf(), L = FAVL || {platforms: [], langs: [], genres: [], special: [], missing: []};
+  const sec = (t, sub, body) => '<h4 class="fph">' + t + '</h4>' + (sub ? '<p class="fps">' + sub + '</p>' : '') + body;
+  const ch = (arr, withLogo) => '<div class="chips">' + arr.map(x => favChip('fav', x.k, x.name, P.fav.includes(x.k), '', withLogo ? x.logo : '')).join('') + '</div>';
+  let h = '<div class="vbox favp"><button class="vx" onclick="closeVP()">✕</button>' +
+    '<h3 style="margin:0 0 6px;color:var(--primary)">⭐ مفضلتي</h3>' +
+    '<p class="fps">أي حاجة تختارها بتطلع لك في الرئيسية <b>صفّين: أفلام + مسلسلات</b>. الاختيارات دي بتاعتك إنت بس.</p>';
+  h += sec('📺 المنصات', L.missing && L.missing.length ? '⚠️ ' + esc(L.missing.join(' و ')) + ' مش موجودين في قاعدة بيانات المنصات، فمش هيظهروا هنا.' : '', ch(L.platforms, true) || '<p class="fps">مفيش منصات متاحة دلوقتي.</p>');
+  h += sec('🌍 لغات وبلاد', '', ch(L.langs));
+  h += sec('🎭 أنواع وأنمي', '', ch([].concat(L.special || [], L.genres || [])));
+  h += sec('🚫 مش عايز أشوف', 'أي لغة تعلّمها هنا بتتشال من كل الصفوف والبانر.',
+    '<div class="chips">' + XL_NAMES.map(x => favChip('xl', x[0], x[1], P.xl.includes(x[0]), 'xl')).join('') + '</div>');
+  h += sec('🏠 صفوف الجديد', 'اللي تقفله مش هيظهر في الرئيسية.',
+    '<div class="chips">' + NEWROW_NAMES.map(x => favChip('hn', x[0], x[1], !P.hn.includes(x[0]), '')).join('') + '</div>');
+  const rs = (ROWS || []);
+  h += sec('🧩 صفوف الإضافات (Stremio)', 'علّم الصفوف اللي عايزها تظهر لك بس.',
+    rs.length ? '<div class="chips">' + rs.map(r => favChip('ar', r.id, r.title, P.ar.includes(r.id), '')).join('') + '</div>' : '<p class="fps">' + (ARD_LOADED ? 'مفيش صفوف إضافات.' : '⏳ جاري التحميل...') + '</p>');
+  h += '<button class="search-btn" style="margin-top:18px" onclick="closeVP()">تمام ✔</button></div>';
+  vpEl().innerHTML = h;
+}
+function favTog(el) {
+  const p = prof();
+  if (!p) return;
+  const f = el.dataset.f, k = el.dataset.k, a = (p[f] || []).slice(), i = a.indexOf(k);
+  if (i >= 0) a.splice(i, 1); else a.push(k);
+  p[f] = a;
+  el.classList.toggle('on', f === 'hn' ? i >= 0 : i < 0);
+  clearTimeout(_favT);
+  _favT = setTimeout(() => saveProfileObj(p), 700);
+}
+function closeFav() {
+  FAV_OPEN = false;
+  clearTimeout(_favT);
+  const p = prof();
+  const el = $('vpanel'); if (el) el.style.display = 'none';
+  if (p) { if (p.fav === undefined) p.fav = []; saveProfileObj(p); }
+  homeBoot();
+  renderHero();
+  renderShelves();
 }
 async function loadCert(d) {
   try {
@@ -8065,6 +8211,7 @@ function drawInterests() {
     '</div><button class="search-btn" style="margin-top:14px" onclick="closeVP()">تمام</button></div>';
 }
 async function openInterests() {
+  if (HOME_ONLY_NEW) return openFav();
   const p = prof();
   if (!p) return;
   if (!IALL.length) { try { const {d} = await api('/interest/list'); IALL = d.items || []; } catch (e) {} }
@@ -8138,7 +8285,7 @@ async function loadForYou() {
   } catch (e) {}
 }
 async function loadFresh() {
-  if (HOME_ONLY_NEW) { loadNew(); return; }
+  if (HOME_ONLY_NEW) { loadNew(); loadFav(); return; }
   try { const {d} = await api('/fresh'); FRESH = d.rows || []; FRESH_T = Date.now(); } catch (e) {}
   loadForYou().then(renderShelvesSoon);
   renderShelvesSoon();
@@ -9307,6 +9454,7 @@ function autoKeys(){if(!IALL.length)return[];let c={};try{c=JSON.parse(localStor
   top.forEach(g=>{const w=(SYN[g]||[g]).map(norm);const it=IALL.find(i=>w.some(x=>norm(i.name).includes(x)||norm(i.k).includes(x)));if(it)ks.push(it.k)});return ks}
 let lastA='';
 loadInterestRows=async function(){
+  if(HOME_ONLY_NEW)return;
   const p=prof();if(!p)return;
   if(!IALL.length){try{const {d}=await api('/interest/list');IALL=d.items||[]}catch(e){}}
   const ks=[...new Set([...(p.int||[]),...autoKeys()])].slice(0,6);lastA=autoKeys().join(',');
