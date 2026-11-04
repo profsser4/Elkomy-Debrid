@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v31: النسخ باسم مختلف اتشالت خالص (المثبّتة بس بتفضل)، وكل عضو يختار ترتيب الجودة لنفسه (الأعلى أولاً / الأقل أولاً / أفضّل 4K أو 1080 أو 720 أو 480) مع بقاء أولوية المدبلج والفورية
   v30: أرقام IMDb اللي بتتلاقي تلقائي بتتحفظ على السيرفر وتتشارك مع كل الأعضاء (محتاج bot-39.py)
   v29: أي فيلم/مسلسل مالوش رقم IMDb على TMDB بيتدوّر عليه تلقائي (Cinemeta ثم IMDb بالاسم الإنجليزي والسنة) ويتحفظ على الجهاز، من غير ما تضيفه يدوي
   v28: مسلسل «محمود المصري» (2004) كان من غير رقم IMDb على TMDB فصفحته فاضية من التشغيل؛ اتربط برقم tt0431545 (جدول IMDB_FIX لإضافة أي مسلسل تاني)
@@ -585,7 +586,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 </style></head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=30;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=31;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -7075,6 +7076,35 @@ dbpInit();
 const VER = {list: [], s: null, e: null, showSlow: false, key: '', err: '', diag: ''};
 
 const qRank = q => ({'1080P': 0, '2160P': 1, '4K': 1, '720P': 2, '480P': 3}[q] ?? 4);
+// ===== اختيار الجودة لكل عضو (محفوظ على الجهاز لكل بروفايل) =====
+const VPK = () => 'verpref:' + (typeof UNAME !== 'undefined' ? UNAME : '') + ':' + (PID || '');
+function verPref() { try { return JSON.parse(localStorage.getItem(VPK()) || 'null') || {m: 'auto'}; } catch (e) { return {m: 'auto'}; } }
+const QLVL = {'4K': 4, '1080p': 3, '720p': 2, '480p': 1};
+const qLvl = v => QLVL[qOf(v)] || 0;
+function qPrefRank(v) {
+  const p = verPref(), l = qLvl(v);
+  if (!p || p.m === 'auto') return 0;
+  if (!l) return 99;
+  if (p.m === 'high') return 5 - l;
+  if (p.m === 'low') return l;
+  const t = QLVL[p.t] || 3;
+  return Math.abs(l - t) * 10 + (5 - l);
+}
+const pinFirst = a => a.filter(v => v._pin).concat(a.filter(v => !v._pin));
+function verPrefSet(val) {
+  const o = val === 'high' || val === 'low' ? {m: val} : val === 'auto' ? {m: 'auto'} : {m: 'target', t: val};
+  try { localStorage.setItem(VPK(), JSON.stringify(o)); } catch (e) {}
+  VER.list = pinFirst(verSort(VER.list));
+  VER.matched = pinFirst(verSort(VER.matched || VER.list));
+  VER.full = pinFirst(verSort(VER.full || VER.list));
+  renderVP();
+}
+function verPrefUI() {
+  const p = verPref(), cv = p.m === 'target' ? p.t : p.m;
+  const o = [['auto', 'تلقائي (الأنسب للتشغيل)'], ['high', 'الأعلى جودة أولاً (4K ← 480)'], ['low', 'الأقل جودة أولاً (480 ← 4K)'], ['4K', 'أفضّل 4K'], ['1080p', 'أفضّل 1080'], ['720p', 'أفضّل 720 (أخف)'], ['480p', 'أفضّل 480']];
+  return '<div style="margin:0 0 10px"><div class="lbl" style="margin:0 0 4px">🎚 ترتيب النسخ ليك (الدبلجة والفورية لسه ليهم الأولوية)</div><select class="search-input" style="margin:0" onchange="verPrefSet(this.value)">' +
+    o.map(x => '<option value="' + x[0] + '"' + (cv === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></div>';
+}
 function verSort(list) {
   const df = dubFirst();
   const sc = x => x.score != null ? x.score : (x.risky ? 0 : 1);
@@ -7085,6 +7115,7 @@ function verSort(list) {
 
     (!!b.hash - !!a.hash) ||                   // نسخة ليها hash أول: بتتحفظ وتتحوّل من حسابك كل مرة
     (b.instant - a.instant) ||
+    (qPrefRank(a) - qPrefRank(b)) ||           // اختيار العضو لترتيب الجودة (تلقائي = من غير تغيير)
     (sc(b) - sc(a)) ||
     (qRank(a.q) - qRank(b.q)) ||                         // H.264+AAC أول، DDP/DTS/HEVC/x265 آخر
     (b.seeders - a.seeders));
@@ -7161,10 +7192,10 @@ async function fetchVersions(s, e) {
       if (ph.size) vs = vs.map(v => (v.hash && ph.has(String(v.hash).toLowerCase())) ? Object.assign({}, v, {_pin: true}) : v);
     } catch (x) {}
     const sp = vnSplit(vs.filter(v => !v._pin));
-    sp.ok = vs.filter(v => v._pin).concat(sp.ok);
-    VER.full = verSort(vs);
-    // المطابقة للاسم الأول، وبعدها النسخ باسم مختلف (بشارة تنبيه) بدل ما تختفي: ساعات النسخة الشغالة بتبقى باسم تاني
-    VER.matched = sp.ok.length ? (a => a.filter(v => v._pin).concat(a.filter(v => !v._pin)))(verSort(sp.ok)).concat(verSort(sp.bad.map(v => Object.assign({}, v, {_mis: true})))) : VER.full;
+    const okAll = vs.filter(v => v._pin).concat(sp.ok);
+    VER.full = pinFirst(verSort(vs));
+    // النسخ باسم مختلف بتتشال خالص (إلا المثبّتة). لو مفيش ولا نسخة مطابقة نعرض الكل بدل شاشة فاضية
+    VER.matched = okAll.length ? pinFirst(verSort(okAll)) : VER.full;
     VER.hid = 0;
     VER.mis = false;
   }
@@ -7263,6 +7294,7 @@ function renderVP() {
     '<div class="row" style="margin-bottom:6px"><button class="fc" onclick="provTest(\'ad\')">🧪 فحص AllDebrid ' + (c0.ad ? '(مفتاح محفوظ)' : '(مفيش مفتاح)') + '</button><button class="fc" onclick="provTest(\'tb\')">🧪 فحص TorBox ' + (c0.tb ? '(مفتاح محفوظ)' : '(مفيش مفتاح)') + '</button></div>' +
     '<div id="provTestOut" style="font-size:12px;color:var(--mut);margin-bottom:10px;direction:rtl"></div>';
   if (ROLE !== 'admin') { const k0 = h.indexOf('<div class="row" style="margin-bottom:10px">'); if (k0 > 0) h = h.slice(0, k0); }
+  h += verPrefUI();
   if (!all.length) {
     h += warn(VER.err || 'مفيش نسخ متاحة للعمل ده من إضافات Stremio.');
     h += '<button class="search-btn btn-blue" onclick="closeVP();go(' + (VER.s ? VER.s + ',' + (VER.e || 1) : '') + ')">🧲 جرّب بحث التورنت</button>';
