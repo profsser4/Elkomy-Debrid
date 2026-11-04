@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v25: البحث بقى مش حساس للهمزة (أ/إ/ا) ولا ة/ه ولا ي/ى، ولو التورنت مفيش نتايج بالعربي بيدوّر بالاسم الإنجليزي تلقائي
   v24: نظام «مفضلتي» لكل عضو: منصات (نتفلكس/شاهد/...)، لغات، أنواع، أنمي (كل واحد صفّين أفلام+مسلسلات) + «مش عايز أشوف» + اختيار صفوف الإضافات + الجديد أجنبي/عربي/كرتون (محتاج bot-37.py)
   v23: الرئيسية = «الجديد فقط» (أفلام/مسلسلات/كرتون جديدة، هندي وكوري وغيره، تتمسح تلقائي بعد 3 أسابيع) + بانر + تصنيف عمري (عائلي/+13/+18) + منع التريلر التلقائي للأعمال +17 وغير المصنّفة (محتاج bot-36.py)
   v22: إصلاح «المزيد» في صفوف الرئيسية (مدبلج بالمصري، صفوف الإضافات): كانت بتفتح فاضية، دلوقتي بتحمّل الصف كامل مع تحميل المزيد (محتاج bot-35.py)
@@ -579,7 +580,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 </style></head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=24;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=25;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -1996,7 +1997,7 @@ async function searchTitles() {
   const box = $('titles');
   box.innerHTML = pend('جاري البحث...');
   try {
-    const {d} = await api('/tmdb?q=' + encodeURIComponent(q));
+    const {d} = await apiQ('/tmdb?q=', q);
     if (d.error) return box.innerHTML = warn(d.error);
     const r = d.results || [];
     if (!r.length) return box.innerHTML = warn('مفيش نتايج. جرب اسم تاني أو التورنت المباشر.');
@@ -3733,7 +3734,7 @@ async function searchTorrents(retry, fromAlt) {
     : (fromAlt ? 'بجرّب اسم تاني: ' + q : 'جاري البحث في المصادر... (قد ياخد نص دقيقة)'));
   panel.scrollIntoView({behavior: 'smooth'});
   try {
-    const {d} = await api('/search?q=' + encodeURIComponent(q));
+    const {d} = await torSearchQ(q);
     if (my !== seq) return;
     if (d.error && !/مفيش نتايج/.test(d.error)) return box.innerHTML = warn(d.error);
     torrents = d.results || [];
@@ -4074,11 +4075,55 @@ function pullTorrent(i) {
 // لإضافة مصدر جديد: ضيف عنصر في SOURCES فيه: id, icon, name, color,
 //   search(q) -> مصفوفة نتايج (وترمي Error لو فشل), title(t), thumb(t), meta(t), open(t) عند الضغط.
 const enc = encodeURIComponent;
+
+// ===== بحث بدون حساسية للهمزة (أ إ آ ا) والتاء المربوطة (ة ه) والياء (ي ى) =====
+function arFold(t){return String(t||'').toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه');}
+function arVariants(q){
+  q=String(q||'').trim();
+  const out=[q],add=x=>{x=x.replace(/\s+/g,' ').trim();if(x&&out.indexOf(x)<0)out.push(x);};
+  if(!/[\u0600-\u06FF]/.test(q))return out;
+  const f=arFold(q);add(f);
+  const ws=f.split(' '),m=fn=>ws.map(fn).join(' ');
+  add(m(w=>/^ا./.test(w)&&w.length>2?'أ'+w.slice(1):w));
+  add(m(w=>/^ا./.test(w)&&w.length>2?'إ'+w.slice(1):w));
+  add(f.replace(/ا/g,'أ'));
+  add(f.replace(/ه(?=\s|$)/g,'ة'));
+  add(q.replace(/ة(?=\s|$)/g,'ه'));
+  add(f.replace(/ي(?=\s|$)/g,'ى'));
+  return out.slice(0,8);
+}
+// بيجرّب الاسم زي ما هو، ولو مفيش نتايج بيجرّب كل الصيغ مع بعض ويدمج النتايج
+async function apiQ(path,q,opt){
+  const first=await api(path+encodeURIComponent(q),opt);
+  const d0=first.d||{};
+  if(d0.results&&d0.results.length)return first;
+  if(d0.error&&!/مفيش نتايج/.test(d0.error))return first;
+  const vs=arVariants(q).slice(1);
+  if(!vs.length)return first;
+  const rs=await Promise.all(vs.map(v=>api(path+encodeURIComponent(v),opt).catch(()=>null)));
+  const seen=new Set(),merged=[];
+  rs.forEach(x=>{((x&&x.d&&x.d.results)||[]).forEach(t=>{const k=String(t.id||t.hash||t.magnet||t.url||t.title)+':'+(t.type||'');if(!seen.has(k)){seen.add(k);merged.push(t);}});});
+  if(!merged.length)return first;
+  return {r:first.r,d:Object.assign({},d0,{error:undefined,results:merged})};
+}
+// تورنت: لو الاسم عربي ومفيش نتايج، بنجيب الاسم الإنجليزي من TMDB ونبحث بيه
+async function torSearchQ(q){
+  let res=await apiQ('/search?q=',q);
+  const d=res.d||{};
+  if((d.results&&d.results.length)||!/[\u0600-\u06FF]/.test(q))return res;
+  try{
+    const t=(await apiQ('/tmdb?q=',q)).d.results||[];
+    const en=t.map(x=>x.search_title||x.original_title||x.original_name).find(x=>x&&!/[\u0600-\u06FF]/.test(x));
+    if(en){const r2=await api('/search?q='+encodeURIComponent(en));if(r2.d&&r2.d.results&&r2.d.results.length)return r2;}
+  }catch(e){}
+  return res;
+}
+
 const spCap = id => isTv() ? ({titles: 10, torrent: 20}[id] || 10) : 1e9;
 const SOURCES = [
   {id: 'titles', icon: '🎬', name: 'أعمال', color: '#8b5cf6',
    search: async q => {
-     const {d} = await api('/tmdb?q=' + enc(q));
+     const {d} = await apiQ('/tmdb?q=', q);
      if (d.error) throw new Error(d.error);
      return (d.results || []).slice(0, 12);
    },
@@ -4091,7 +4136,7 @@ const SOURCES = [
    }},
   {id: 'torrent', icon: '🧲', name: 'تورنت', color: '#2563eb',
    search: async q => {
-     const {d} = await api('/search?q=' + enc(q));
+     const {d} = await torSearchQ(q);
      if (d.error) throw new Error(d.error);
      const items = (d.results || []).slice(0, 25);
      const hs = items.map(t => t.hash || hashOf(t.magnet)).filter(Boolean).slice(0, 100);
@@ -4109,7 +4154,7 @@ const SOURCES = [
    open: t => pullSource(t.magnet, {src: t.magnet, title: ''}, null)},
   {id: 'dm', icon: '▶️', name: 'Dailymotion', color: '#0066dc',
    search: async q => {
-     const {d} = await api('/dailymotion/search?q=' + enc(q));
+     const {d} = await apiQ('/dailymotion/search?q=', q);
      if (d.error) throw new Error(d.error);
      return d.results || [];
    },
@@ -4337,7 +4382,7 @@ async function scopedSearch(q, sc) {
     if (my !== USEQ) return;
     renderAll(true);
     const kp = sc === 'korean' ? korLoad() : null;
-    const {d} = await api('/tmdb?q=' + enc(q));
+    const {d} = await apiQ('/tmdb?q=', q);
     if (my !== USEQ) return;
     if (d.error) throw new Error(d.error);
     if (kp) await kp;
