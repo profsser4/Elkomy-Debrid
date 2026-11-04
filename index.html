@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v32: المسلسلات اللي مالهاش IMDb (زي دافنينه سوا): زرار ▶ على كل حلقة بيبحث في التورنت بالاسم والحلقة ويشغّل أحسن نتيجة تلقائي
   v31: النسخ باسم مختلف اتشالت خالص (المثبّتة بس بتفضل)، وكل عضو يختار ترتيب الجودة لنفسه (الأعلى أولاً / الأقل أولاً / أفضّل 4K أو 1080 أو 720 أو 480) مع بقاء أولوية المدبلج والفورية
   v30: أرقام IMDb اللي بتتلاقي تلقائي بتتحفظ على السيرفر وتتشارك مع كل الأعضاء (محتاج bot-39.py)
   v29: أي فيلم/مسلسل مالوش رقم IMDb على TMDB بيتدوّر عليه تلقائي (Cinemeta ثم IMDb بالاسم الإنجليزي والسنة) ويتحفظ على الجهاز، من غير ما تضيفه يدوي
@@ -586,7 +587,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 </style></head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=31;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=32;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2024,10 +2025,13 @@ const chips = (a, sc) => '<div class="chips' + (sc ? ' scroll' : '') + '">' +
 const stOK = () => (ST.n > 0 || ROLE !== 'admin') && !!cur && !!cur.imdb;   // الأعضاء: السيرفر هو اللي يقرر، مش عدّاد الإضافات في المتصفح
 const stBtn = (s, e) => stOK()
   ? '<button class="btn-st" onclick="stGo(' + s + ',' + e + ')">🧩</button>' : '';
-const playBtn = (s, e) => (cur && (cur.imdb || libFor(cur, s, e)))
-  ? '<button class="eb p" aria-label="تشغيل" onclick="quickPlay(' + s + ',' + e + ')">' + IC('play') + '</button>' +
-    (isTv() ? '' : '<button class="eb d" aria-label="تحميل" onclick="quickDownload(' + s + ',' + e + ')">' + IC('dl') + '</button>') +
-    '<button class="eb g" aria-label="خيارات" onclick="playOpen(' + s + ',' + e + ')">' + IC('opts') + '</button>' : '';
+const playBtn = (s, e) => {
+  if (!cur) return '';
+  const src = !!(cur.imdb || libFor(cur, s, e));   // من غير IMDb: التشغيل بيبحث في التورنت بالاسم تلقائي ويشغّل أحسن نتيجة
+  return '<button class="eb p" aria-label="تشغيل" onclick="quickPlay(' + s + ',' + e + ')">' + IC('play') + '</button>' +
+    ((isTv() || !src) ? '' : '<button class="eb d" aria-label="تحميل" onclick="quickDownload(' + s + ',' + e + ')">' + IC('dl') + '</button>') +
+    (src ? '<button class="eb g" aria-label="خيارات" onclick="playOpen(' + s + ',' + e + ')">' + IC('opts') + '</button>' : '');
+};
 
 async function openDetails(type, id) {
   if (!VS.includes('d')) pushView('d');
@@ -2071,7 +2075,7 @@ async function openDetails(type, id) {
     if (d.type === 'movie') {
       const lib0 = libFor(d);
       if (lib0) h += '<div class="libhit">📚 متوفر في مكتبتك — التشغيل والتحميل بيستخدموا رابط المكتبة الأول، ولو وقع بيحوّل على التورنت تلقائي.</div>';
-      if (d.imdb || lib0) h += '<div class="row" style="margin-bottom:10px"><button class="search-btn" onclick="quickPlay()">▶ تشغيل</button>' + (isTv() ? '<span class="tvsz" id="tvMsz"></span>' : '<button class="search-btn" style="background:#0ea5e9" onclick="quickDownload()">⬇ تحميل</button>') + '</div><button class="search-btn" style="background:#334155;margin-bottom:10px" onclick="playOpen()">⚙ اختيار الجودة</button>';
+      if (d.imdb || lib0 || isTv()) h += '<div class="row" style="margin-bottom:10px"><button class="search-btn" onclick="quickPlay()">▶ تشغيل</button>' + (isTv() ? '<span class="tvsz" id="tvMsz"></span>' : '<button class="search-btn" style="background:#0ea5e9" onclick="quickDownload()">⬇ تحميل</button>') + '</div><button class="search-btn" style="background:#334155;margin-bottom:10px" onclick="playOpen()">⚙ اختيار الجودة</button>';
       if (stOK() && (ADV() || !d.imdb)) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
       if ((ADV() || !d.imdb) && !isTv()) h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
     } else {
@@ -7681,6 +7685,7 @@ async function quickPlay(s, e) {
     if (!cur.imdb) return go(s, e, true, true, true);
   }
   if (s != null && e != null && cur && cur.id && smapSpec(cur.id, s, e)) return go(s, e, true);   // حلقة مضافة للسلسلة: بتتشغّل بنفس طريقتها
+  if (cur && !cur.imdb) return go(s, e, true);   // عمل من غير IMDb: بحث تورنت بالاسم وتشغيل أحسن نتيجة تلقائي
   if (!window.AndroidPlayer) return playBest(s, e);
   return nativeWrap(() => playBest(s, e));
 }
