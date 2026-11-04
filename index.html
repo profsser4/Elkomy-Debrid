@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v26: نسخ التشغيل باسم مختلف (زي ملف جحا المصري) بقت تظهر تحت النسخ المطابقة بشارة «اسم مختلف» بدل ما تتخفى
   v25: البحث بقى مش حساس للهمزة (أ/إ/ا) ولا ة/ه ولا ي/ى، ولو التورنت مفيش نتايج بالعربي بيدوّر بالاسم الإنجليزي تلقائي
   v24: نظام «مفضلتي» لكل عضو: منصات (نتفلكس/شاهد/...)، لغات، أنواع، أنمي (كل واحد صفّين أفلام+مسلسلات) + «مش عايز أشوف» + اختيار صفوف الإضافات + الجديد أجنبي/عربي/كرتون (محتاج bot-37.py)
   v23: الرئيسية = «الجديد فقط» (أفلام/مسلسلات/كرتون جديدة، هندي وكوري وغيره، تتمسح تلقائي بعد 3 أسابيع) + بانر + تصنيف عمري (عائلي/+13/+18) + منع التريلر التلقائي للأعمال +17 وغير المصنّفة (محتاج bot-36.py)
@@ -580,7 +581,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 </style></head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=25;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=26;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -7101,8 +7102,9 @@ async function fetchVersions(s, e) {
   {
     const sp = vnSplit(vs);
     VER.full = verSort(vs);
-    VER.matched = sp.ok.length ? verSort(sp.ok) : VER.full;      // لو مفيش ولا نسخة مطابقة نعرض الكل بدل شاشة فاضية
-    VER.hid = sp.ok.length ? sp.bad.length : 0;
+    // المطابقة للاسم الأول، وبعدها النسخ باسم مختلف (بشارة تنبيه) بدل ما تختفي: ساعات النسخة الشغالة بتبقى باسم تاني
+    VER.matched = sp.ok.length ? verSort(sp.ok).concat(verSort(sp.bad.map(v => Object.assign({}, v, {_mis: true})))) : VER.full;
+    VER.hid = 0;
     VER.mis = false;
   }
   VER.list = VER.matched;
@@ -7173,6 +7175,7 @@ function verRow(v, i, best) {
     '<div class="vq ' + cls + '"><span>' + big + '</span><small>' + tag + '</small></div>' +
     '<div class="vi"><div class="vsz">' + fmtSize(v.size) + dub +
     (best ? '<span class="badge" style="background:#3a1620;color:#ffb3c1">⭐ الأفضل</span>' : '') +
+    (v._mis ? '<span class="badge" style="background:#3a2a10;color:#fcd34d">⚠️ اسم مختلف</span>' : '') +
     (v.instant ? '' : '<span class="badge" style="background:#3a2a10;color:#fcd34d">⏳ بطيء</span>') +
     ((v.risky && !v.hash && !window.AndroidPlayer) ? '<span class="badge" style="background:#3a1620;color:#fca5a5">⚠️ الصوت ممكن مايشتغلش</span>' : '') +
     (v.seeders ? '<span class="badge" style="background:#1f1f2c;color:#9a9aab">🌱 ' + v.seeders + '</span>' : '') + '</div>' +
