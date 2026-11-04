@@ -481,6 +481,7 @@ h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:lin
 .vcp svg,.vcd svg{width:22px;height:22px}
 .vx2{flex-basis:100%;display:flex;gap:8px}
 .vx2 button{flex:1;padding:9px;border:0;border-radius:10px;color:#fff;font-weight:700;cursor:pointer;font-size:13px}
+.vx2 button:only-child{flex:0 0 auto;padding:7px 18px}
 .ep .eb{width:40px;height:40px;padding:0;border-radius:12px;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
 .ep .eb svg{width:20px;height:20px}
 .ep .eb.p{background:var(--primary);color:#fff}
@@ -3512,7 +3513,7 @@ async function loadSeason(n) {
     if (d.error) return b.innerHTML = warn(d.error);
     await smapLoad(cur.id);
     if (my !== sReq) return;
-    b.innerHTML = (smapKeys(SMAP[cur.id]).length ? '<p style="margin:0 0 10px;color:#38bdf8;font-size:13px">📌 المسلسل متضاف للكل: ' + smapKeys(SMAP[cur.id]).length + ' حلقة بتشتغل ورا بعض</p>' : '') + (!isTv() && (ADV() || !cur.imdb) ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
+    b.innerHTML = (!cur.imdb ? '<p style="margin:0 0 10px;color:#f59e0b;font-size:13px">ℹ️ المسلسل ده مالوش رقم IMDb، فالتشغيل المباشر مش متاح. دوس «🧲 بحث تورنت» عند الحلقة أو «📦 الموسم كامل».</p>' : '') + (smapKeys(SMAP[cur.id]).length ? '<p style="margin:0 0 10px;color:#38bdf8;font-size:13px">📌 المسلسل متضاف للكل: ' + smapKeys(SMAP[cur.id]).length + ' حلقة بتشتغل ورا بعض</p>' : '') + (!isTv() && (ADV() || !cur.imdb) ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
       (!isTv() && ROLE === 'admin' && cur.imdb ? '<button class="search-btn" style="margin-bottom:10px;background:#0ea5e9" onclick="playOpen(' + n + ',1)">📌 ضيف الموسم ' + n + ' كله (اختار نسخة)</button>' : '') +
       d.episodes.map(e => isTv() ? tvEp(n, e) : '<div class="ep ept tve" data-s="' + n + '" data-e="' + e.n + '">' +
         (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '') +
@@ -3521,12 +3522,13 @@ async function loadSeason(n) {
         (e.overview ? '<div class="od">' + esc(e.overview) + '</div>' : '') +
         (cur && cur.imdb && !(e.date && e.date > new Date().toISOString().slice(0, 10)) ? '<div class="sz wait">⏳ في الانتظار...</div>' : '') + '</div>' +
         '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
-        (ADV() || !cur.imdb ? '<button class="mg" aria-label="تورنت" onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div></div>').join('');
+        (ADV() || !cur.imdb ? '<button class="mg" aria-label="تورنت" onclick="go(' + n + ',' + e.n + ')">🧲 بحث تورنت</button>' : '') + '</div></div>').join('');
     tvSizeAll(my);
   } catch (e) { if (my === sReq) b.innerHTML = ERR; }
 }
 function altChips() {
-  const a = (cur && selected && cur.alt) ? cur.alt : [];
+  const curQ = (($('torrentQuery') || {}).value || '').toLowerCase();
+  const a = ((cur && selected && cur.alt) ? cur.alt : []).filter(x => x && !curQ.includes(x.toLowerCase()));
   if (!a.length) return '';
   return '<div class="lbl">جرّب اسم تاني:</div><div class="chips">' + a.map(x =>
     '<button class="fc" data-n="' + esc(x) + '" onclick="useAlt(this.dataset.n)">' + esc(x) + '</button>').join('') + '</div>';
@@ -3552,7 +3554,11 @@ function go(s, e, auto, skipSt, skipNew) {
   if (auto && !skipSt && (ST.n > 0 || ROLE !== 'admin') && cur && cur.imdb) return stGo(s, e, true);
   want = s ? {s: s, e: e || null} : null;
   let nm = (cur.qname || cur.search_title || '').trim();
-  altQ = (cur.alt || []).filter(x => x.toLowerCase() !== nm.toLowerCase()).slice(0, 3);
+  // الاسم العربي دايماً بديل أخير: ناس كتير بترفع التورنت بالعربي (مثلاً «بوابة الحلواني»)
+  const arT = (cur.title || '').replace(/\s*\(\d{4}\)\s*$/, '').trim();
+  if (arT && !(cur.alt || []).some(x => x.toLowerCase() === arT.toLowerCase())) cur.alt = (cur.alt || []).concat(arT);
+  altQ = (cur.alt || []).filter(x => x.toLowerCase() !== nm.toLowerCase() && x.toLowerCase() !== arT.toLowerCase()).slice(0, 2);
+  if (arT && arT.toLowerCase() !== nm.toLowerCase()) altQ.push(arT);
   if (!nm && altQ.length) nm = altQ.shift();
   autoPick = !!auto && !!nm;
   if (!nm) {
@@ -3623,7 +3629,9 @@ function info(title) {
   if (m) return {s: +m[1], s2: +m[2], pack: true};
   m = /\bS(\d{1,2})\b/i.exec(t) || /\bSeason\s*(\d{1,2})\b/i.exec(t);
   if (m) return {s: +m[1], pack: true};
-  if (/\b(complete|collection)\b/i.test(t)) return {s: null, pack: true, all: true};
+  m = /(?:الموسم|الجزء|جـ|ج)\s*(\d{1,2})(?!\d)/.exec(t);
+  if (m) return {s: +m[1], pack: true};
+  if (/\b(complete|collection)\b/i.test(t) || /كامل[ةه]?|جميع الحلقات/.test(t)) return {s: null, pack: true, all: true};
   m = /(?:^|[^A-Za-z0-9])(?:Episode|EP|E)[ -]?(\d{1,3})(?!\d)/i.exec(t) || /الحلقة\s*(\d{1,3})/.exec(t);
   if (m) return {s: null, e: +m[1]};
   return {};
@@ -6989,6 +6997,15 @@ async function fetchVersions(s, e) {
     (s ? '&s=' + s + '&e=' + (e || 1) : '');
   const {d} = await api(q);
   let vs = d.versions || [];
+  {   // شيل النسخ المكررة (نفس الـhash أو نفس الاسم+الحجم)
+    const seen = new Map();
+    vs.forEach(v => {
+      const k = v.hash ? 'h:' + String(v.hash).toLowerCase() : 't:' + String(v.title || '').toLowerCase() + '|' + (v.size || 0);
+      const o = seen.get(k);
+      if (!o || (!!v.instant - !!o.instant) > 0 || ((!!v.instant === !!o.instant) && (v.seeders || 0) > (o.seeders || 0))) seen.set(k, v);
+    });
+    vs = [...seen.values()];
+  }
   // مشاهدة من AllDebrid: النسخ اللي عنده كاش تتحسب فورية (السيرفر بيفحص TorBox بس)
   if (DBP.prov('watch') === 'ad') {
     const hs = vs.filter(v => v.hash).map(v => v.hash);
