@@ -7,6 +7,10 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v30: أرقام IMDb اللي بتتلاقي تلقائي بتتحفظ على السيرفر وتتشارك مع كل الأعضاء (محتاج bot-39.py)
+  v29: أي فيلم/مسلسل مالوش رقم IMDb على TMDB بيتدوّر عليه تلقائي (Cinemeta ثم IMDb بالاسم الإنجليزي والسنة) ويتحفظ على الجهاز، من غير ما تضيفه يدوي
+  v28: مسلسل «محمود المصري» (2004) كان من غير رقم IMDb على TMDB فصفحته فاضية من التشغيل؛ اتربط برقم tt0431545 (جدول IMDB_FIX لإضافة أي مسلسل تاني)
+  v27: أي ملف اتثبّت لمسلسل (بزر «📌 الموسم كله» أو التسلسل) بيظهر في صفحة المسلسل نفسه فوق النسخ، حتى لو اسم الملف مختلف (زي محمود المصري جوه ملف جحا المصري)
   v26: نسخ التشغيل باسم مختلف (زي ملف جحا المصري) بقت تظهر تحت النسخ المطابقة بشارة «اسم مختلف» بدل ما تتخفى
   v25: البحث بقى مش حساس للهمزة (أ/إ/ا) ولا ة/ه ولا ي/ى، ولو التورنت مفيش نتايج بالعربي بيدوّر بالاسم الإنجليزي تلقائي
   v24: نظام «مفضلتي» لكل عضو: منصات (نتفلكس/شاهد/...)، لغات، أنواع، أنمي (كل واحد صفّين أفلام+مسلسلات) + «مش عايز أشوف» + اختيار صفوف الإضافات + الجديد أجنبي/عربي/كرتون (محتاج bot-37.py)
@@ -581,7 +585,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 </style></head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=26;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=30;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2042,6 +2046,8 @@ async function openDetails(type, id) {
     try { await Promise.race([clibLoad(), sleep(1500)]); } catch (x) {}
     const last = latestOf(d.id);
     if (last && last.qn) d.qname = last.qn;
+    // مسلسلات TMDB مش مربوطة فيها برقم IMDb: بنكمّله من جدول يدوي عشان التشغيل وقايمة النسخ يشتغلوا
+    try { if (!d.imdb) await Promise.race([resolveImdb(d), sleep(6000)]); } catch (x) {}
     cur = d;
     selected = {title: d.title, year: d.year, type: d.type, poster: d.poster};
     const bg = esc(d.backdrop || d.poster || '');
@@ -4076,6 +4082,54 @@ function pullTorrent(i) {
 // لإضافة مصدر جديد: ضيف عنصر في SOURCES فيه: id, icon, name, color,
 //   search(q) -> مصفوفة نتايج (وترمي Error لو فشل), title(t), thumb(t), meta(t), open(t) عند الضغط.
 const enc = encodeURIComponent;
+const IMDB_FIX = {'90998': 'tt0431545'};   // محمود المصري (2004)
+// ===== لو العمل مالوش رقم IMDb على TMDB: نلاقيه لوحدنا (جدول يدوي ← كاش الجهاز ← Cinemeta ← IMDb) =====
+async function resolveImdb(d) {
+  if (!d || d.imdb) return d && d.imdb;
+  const id = String(d.id), ck = 'imdbfix:' + d.type + ':' + id;
+  let hit = IMDB_FIX[id] || '';
+  if (!hit) {   // الأرقام المشتركة من السيرفر (أي عضو لقاها قبل كده)
+    try {
+      if (!window._IMDBSRV) { const {d: j} = await api('/imdbfix'); window._IMDBSRV = (j && j.map) || {}; }
+      hit = window._IMDBSRV[d.type + ':' + id] || '';
+    } catch (e) { window._IMDBSRV = window._IMDBSRV || {}; }
+  }
+  if (!hit) { try { hit = localStorage.getItem(ck) || ''; } catch (e) {} }
+  if (!hit) {
+    const tp = d.type === 'tv' ? 'series' : 'movie', yr = parseInt(d.year, 10) || 0;
+    const latin = x => x && !/[\u0600-\u06FF]/.test(x);
+    const names = [d.search_title, d.original_title, d.original_name].concat(d.alt || []).concat([d.title]).filter(Boolean);
+    const uniq = []; names.forEach(n => { n = String(n).replace(/\s*\(\d{4}\)\s*$/, '').trim(); if (n && uniq.indexOf(n) < 0) uniq.push(n); });
+    uniq.sort((a, b) => (latin(b) ? 1 : 0) - (latin(a) ? 1 : 0));
+    const yOf = m => parseInt(String(m.year || m.releaseInfo || m.y || '').slice(0, 4), 10) || 0;
+    const pick = (list, getId) => {
+      const c = list.filter(m => getId(m) && /^tt\d+$/.test(getId(m)) && (!yr || !yOf(m) || Math.abs(yOf(m) - yr) <= 1));
+      return c.length ? getId(c[0]) : '';
+    };
+    for (const n of uniq.slice(0, 4)) {
+      if (hit) break;
+      try {
+        const r = await fetch('https://v3-cinemeta.strem.io/catalog/' + tp + '/top/search=' + encodeURIComponent(n) + '.json', {signal: tmo(5000)});
+        const j = await r.json();
+        hit = pick((j && j.metas) || [], m => m.imdb_id || m.id);
+      } catch (e) {}
+      if (!hit && latin(n)) {
+        try {
+          const r = await fetch('https://v3.sg.media-imdb.com/suggestion/x/' + encodeURIComponent(n) + '.json', {signal: tmo(5000)});
+          const j = await r.json();
+          hit = pick((j && j.d || []).filter(m => d.type === 'tv' ? /tv/i.test(m.qid || '') : (m.qid === 'movie' || !m.qid)), m => m.id);
+        } catch (e) {}
+      }
+    }
+    if (hit) {
+      try { localStorage.setItem(ck, hit); } catch (e) {}
+      try { (window._IMDBSRV = window._IMDBSRV || {})[d.type + ':' + id] = hit; api('/imdbfix', {method: 'POST', body: JSON.stringify({type: d.type, id: id, imdb: hit})}).catch(() => {}); } catch (e) {}
+    }
+  }
+  if (hit) d.imdb = hit;
+  return hit;
+}
+
 
 // ===== بحث بدون حساسية للهمزة (أ إ آ ا) والتاء المربوطة (ة ه) والياء (ي ى) =====
 function arFold(t){return String(t||'').toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه');}
@@ -7100,10 +7154,17 @@ async function fetchVersions(s, e) {
   }
   if (DBP.cfg().only === '1' && vs.some(v => v.hash)) vs = vs.filter(v => v.hash);   // TorBox بس: نخفي النسخ المباشرة (بدون hash) لو فيه بديل
   {
-    const sp = vnSplit(vs);
+    // الملفات المثبّتة للمسلسل ده (اللي اتضافت بزر «📌 الموسم كله» أو التسلسل): تعتبر نسخ مطابقة حتى لو اسم الملف مختلف
+    try {
+      const sm = await smapLoad(cur.id), ph = new Set();
+      Object.keys(sm || {}).forEach(k => { const h = ((sm[k] || {}).hash || '').toLowerCase(); if (h) ph.add(h); });
+      if (ph.size) vs = vs.map(v => (v.hash && ph.has(String(v.hash).toLowerCase())) ? Object.assign({}, v, {_pin: true}) : v);
+    } catch (x) {}
+    const sp = vnSplit(vs.filter(v => !v._pin));
+    sp.ok = vs.filter(v => v._pin).concat(sp.ok);
     VER.full = verSort(vs);
     // المطابقة للاسم الأول، وبعدها النسخ باسم مختلف (بشارة تنبيه) بدل ما تختفي: ساعات النسخة الشغالة بتبقى باسم تاني
-    VER.matched = sp.ok.length ? verSort(sp.ok).concat(verSort(sp.bad.map(v => Object.assign({}, v, {_mis: true})))) : VER.full;
+    VER.matched = sp.ok.length ? (a => a.filter(v => v._pin).concat(a.filter(v => !v._pin)))(verSort(sp.ok)).concat(verSort(sp.bad.map(v => Object.assign({}, v, {_mis: true})))) : VER.full;
     VER.hid = 0;
     VER.mis = false;
   }
@@ -7176,6 +7237,7 @@ function verRow(v, i, best) {
     '<div class="vi"><div class="vsz">' + fmtSize(v.size) + dub +
     (best ? '<span class="badge" style="background:#3a1620;color:#ffb3c1">⭐ الأفضل</span>' : '') +
     (v._mis ? '<span class="badge" style="background:#3a2a10;color:#fcd34d">⚠️ اسم مختلف</span>' : '') +
+    (v._pin ? '<span class="badge" style="background:#10321f;color:#86efac">📌 مثبّتة للمسلسل</span>' : '') +
     (v.instant ? '' : '<span class="badge" style="background:#3a2a10;color:#fcd34d">⏳ بطيء</span>') +
     ((v.risky && !v.hash && !window.AndroidPlayer) ? '<span class="badge" style="background:#3a1620;color:#fca5a5">⚠️ الصوت ممكن مايشتغلش</span>' : '') +
     (v.seeders ? '<span class="badge" style="background:#1f1f2c;color:#9a9aab">🌱 ' + v.seeders + '</span>' : '') + '</div>' +
