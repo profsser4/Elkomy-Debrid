@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v23: الرئيسية = «الجديد فقط» (أفلام/مسلسلات/كرتون جديدة، هندي وكوري وغيره، تتمسح تلقائي بعد 3 أسابيع) + بانر + تصنيف عمري (عائلي/+13/+18) + منع التريلر التلقائي للأعمال +17 وغير المصنّفة (محتاج bot-36.py)
   v22: إصلاح «المزيد» في صفوف الرئيسية (مدبلج بالمصري، صفوف الإضافات): كانت بتفتح فاضية، دلوقتي بتحمّل الصف كامل مع تحميل المزيد (محتاج bot-35.py)
   v21: الموبايل/الأندرويد: كروت حلقات شيك (رقم الحلقة، المدة، الوصف، المساحة، زر تشغيل عريض) + مواسم بشكل أزرار مدوّرة
   v20: الموبايل/الأندرويد والكمبيوتر: مساحة النسخة وجودتها تظهر لكل حلقة (زي التلفزيون) وشارة أوضح
@@ -546,10 +547,25 @@ h3.sec::before{display:none}
 .poster:hover,.poster:focus-visible{border-color:#7aa2e8}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
-</head>
+<style id="nw-css">
+.poster .agb{position:absolute;top:8px;right:8px;z-index:2;border-radius:8px;padding:2px 7px;font-size:11px;font-weight:800;color:#fff;border:1px solid #ffffff33;backdrop-filter:blur(6px)}
+.agb.lv0{background:#16a34acc}.agb.lv1{background:#0d9488cc}.agb.lv2{background:#d97706cc}.agb.lv3{background:#dc2626cc}.agb.lvu{background:#475569cc}
+.agb.ag-inline{position:static;display:inline-block;font-size:12px}
+</style><style id="nw-css2">
+body .nwhome{--nwpw:clamp(150px,44vw,210px);--nwcw:clamp(170px,50vw,240px)}
+body .nwhome .hrow{gap:14px!important;padding:4px 2px 16px!important}
+body .nwhome .hrow>.poster{flex:0 0 var(--nwpw)!important;width:var(--nwpw)!important;max-width:var(--nwpw)!important;border-radius:20px!important}
+body .nwhome .hrow>.cw{flex:0 0 var(--nwcw)!important;width:var(--nwcw)!important;max-width:var(--nwcw)!important;border-radius:20px!important}
+body .nwhome .poster .t{font-size:14px!important;padding:40px 11px 11px!important}
+body .nwhome .poster .rt,body .nwhome .poster .agb{font-size:12px!important;padding:3px 8px!important}
+body .nwhome .sec{font-size:19px;font-weight:800;margin:22px 2px 10px}
+@media(min-width:700px){body .nwhome{--nwpw:220px;--nwcw:250px}}
+body.m-tv .nwhome{--nwpw:240px;--nwcw:260px}
+body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-size:240px 400px!important}
+</style></head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=22;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=23;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -1780,11 +1796,13 @@ function setAuto(b) {
 
 // ================= الصفحة الرئيسية (كمّل المشاهدة / قائمتي / مكتبة Stremio / صفوف الجديد) =================
 async function loadRows() {
+  if (!ROWS && HOME_ONLY_NEW) ROWS = [];
   if (!ROWS) {
     try { const {d} = await api('/rows'); ROWS = layApply(d.rows || []); }
     catch (e) { ROWS = []; }
   }
   loadHero();
+  if (HOME_ONLY_NEW) { renderGenres(); loadLatest(); renderShelves(); return; }
   renderGenres();
   loadLatest();
   loadFresh();
@@ -1878,6 +1896,7 @@ function renderShelves() {
   const el = $('shelves');
   if (!PID) { el.innerHTML = ''; return; }
   if (CAT !== 'home') { el.innerHTML = catView(); tvApply(); return; }
+  if (HOME_ONLY_NEW) { el.innerHTML = newHomeHTML(); tvApply(); return; }
   const its = Object.values(UD.items[PID] || {}).filter(x => !x.del && x.key);
   const groups = new Map();
   its.filter(x => x.key[0] !== 'l').forEach(x => {
@@ -1948,6 +1967,7 @@ function row(title, list, rid) {
       : t.lk ? '<div class="poster" data-q="' + esc(t.title) + '" data-y="' + esc(t.year) + '" data-t="' + esc(t.type) + '" onclick="openLookup(this)">'
       : '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">') +
     (t.rating > 0 ? '<span class="rt">★ ' + Number(t.rating).toFixed(1) + '</span>' : '') +
+    (t.cl ? '<span class="agb lv' + (t.lv < 0 ? 'u' : t.lv) + '">' + esc(t.cl) + '</span>' : '') +
     (t.poster ? '<img ' + lzA(t.poster) + ' alt="">'
               : '<div class="noimg">🎬</div>') +
     '<div class="t">' + esc(t.title) + '<div class="y">' + (t.type === 'tv' || t.type === 'series' ? 'مسلسل' : t.type === 'movie' ? 'فيلم' : '') + (t.year ? ' · ' + esc(t.year) : '') + (t.badge ? ' · ' + esc(t.badge) : '') +
@@ -2018,7 +2038,7 @@ async function openDetails(type, id) {
     let h = '<div class="hero" style="background-image:linear-gradient(transparent 30%,#0f172a),url(\'' + bg + '\')">' +
       '<button class="back" onclick="goBack()">➡️</button><h2>' + esc(d.title) + '</h2></div>' +
       '<div class="meta">⭐ ' + d.rating + ' · ' + esc(d.year) +
-      (d.runtime ? ' · ' + d.runtime + ' د' : '') + '</div>' +
+      (d.runtime ? ' · ' + d.runtime + ' د' : '') + '<span id="certB"></span></div>' +
       '<p class="ov">' + esc(d.overview) + '</p>' + chips(d.genres) +
       '<div class="lbl">طاقم العمل</div>' + chips(d.cast, true) + cb +
       '<button class="search-btn" style="background:#334155;margin-bottom:10px" onclick="openTrailer(\'' + d.type + '\',' + d.id + ')">🎬 التريلر</button>' +
@@ -2037,6 +2057,7 @@ async function openDetails(type, id) {
       ).join('') + '</div><div id="eps"></div>';
     }
     box.innerHTML = h + '<div id="relBox"></div>';
+    loadCert(d);
     if (d.type === 'tv' && isTv()) {
       try {
         const rel = $('relBox'), eps = $('eps'), W = document.createElement('div'), R = document.createElement('div'), L = document.createElement('div');
@@ -7897,7 +7918,49 @@ function catView() {
 // ================= الشكل الجديد: بانر + "المزيد" =================
 let HERO = [], heroI = 0, heroT = null;
 const BR = {on: false, k: '', title: '', items: [], skip: 0, more: false, busy: false, err: ''};
+const HOME_ONLY_NEW = true;   // true: الرئيسية فيها الجديد بس. غيّرها false لو عاوز ترجّع كمّل المشاهدة والصفوف القديمة
+let NEWD = null, NEW_T = 0, NEW_BUSY = false;
+async function loadNew(force) {
+  if (NEW_BUSY || (!force && NEWD && Date.now() - NEW_T < 15 * 60 * 1000)) return;
+  NEW_BUSY = true;
+  try {
+    const {d} = await api('/new');
+    if (d && d.rows) { NEWD = d; NEW_T = Date.now(); HERO = d.hero || []; }
+  } catch (e) {}
+  NEW_BUSY = false;
+  if (CAT === 'home') { renderHero(); renderShelves(); }
+}
+function cwRowHTML() {
+  const its = Object.values(UD.items[PID] || {}).filter(x => !x.del && x.key);
+  const groups = new Map();
+  its.filter(x => x.key[0] !== 'l').forEach(x => {
+    const g = x.cl ? 'cl' + x.cl : (x.type === 'tv' && x.tmdb) ? 'tv' + x.tmdb : x.key;
+    const o = groups.get(g);
+    if (!o || x.t > o.t) groups.set(g, x);
+  });
+  const cw = [...groups.values()].filter(cwOK).sort((a, b) => b.t - a.t).slice(0, isTv() ? 8 : 12);
+  return cw.length ? '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>' : '';
+}
+function newHomeHTML() {
+  let h = '';
+  try { h += cwRowHTML(); } catch (e) {}
+  if (!NEWD) return '<div class="nwhome">' + h + pend('جاري تحميل الجديد...') + '</div>';
+  const rows = (NEWD.rows || []).filter(r => r.items && r.items.length);
+  if (!rows.length) h += '<p style="color:var(--mut);text-align:center;margin:40px 0">مفيش جديد نزل دلوقتي 🙌 هيظهر هنا أول ما ينزل.</p>';
+  else h += rows.map(r => row(r.title, isTv() ? r.items.slice(0, 12) : r.items)).join('');
+  return '<div class="nwhome">' + h + '</div>';
+}
+async function loadCert(d) {
+  try {
+    const {d: c} = await api('/cert?type=' + d.type + '&id=' + d.id);
+    const el = $('certB');
+    if (!el || !c || !c.label) return;
+    el.innerHTML = ' · <span class="agb lv' + (c.lvl < 0 ? 'u' : c.lvl) + ' ag-inline">' + esc(c.label) + '</span>' +
+      (c.lvl === 3 ? ' <small style="color:#fca5a5">⚠ للكبار فقط</small>' : c.lvl < 0 ? ' <small style="color:#fcd34d">ℹ️ مفيش تصنيف عمري مؤكد</small>' : '');
+  } catch (e) {}
+}
 async function loadHero() {
+  if (HOME_ONLY_NEW) { await loadNew(); return; }
   if (!HERO.length) {
     try { const {d} = await api('/hero'); HERO = d.items || []; } catch (e) {}
   }
@@ -7911,7 +7974,7 @@ function renderHero() {
   if (!L.length) { el.innerHTML = ''; return; }
   const i = heroI % L.length, x = L[i];
   el.innerHTML = '<div class="hz" style="' + (isTv() ? 'background:linear-gradient(135deg,#1e293b,#0f172a)' : 'background-image:url(\'' + esc(x.backdrop) + '\')') + '"><div class="hc"><h2>' + esc(x.title) +
-    '</h2><div class="hm">' + esc((x.type === 'tv' ? 'مسلسل' : 'فيلم') + ' · ' + x.year + ' · ⭐ ' + x.rating) + '</div><p>' + esc(x.overview) +
+    '</h2><div class="hm">' + esc((x.type === 'tv' ? 'مسلسل' : 'فيلم') + ' · ' + x.year + ' · ⭐ ' + x.rating + (x.cl ? ' · ' + x.cl : '')) + '</div><p>' + esc(x.overview) +
     '</p><div class="hb"><button class="p" onclick="heroGo(' + i + ',1)">▶ شغّل الآن</button><button class="i" onclick="heroGo(' + i +
     ')">المزيد من المعلومات</button><button class="i" onclick="openTrailer(\'' + x.type + '\',' + x.id + ')">🎬 تريلر</button><button class="i" onclick="heroAdd(' + i + ')">＋ قائمتي</button></div></div><div class="dots">' +
     L.map((_, j) => '<i class="' + (j === i ? 'on' : '') + '" onclick="heroI=' + j + ';renderHero()"></i>').join('') + '</div></div>';
@@ -7980,7 +8043,7 @@ const GTILES = [['action', 'أكشن'], ['drama', 'دراما'], ['int:hi', '�
   ['horror', 'رعب'], ['romance', 'رومانسي'], ['cartoon', 'كرتون'], ['family', 'عائلي'], ['doc', 'وثائقي']];
 function renderGenres() {
   const el = $('gtiles');
-  if (CAT !== 'home') { if (el) el.innerHTML = ''; return; }
+  if (CAT !== 'home' || HOME_ONLY_NEW) { if (el) el.innerHTML = ''; return; }
   if (el) el.innerHTML = '<div class="hrow">' + GTILES.map(g => '<button class="gtile" data-g="' + g[0] + '" data-n="' + g[1] +
     '" onclick="openBrowse((this.dataset.g.indexOf(\'int:\') === 0 ? \'int=\' + this.dataset.g.slice(4) : \'genre=\' + this.dataset.g), this.dataset.n)">' + g[1] + '</button>').join('') + '</div>';
 }
@@ -8075,6 +8138,7 @@ async function loadForYou() {
   } catch (e) {}
 }
 async function loadFresh() {
+  if (HOME_ONLY_NEW) { loadNew(); return; }
   try { const {d} = await api('/fresh'); FRESH = d.rows || []; FRESH_T = Date.now(); } catch (e) {}
   loadForYou().then(renderShelvesSoon);
   renderShelvesSoon();
@@ -9189,7 +9253,7 @@ body.iv-on #appVerBadge{bottom:82px!important}
 (function(){
 const yt=k=>'https://www.youtube.com/embed/'+encodeURIComponent(k)+'?autoplay=1&mute=1&controls=0&loop=1&playlist='+encodeURIComponent(k)+'&playsinline=1&modestbranding=1&rel=0&disablekb=1&enablejsapi=1';
 const TK={};
-async function trailerKey(t,id){const k=t+id;if(k in TK)return TK[k];let key='';try{const {d}=await api('/trailer?type='+t+'&id='+id);key=d.key||''}catch(e){}return TK[k]=key}
+async function trailerKey(t,id){const k=t+id;if(k in TK)return TK[k];let key='';try{const {d}=await api('/trailer?type='+t+'&id='+id+'&auto=1');key=d.key||''}catch(e){}return TK[k]=key}
 const saver=()=>!!(navigator.connection&&navigator.connection.saveData);
 // القايمة العلوية: تصغّر لما تنزل بالصفحة
 (function(){let t=0;addEventListener('scroll',()=>{if(t)return;t=setTimeout(()=>{t=0;document.body.classList.toggle('tbmin',(window.scrollY||document.documentElement.scrollTop)>110)},80)},{passive:true})})();
