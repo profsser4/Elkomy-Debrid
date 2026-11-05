@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v36: IPTV: حساب مشترك لكل الأعضاء + تثبيت أقسام/قنوات للكل من الأدمن (محتاج bot-40.py)
   v35: عرض الجودة والمساحة في نتايج بحث Moviz وAhwak (محتاج bot-40.py)
   v34: بحث Ahwak بدل Cimalight + رفع بافر التشغيل في وضع التلفزيون (محتاج bot-40.py)
   v33: بحث Shoffree (للأدمن) + إظهار صندوق بحث الويب للأدمن + استبعاد نتايج Shoffree اللي اسمها مش مطابق للبحث (محتاج bot-39.py)
@@ -590,7 +591,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 </style></head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=35;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=36;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -678,6 +679,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 <button class="search-btn" onclick="clibOpen('series')">📺 مسلسلات</button>
 <button class="search-btn" onclick="clibOpen('cartoon')">🧸 كرتون</button>
 <button id="ivHomeBtn" class="search-btn" style="display:none;background:#0ea5e9" onclick="ivOpen()">📡 IPTV</button>
+<button id="ivGmBtn" class="search-btn" style="display:none;background:#7c3aed" onclick="ivGmToggle()">📢 تثبيت للكل: مقفول</button>
 </div>
 
 <div id="titles"></div>
@@ -2253,22 +2255,37 @@ async function ivCfg(force) {
 }
 // ---------- التثبيتات (لكل بروفايل) ----------
 async function ivPinsLoad() {
-  if (IV.pinsPid === PID) return;
-  const pid = PID;
+  if (IV.pinsPid === PID && IV.pinsGm === !!IV.gm) return;
+  const pid = PID, gm = !!IV.gm;
   try {
     const {d} = await api('/iptv/pins?pid=' + encodeURIComponent(pid));
-    IV.pins = {live: (d.pins && d.pins.live) || [], cats: (d.pins && d.pins.cats) || [], order: (d.pins && d.pins.order) || {}, hidden: (d.pins && d.pins.hidden) || {}};
-    IV.pinsPid = pid;
+    const p = d.pins || {}, gg = d.g || {};
+    IV.g = {live: gg.live || [], cats: gg.cats || []};
+    IV.pins = gm
+      ? {live: IV.g.live.slice(), cats: IV.g.cats.slice(), order: p.order || {}, hidden: p.hidden || {}}
+      : {live: p.live || [], cats: p.cats || [], order: p.order || {}, hidden: p.hidden || {}};
+    IV.pinsPid = pid; IV.pinsGm = gm;
   } catch (e) { IV.pins = {live: [], cats: [], order: {}, hidden: {}}; }
 }
 function ivPinsSave() {
   clearTimeout(_ivPT);
-  const pid = PID;
+  const pid = PID, gm = !!IV.gm;
   _ivPT = setTimeout(() => {
-    api('/iptv/pins', {method: 'POST', body: JSON.stringify({pid: pid, pins: IV.pins})}).catch(() => {});
+    const body = gm ? {global: true, pins: {live: IV.pins.live, cats: IV.pins.cats}} : {pid: pid, pins: IV.pins};
+    api('/iptv/pins', {method: 'POST', body: JSON.stringify(body)}).catch(() => {});
     ivHomeLoad(PID);
   }, 700);
 }
+async function ivGmToggle() {
+  IV.gm = !IV.gm; IV.pinsPid = null;
+  const b = $('ivGmBtn');
+  if (b) { b.textContent = IV.gm ? '📢 تثبيت للكل: شغّال' : '📢 تثبيت للكل: مقفول'; b.style.background = IV.gm ? '#16a34a' : '#7c3aed'; }
+  await ivPinsLoad();
+  toast(IV.gm ? 'أي تثبيت دلوقتي هيظهر في رئيسية كل الأعضاء' : 'رجعت لتثبيتاتك إنت بس');
+  IV.homePid = null; IV.homeFor = PID; ivHomeLoad(PID);
+  if (IV.open) ivRender();
+}
+const ivAdmLbl = n => n === '__all__' ? '👥 الكل (حساب مشترك)' : n;
 const ivPinned = id => IV.pins.live.includes(String(id));
 function ivTogglePin(id, btn) {
   id = String(id);
@@ -2628,6 +2645,7 @@ async function ivHomeLoad(pid) {
   const btn = $('ivHomeBtn');
   if (btn) btn.style.display = cfg ? '' : 'none';
   const ci = $('catIv'); if (ci) ci.style.display = cfg ? '' : 'none';
+  const gb = $('ivGmBtn'); if (gb) gb.style.display = (cfg && ROLE === 'admin') ? '' : 'none';
   if (!cfg) { IV.homeHTML = ''; IV.homePid = pid; return; }
   if (IV.homeFor !== pid) return;
   await ivPinsLoad();
@@ -2900,13 +2918,13 @@ function ivAdmRender() {
   if (!el) return;
   el.innerHTML = IVADM.map(u => {
     const d = ivDays(u.stat), tx = u.set ? (ivDaysTxt(u.stat) || 'لسه ما فتحش التطبيق') : 'مفيش اشتراك';
-    return '<div class="ep"><div class="b">👤 ' + esc(u.name) + (u.set ? '<small class="ltr" style="direction:ltr;text-align:left">' + esc(u.host) + ' · ' + esc(u.user) + '</small>' : '') +
+    return '<div class="ep"><div class="b">👤 ' + esc(ivAdmLbl(u.name)) + (u.set ? '<small class="ltr" style="direction:ltr;text-align:left">' + esc(u.host) + ' · ' + esc(u.user) + '</small>' : '') +
       '<small style="color:' + (!u.set ? 'var(--mut)' : (d !== null && d !== Infinity && d <= 5 ? '#ef4444' : 'var(--success)')) + '">' + esc(tx) +
       (u.set && u.stat && u.stat.t ? ' · آخر تحديث ' + new Date(u.stat.t * 1000).toLocaleDateString('ar-EG') : '') + '</small></div>' +
       '<button style="background:#0ea5e9;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="ivAdmEdit(this.dataset.n)">✏️</button>' +
       (u.set ? '<button style="background:var(--danger);color:#fff" data-n="' + esc(u.name) + '" onclick="ivAdmDel(this.dataset.n)">🗑</button>' : '') + '</div>';
   }).join('') +
-    '<select id="ivaN" class="search-input">' + IVADM.map(u => '<option value="' + esc(u.name) + '">' + esc(u.name) + '</option>').join('') + '</select>' +
+    '<select id="ivaN" class="search-input">' + IVADM.map(u => '<option value="' + esc(u.name) + '">' + esc(ivAdmLbl(u.name)) + '</option>').join('') + '</select>' +
     '<input id="ivaH" class="search-input ltr" placeholder="الهوست: http://example.com:8080" autocapitalize="off" autocorrect="off">' +
     '<input id="ivaU" class="search-input ltr" placeholder="اليوزر" autocapitalize="off" autocorrect="off">' +
     '<input id="ivaP" class="search-input ltr" placeholder="الباس" autocapitalize="off" autocorrect="off">' +
