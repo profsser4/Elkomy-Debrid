@@ -2081,7 +2081,7 @@ async function openDetails(type, id) {
     if (d.type === 'movie') {
       const lib0 = libFor(d);
       if (lib0) h += '<div class="libhit">📚 متوفر في مكتبتك — التشغيل والتحميل بيستخدموا رابط المكتبة الأول، ولو وقع بيحوّل على التورنت تلقائي.</div>';
-      if (d.imdb || lib0 || isTv()) h += '<div class="row" style="margin-bottom:10px"><button class="search-btn" onclick="quickPlay()">▶ تشغيل</button>' + (isTv() ? '<span class="tvsz" id="tvMsz"></span>' : '<button class="search-btn" style="background:#0ea5e9" onclick="quickDownload()">⬇ تحميل</button>') + '</div><button class="search-btn" style="background:#334155;margin-bottom:10px" onclick="playOpen()">⚙ اختيار الجودة</button>';
+      if (d.imdb || lib0 || isTv()) h += '<div class="row" style="margin-bottom:10px"><button class="search-btn" onclick="quickPlay()">▶ تشغيل</button>' + (isTv() ? '<span class="tvsz" id="tvMsz"></span>' : '<button class="search-btn" style="background:#0ea5e9" onclick="quickDownload()">⬇ تحميل</button>') + '</div>' + (!isTv() && d.imdb ? '<div class="sz wait msz" id="tvMsz" style="margin:-2px 0 10px"></div>' : '') + '<button class="search-btn" style="background:#334155;margin-bottom:10px" onclick="playOpen()">⚙ اختيار الجودة</button>';
       if (stOK() && (ADV() || !d.imdb)) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
       if ((ADV() || !d.imdb) && !isTv()) h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
     } else {
@@ -2100,7 +2100,7 @@ async function openDetails(type, id) {
         box.insertBefore(W, rel);
       } catch (x) {}
     }
-    if (d.type === 'movie' && isTv() && $('tvMsz') && d.imdb) tvSize($('tvMsz'), null, null);
+    if (d.type === 'movie' && $('tvMsz') && d.imdb) tvSize($('tvMsz'), null, null);
     if (d.type === 'tv' && d.seasons.length) loadSeason(d.seasons[0].n);
     if (d.type === 'tv' && ROLE === 'admin') setTimeout(() => { if (cur && cur.id === d.id) smapFillSeries(d.id); }, 1500);
     loadRelated(d.type, d.id);
@@ -9790,6 +9790,9 @@ body.m-tv .tvsz.bad{background:#2a1a05;color:#fbbf24;border-color:#f59e0b66}
 
 <style id="m-v20">
 /* v20: شارة المساحة لكل الأجهزة (الموبايل/الأندرويد/الكمبيوتر) */
+body:not(.m-tv) .msz{display:flex;justify-content:center;align-items:center;padding:8px 12px;border-radius:12px;font-size:14px;font-weight:800;background:#ffffff0d;color:#94a3b8;border:1px solid #ffffff1a;text-align:center}
+body:not(.m-tv) .msz.ok{background:#052e1a;color:#86efac;border-color:#16a34a88}
+body:not(.m-tv) .msz.bad{background:#2a1a05;color:#fbbf24;border-color:#f59e0b66}
 body:not(.m-tv) .ep .sz{display:inline-flex;align-items:center;margin-top:6px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:800;background:#ffffff0d;color:#94a3b8;border:1px solid #ffffff1a;white-space:normal}
 body:not(.m-tv) .ep .sz.ok{background:#052e1a;color:#86efac;border-color:#16a34a88}
 body:not(.m-tv) .ep .sz.bad{background:#2a1a05;color:#fbbf24;border-color:#f59e0b66}
