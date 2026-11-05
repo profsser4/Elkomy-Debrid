@@ -666,7 +666,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 <input id="wsQ" class="search-input" placeholder="اسم العمل (مثلاً: دافنينه سوا الحلقة 3)" onkeydown="if(event.key==='Enter')wsGo()">
 <div class="row"><button class="search-btn" onclick="wsGo()">🔎 دوّر على روابط مدعومة</button>
 <button class="search-btn" style="background:#7c3aed" onclick="mzGo()">🎯 بحث في Moviz</button>
-<button class="search-btn" style="background:#db2777" onclick="mzGo('shoffree')">🎬 بحث في Shoffree</button></div>
+<button class="search-btn" style="background:#db2777" onclick="mzGo('cimalight')">🎬 بحث في Cimalight</button></div>
 <p style="color:var(--mut);font-size:12px;margin:8px 0 0">بيدوّر في جوجل ويفتح الصفحات ويطلّع الروابط اللي موقعها مدعوم عند TorBox وAllDebrid وباقي مزوّديك. دوس "سحب" على أي رابط وهيتحوّل زي أي رابط ملصوق.</p>
 <div id="wsOut"></div>
 </div>
@@ -4670,7 +4670,7 @@ async function mzGo(site) {
   const q = $('wsQ').value.trim();
   if (!q) return alert('اكتب اسم العمل الأول');
   const box = $('wsOut');
-  const siteName = site === 'shoffree' ? 'Shoffree' : 'Moviz';
+  const siteName = site === 'cimalight' ? 'Cimalight' : 'Moviz';
   box.innerHTML = pend('بدوّر في ' + siteName + ' وبفتح الصفحات...');
   try {
     const {d} = await api('/sitesearch', {method: 'POST', body: JSON.stringify({q: q, site: site || ''}), timeout: 90000});
