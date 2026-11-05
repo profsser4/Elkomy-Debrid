@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v34: بحث Ahwak بدل Cimalight + رفع بافر التشغيل في وضع التلفزيون (محتاج bot-40.py)
   v33: بحث Shoffree (للأدمن) + إظهار صندوق بحث الويب للأدمن + استبعاد نتايج Shoffree اللي اسمها مش مطابق للبحث (محتاج bot-39.py)
   v32: المسلسلات اللي مالهاش IMDb (زي دافنينه سوا): زرار ▶ على كل حلقة بيبحث في التورنت بالاسم والحلقة ويشغّل أحسن نتيجة تلقائي
   v31: النسخ باسم مختلف اتشالت خالص (المثبّتة بس بتفضل)، وكل عضو يختار ترتيب الجودة لنفسه (الأعلى أولاً / الأقل أولاً / أفضّل 4K أو 1080 أو 720 أو 480) مع بقاء أولوية المدبلج والفورية
@@ -588,7 +589,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 </style></head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=33;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=34;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -666,7 +667,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 <input id="wsQ" class="search-input" placeholder="اسم العمل (مثلاً: دافنينه سوا الحلقة 3)" onkeydown="if(event.key==='Enter')wsGo()">
 <div class="row"><button class="search-btn" onclick="wsGo()">🔎 دوّر على روابط مدعومة</button>
 <button class="search-btn" style="background:#7c3aed" onclick="mzGo()">🎯 بحث في Moviz</button>
-<button class="search-btn" style="background:#db2777" onclick="mzGo('cimalight')">🎬 بحث في Cimalight</button></div>
+<button class="search-btn" style="background:#db2777" onclick="mzGo('ahwak')">🎬 بحث في Ahwak</button></div>
 <p style="color:var(--mut);font-size:12px;margin:8px 0 0">بيدوّر في جوجل ويفتح الصفحات ويطلّع الروابط اللي موقعها مدعوم عند TorBox وAllDebrid وباقي مزوّديك. دوس "سحب" على أي رابط وهيتحوّل زي أي رابط ملصوق.</p>
 <div id="wsOut"></div>
 </div>
@@ -4670,7 +4671,7 @@ async function mzGo(site) {
   const q = $('wsQ').value.trim();
   if (!q) return alert('اكتب اسم العمل الأول');
   const box = $('wsOut');
-  const siteName = site === 'cimalight' ? 'Cimalight' : 'Moviz';
+  const siteName = site === 'ahwak' ? 'Ahwak' : 'Moviz';
   box.innerHTML = pend('بدوّر في ' + siteName + ' وبفتح الصفحات...');
   try {
     const {d} = await api('/sitesearch', {method: 'POST', body: JSON.stringify({q: q, site: site || ''}), timeout: 90000});
@@ -7952,7 +7953,7 @@ function setupHls(v) {
     if (pm) pm.open = true;
   };
   if (window.Hls && Hls.isSupported()) {
-    const h = new Hls(Object.assign({maxBufferLength: 90, maxMaxBufferLength: 150, maxBufferSize: 120 * 1000 * 1000, maxBufferHole: 0.5, backBufferLength: 10, enableWorker: false, fragLoadingMaxRetry: 8, fragLoadingRetryDelay: 1500, fragLoadingMaxRetryTimeout: 15000, manifestLoadingMaxRetry: 6, levelLoadingMaxRetry: 6}, isTv() ? {maxBufferLength: 20, maxMaxBufferLength: 30, maxBufferSize: 25 * 1000 * 1000, backBufferLength: 3} : {}));
+    const h = new Hls(Object.assign({maxBufferLength: 90, maxMaxBufferLength: 150, maxBufferSize: 120 * 1000 * 1000, maxBufferHole: 0.5, backBufferLength: 10, enableWorker: false, fragLoadingMaxRetry: 8, fragLoadingRetryDelay: 1500, fragLoadingMaxRetryTimeout: 15000, manifestLoadingMaxRetry: 6, levelLoadingMaxRetry: 6}, isTv() ? {maxBufferLength: 45, maxMaxBufferLength: 60, maxBufferSize: 60 * 1000 * 1000, backBufferLength: 5} : {}));
     v._hls = h;
     try { h.subtitleDisplay = false; h.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => { try { h.subtitleTrack = -1; } catch (e) {} }); } catch (e) {}
     let netTry = 0, medTry = 0;
