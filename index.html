@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v35: عرض الجودة والمساحة في نتايج بحث Moviz وAhwak (محتاج bot-40.py)
   v34: بحث Ahwak بدل Cimalight + رفع بافر التشغيل في وضع التلفزيون (محتاج bot-40.py)
   v33: بحث Shoffree (للأدمن) + إظهار صندوق بحث الويب للأدمن + استبعاد نتايج Shoffree اللي اسمها مش مطابق للبحث (محتاج bot-39.py)
   v32: المسلسلات اللي مالهاش IMDb (زي دافنينه سوا): زرار ▶ على كل حلقة بيبحث في التورنت بالاسم والحلقة ويشغّل أحسن نتيجة تلقائي
@@ -589,7 +590,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 </style></head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=34;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=35;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -4684,7 +4685,7 @@ async function mzGo(site) {
       it.links.forEach(l => {
         const i = WS_LINKS.push(l.url) - 1;
         o += '<div style="padding:10px;margin:6px 0;background:var(--panel);border-radius:10px;width:100%;box-sizing:border-box">' +
-          '<div style="font-size:13px;font-weight:700">' + esc(l.host) + ' · ' + esc(l.quality) + '</div>' +
+          '<div style="font-size:13px;font-weight:700">' + esc(l.host) + (l.quality ? ' · 🎞 ' + esc(l.quality) : '') + (l.size ? ' · 💾 ' + esc(l.size) : '') + '</div>' +
           '<div style="direction:ltr;text-align:left;font-size:11px;color:var(--mut);word-break:break-all;margin:4px 0">' + esc(l.url) + '</div>' +
           '<button class="fc" onclick="wsPull(' + i + ')">🚀 سحب</button> ' +
           '<button class="fc" style="background:#475569" onclick="copyText(WS_LINKS[' + i + '])">📋 نسخ</button></div>';
