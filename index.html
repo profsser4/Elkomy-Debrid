@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v37: تاريخ آخر إضافة على نتايج التورنت (شارة 📅 + زرار «🆕 الأحدث أولاً») — بيقرأ التاريخ من السيرفر لو بعته
   v36: IPTV: حساب مشترك لكل الأعضاء + تثبيت أقسام/قنوات للكل من الأدمن (محتاج bot-40.py)
   v35: عرض الجودة والمساحة في نتايج بحث Moviz وAhwak (محتاج bot-40.py)
   v34: بحث Ahwak بدل Cimalight + رفع بافر التشغيل في وضع التلفزيون (محتاج bot-40.py)
@@ -591,7 +592,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 </style></head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=36;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=37;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -847,6 +848,39 @@ sessionStorage.removeItem('pass'); localStorage.removeItem('rpass');
 let UD = {profiles: {}, items: {}}, PID = null;
 let torrents = [], shown = [], selected = null, cur = null, want = null;
 let qf = 'all', showAll = false, lastQ = '', autoPick = false, altQ = [];
+let sortNew = false;
+// تاريخ إضافة النسخة: بيقرأ أي حقل تاريخ يبعته السيرفر (ثواني / ميلي ثانية / نص ISO)
+function tDate(t) {
+  if (!t) return 0;
+  const f = [t.date, t.pub, t.pubDate, t.publishDate, t.published, t.added, t.uploaded, t.upload_date, t.created, t.age_ts, t.ts, t.time];
+  for (let i = 0; i < f.length; i++) {
+    let v = f[i];
+    if (v == null || v === '') continue;
+    if (typeof v === 'string' && /^\d+(\.\d+)?$/.test(v)) v = +v;
+    if (typeof v === 'number') { if (v > 1e12) return v; if (v > 1e9) return v * 1000; continue; }
+    const ms = Date.parse(v);
+    if (ms > 0) return ms;
+  }
+  return 0;
+}
+function ageTxt(ms) {
+  const d = Math.floor((Date.now() - ms) / 86400000);
+  if (d <= 0) return 'النهاردة';
+  if (d === 1) return 'امبارح';
+  if (d < 11) return 'من ' + d + ' أيام';
+  if (d < 30) return 'من ' + d + ' يوم';
+  if (d < 60) return 'من شهر';
+  if (d < 365) return 'من ' + Math.round(d / 30) + ' شهور';
+  return 'من ' + (d >= 730 ? Math.floor(d / 365) + ' سنين' : 'سنة');
+}
+function dateBadge(t, cls) {
+  const ms = tDate(t);
+  if (!ms) return '';
+  const d = (Date.now() - ms) / 86400000;
+  const ds = new Date(ms).toISOString().slice(0, 10);
+  const col = d <= 14 ? 'color:var(--success);font-weight:bold' : '';
+  return '<span' + (cls ? ' class="' + cls + '"' : '') + ' style="' + col + '" title="' + ds + '">📅 ' + ds + ' · ' + ageTxt(ms) + '</span>';
+}
 let seq = 0, pullId = 0, sReq = 0;
 let pack = null, packBase = null, curSrc = '', links = [];
 let PACKQ = false, LAST_ERR = '';
@@ -3640,7 +3674,7 @@ async function stGo(s, e, auto) {
   torrents = d.results;
   STREP = d.report || [];
   stMode = true;
-  qf = 'all';
+  qf = 'all'; sortNew = false;
   showAll = false;
   lastQ = '';
   renderTorrents();
@@ -3801,13 +3835,16 @@ function renderTorrents() {
   const none = !good.length;
   const list = (showAll ? base : good).filter(qOK);
   const df = dubFirst();
-  list.sort((a, b) => (df ? dubRank(b) - dubRank(a) : 0) || (!!b.cached - !!a.cached) || (b.seeders - a.seeders));
+  list.sort(sortNew
+    ? (a, b) => (tDate(b) - tDate(a)) || (!!b.cached - !!a.cached) || (b.seeders - a.seeders)
+    : (a, b) => (df ? dubRank(b) - dubRank(a) : 0) || (!!b.cached - !!a.cached) || (b.seeders - a.seeders));
   shown = list;
   const hidden = base.length - good.length;
   const fl = [['all', 'الكل'], ['eg', '🇪🇬 مصري'], ['dub', '🎙 مدبلج عربي'], ['sub', '💬 مترجم'], ['pack', '📦 باك كامل'], ['safe', '✅ للمتصفح'], ['fast', '⚡ فوري'], ['4k', '4K'], ['1080', '1080p'], ['720', '720p']];
   let h = '<label style="display:block;margin:0 0 10px;color:var(--mut);font-size:13px"><input type="checkbox" ' + (df ? 'checked ' : '') + 'onchange="setDubFirst(this.checked)"> 🇪🇬 العربي أولاً (مدبلج ← مترجم ← الأصلي)</label><div class="fbar">' + fl.map(f =>
     '<button class="fc' + (qf === f[0] ? ' on' : '') + '" onclick="setQf(\'' + f[0] + '\')">' + f[1] + '</button>'
   ).join('');
+  if (base.some(t => tDate(t))) h += '<button class="fc' + (sortNew ? ' on' : '') + '" onclick="toggleSortNew()">🆕 الأحدث أولاً</button>';
   if ((!none && hidden > 0) || (none && showAll)) {
     h += '<button class="fc' + (showAll ? ' on' : '') + '" onclick="toggleAll()">' +
       (showAll ? 'إخفاء غير المطابق' : 'عرض الكل (+' + hidden + ')') + '</button>';
@@ -3837,6 +3874,7 @@ function renderTorrents() {
       langBadge(t) +
       (risky(t.title) ? '<span class="badge" style="background:#ef4444;color:#fff">⚠️ ممكن مايشتغلش بالمتصفح</span>' : '') + bd +
       (tg ? '<span>🎞 ' + esc(tg) + '</span>' : '') +
+      dateBadge(t) +
       '<span>' + esc(t.indexer) + '</span></div>' +
       '<button onclick="pullTorrent(' + i + ')">' + (t.ref ? '▶ تشغيل' : '⬇️ سحب') + '</button></div></div>';
   }).join('');
@@ -3848,6 +3886,7 @@ function renderTorrents() {
 }
 function setQf(v) { qf = v; renderTorrents(); }
 function toggleAll() { showAll = !showAll; renderTorrents(); }
+function toggleSortNew() { sortNew = !sortNew; renderTorrents(); }
 
 async function markCached() {
   const my = seq;
@@ -4234,7 +4273,7 @@ const SOURCES = [
      return items;
    },
    title: t => t.title, thumb: () => '',
-   meta: t => '💾 ' + fmtSize(t.size) + ' · 🌱 ' + t.seeders + (t.cached ? ' · ⚡ فوري' : ''),
+   meta: t => '💾 ' + fmtSize(t.size) + ' · 🌱 ' + t.seeders + (tDate(t) ? ' · 📅 ' + ageTxt(tDate(t)) : '') + (t.cached ? ' · ⚡ فوري' : ''),
    open: t => pullSource(t.magnet, {src: t.magnet, title: ''}, null)},
   {id: 'dm', icon: '▶️', name: 'Dailymotion', color: '#0066dc',
    search: async q => {
@@ -4515,7 +4554,7 @@ function spTor(x, i) {
   return '<div class="spr" tabindex="0" onclick="srcOpen(' + i + ')"><div class="spri">🧲</div><div class="sprb">' +
     '<div class="sprt2" style="direction:ltr;text-align:left">' + esc(t.title) + '</div><div class="sprm">' +
     '<span class="spb sz">💾 ' + esc(fmtSize(t.size)) + '</span><span class="spb">🌱 ' + (t.seeders || 0) + '</span>' +
-    (tg ? '<span class="spb q">' + esc(tg) + '</span>' : '') + (t.cached ? '<span class="spb ok">⚡ فوري</span>' : '') +
+    (tg ? '<span class="spb q">' + esc(tg) + '</span>' : '') + dateBadge(t, 'spb') + (t.cached ? '<span class="spb ok">⚡ فوري</span>' : '') +
     '</div></div></div>';
 }
 function spDm(x, i) {
