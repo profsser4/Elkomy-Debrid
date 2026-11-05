@@ -678,7 +678,7 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 <button class="search-btn" onclick="clibOpen('movie')">🎬 أفلام</button>
 <button class="search-btn" onclick="clibOpen('series')">📺 مسلسلات</button>
 <button class="search-btn" onclick="clibOpen('cartoon')">🧸 كرتون</button>
-<button id="ivHomeBtn" class="search-btn" style="display:none;background:#0ea5e9" onclick="ivOpen()">📡 IPTV</button>
+<button id="ivHomeBtn" class="search-btn" style="background:#0ea5e9" onclick="ivOpen()">📡 IPTV</button>
 <button id="ivGmBtn" class="search-btn" style="display:none;background:#7c3aed" onclick="ivGmToggle()">📢 تثبيت للكل: مقفول</button>
 </div>
 
@@ -2643,8 +2643,8 @@ const ivCatTile = c => '<div class="poster mtile" tabindex="0" role="button" dat
 async function ivHomeLoad(pid) {
   const cfg = await ivCfg();
   const btn = $('ivHomeBtn');
-  if (btn) btn.style.display = cfg ? '' : 'none';
-  const ci = $('catIv'); if (ci) ci.style.display = cfg ? '' : 'none';
+  if (btn) btn.style.display = '';
+  const ci = $('catIv'); if (ci) ci.style.display = '';
   const gb = $('ivGmBtn'); if (gb) gb.style.display = (cfg && ROLE === 'admin') ? '' : 'none';
   if (!cfg) { IV.homeHTML = ''; IV.homePid = pid; return; }
   if (IV.homeFor !== pid) return;
@@ -2691,8 +2691,10 @@ async function ivHomeLoad(pid) {
 }
 function ivHomeRetry() { IV.L = {}; IV.C = {}; IV.homePid = null; IV.homeFor = PID; ivHomeLoad(PID); }
 // ---------- صفحة «المزيد» ----------
-function ivOpen(tab, cat) {
-  if (!isPremiumOK()) { alert((typeof LOCK_MSG === 'string' && LOCK_MSG) || 'قسم الـIPTV للأعضاء المميزين بس.'); return; }
+async function ivOpen(tab, cat) {
+  if (!isPremiumOK()) { alert('اشترك في الخدمة المميزة'); return; }
+  if (!IV.cfg) await ivCfg(true);
+  if (!IV.cfg) { alert('اشترك في الخدمة المميزة'); return; }
   IV.tab = tab || IV.tab || 'vod';
   IV.cat = cat || '';
   IV.q = ''; IV.lim = 90; IV.sel = null;
@@ -8039,7 +8041,7 @@ function catTabs() {
   if (!el.children.length) {
     el.innerHTML = CATS.map(c => '<button class="cat" data-c="' + c[0] + '" onclick="setCat(this.dataset.c)">' + c[1] + '</button>').join('') +
       '<button class="cat" id="catLib" onclick="clibOpen(\'movie\')">📚 المكتبة</button>' +
-      '<button class="cat" id="catIv" style="display:' + (IV.cfg ? '' : 'none') + '" onclick="ivOpen()">📡 IPTV</button>';
+      '<button class="cat" id="catIv" onclick="ivOpen()">📡 IPTV</button>';
   }
   el.querySelectorAll('.cat[data-c]').forEach(b => b.classList.toggle('on', b.dataset.c === CAT));
   const ch = $('clHome');
