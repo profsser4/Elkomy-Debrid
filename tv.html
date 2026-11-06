@@ -2115,14 +2115,14 @@ function mxApplyTheme() {
     c += '.cat.sel,.chip.sel{background:' + t.sel + '}';
     c += '.btn,.hbar .btn,.chip{background:' + t.bt + '}.cat,.row,.card{background:' + t.pn + '}';
   }
-  c += 'html.mxg .scr:before{content:"";position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:-1;pointer-events:none;' +
+  if (mxGet('mx_glow', '0') === '1') c += 'html.mxg .scr:before{content:"";position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:-1;pointer-events:none;' +
     'background:radial-gradient(ellipse at 85% 0%,' + mxRgba(t.g, .16) + ' 0%,transparent 55%),radial-gradient(ellipse at 8% 100%,' + mxRgba(t.g, .10) + ' 0%,transparent 50%)}';
   var st = D.getElementById('mxth');
   if (!st) { st = D.createElement('style'); st.id = 'mxth'; D.head.appendChild(st); }
   st.textContent = c;
   var h = D.documentElement, cl = h.className.replace(/ ?\bmxg\b/g, '').replace(/ ?\bmxoff\b/g, '');
-  if (mxGet('mx_glow', '1') === '1') cl += ' mxg';
-  if (mxGet('mx_w_on', '1') !== '1') cl += ' mxoff';
+  if (mxGet('mx_glow', '0') === '1') cl += ' mxg';
+  if (mxGet('mx_w_on', '0') !== '1') cl += ' mxoff';
   h.className = cl;
 }
 /* ---- شريط الطقس + الصلاة ---- */
@@ -2165,6 +2165,7 @@ function mxPrayer(L, cb) {
 var MX_PN = [['Fajr', 'الفجر'], ['Dhuhr', 'الظهر'], ['Asr', 'العصر'], ['Maghrib', 'المغرب'], ['Isha', 'العشاء']];
 function mxWIcon(c) { return c === 0 ? '☀️' : c <= 2 ? '🌤' : c === 3 ? '☁️' : (c === 45 || c === 48) ? '🌫' : (c >= 51 && c <= 67) ? '🌧' : (c >= 71 && c <= 77) ? '❄️' : (c >= 80 && c <= 82) ? '🌦' : c >= 95 ? '⛈' : '🌡'; }
 function mxPaint() {
+  if (mxGet('mx_w_on', '0') !== '1') return;
   var els = D.querySelectorAll('.mwx'), i, w = '', p = '';
   if (MX.w) w = mxWIcon(MX.w.code) + ' ' + MX.w.temp + '°' + (MX.loc && MX.loc.city ? ' ' + MX.loc.city : '');
   if (MX.p && MX.p.t) {
@@ -2176,7 +2177,7 @@ function mxPaint() {
   for (i = 0; i < els.length; i++) els[i].innerHTML = (w ? '<span>' + w + '</span>' : '') + (p ? '<span>' + p + '</span>' : '');
 }
 function mxRefresh() {
-  if (mxGet('mx_w_on', '1') !== '1') return;
+  if (mxGet('mx_w_on', '0') !== '1') return;
   mxLoc(function (L) {
     MX.loc = L;
     mxWeather(L, function (w) { MX.w = w; mxPaint(); });
@@ -2232,16 +2233,16 @@ function mxOpen() {
   var box = $('mthbox'); box.innerHTML = '';
   function btn(fn) { var d = D.createElement('div'); d.className = 'f btn'; d.style.cssText = 'width:100%;margin:10px 0'; d._ok = function () { fn(); lbl(); }; box.appendChild(d); return d; }
   var bt = btn(function () { var t = mxTh(), i = 0; MX_TH.forEach(function (x, ix) { if (x.id === t.id) i = ix; }); mxSet('mx_th', MX_TH[(i + 1) % MX_TH.length].id); mxApplyTheme(); });
-  var bg = btn(function () { mxSet('mx_glow', mxGet('mx_glow', '1') === '1' ? '0' : '1'); mxApplyTheme(); });
-  var bw = btn(function () { mxSet('mx_w_on', mxGet('mx_w_on', '1') === '1' ? '0' : '1'); mxApplyTheme(); if (mxGet('mx_w_on', '1') === '1') mxRefresh(); });
+  var bg = btn(function () { mxSet('mx_glow', mxGet('mx_glow', '0') === '1' ? '0' : '1'); mxApplyTheme(); });
+  var bw = btn(function () { mxSet('mx_w_on', mxGet('mx_w_on', '0') === '1' ? '0' : '1'); mxApplyTheme(); if (mxGet('mx_w_on', '0') === '1') mxRefresh(); });
   var bi = btn(function () { mxSet('mx_ime', mxGet('mx_ime', '1') === '1' ? '0' : '1'); });
   var bp = btn(function () { var m = mxGet('mx_pm', '5'), i = 0; MX_PM.forEach(function (x, ix) { if (String(x[0]) === m) i = ix; }); mxSet('mx_pm', String(MX_PM[(i + 1) % MX_PM.length][0])); MX.p = null; mxRefresh(); });
   var br = btn(function () { mxSet('mx_loc', ''); mxSet('mx_w', ''); mxSet('mx_p', ''); MX.w = MX.p = null; mxPaint(); mxRefresh(); toast('بحدّث الموقع والطقس والمواقيت...'); });
   var bb = btn(function () { back(); });
   function lbl() {
     var pm = ''; MX_PM.forEach(function (x) { if (String(x[0]) === mxGet('mx_pm', '5')) pm = x[1]; });
-    bt.textContent = '🎨 الثيم: ' + mxTh().n; bg.textContent = '✨ توهّج الخلفية: ' + (mxGet('mx_glow', '1') === '1' ? 'شغّال' : 'مقفول');
-    bw.textContent = '🌤 الطقس ومواقيت الصلاة: ' + (mxGet('mx_w_on', '1') === '1' ? 'شغّال' : 'مقفول');
+    bt.textContent = '🎨 الثيم: ' + mxTh().n; bg.textContent = '✨ توهّج الخلفية: ' + (mxGet('mx_glow', '0') === '1' ? 'شغّال' : 'مقفول');
+    bw.textContent = '🌤 الطقس ومواقيت الصلاة: ' + (mxGet('mx_w_on', '0') === '1' ? 'شغّال' : 'مقفول');
     bi.textContent = '📱 الكتابة من الموبايل تلقائياً: ' + (mxGet('mx_ime', '1') === '1' ? 'شغّال' : 'مقفول');
     bp.textContent = '🕌 طريقة حساب الصلاة: ' + pm; br.textContent = '📍 تحديث موقعي (تلقائي من الإنترنت)'; bb.textContent = 'رجوع';
   }
@@ -2267,7 +2268,8 @@ function mxOpen() {
     box.insertBefore(d, last);
   };
   mxInitChip(); mxApplyTheme();
-  setTimeout(mxRefresh, 2500); setInterval(mxPaint, 30000); setInterval(mxRefresh, 30 * 60000);
+  if (mxGet('mx_w_on', '0') === '1') setTimeout(mxRefresh, 2500);
+  setInterval(mxPaint, 60000); setInterval(mxRefresh, 30 * 60000);
 })();
 /* ===================== نهاية الإضافات ===================== */
 
