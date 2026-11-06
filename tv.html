@@ -1082,6 +1082,7 @@ $('sTest')._ok = function () {
 
 /* ===================== أزرار الريموت ===================== */
 function onKeyDown(e) {
+  if (e.target && e.target.id === 'mxime') return;   // خانة الكتابة من الموبايل: سيبها للتلفزيون
   var k = e.keyCode;
   if (KB) {
     if (k === 10009 || k === 27) kbClose(false);
@@ -2087,6 +2088,188 @@ function sxAfterPlay() {
   else if (curScr === 'detail' && SX.cur && D.getElementById('dbtns')) { var d = SX.cur; siteDetails(d.type === 'movie' ? 'movie' : 'tv', d.id, true); }
   else if (cur && D.body.contains(cur)) { var c = cur; cur = null; setFocus(c); }
 }
+
+/* ===================== إضافات مستوحاة من Morph: ثيمات + طقس + مواقيت صلاة (إضافة فقط) ===================== */
+function mxGet(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
+function mxSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+var MX_TH = [
+  {id: 'blue', n: 'أزرق ليلي (الأصلي)', g: '#38bdf8'},
+  {id: 'violet', n: 'بنفسجي', g: '#a78bfa', a: '#a78bfa', b: '#7c3aed', sel: '#6d28d9', bg: ['#0e0a1f', '#1a1238', '#120b2a'], pn: '#1c1538', bt: '#2a1f52', on: '#3b2a7a'},
+  {id: 'emerald', n: 'زمردي', g: '#34d399', a: '#34d399', b: '#059669', sel: '#047857', bg: ['#06140f', '#0b2a20', '#07180f'], pn: '#0f2a21', bt: '#143a2e', on: '#0f5a43'},
+  {id: 'gold', n: 'ذهبي', g: '#fbbf24', a: '#fbbf24', b: '#d97706', sel: '#b45309', bg: ['#160f05', '#2a1d08', '#1a1206'], pn: '#2a1f0c', bt: '#3a2a10', on: '#6b4a10'},
+  {id: 'red', n: 'أحمر ناري', g: '#fb7185', a: '#fb7185', b: '#e11d48', sel: '#be123c', bg: ['#16070b', '#2c0d16', '#1a080e'], pn: '#2c111b', bt: '#3d1624', on: '#7a1d34'},
+  {id: 'mono', n: 'رمادي أنيق', g: '#e5e7eb', a: '#e5e7eb', b: '#6b7280', sel: '#4b5563', bg: ['#0b0b0d', '#17171b', '#0e0e11'], pn: '#1c1c22', bt: '#26262e', on: '#3a3a45'}
+];
+var MX_PM = [[5, 'الهيئة المصرية'], [4, 'أم القرى (مكة)'], [3, 'رابطة العالم الإسلامي']];
+function mxTh() { var id = mxGet('mx_th', 'blue'), i; for (i = 0; i < MX_TH.length; i++) if (MX_TH[i].id === id) return MX_TH[i]; return MX_TH[0]; }
+function mxRgba(h, a) { var n = parseInt(h.slice(1), 16); return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
+function mxApplyTheme() {
+  var t = mxTh(), c = '';
+  if (t.a) {
+    c += '.scr{background:linear-gradient(135deg,' + t.bg[0] + ' 0%,' + t.bg[1] + ' 55%,' + t.bg[2] + ' 100%)}';
+    c += '.f.on{box-shadow:0 0 0 5px ' + t.a + ',0 12px 40px rgba(0,0,0,.45)}';
+    c += '.row.on,.cat.on,.ep.on{box-shadow:inset 0 0 0 5px ' + t.a + ';background:' + t.on + '}';
+    c += '.card.on{box-shadow:0 0 0 4px ' + t.a + '}';
+    c += '.toast{border-color:' + t.a + '}.logo b{color:' + t.a + '}';
+    c += '.btn.pri{background:linear-gradient(90deg,' + t.b + ',' + t.a + ')}';
+    c += '.cat.sel,.chip.sel{background:' + t.sel + '}';
+    c += '.btn,.hbar .btn,.chip{background:' + t.bt + '}.cat,.row,.card{background:' + t.pn + '}';
+  }
+  c += 'html.mxg .scr:before{content:"";position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:-1;pointer-events:none;' +
+    'background:radial-gradient(ellipse at 85% 0%,' + mxRgba(t.g, .16) + ' 0%,transparent 55%),radial-gradient(ellipse at 8% 100%,' + mxRgba(t.g, .10) + ' 0%,transparent 50%)}';
+  var st = D.getElementById('mxth');
+  if (!st) { st = D.createElement('style'); st.id = 'mxth'; D.head.appendChild(st); }
+  st.textContent = c;
+  var h = D.documentElement, cl = h.className.replace(/ ?\bmxg\b/g, '').replace(/ ?\bmxoff\b/g, '');
+  if (mxGet('mx_glow', '1') === '1') cl += ' mxg';
+  if (mxGet('mx_w_on', '1') !== '1') cl += ' mxoff';
+  h.className = cl;
+}
+/* ---- شريط الطقس + الصلاة ---- */
+var MX = {loc: null, w: null, p: null};
+function mxLoc(cb) {
+  var L = jparse(mxGet('mx_loc', ''));
+  if (L && L.t && Date.now() - L.t < 6 * 864e5) return cb(L);
+  xhr('GET', 'https://ipwho.is/', null, {}, function (e, s, tx) {
+    var j = !e && s === 200 && jparse(tx);
+    if (j && j.success !== false && j.latitude != null) {
+      L = {lat: j.latitude, lon: j.longitude, city: j.city || '', t: Date.now()};
+      mxSet('mx_loc', JSON.stringify(L)); return cb(L);
+    }
+    cb({lat: 30.0444, lon: 31.2357, city: 'القاهرة', t: 0});
+  }, 8000);
+}
+function mxWeather(L, cb) {
+  var c = jparse(mxGet('mx_w', ''));
+  if (c && Date.now() - c.t < 30 * 60000 && Math.abs(c.lat - L.lat) < .5) return cb(c);
+  xhr('GET', 'https://api.open-meteo.com/v1/forecast?latitude=' + L.lat + '&longitude=' + L.lon + '&current=temperature_2m,weather_code&timezone=auto', null, {}, function (e, s, tx) {
+    var j = !e && s === 200 && jparse(tx);
+    if (j && j.current) { c = {t: Date.now(), lat: L.lat, temp: Math.round(j.current.temperature_2m), code: j.current.weather_code}; mxSet('mx_w', JSON.stringify(c)); return cb(c); }
+    cb(c || null);
+  }, 10000);
+}
+function mxPrayer(L, cb) {
+  var d = new Date(), key = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(), m = mxGet('mx_pm', '5');
+  var c = jparse(mxGet('mx_p', ''));
+  if (c && c.k === key && c.m === m && Math.abs(c.lat - L.lat) < .5) return cb(c);
+  xhr('GET', 'https://api.aladhan.com/v1/timings/' + p2(d.getDate()) + '-' + p2(d.getMonth() + 1) + '-' + d.getFullYear() + '?latitude=' + L.lat + '&longitude=' + L.lon + '&method=' + m, null, {}, function (e, s, tx) {
+    var j = !e && s === 200 && jparse(tx), T = j && j.data && j.data.timings;
+    if (T) {
+      var out = {k: key, m: m, lat: L.lat, t: {}}, names = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'], i, r;
+      for (i = 0; i < names.length; i++) { r = /(\d{1,2}):(\d{2})/.exec(T[names[i]] || ''); if (r) out.t[names[i]] = +r[1] * 60 + +r[2]; }
+      mxSet('mx_p', JSON.stringify(out)); return cb(out);
+    }
+    cb(c || null);
+  }, 10000);
+}
+var MX_PN = [['Fajr', 'الفجر'], ['Dhuhr', 'الظهر'], ['Asr', 'العصر'], ['Maghrib', 'المغرب'], ['Isha', 'العشاء']];
+function mxWIcon(c) { return c === 0 ? '☀️' : c <= 2 ? '🌤' : c === 3 ? '☁️' : (c === 45 || c === 48) ? '🌫' : (c >= 51 && c <= 67) ? '🌧' : (c >= 71 && c <= 77) ? '❄️' : (c >= 80 && c <= 82) ? '🌦' : c >= 95 ? '⛈' : '🌡'; }
+function mxPaint() {
+  var els = D.querySelectorAll('.mwx'), i, w = '', p = '';
+  if (MX.w) w = mxWIcon(MX.w.code) + ' ' + MX.w.temp + '°' + (MX.loc && MX.loc.city ? ' ' + MX.loc.city : '');
+  if (MX.p && MX.p.t) {
+    var d = new Date(), now = d.getHours() * 60 + d.getMinutes(), nx = null, k;
+    for (k = 0; k < MX_PN.length; k++) { var v = MX.p.t[MX_PN[k][0]]; if (v != null && v > now) { nx = [MX_PN[k][1], v - now]; break; } }
+    if (!nx && MX.p.t.Fajr != null) nx = ['الفجر', MX.p.t.Fajr + 1440 - now];
+    if (nx) { var hh = Math.floor(nx[1] / 60), mm = nx[1] % 60; p = '🕌 ' + nx[0] + ' بعد ' + (hh ? hh + 'س ' : '') + mm + 'د'; }
+  }
+  for (i = 0; i < els.length; i++) els[i].innerHTML = (w ? '<span>' + w + '</span>' : '') + (p ? '<span>' + p + '</span>' : '');
+}
+function mxRefresh() {
+  if (mxGet('mx_w_on', '1') !== '1') return;
+  mxLoc(function (L) {
+    MX.loc = L;
+    mxWeather(L, function (w) { MX.w = w; mxPaint(); });
+    mxPrayer(L, function (p) { MX.p = p; mxPaint(); });
+  });
+}
+function mxInitChip() {
+  var mk = function () { var d = D.createElement('div'); d.className = 'mwx'; return d; }, t;
+  t = $('home') && $('home').querySelector('.top'); if (t) t.insertBefore(mk(), t.lastChild);
+  t = $('mode') && $('mode').querySelector('.top'); if (t) t.appendChild(mk());
+  t = $('sxT'); if (t && t.parentNode) t.parentNode.insertBefore(mk(), t.nextSibling);
+}
+/* ---- كتابة من الموبايل (Samsung Remote / SmartThings): خانة نص حقيقية بتخلّي التلفزيون يفتح جلسة الكتابة، فالموبايل يظهر له مربع "Text:" ---- */
+var mxIn = null;
+function mxImeOn() {
+  if (!KB) return;
+  if (!mxIn) {
+    mxIn = D.createElement('input'); mxIn.id = 'mxime'; mxIn.type = 'text'; mxIn.setAttribute('autocomplete', 'off'); mxIn.setAttribute('autocapitalize', 'off');
+    mxIn.style.cssText = 'position:absolute;left:260px;right:260px;top:90px;height:110px;z-index:60;font-size:56px;text-align:center;background:transparent;color:transparent;caret-color:transparent;border:0;outline:0;display:none';
+    D.body.appendChild(mxIn);
+    mxIn.addEventListener('input', function () { if (KB) { KB.val = mxIn.value; kbPaint(); } });
+    mxIn.addEventListener('keydown', function (e) {
+      var k = e.keyCode; e.stopPropagation();
+      if (k === 13 || k === 65376) { e.preventDefault(); if (KB) kbClose(true); }
+      else if (k === 10009 || k === 65385 || k === 27) { e.preventDefault(); mxImeOff(); var f = $('kbk') && $('kbk').querySelector('.k'); if (f) setFocus(f); }
+    });
+  }
+  mxIn.type = KB.secret ? 'password' : 'text';
+  mxIn.value = KB.val || ''; mxIn.style.display = 'block';
+  try { mxIn.focus(); mxIn.setSelectionRange(mxIn.value.length, mxIn.value.length); } catch (e) {}
+}
+function mxImeOff() {
+  if (!mxIn) return;
+  try { mxIn.blur(); } catch (e) {}
+  mxIn.style.display = 'none';
+}
+var _kbOpen = kbOpen;
+kbOpen = function () {
+  _kbOpen.apply(this, arguments);
+  if (mxGet('mx_ime', '1') === '1') setTimeout(mxImeOn, 250);
+};
+var _kbClose = kbClose;
+kbClose = function () { mxImeOff(); return _kbClose.apply(this, arguments); };
+var _kbBuild = kbBuild;
+kbBuild = function () {
+  _kbBuild.apply(this, arguments);
+  var rows = $('kbk').querySelectorAll('.kr'), last = rows[rows.length - 1];
+  if (last) { kbKey(last, '📱 موبايل', '#ime', 1); last.lastChild._ok = function () { mxImeOn(); }; }
+};
+/* ---- شاشة المظهر والإضافات ---- */
+function mxOpen() {
+  go('mth');
+  var box = $('mthbox'); box.innerHTML = '';
+  function btn(fn) { var d = D.createElement('div'); d.className = 'f btn'; d.style.cssText = 'width:100%;margin:10px 0'; d._ok = function () { fn(); lbl(); }; box.appendChild(d); return d; }
+  var bt = btn(function () { var t = mxTh(), i = 0; MX_TH.forEach(function (x, ix) { if (x.id === t.id) i = ix; }); mxSet('mx_th', MX_TH[(i + 1) % MX_TH.length].id); mxApplyTheme(); });
+  var bg = btn(function () { mxSet('mx_glow', mxGet('mx_glow', '1') === '1' ? '0' : '1'); mxApplyTheme(); });
+  var bw = btn(function () { mxSet('mx_w_on', mxGet('mx_w_on', '1') === '1' ? '0' : '1'); mxApplyTheme(); if (mxGet('mx_w_on', '1') === '1') mxRefresh(); });
+  var bi = btn(function () { mxSet('mx_ime', mxGet('mx_ime', '1') === '1' ? '0' : '1'); });
+  var bp = btn(function () { var m = mxGet('mx_pm', '5'), i = 0; MX_PM.forEach(function (x, ix) { if (String(x[0]) === m) i = ix; }); mxSet('mx_pm', String(MX_PM[(i + 1) % MX_PM.length][0])); MX.p = null; mxRefresh(); });
+  var br = btn(function () { mxSet('mx_loc', ''); mxSet('mx_w', ''); mxSet('mx_p', ''); MX.w = MX.p = null; mxPaint(); mxRefresh(); toast('بحدّث الموقع والطقس والمواقيت...'); });
+  var bb = btn(function () { back(); });
+  function lbl() {
+    var pm = ''; MX_PM.forEach(function (x) { if (String(x[0]) === mxGet('mx_pm', '5')) pm = x[1]; });
+    bt.textContent = '🎨 الثيم: ' + mxTh().n; bg.textContent = '✨ توهّج الخلفية: ' + (mxGet('mx_glow', '1') === '1' ? 'شغّال' : 'مقفول');
+    bw.textContent = '🌤 الطقس ومواقيت الصلاة: ' + (mxGet('mx_w_on', '1') === '1' ? 'شغّال' : 'مقفول');
+    bi.textContent = '📱 الكتابة من الموبايل تلقائياً: ' + (mxGet('mx_ime', '1') === '1' ? 'شغّال' : 'مقفول');
+    bp.textContent = '🕌 طريقة حساب الصلاة: ' + pm; br.textContent = '📍 تحديث موقعي (تلقائي من الإنترنت)'; bb.textContent = 'رجوع';
+  }
+  lbl(); cur = null; setFocus(bt);
+}
+(function () {
+  var s = D.createElement('style');
+  s.textContent = '.mwx{font-size:24px;color:#cbd5f5;display:flex;gap:26px;align-items:center;white-space:nowrap;margin:0 24px}' +
+    '#site .mwx{font-size:21px;gap:16px;margin:0 14px}html.mxoff .mwx{display:none}html.playing .mwx{display:none}' +
+    '#mthbox{position:absolute;left:260px;right:260px;top:130px;bottom:40px;overflow:hidden}';
+  D.head.appendChild(s);
+  var sc = D.createElement('div'); sc.id = 'mth'; sc.className = 'scr';
+  sc.innerHTML = '<div class="bh"><h2>🎨 المظهر والإضافات</h2></div><div id="mthbox" class="sc"></div>';
+  D.body.appendChild(sc);
+  var b = D.createElement('div'); b.className = 'f btn'; b.id = 'sMx'; b.style.cssText = 'width:100%;margin:12px 0'; b.textContent = '🎨 المظهر والإضافات';
+  b._ok = function () { mxOpen(); };
+  var c = $('sClr'); if (c && c.parentNode) c.parentNode.insertBefore(b, c);
+  var _sxs = sxSettings;
+  sxSettings = function () {
+    _sxs.apply(this, arguments);
+    var box = $('ssbox'), l = box.querySelectorAll('.f'), last = l[l.length - 1];
+    var d = D.createElement('div'); d.className = 'f btn'; d.style.cssText = 'width:100%;margin:10px 0'; d.textContent = '🎨 المظهر والإضافات'; d._ok = mxOpen;
+    box.insertBefore(d, last);
+  };
+  mxInitChip(); mxApplyTheme();
+  setTimeout(mxRefresh, 2500); setInterval(mxPaint, 30000); setInterval(mxRefresh, 30 * 60000);
+})();
+/* ===================== نهاية الإضافات ===================== */
 
 boot();
 })();
