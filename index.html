@@ -1671,7 +1671,7 @@ async function dlM3U1() {
   const t = Math.floor((v && v.currentTime) || PLAY.resume || 0);
   const body = '#EXTM3U\n#EXTINF:-1,' + (PLAY.title || PLAY.fname || 'video') + '\n' +
     (sx ? '#EXTVLCOPT:input-slave=' + sx + '\n' : '') + (t > 5 ? '#EXTVLCOPT:start-time=' + t + '\n' : '') +
-    (PLAY.hls || PLAY.url) + '\n';
+    (PLAY.url || PLAY.hls) + '\n';   // VLC بيشغّل كل الصيغ: الرابط الأصلي (صوت وصورة كاملين) مش البث المحوَّل
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([body], {type: 'audio/x-mpegurl'}));
   a.download = 'video.m3u';
@@ -10207,29 +10207,32 @@ body:not(.m-tv) #details .tab.on{background:linear-gradient(135deg,#38bdf8,#2563
 </style>
 
 <script>
-/* ===== إضافة: زر "مسار صوت/جودة تانية" لبث TorBox (إضافة فقط، ما بيغيّر أي كود قديم) ===== */
+/* ===== إضافة: بث TorBox ذكي (مشاهدة = بث محوَّل، تحميل/VLC = الرابط الأصلي) =====
+   - بيراقب الفيديو: لو حصل error أو الصورة سودا أو مفيش صوت، بيجرّب لوحده مسار صوت/جودة تانية (لحد 3 محاولات)
+   - وفيه زر يدوي "مسار صوت/جودة تانية" */
 (function () {
   const _pd = window.playData;
   if (typeof _pd !== 'function') return;
   window.playData = function (d, base) {
     try {
       window.__TBX = (d && d.torrent_id != null && d.file_id != null && /torbox/i.test(String(d.provider || '')))
-        ? {tid: d.torrent_id, fid: d.file_id, n: 0} : null;
+        ? {tid: d.torrent_id, fid: d.file_id, n: 0, auto: 0, v: null} : null;
     } catch (e) {}
     return _pd.apply(this, arguments);
   };
-  // ترتيب المحاولات: مسارات صوت 1..3 ثم جودات 1..2
-  const TRIES = [{audio: 1}, {audio: 2}, {audio: 3}, {resolution: 1}, {resolution: 2}, {audio: 0, resolution: 0}];
-  async function tbxNext(btn) {
-    const X = window.__TBX; if (!X) return;
-    const v = document.querySelector('#results video') || document.querySelector('video');
-    if (!v) return;
-    const body = Object.assign({torrent_id: X.tid, file_id: X.fid}, TRIES[X.n % TRIES.length]);
-    X.n++;
-    const old = btn.textContent; btn.textContent = '⏳ ...'; btn.disabled = true;
+  const TRIES = [{audio: 1}, {audio: 2}, {resolution: 1}, {audio: 3}, {resolution: 2}, {audio: 0, resolution: 0}];
+  const vid = () => document.querySelector('#results video') || document.querySelector('video');
+  async function tbxNext(btn, auto) {
+    const X = window.__TBX; if (!X || X.busy) return;
+    const v = vid(); if (!v) return;
+    const noHls = !(window.PLAY && PLAY.hls) && X.n === 0;
+    const body = Object.assign({torrent_id: X.tid, file_id: X.fid}, noHls ? {} : TRIES[X.n % TRIES.length]);
+    if (!noHls) X.n++;
+    X.busy = true;
+    const old = btn ? btn.textContent : ''; if (btn) { btn.textContent = '⏳ ...'; btn.disabled = true; }
     try {
       const {d} = await api('/tb/stream', {method: 'POST', body: JSON.stringify(body), timeout: 40000});
-      if (!d || !d.hls) { toast('❌ ' + ((d && (d.note || d.error)) || 'TorBox ماردّش'), true); return; }
+      if (!d || !d.hls) { if (!auto) toast('❌ ' + ((d && (d.note || d.error)) || 'TorBox ماردّش'), true); return; }
       const t = v.currentTime || 0;
       try { if (v._hls) v._hls.destroy(); } catch (e) {}
       if (window.Hls && Hls.isSupported()) {
@@ -10240,21 +10243,41 @@ body:not(.m-tv) #details .tab.on{background:linear-gradient(135deg,#38bdf8,#2563
         v.src = d.hls; v.load();
         v.addEventListener('loadedmetadata', () => { try { v.currentTime = t; } catch (e) {} v.play().catch(() => {}); }, {once: true});
       }
-      try { if (PLAY) PLAY.hls = d.hls; } catch (e) {}
-      toast('✅ جرّبت بديل (' + (body.audio != null ? 'صوت ' + body.audio : '') + (body.resolution != null ? ' جودة ' + body.resolution : '') + ')');
-    } catch (e) { toast('❌ ' + String((e && e.message) || e).slice(0, 80), true); }
-    finally { btn.textContent = old; btn.disabled = false; }
+      try { if (window.PLAY) PLAY.hls = d.hls; } catch (e) {}
+      X.chk = Date.now();
+      toast((auto ? '🔁 تلقائي: ' : '✅ ') + 'جرّبت ' + (body.audio != null ? 'مسار صوت ' + body.audio : '') + (body.resolution != null ? ' جودة ' + body.resolution : (body.audio == null ? 'بث جديد' : '')));
+    } catch (e) { if (!auto) toast('❌ ' + String((e && e.message) || e).slice(0, 80), true); }
+    finally { X.busy = false; if (btn) { btn.textContent = old; btn.disabled = false; } }
   }
+  // فحص تلقائي كل 3 ثواني: صورة سودا / مفيش صوت / error
+  setInterval(function () {
+    try {
+      const X = window.__TBX, v = vid();
+      if (!X || !v || X.busy || X.auto >= 3 || !(window.PLAY && PLAY.hls)) return;
+      if (v.paused || v.seeking || v.readyState < 2) return;
+      if (X.v !== v) { X.v = v; X.chk = Date.now(); X.t0 = v.currentTime; return; }
+      if (Date.now() - (X.chk || 0) < 8000) return;        // ندّي المشغّل 8 ثواني يستقر
+      if (v.currentTime - (X.t0 || 0) < 4) return;          // لازم يكون ماشي فعلاً
+      const noPic = v.videoWidth === 0;
+      const noSnd = !v.muted && v.volume > 0 && typeof v.webkitAudioDecodedByteCount === 'number' && v.webkitAudioDecodedByteCount === 0;
+      if (noPic || noSnd) { X.auto++; X.chk = Date.now(); X.t0 = v.currentTime; tbxNext(null, true); }
+    } catch (e) {}
+  }, 3000);
+  document.addEventListener('error', function (ev) {
+    try {
+      const X = window.__TBX; if (!X || X.busy || X.auto >= 3) return;
+      if (ev.target && ev.target.tagName === 'VIDEO' && window.PLAY && PLAY.hls) { X.auto++; tbxNext(null, true); }
+    } catch (e) {}
+  }, true);
   setInterval(function () {
     try {
       const has = document.getElementById('tbxBtn');
-      const v = document.querySelector('#results video') || document.querySelector('video');
-      if (!window.__TBX || !v) { if (has) has.remove(); return; }
+      if (!window.__TBX || !vid()) { if (has) has.remove(); return; }
       if (has) return;
       const b = document.createElement('button');
       b.id = 'tbxBtn'; b.type = 'button'; b.textContent = '🔊 مسار صوت/جودة تانية';
       b.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:99999;padding:9px 14px;border:0;border-radius:99px;background:#0ea5e9;color:#fff;font:700 13px inherit;opacity:.9';
-      b.onclick = function () { tbxNext(b); };
+      b.onclick = function () { tbxNext(b, false); };
       document.body.appendChild(b);
     } catch (e) {}
   }, 2500);
