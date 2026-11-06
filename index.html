@@ -7,6 +7,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v38: التلفزيون (سامسونج): مشغّل AVPlay جوه الصفحة (يدعم MKV/HEVC/DDP) بنفس واجهة مشغّل الأندرويد (كمّل مشاهدة + الحلقة التالية + الترجمة والصوت بالألوان) + تحديث تلقائي للصفحة من غير إعادة رفع التطبيق + رجوع مرتين للخروج
   v37: تاريخ آخر إضافة على نتايج التورنت (شارة 📅 + زرار «🆕 الأحدث أولاً») — بيقرأ التاريخ من السيرفر لو بعته
   v36: IPTV: حساب مشترك لكل الأعضاء + تثبيت أقسام/قنوات للكل من الأدمن (محتاج bot-40.py)
   v35: عرض الجودة والمساحة في نتايج بحث Moviz وAhwak (محتاج bot-40.py)
@@ -589,10 +590,353 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 .favp .chips{display:flex;flex-wrap:wrap;gap:8px}
 .favp .chips .fc{display:inline-flex;align-items:center}
 .favp .chips .fc.xl.on{background:#dc2626;border-color:#dc2626;color:#fff}
-</style></head>
+</style><script>(function(){if(/Tizen|SMART-TV|SMARTTV/i.test(navigator.userAgent)){window.IS_TIZEN=true;document.write('<script src="$WEBAPIS/webapis/webapis.js"><\/script>');}})();</script>
+<script>
+/* ===== Elkomy TV Bridge (v38) — بيشتغل على تلفزيونات سامسونج (Tizen) بس ===== */
+(function () {
+  'use strict';
+  if (!window.IS_TIZEN) return;
+  var W = window, D = document, AV = null;
+  try { AV = W.webapis && W.webapis.avplay; } catch (e) {}
+
+  /* مفاتيح الريموت */
+  try {
+    ['MediaPlay', 'MediaPause', 'MediaPlayPause', 'MediaStop', 'MediaRewind', 'MediaFastForward',
+      'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue', 'ChannelUp', 'ChannelDown'
+    ].forEach(function (k) { try { tizen.tvinputdevice.registerKey(k); } catch (e) {} });
+  } catch (e) {}
+
+  var PLAYING = false, pendingUpd = 0;
+
+  /* ---------- رسالة صغيرة فوق الصفحة ---------- */
+  var toastEl = null, toastT = null;
+  function toast(t, ms) {
+    if (!D.body) return;
+    if (!toastEl) {
+      toastEl = D.createElement('div');
+      toastEl.style.cssText = 'position:fixed;left:50%;bottom:60px;transform:translateX(-50%);z-index:2147483647;background:rgba(15,23,42,.95);color:#fff;border:2px solid #38bdf8;border-radius:16px;padding:14px 34px;font:700 26px Tahoma,Arial,sans-serif;direction:rtl;display:none';
+      D.body.appendChild(toastEl);
+    }
+    toastEl.textContent = t; toastEl.style.display = 'block';
+    clearTimeout(toastT); toastT = setTimeout(function () { toastEl.style.display = 'none'; }, ms || 2500);
+  }
+
+  /* ---------- زرار رجوع من الرئيسية = خروج (بعد تأكيد) ---------- */
+  var backAt = 0;
+  W.addEventListener('keydown', function (e) {
+    if (PLAYING || e.keyCode !== 10009) return;
+    var a = D.activeElement, tg = a && a.tagName;
+    if (tg === 'INPUT' || tg === 'TEXTAREA') return;
+    setTimeout(function () {                 // نسيب كود الصفحة يتعامل الأول
+      if (e.defaultPrevented) return;
+      var n = Date.now();
+      if (n - backAt < 2500) { try { tizen.application.getCurrentApplication().exit(); } catch (x) {} return; }
+      backAt = n; toast('اضغط رجوع تاني للخروج');
+    }, 0);
+  });
+
+  /* ---------- تحديث تلقائي للصفحة ---------- */
+  function applyUpd() {
+    pendingUpd = 0;
+    toast('🔄 في تحديث جديد — جاري التحديث...', 3000);
+    setTimeout(function () { location.replace(location.pathname + '?r=' + Date.now()); }, 1800);
+  }
+  function checkUpd() {
+    if (!W.fetch) return;
+    fetch(location.pathname + '?chk=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (t) {
+        var m = /window\.PAGE_VER\s*=\s*(\d+)/.exec(t || '');
+        if (!m) return;
+        var nv = +m[1];
+        if (nv <= (+W.PAGE_VER || 0)) return;
+        try { if (sessionStorage.getItem('tvbUpd') === String(nv)) return; sessionStorage.setItem('tvbUpd', String(nv)); } catch (e) {}
+        if (PLAYING) pendingUpd = nv; else applyUpd();
+      }).catch(function () {});
+  }
+  setTimeout(checkUpd, 8000);
+  setInterval(checkUpd, 20 * 60 * 1000);
+  D.addEventListener('visibilitychange', function () {
+    if (!D.hidden && !PLAYING) setTimeout(checkUpd, 1500);
+  });
+
+  if (!AV) return;   /* مفيش AVPlay: الصفحة تكمّل بمشغّل المتصفح العادي */
+
+  /* ---------- مشغّل AVPlay ---------- */
+  var root, objEl, ui = {}, sid = 0, S = null;
+  var curMs = 0, durMs = 0, paused = false, buffering = false, opened = false;
+  var autoNext = true, nextLabel = '', nextAt = 0;
+  var osdT = null, seekT = null, seekTarget = null, lastSeekAt = 0, streak = 0;
+  var repT = 0, lastRep = 0, endT = null, swallowUntil = 0, subOn = true;
+
+  function two(n) { return (n < 10 ? '0' : '') + n; }
+  function fmt(ms) {
+    var s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+    return (h ? h + ':' + two(m) : m) + ':' + two(s % 60);
+  }
+
+  function build() {
+    if (root) return;
+    var st = D.createElement('style');
+    st.textContent =
+      'html.tvb-on,html.tvb-on body{background:transparent!important;overflow:hidden!important}' +
+      'html.tvb-on body>*:not(#tvb){display:none!important}' +
+      '#tvb{display:none;position:fixed;left:0;top:0;width:100%;height:100%;z-index:2147483646;direction:rtl;color:#fff;font-family:Tahoma,Arial,sans-serif}' +
+      'html.tvb-on #tvb{display:block}' +
+      '#tvb .av{position:absolute;left:0;top:0;width:100%;height:100%}' +
+      '#tvb .top{position:absolute;left:0;right:0;top:0;padding:40px 70px 90px;font-size:38px;font-weight:700;background:linear-gradient(rgba(0,0,0,.75),transparent);opacity:0;transition:opacity .25s}' +
+      '#tvb .bot{position:absolute;left:0;right:0;bottom:0;padding:90px 70px 44px;background:linear-gradient(transparent,rgba(0,0,0,.8));opacity:0;transition:opacity .25s}' +
+      '#tvb.osd .top,#tvb.osd .bot{opacity:1}' +
+      '#tvb .bar{height:10px;border-radius:5px;background:rgba(255,255,255,.28);direction:ltr;overflow:hidden}' +
+      '#tvb .bar i{display:block;height:100%;width:0;background:#38bdf8}' +
+      '#tvb .tm{display:flex;justify-content:space-between;direction:ltr;margin-top:12px;font-size:28px;color:#dbe7ff}' +
+      '#tvb .hint{margin-top:10px;font-size:23px;color:#9fb0d0;text-align:center}' +
+      '#tvb .mid{position:absolute;left:0;right:0;top:46%;text-align:center;font-size:44px;font-weight:700;text-shadow:0 2px 12px #000}' +
+      '#tvb .spin{display:none;width:84px;height:84px;margin:0 auto 14px;border:9px solid rgba(255,255,255,.25);border-top-color:#38bdf8;border-radius:50%;animation:tvbsp 1s linear infinite}' +
+      '#tvb.buf .spin{display:block}' +
+      '#tvb .nx{display:none;position:absolute;right:70px;bottom:230px;background:#2563eb;border-radius:16px;padding:14px 30px;font-size:30px;font-weight:700}' +
+      '#tvb.nxs .nx{display:block}' +
+      '#tvb .seekp{display:none;position:absolute;left:0;right:0;top:36%;text-align:center;font-size:60px;font-weight:800;text-shadow:0 2px 14px #000;direction:ltr}' +
+      '@keyframes tvbsp{to{transform:rotate(360deg)}}';
+    D.head.appendChild(st);
+    root = D.createElement('div'); root.id = 'tvb';
+    root.innerHTML =
+      '<object class="av" id="tvb-av" type="application/avplayer"></object>' +
+      '<div class="top"><span id="tvbT"></span></div>' +
+      '<div class="mid"><div class="spin"></div><div id="tvbM"></div></div>' +
+      '<div class="seekp" id="tvbS"></div>' +
+      '<div class="nx" id="tvbN"></div>' +
+      '<div class="bot"><div class="bar"><i id="tvbB"></i></div>' +
+      '<div class="tm"><span id="tvbC">0:00</span><span id="tvbD">0:00</span></div>' +
+      '<div class="hint">◀ ▶ تقديم/ترجيع · OK إيقاف/تشغيل · 🟢 ترجمة · 🔵 صوت · رجوع خروج</div></div>';
+    D.body.appendChild(root);
+    objEl = D.getElementById('tvb-av');
+    ui.t = D.getElementById('tvbT'); ui.m = D.getElementById('tvbM'); ui.s = D.getElementById('tvbS');
+    ui.n = D.getElementById('tvbN'); ui.b = D.getElementById('tvbB');
+    ui.c = D.getElementById('tvbC'); ui.d = D.getElementById('tvbD');
+  }
+
+  function paint() {
+    var p = seekTarget != null ? seekTarget : curMs;
+    ui.b.style.width = (durMs > 0 ? Math.min(100, p * 100 / durMs) : 0) + '%';
+    ui.c.textContent = fmt(p); ui.d.textContent = durMs > 0 ? fmt(durMs) : 'مباشر';
+    var show = nextLabel && (Date.now() - nextAt < 15000);
+    root.className = root.className.replace(/\s?nxs/, '') + (show ? ' nxs' : '');
+    if (show) ui.n.textContent = '▼ التالية: ' + nextLabel;
+  }
+  function setCls(c, on) {
+    var has = (' ' + root.className + ' ').indexOf(' ' + c + ' ') >= 0;
+    if (on && !has) root.className += ' ' + c;
+    if (!on && has) root.className = (' ' + root.className + ' ').replace(' ' + c + ' ', ' ').trim();
+  }
+  function osd(on) {
+    clearTimeout(osdT); setCls('osd', on); if (on) paint();
+    if (on && !paused) osdT = setTimeout(function () { setCls('osd', false); }, 4000);
+  }
+  function msg(t, ms) {
+    ui.m.textContent = t || '';
+    if (t && ms) setTimeout(function () { if (ui.m.textContent === t) ui.m.textContent = ''; }, ms);
+  }
+  function setBuf(b) { buffering = b; setCls('buf', b); }
+
+  /* تقرير التقدّم للصفحة (نفس عقد مشغّل الأندرويد: ثواني) */
+  function report(ended) {
+    lastRep = Date.now();
+    try { if (typeof W.nativeProgress === 'function') W.nativeProgress(curMs / 1000, durMs / 1000, !!ended); } catch (e) {}
+  }
+
+  function stopAV() {
+    try { AV.stop(); } catch (e) {}
+    try { AV.close(); } catch (e) {}
+    clearInterval(repT); clearTimeout(seekT); seekTarget = null; opened = false;
+  }
+  function closePlayer() {
+    var was = PLAYING;
+    clearTimeout(endT); sid++;
+    if (was && opened) report(false);
+    stopAV();
+    PLAYING = false; paused = false; nextLabel = '';
+    if (root) { setCls('osd', false); setCls('buf', false); }
+    D.documentElement.classList.remove('tvb-on');
+    swallowUntil = Date.now() + 400;
+    if (pendingUpd) setTimeout(applyUpd, 600);
+  }
+  function fail(e) {
+    var t = (e && (e.message || e.name)) ? (e.message || e.name) : String(e || '');
+    sid++; stopAV(); setBuf(false); osd(true);
+    msg('❌ تعذّر التشغيل — جرّب نسخة تانية\n' + t.slice(0, 80));
+    endT = setTimeout(closePlayer, 5000);
+  }
+
+  function play(url, title, start) {
+    title = String(title || ''); var sub = '', i = title.indexOf('\n@@SUB@@');
+    if (i >= 0) { sub = title.slice(i + 8).trim(); title = title.slice(0, i); }
+    build(); clearTimeout(endT);
+    if (opened) stopAV();
+    var my = ++sid; S = { url: url, start: +start || 0 };
+    curMs = 0; durMs = 0; paused = false; nextLabel = ''; subOn = true;
+    PLAYING = true; D.documentElement.classList.add('tvb-on');
+    ui.t.textContent = title; msg(''); setBuf(true); osd(true);
+    try {
+      AV.open(url); opened = true;
+      AV.setDisplayRect(0, 0, W.innerWidth || 1920, W.innerHeight || 1080);
+      try { AV.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX'); } catch (e) {}
+      try {
+        AV.setBufferingParam('PLAYER_BUFFER_FOR_PLAY', 'PLAYER_BUFFER_SIZE_IN_SECOND', 10);
+        AV.setBufferingParam('PLAYER_BUFFER_FOR_RESUME', 'PLAYER_BUFFER_SIZE_IN_SECOND', 10);
+      } catch (e) {}
+      if (/^https?:/i.test(sub)) { try { AV.setExternalSubtitlePath(sub.split(/\s/)[0]); } catch (e) {} }
+      AV.setListener({
+        onbufferingstart: function () { if (my === sid) setBuf(true); },
+        onbufferingprogress: function () {},
+        onbufferingcomplete: function () { if (my === sid) setBuf(false); },
+        oncurrentplaytime: function (ms) {
+          if (my !== sid) return;
+          curMs = ms; if (buffering) setBuf(false);
+          if (!durMs) { try { durMs = AV.getDuration() || 0; } catch (e) {} }
+          if (seekTarget == null && (root.className.indexOf('osd') >= 0)) paint();
+        },
+        onevent: function () {}, onsubtitlechange: function () {}, ondrmevent: function () {},
+        onstreamcompleted: function () { if (my === sid) onEnded(); },
+        onerror: function (e) { if (my === sid) fail(e); }
+      });
+      AV.prepareAsync(function () {
+        if (my !== sid) return;
+        try { durMs = AV.getDuration() || 0; } catch (e) {}
+        var go = function () {
+          if (my !== sid) return;
+          try { AV.play(); } catch (e) { return fail(e); }
+          setBuf(false); report(false);
+          repT = setInterval(function () { if (my === sid && !paused) report(false); }, 5000);
+          setTimeout(function () { if (my === sid) osd(false); }, 3500);
+        };
+        if (S.start > 5 && (!durMs || S.start * 1000 < durMs - 8000)) {
+          try { AV.seekTo(S.start * 1000, go, go); } catch (e) { go(); }
+        } else go();
+      }, function (e) { if (my === sid) fail(e); });
+    } catch (e) { fail(e); }
+  }
+
+  function onEnded() {
+    var my = sid; clearInterval(repT);
+    curMs = durMs || curMs; report(true);
+    if (!autoNext) { closePlayer(); return; }
+    msg('⏳ جاري التجهيز...'); setBuf(true); osd(true);
+    var arm = function (ms) { clearTimeout(endT); endT = setTimeout(function () { if (my === sid) closePlayer(); }, ms); };
+    if (W.IV_NP) { arm(20000); return; }          // الـIPTV: الصفحة بتشغّل التالية من نفسها
+    try {
+      Promise.resolve(typeof W.nativeNext === 'function' ? W.nativeNext() : null)
+        .then(function () { arm(6000); }, function () { arm(1500); });
+    } catch (e) { arm(1500); }
+  }
+  function goNext() {
+    var my = sid; msg('⏳ جاري تجهيز الحلقة التالية...'); osd(true); nextLabel = '';
+    if (W.IV_NP) { try { if (typeof W.nativeNext === 'function') W.nativeNext(); } catch (e) {} report(true); }
+    else { try { if (typeof W.nativeNext === 'function') W.nativeNext(); } catch (e) {} }
+    clearTimeout(endT); endT = setTimeout(function () { if (my === sid) { msg(''); setBuf(false); } }, 15000);
+  }
+
+  function toggle() {
+    var st = ''; try { st = AV.getState(); } catch (e) {}
+    try {
+      if (st === 'PLAYING') { AV.pause(); paused = true; osd(true); msg('⏸'); }
+      else if (st === 'PAUSED' || st === 'READY') { AV.play(); paused = false; msg(''); osd(true); }
+    } catch (e) {}
+  }
+  function seek(dir, step) {
+    if (!durMs) return;
+    var n = Date.now(); streak = (n - lastSeekAt < 1200) ? streak + 1 : 0; lastSeekAt = n;
+    var s = step || (streak < 2 ? 10 : streak < 5 ? 30 : 60);
+    if (seekTarget == null) seekTarget = curMs;
+    seekTarget = Math.max(0, Math.min(durMs - 3000, seekTarget + dir * s * 1000));
+    ui.s.style.display = 'block'; ui.s.textContent = (dir > 0 ? '⏩ ' : '⏪ ') + fmt(seekTarget);
+    osd(true); clearTimeout(seekT);
+    seekT = setTimeout(function () {
+      var t = seekTarget; seekTarget = null; ui.s.style.display = 'none'; setBuf(true);
+      try { AV.seekTo(t, function () { setBuf(false); }, function () { setBuf(false); }); } catch (e) { setBuf(false); }
+    }, 550);
+  }
+
+  /* مسارات الصوت والترجمة */
+  var audIdx = -1, subIdx = -1;
+  function tracks(type) {
+    var out = [];
+    try {
+      (AV.getTotalTrackInfo() || []).forEach(function (t) { if (t.type === type) out.push(t); });
+    } catch (e) {}
+    return out;
+  }
+  function lang(t) {
+    var m = /lang[a-z_]*["']?\s*[:=]\s*["']?([A-Za-z]{2,3})/.exec(String(t.extra_info || ''));
+    return m ? m[1].toUpperCase() : '#' + (t.index + 1);
+  }
+  function cycleAudio() {
+    var a = tracks('AUDIO'); if (a.length < 2) return msg('مفيش مسارات صوت تانية', 1800);
+    var cur = -1; try { for (var i = 0; i < a.length; i++) if (a[i].index === audIdx) cur = i; } catch (e) {}
+    var nx = a[(cur + 1) % a.length]; audIdx = nx.index;
+    try { AV.setSelectTrack('AUDIO', nx.index); } catch (e) {}
+    osd(true); msg('🔊 صوت: ' + lang(nx) + ' (' + (((cur + 1) % a.length) + 1) + '/' + a.length + ')', 2200);
+  }
+  function cycleSub() {
+    var a = tracks('TEXT'); if (!a.length) return msg('مفيش ترجمة', 1800);
+    var cur = -1; for (var i = 0; i < a.length; i++) if (a[i].index === subIdx) cur = i;
+    var k = cur + 1;
+    if (subOn && k >= a.length) { subOn = false; try { AV.setSilentSubtitle(true); } catch (e) {} osd(true); return msg('💬 الترجمة: مقفولة', 2000); }
+    if (!subOn) k = 0;
+    subOn = true; try { AV.setSilentSubtitle(false); } catch (e) {}
+    subIdx = a[k].index; try { AV.setSelectTrack('TEXT', subIdx); } catch (e) {}
+    osd(true); msg('💬 ترجمة: ' + lang(a[k]) + ' (' + (k + 1) + '/' + a.length + ')', 2200);
+  }
+
+  /* الريموت أثناء التشغيل */
+  W.addEventListener('keydown', function (e) {
+    if (!PLAYING) return;
+    var k = e.keyCode;
+    e.preventDefault(); e.stopImmediatePropagation();
+    var nxOn = nextLabel && (Date.now() - nextAt < 15000);
+    switch (k) {
+      case 13: case 10252: toggle(); break;
+      case 415: if (paused) toggle(); break;
+      case 19: if (!paused) toggle(); break;
+      case 37: seek(-1); break;
+      case 39: seek(1); break;
+      case 412: seek(-1, 60); break;
+      case 417: seek(1, 60); break;
+      case 38: osd(true); break;
+      case 40: case 427: case 405: if (nxOn) goNext(); else osd(true); break;
+      case 404: cycleSub(); break;
+      case 406: cycleAudio(); break;
+      case 413: case 10009: case 461: case 8: closePlayer(); break;
+      default: osd(true);
+    }
+  }, true);
+  W.addEventListener('keyup', function (e) {
+    if (PLAYING || Date.now() < swallowUntil) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, true);
+
+  /* لما التطبيق يروح الخلفية */
+  D.addEventListener('visibilitychange', function () {
+    if (!PLAYING || !opened) return;
+    try { if (D.hidden) AV.suspend(); else AV.restore(); } catch (e) {}
+  });
+
+  /* ---------- نفس واجهة مشغّل الأندرويد اللي الصفحة بتكلّمها ---------- */
+  W.AndroidPlayer = {
+    play: play,
+    setAutoNext: function (b) { autoNext = !!b; },
+    showNext: function (label, left) {
+      label = String(label || '');
+      if (label.charAt(0) === '!') return;              // رسايل تشخيص خاصة بالأندرويد
+      nextLabel = label.replace(/^#/, ''); nextAt = Date.now();
+    }
+  };
+})();
+
+</script>
+</head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=37;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=38;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
