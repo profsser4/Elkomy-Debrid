@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=1920, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Elkomy VIP</title>
 <script src="$WEBAPIS/webapis/webapis.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-user-select:none}
-html,body{width:1920px;height:1080px;overflow:hidden;background:#0a101e;color:#e8eefc;font-family:"Segoe UI",Tahoma,Arial,sans-serif;font-size:28px}
+html{width:100%;height:100%;overflow:hidden}body{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0;background:#0a101e;color:#e8eefc;font-family:"Segoe UI",Tahoma,Arial,sans-serif;font-size:28px}
 html.playing,html.playing body{background:transparent}
 #avp{position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:0}
 #vid{position:absolute;left:0;top:0;width:1920px;height:1080px;background:#000;display:none;z-index:0}
-.scr{position:absolute;left:0;top:0;width:1920px;height:1080px;display:none;z-index:2;background:linear-gradient(135deg,#0a101e 0%,#101a33 55%,#0c1426 100%)}
+.scr{position:absolute;left:0;top:0;width:1920px;height:1080px;display:none;z-index:2;background:#0e1131}
 .scr.show{display:block}
 html.playing .scr{display:none!important}
-.f{outline:none;transition:transform .08s}
+.f{outline:none}
 .f.on{transform:scale(1.05);box-shadow:0 0 0 5px #38bdf8;position:relative;z-index:5}
 .row.on,.cat.on,.ep.on{transform:none;box-shadow:inset 0 0 0 5px #38bdf8;background:#1b3a73}
 .card.on{transform:scale(1.04);box-shadow:0 0 0 4px #38bdf8}
@@ -135,16 +135,16 @@ html.playing #pl{display:block}
 .pc{width:300px;height:340px;margin:20px;border-radius:24px;background:#141f3a;text-align:center;padding-top:34px}
 .pc .av{width:190px;height:190px;border-radius:50%;margin:0 auto 22px;font-size:100px;line-height:190px}
 .pc .pn{font-size:34px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 14px}
-#favbox,#ssbox{position:absolute;left:260px;right:260px;top:130px;bottom:40px;overflow:hidden}
+#favbox{position:absolute;left:260px;right:260px;top:130px;bottom:40px;overflow:hidden}
 #favbox .seas{margin-bottom:14px}
-#plsubt{position:absolute;left:120px;right:120px;bottom:150px;text-align:center;font-size:46px;line-height:1.35;color:#fff;text-shadow:0 0 6px #000,0 0 6px #000,2px 2px 4px #000;white-space:pre-line;display:none}
+#plsubt{position:absolute;left:120px;right:120px;bottom:150px;text-align:center;font-size:46px;line-height:1.35;color:#fff;text-shadow:0 0 5px #000,2px 2px 3px #000;white-space:pre-line;display:none}
 #plmenu{position:absolute;right:90px;top:120px;min-width:560px;background:rgba(10,16,30,.95);border:3px solid #38bdf8;border-radius:20px;padding:18px;display:none;font-size:32px}
 #plmenu .mi{padding:12px 24px;border-radius:12px;margin:4px 0}
 #plmenu .mi.on{background:#2563eb}
 #plhint{position:absolute;left:90px;top:56px;font-size:24px;color:#cbd5f5;background:rgba(0,0,0,.55);padding:6px 18px;border-radius:12px;display:none}
 #site .bh .btn{min-width:150px;padding:10px 16px;font-size:25px;margin:0 6px}
 html,body{background:#0e1131}
-.scr{background:radial-gradient(1200px 700px at 20% 0%,#2a2f7c 0%,transparent 60%),radial-gradient(900px 600px at 100% 100%,#3a1f6b 0%,transparent 55%),#0e1131}
+.scr{background:#0e1131}
 .f.on{transform:scale(1.04);box-shadow:0 0 0 4px #ffd75e}
 .btn{background:rgba(130,140,255,.16);border:1px solid rgba(255,255,255,.08);border-radius:20px}
 .btn.on{background:linear-gradient(90deg,#f6a823,#ffd75e);color:#1a1a2e;font-weight:700}
@@ -152,7 +152,7 @@ html,body{background:#0e1131}
 .logo{font-size:46px}.logo b{color:#ffd75e}
 .top{left:90px;right:90px;direction:ltr}
 .tr{display:flex;direction:ltr}
-.ib{width:88px;height:88px;line-height:88px;border-radius:50%;text-align:center;font-size:42px;margin-left:28px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.ib{width:88px;height:88px;line-height:88px;border-radius:50%;text-align:center;font-size:42px;margin-left:28px;color:#fff}
 .hcards{direction:ltr;left:130px;right:130px;top:190px;height:640px;justify-content:center}
 .hc{position:relative;width:560px;height:480px;border-radius:34px;padding-top:120px}
 .hc.big{width:500px;height:600px;padding-top:180px;margin-right:34px}
@@ -192,10 +192,7 @@ html,body{background:#0e1131}
 .pbar i{display:block;height:8px;background:linear-gradient(90deg,#f6a823,#ffd75e)}
 .row{height:88px;border-radius:20px;background:rgba(130,140,255,.16);border:1px solid rgba(255,255,255,.06)}
 .row .no{width:92px;flex:none;font-size:30px;color:#e5e9ff;direction:ltr;text-align:center}
-#settings .bh h2{text-align:center}
-#setw{position:absolute;left:90px;right:90px;top:150px}
-#setw .btn{display:block;width:820px;margin:10px 0;text-align:right;font-size:30px}
-#sInfo{position:absolute;left:940px;right:0;top:0;white-space:pre-line;background:rgba(130,140,255,.14);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:34px 40px;color:#e5e9ff;font-size:28px;line-height:2}</style></head><body>
+</style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
 <div id="splash" class="scr"><div class="center"><div class="logo">Elkomy <b>VIP</b><i></i></div><div class="spin"></div><p id="splt">جاري التحميل...</p></div></div>
@@ -215,7 +212,7 @@ html,body{background:#0e1131}
 
 <div id="home" class="scr">
 <div class="top"><div class="logo">Elkomy <b>VIP</b><i></i></div>
-<div class="tr"><div class="f ib" id="hMode" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">&#128100;</div><div class="f ib" id="hOut" style="background:linear-gradient(135deg,#fb7185,#e11d48)">&#9211;</div><div class="f ib" id="hSet" style="background:linear-gradient(135deg,#fb923c,#ea580c)">&#9881;</div></div></div>
+<div class="tr"><div class="f ib" id="hMode" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">&#128100;</div><div class="f ib" id="hOut" style="background:linear-gradient(135deg,#fb7185,#e11d48)">&#9211;</div></div></div>
 <div class="hcards">
 <div class="f hc c1 big" id="hLive" data-k="live"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="10" y="16" width="150" height="100" rx="14" fill="none" stroke="#fff" stroke-width="10"/><path d="M60 130h50M85 116v14" stroke="#fff" stroke-width="10" stroke-linecap="round"/><path d="M70 44l38 22-38 22z" fill="#fff"/></svg><em>البث المباشر</em><small id="nLive"></small></div>
 <div class="hcol"><div class="f hc c2" id="hVod" data-k="vod"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="14" y="36" width="142" height="96" rx="12" fill="none" stroke="#fff" stroke-width="10"/><path d="M14 36l24-26M62 36l24-26M110 36l24-26M14 62h142" stroke="#fff" stroke-width="10" stroke-linecap="round"/></svg><em>الأفلام</em><small id="nVod"></small></div><div class="f hb" id="hCw">&#9654;&nbsp; متابعة المشاهدة</div></div>
@@ -232,35 +229,21 @@ html,body{background:#0e1131}
 
 <div id="detail" class="scr"></div>
 
-<div id="settings" class="scr">
-  <div class="bh"><h2>الإعدادات</h2></div>
-  <div id="setw">
-    <div class="f btn" id="sLive" style=""></div>
-    <div class="f btn" id="sAsp" style=""></div>
-    <div class="f btn" id="sClr" style="">مسح الكاش وتحديث القوائم</div>
-    <div class="f btn" id="sTest" style="">اختبار الاتصال</div>
-    <div class="f btn" id="sBack" style="">رجوع</div>
-    <p id="sInfo"></p>
-  </div>
-</div>
-
 <div id="mode" class="scr">
   <div class="top"><div class="logo">Elkomy <b>VIP</b><i></i></div></div>
   <div class="mcards">
     <div class="f hc c1" id="mIptv"><span>📡</span>IPTV<small>قنوات مباشرة · أفلام · مسلسلات</small></div>
     <div class="f hc c3" id="mSite"><span>🎬</span>الموقع<small>بحث · مكتبتي · كمّل المشاهدة · رابط مباشر</small></div>
   </div>
-  <div class="hbar"><div class="f btn" id="mSet">الإعدادات</div><div class="f btn red" id="mOut">خروج</div></div>
+  <div class="hbar"><div class="f btn red" id="mOut">خروج</div></div>
   <div class="foot"><span id="mUser"></span><span></span></div>
 </div>
 <div id="site" class="scr">
   <div class="bh"><h2 id="sxT">🎬 الموقع</h2>
-    <div class="f btn" id="xSearch">🔍 بحث</div><div class="f btn" id="xList">⭐ قائمتي</div><div class="f btn" id="xLib">📚 مكتبتي</div><div class="f btn" id="xLink">🔗 رابط</div><div class="f btn" id="xSet">⚙ إعداداتي</div><div class="f btn" id="xMore">⋯ المزيد</div></div>
+    <div class="f btn" id="xSearch">🔍 بحث</div><div class="f btn" id="xList">⭐ قائمتي</div><div class="f btn" id="xLib">📚 مكتبتي</div><div class="f btn" id="xLink">🔗 رابط</div><div class="f btn" id="xMore">⋯ المزيد</div></div>
   <div class="sc" id="sxrows" style="position:absolute;left:40px;right:40px;top:130px;bottom:30px;overflow:hidden"></div>
 </div>
 <div id="prof" class="scr"><div class="top"><div class="logo">Elkomy <b>VIP</b><i></i></div></div><div class="sxh" style="position:absolute;top:200px;left:0;right:0;text-align:center;font-size:48px">مين بيشاهد؟</div><div class="pgrid" id="pgrid"></div></div>
-<div id="sset" class="scr"><div class="bh"><h2>⚙ إعدادات الموقع</h2></div><div id="ssbox" class="sc"></div></div>
-<div id="favs" class="scr"><div class="bh"><h2>⭐ مفضلتي</h2></div><div class="sc" id="favbox"></div></div>
 <div id="sres" class="scr">
   <div class="bh"><h2 id="sresT"></h2><div id="sresB"></div></div>
   <div class="sc" id="sgrid" style="position:absolute;left:40px;right:40px;top:130px;bottom:40px;overflow:hidden"></div>
@@ -268,7 +251,7 @@ html,body{background:#0e1131}
 <div id="sbusy" class="scr"><div class="center"><div class="spin" style="margin:0 auto 40px"></div><h2 id="sbT">جاري التجهيز...</h2><p id="sbP"></p><p style="font-size:24px">اضغط رجوع للإلغاء</p></div></div>
 
 <div id="pl">
-  <div id="plsubt"></div><div id="plhint">🔴 الصوت · 🔵 الترجمة · 🟢 حجم الشاشة</div><div id="plmenu"></div><div id="plnum"></div><div id="plbuf"></div><div id="plmsg"></div>
+  <div id="plsubt"></div><div id="plhint">🔴 الصوت · 🔵 الترجمة</div><div id="plmenu"></div><div id="plnum"></div><div id="plbuf"></div><div id="plmsg"></div>
   <div id="plbar"><div id="pltitle"></div><div id="plsub"></div><div id="plprog"><div id="plfill"></div></div><div id="pltime"><span id="plcur">00:00</span><span id="pldur">00:00</span></div></div>
 </div>
 
@@ -337,7 +320,7 @@ xt(action, params, function (err, j) { if (!err) MEM[key] = j; cb(err, j); });
 /* ---------- الحالة ---------- */
 var S = {tok: '', user: '', role: '', cfg: null, info: null, pins: {live: [], cats: []}};
 var stack = [], curScr = '', cur = null, FOC = {};
-var OPT = {live: ls('o_live') || 'm3u8', asp: ls('o_asp') || 'fit'};
+var OPT = {live: 'm3u8', asp: 'fit'};
 function toast(t) { var e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function () { e.style.display = 'none'; }, 2200); }
 /* ---------- شاشات ---------- */
 function show(name) {
@@ -578,7 +561,6 @@ showMsg(title, 'اختار القسم', b);
 }
 $('hCw')._ok = function () { chooser('كمّل المشاهدة', '__cw', ['vod', 'series']); };
 $('hFav')._ok = function () { chooser('المفضلة', '__fav', ['live', 'vod', 'series']); };
-$('hSet')._ok = function () { openSettings(); };
 $('hOut')._ok = function () { showMsg('تسجيل الخروج', 'متأكد إنك عايز تخرج من حسابك؟', [{t: 'لأ، رجوع', pri: 1, fn: function () { showHome(); }}, {t: 'خروج', fn: logout}]); };
 /* ===================== التصفح (قنوات / أفلام / مسلسلات) ===================== */
 var KT = {live: 'القنوات المباشرة', vod: 'الأفلام', series: 'المسلسلات'};
@@ -922,6 +904,7 @@ engineStart(o.resume || 0);
 }
 function engineStart(resume) {
 var sid = P.sid, url = P.url;
+XS = null; P.subDone = false;
 if (hasAV()) {
 P.av = true; $('vid').style.display = 'none';
 var A = webapis.avplay;
@@ -929,7 +912,7 @@ try { A.stop(); } catch (e) {} try { A.close(); } catch (e) {}
 try {
 A.open(url);
 A.setDisplayRect(0, 0, window.innerWidth || 1920, window.innerHeight || 1080);
-try { A.setDisplayMethod(OPT.asp === 'fill' ? 'PLAYER_DISPLAY_MODE_FULL_SCREEN' : 'PLAYER_DISPLAY_MODE_LETTER_BOX'); } catch (e) {}
+try { A.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX'); } catch (e) {}
 try { if (P.subUrl) A.setExternalSubtitlePath(P.subUrl); } catch (e) {}
 A.setListener({
 onbufferingstart: function () { if (sid === P.sid) buf(true); },
@@ -945,6 +928,7 @@ A.prepareAsync(function () {
 if (sid !== P.sid) return;
 try { if (P.kind !== 'live') P.dur = A.getDuration() / 1000; } catch (e) {}
 try { A.play(); } catch (e) {}
+autoSubAV(); setTimeout(function () { if (sid === P.sid) autoSubAV(); }, 1500); setTimeout(function () { if (sid === P.sid) autoSubAV(); }, 4000);
 buf(false); ovPaint();
 if (resume > 5) setTimeout(function () { if (sid === P.sid) { try { A.seekTo(resume * 1000); } catch (e) {} } }, 700);
 }, function (e) { if (sid === P.sid) onPlayErr(e); });
@@ -952,7 +936,9 @@ if (resume > 5) setTimeout(function () { if (sid === P.sid) { try { A.seekTo(res
 } else {
 P.av = false;
 var v = $('vid'); v.style.display = 'block';
-v.onloadedmetadata = function () { if (sid !== P.sid) return; if (P.kind !== 'live') P.dur = v.duration || 0; if (resume > 5) v.currentTime = resume; };
+v.onloadedmetadata = function () { if (sid !== P.sid) return; if (P.kind !== 'live') P.dur = v.duration || 0; if (resume > 5) v.currentTime = resume; autoSubHTML(v); };
+try { v.textTracks.onaddtrack = function () { if (sid === P.sid) autoSubHTML(v); }; } catch (e) {}
+loadExtSub(sid);
 v.onplaying = function () { buf(false); }; v.onwaiting = function () { buf(true); };
 v.ontimeupdate = function () { if (sid === P.sid) onTime(v.currentTime); };
 v.onended = function () { if (sid === P.sid) onEnded(); };
@@ -961,10 +947,12 @@ v.src = url; try { v.play(); } catch (e) {}
 }
 }
 function engineStop() {
+XS = null;
 try { if (P.av) { webapis.avplay.stop(); webapis.avplay.close(); } else { var v = $('vid'); v.pause(); v.removeAttribute('src'); v.load(); v.style.display = 'none'; } } catch (e) {}
 }
 function onTime(t) {
 P.pos = t;
+if (XS && !P.av) xsTick(t);
 if (P.kind !== 'live' && !P.dur && P.av) { try { P.dur = webapis.avplay.getDuration() / 1000; } catch (e) {} }
 if ($('plbar').className === 'show' && !P.acc) ovPaint();
 if (P.key && P.kind !== 'live' && t - P.lastSave > 12) { P.lastSave = t; saveP(false); }
@@ -1048,6 +1036,48 @@ P.pos = t; ovPaint(); ovShow();
 }
 /* ===== ترجمة وصوت المشغّل (للموقع فقط) ===== */
 var TM = null, subT = null;
+
+var XS = null;
+function isAr(l) { l = String(l || '').toLowerCase(); return /^(ar|ara|arb)([-_]|$)|arab|عرب/.test(l); }
+function trLang(t) { try { var x = JSON.parse(t.extra_info || '{}'); return String(x.language || x.track_lang || x.lang || ''); } catch (e) { return ''; } }
+function autoSubAV() {
+if (P.subDone) return;
+var A = webapis.avplay, tr = [], pick = -1;
+try { tr = A.getTotalTrackInfo() || []; } catch (e) {}
+tr.forEach(function (t) { if (t.type === 'TEXT' && pick < 0 && isAr(trLang(t))) pick = t.index; });
+try {
+A.setSilentSubtitle(false);
+if (pick >= 0) { A.setSelectTrack('TEXT', pick); P.subDone = true; }
+} catch (e) {}
+}
+function autoSubHTML(v) {
+try { var tt = v.textTracks; for (var i = 0; i < tt.length; i++) { if (isAr(tt[i].language || tt[i].label)) { tt[i].mode = 'showing'; P.subDone = true; return; } } } catch (e) {}
+}
+function srtParse(tx) {
+var out = [], bl = String(tx || '').replace(/^\uFEFF/, '').split(/\r?\n\s*\r?\n/);
+bl.forEach(function (b) {
+var ln = b.split(/\r?\n/), k = -1, i;
+for (i = 0; i < ln.length; i++) if (ln[i].indexOf('-->') > 0) { k = i; break; }
+if (k < 0) return;
+var m = /(\d+):(\d+):(\d+)[,.](\d+)\s*-->\s*(\d+):(\d+):(\d+)[,.](\d+)/.exec(ln[k]);
+if (!m) return;
+var a = +m[1] * 3600 + +m[2] * 60 + +m[3] + +m[4] / 1000, e = +m[5] * 3600 + +m[6] * 60 + +m[7] + +m[8] / 1000;
+var t = ln.slice(k + 1).join('\n').replace(/<[^>]+>/g, '').replace(/\{[^}]*\}/g, '').trim();
+if (t) out.push({s: a, e: e, t: t});
+});
+out.sort(function (x, y) { return x.s - y.s; });
+return {c: out, i: -1};
+}
+function loadExtSub(sid) {
+XS = null; if (!P.subUrl) return;
+xhr('GET', P.subUrl, null, null, function (err, st, tx) { if (sid !== P.sid || err || st !== 200 || !tx) return; var x = srtParse(tx); if (x.c.length) XS = x; }, 15000);
+}
+function xsTick(t) {
+var c = XS.c, lo = 0, hi = c.length - 1, f = -1;
+while (lo <= hi) { var mid = (lo + hi) >> 1; if (c[mid].s <= t) { f = mid; lo = mid + 1; } else hi = mid - 1; }
+if (f >= 0 && t > c[f].e) f = -1;
+if (f !== XS.i) { XS.i = f; if (f >= 0) subShow(c[f].t, Math.max(500, (c[f].e - t) * 1000)); else subShow(''); }
+}
 function subShow(t, dur) {
 var e = $('plsubt'); clearTimeout(subT);
 if (!t) { e.style.display = 'none'; e.textContent = ''; return; }
@@ -1105,41 +1135,9 @@ if (k === 39 || k === 417) { seekBy(1, rep); return true; }
 if (k === 37 || k === 412) { seekBy(-1, rep); return true; }
 if (k === 38 || k === 428) { if (P.kind === 'live') { zap(-1); } else ovShow(); return true; }
 if (k === 40 || k === 427) { if (P.kind === 'live') { zap(1); } else ovShow(); return true; }
-if (k === 404) { OPT.asp = OPT.asp === 'fill' ? 'fit' : 'fill'; ls('o_asp', OPT.asp); try { webapis.avplay.setDisplayMethod(OPT.asp === 'fill' ? 'PLAYER_DISPLAY_MODE_FULL_SCREEN' : 'PLAYER_DISPLAY_MODE_LETTER_BOX'); } catch (x) {} toast(OPT.asp === 'fill' ? 'ملء الشاشة' : 'أصلي'); return true; }
 if (k === 405 && P.kind === 'live') { var it = P.list[P.idx]; toggleFav('live', it); return true; }
 ovShow(); return true;
 }
-/* ===================== الإعدادات ===================== */
-function setLabels() {
-$('sLive').textContent = 'صيغة القنوات: ' + (OPT.live === 'm3u8' ? 'HLS (m3u8) — موصى بها' : 'TS مباشر');
-$('sAsp').textContent = 'شكل الفيديو: ' + (OPT.asp === 'fill' ? 'ملء الشاشة' : 'الأصلي');
-}
-function openSettings() {
-go('settings'); setLabels();
-$('sInfo').textContent = 'Elkomy VIP  v' + CFG.VER + '\nالحساب: ' + S.user;
-setFocus($('sLive'));
-}
-$('sLive')._ok = function () { OPT.live = OPT.live === 'm3u8' ? 'ts' : 'm3u8'; ls('o_live', OPT.live); setLabels(); };
-$('sAsp')._ok = function () { OPT.asp = OPT.asp === 'fill' ? 'fit' : 'fill'; ls('o_asp', OPT.asp); setLabels(); };
-$('sClr')._ok = function () { MEM = {}; EPGC = {}; toast('تم مسح الكاش ✓'); };
-$('sBack')._ok = function () { back(); };
-$('sTest')._ok = function () {
-var i = $('sInfo'), out = 'Elkomy VIP  v' + CFG.VER + '\nالحساب: ' + S.user + '\n';
-var model = ''; try { model = webapis.productinfo.getModel() + ' / ' + webapis.productinfo.getFirmware(); } catch (e) {}
-if (model) out += 'التلفزيون: ' + model + '\n';
-out += 'المشغّل: ' + (hasAV() ? 'AVPlay (Samsung)' : 'HTML5') + '\nجاري الاختبار...';
-i.textContent = out;
-var t0 = Date.now();
-xhr('GET', CFG.API + '/me', null, {'X-Token': S.tok}, function (err, st) {
-out = out.replace('جاري الاختبار...', '') + 'سيرفر الموقع: ' + (err ? 'فشل (' + err + ')' : 'OK ' + st + ' — ' + (Date.now() - t0) + 'ms') + '\n';
-i.textContent = out + 'جاري اختبار الـ IPTV...';
-var t1 = Date.now();
-xt('', null, function (e2, j) {
-var u = j && j.user_info;
-i.textContent = out + 'سيرفر الـ IPTV: ' + (e2 ? 'فشل (' + e2 + ')' : (u ? 'OK — ' + (u.status || '') + ' — ' + (Date.now() - t1) + 'ms' : 'رد غريب'));
-}, 20000);
-}, 20000);
-};
 /* ===================== أزرار الريموت ===================== */
 function onKeyDown(e) {
 var k = e.keyCode;
@@ -1179,7 +1177,7 @@ okFired = false;
 D.addEventListener('keydown', onKeyDown, true);
 D.addEventListener('keyup', onKeyUp, true);
 try { ['MediaPlay', 'MediaPause', 'MediaPlayPause', 'MediaStop', 'MediaRewind', 'MediaFastForward', 'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue', 'ChannelUp', 'ChannelDown'].forEach(function (k) { try { tizen.tvinputdevice.registerKey(k); } catch (e) {} }); } catch (e) {}
-function fit() { var z = (window.innerWidth || 1920) / 1920; D.body.style.zoom = z; }
+function fit() { var w = window.innerWidth || 1920, h = window.innerHeight || 1080, z = Math.min(w / 1920, h / 1080), b = D.body.style; if (Math.abs(z - 1) < 0.005) { b.transform = ''; b.left = b.top = '0px'; return; } b.transform = 'scale(' + z + ')'; b.left = Math.round((w - 1920 * z) / 2) + 'px'; b.top = Math.round((h - 1080 * z) / 2) + 'px'; }
 window.addEventListener('resize', fit); fit();
 /* ===================== تشغيل ===================== */
 function boot() {
@@ -1192,7 +1190,6 @@ showLogin();
 function showMode() { $('mUser').textContent = S.user || ''; show('mode'); setFocus($('mIptv')); }
 $('mIptv')._ok = function () { iptvEnter(); };
 $('mSite')._ok = function () { siteEnter(); };
-$('mSet')._ok = function () { stack = []; openSettings(); };
 $('mOut')._ok = function () { showMsg('تسجيل الخروج', 'متأكد إنك عايز تخرج من حسابك؟', [{t: 'لأ، رجوع', pri: 1, fn: function () { showMode(); }}, {t: 'خروج', fn: logout}]); };
 $('hMode')._ok = function () { stack = []; showMode(); };
 function iptvEnter() {
@@ -1524,7 +1521,7 @@ worker();
 }
 worker(); worker(); worker();
 }
-['xSearch', 'xList', 'xLib', 'xLink', 'xSet', 'xMore'].forEach(function (id) { $(id)._focus = function () { $('sxrows').scrollTop = 0; }; });
+['xSearch', 'xList', 'xLib', 'xLink', 'xMore'].forEach(function (id) { $(id)._focus = function () { $('sxrows').scrollTop = 0; }; });
 /* ---------- شبكة نتائج عامة + قايمة عامة ---------- */
 function sxHead(title, tabs) {
 $('sresT').textContent = title;
@@ -2056,12 +2053,11 @@ for (k in its) { var x = its[k]; if (x && !x.del && x.key && x.key.indexOf('l:')
 out.sort(function (a, b) { return b.t - a.t; });
 sxGrid('⭐ قائمتي', out, sxOpen, 'قائمتك فاضية\nافتح أي فيلم أو مسلسل واختار «➕ قائمتي»');
 };
-/* ---- إعداداتي (بروفايل + مفضلتي + ترتيب النسخ + الدبلجة + التشغيل التلقائي) ---- */
-$('xSet')._ok = function () { sxSettings(); };
 /* ---------- المزيد: بحث الويب · الباكات · إضافات Stremio · الاهتمامات ---------- */
 var IALL = [], IROWS = [];
 $('xMore')._ok = function () {
 sxList('⋯ المزيد', [
+{txt: '👤 تبديل البروفايل', sub: 'اختيار مين بيشاهد', fn: function () { sxProfiles(false); }},
 {txt: '🌐 بحث روابط الويب', sub: 'بيدوّر في صفحات الويب على روابط مدعومة', fn: function () { wsStart(false); }},
 {txt: '🧩 إضافات Stremio', sub: 'عرض · إضافة · حذف · مزامنة', fn: stView},
 {txt: '⭐ اهتماماتي', sub: 'اختار اللي بتحبه وهتظهر صفوفه في الرئيسية', fn: intView}
@@ -2137,59 +2133,6 @@ if (!e && s === 200 && d && d.rows && pid === PID) { IROWS = d.rows; if (curScr 
 });
 }
 
-function sxSettings() {
-var box = $('ssbox'), p = prof();
-if (curScr !== 'sset') go('sset');
-box.innerHTML = '';
-function btn(t, fn) { var d = D.createElement('div'); d.className = 'f btn'; d.style.cssText = 'width:100%;margin:10px 0'; d.textContent = t; d._ok = fn; box.appendChild(d); return d; }
-btn('👤 تبديل البروفايل  (' + (p ? p.name : '') + ')', function () { sxProfiles(false); });
-btn('⭐ مفضلتي: منصات ولغات وأنواع', function () { sxFavs(); });
-var vq = btn('', function () { var i = 0; VP_OPTS.forEach(function (o, ix) { if (o[0] === vpCur()) i = ix; }); vpSet(VP_OPTS[(i + 1) % VP_OPTS.length][0]); lbl(); });
-var df = btn('', function () { var q = prof(); q.dubFirst = !dubFirst(); sdSaveProf(q); lbl(); });
-var an = btn('', function () { var q = prof(); q.auto = !autoNext(); sdSaveProf(q); lbl(); });
-function lbl() {
-var o = ''; VP_OPTS.forEach(function (x) { if (x[0] === vpCur()) o = x[1]; });
-vq.textContent = '🎚 ترتيب النسخ: ' + o; df.textContent = '🎙 الدبلجة العربي أولاً: ' + (dubFirst() ? 'شغّال' : 'مقفول'); an.textContent = '⏭ تشغيل تلقائي للحلقة التالية: ' + (autoNext() ? 'شغّال' : 'مقفول');
-}
-lbl();
-btn('🔄 تحديث الرئيسية', function () { NEWD = null; FAVD = {}; FAVL = null; back(); sxLoad(true); });
-btn('رجوع', function () { back(); });
-var info = D.createElement('p'); info.style.cssText = 'color:#7f93bd;font-size:24px;margin-top:16px;text-align:center'; info.textContent = 'التقدّم وقائمتك ومفضلتك متزامنة مع الموبايل والمتصفح على نفس الحساب والبروفايل' + (SDOK ? '' : '\n(المزامنة معطّلة دلوقتي — مفيش اتصال)'); box.appendChild(info);
-cur = null; setFocus(box.querySelector('.f'));
-}
-function sxFavs() {
-var p = prof(); if (!p) return;
-go('favs');
-var box = $('favbox'); box.innerHTML = '<div class="empty" style="padding-top:60px">جاري التحميل...</div>';
-function draw() {
-var L = FAVL || {platforms: [], langs: [], genres: [], special: [], missing: []}, P = pfx(); box.innerHTML = '';
-function sec(t, arr, field, inv) {
-if (!arr.length) return;
-var h = D.createElement('div'); h.className = 'sxh'; h.textContent = t; box.appendChild(h);
-var w = D.createElement('div'); w.className = 'seas'; box.appendChild(w);
-arr.forEach(function (x) {
-var on = function () { var a = (p[field] || []); return inv ? a.indexOf(x.k) < 0 : a.indexOf(x.k) >= 0; };
-var c = D.createElement('div'); c.className = 'f chip' + (on() ? ' sel' : ''); c.textContent = x.name;
-c._ok = function () {
-var a = (p[field] || []).slice(), i = a.indexOf(x.k); if (i >= 0) a.splice(i, 1); else a.push(x.k); p[field] = a;
-c.className = c.className.replace(/ ?\bsel\b/g, '') + (on() ? ' sel' : ''); FAVCH = true;
-};
-w.appendChild(c);
-});
-}
-sec('📺 المنصات', L.platforms, 'fav'); sec('🌍 لغات وبلاد', L.langs, 'fav'); sec('🎭 أنواع وأنمي', [].concat(L.special || [], L.genres || []), 'fav');
-sec('🚫 مش عايز أشوف (بتتشال من كل الصفوف)', XL_NAMES.map(function (x) { return {k: x[0], name: x[1]}; }), 'xl');
-sec('🏠 صفوف الجديد (اللي تقفله مش هيظهر)', NEWROW_NAMES.map(function (x) { return {k: x[0], name: x[1]}; }), 'hn', true);
-if (ROWS && ROWS.length) sec('🧩 صفوف الإضافات', ROWS.map(function (r) { return {k: r.id, name: r.title}; }), 'ar');
-var d = D.createElement('div'); d.className = 'f btn pri'; d.style.cssText = 'width:100%;margin:24px 0'; d.textContent = 'تمام ✔'; d._ok = function () { back(); }; box.appendChild(d);
-cur = null; setFocus(box.querySelector('.f'));
-}
-FAVCH = false;
-var left = 2;
-function one() { if (--left === 0 && curScr === 'favs') draw(); }
-if (FAVL) one(); else api('/fav/list', {timeout: 30000}, function (e, s, d) { if (!e && s === 200 && d && d.platforms) FAVL = d; one(); });
-if (ROWS) one(); else api('/rows', {timeout: 30000}, function (e, s, d) { if (!e && s === 200 && d && d.rows) ROWS = d.rows; one(); });
-}
 var FAVCH = false;
 function sxFavsDone() {
 if (!FAVCH) return;
@@ -2204,9 +2147,4 @@ else if (curScr === 'detail' && SX.cur && D.getElementById('dbtns')) { var d = S
 else if (cur && D.body.contains(cur)) { var c = cur; cur = null; setFocus(c); }
 }
 boot();
-(function () {
-var b = D.createElement('div'); b.className = 'f btn'; b.textContent = 'إرجاع الفئات للوضع الأصلي';
-b._ok = function () { ['live', 'vod', 'series'].forEach(function (k) { ls('hid_' + k, null); ls('ord_' + k, null); ls('ren_' + k, null); }); toast('تم'); };
-var c = $('sClr'); c.parentNode.insertBefore(b, c);
-})();
 })();</script></body></html>
