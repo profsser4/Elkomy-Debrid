@@ -12,8 +12,8 @@ html.playing,html.playing body{background:transparent}
 .scr{position:absolute;left:0;top:0;width:1920px;height:1080px;display:none;z-index:2;background:linear-gradient(135deg,#0a101e 0%,#101a33 55%,#0c1426 100%)}
 .scr.show{display:block}
 html.playing .scr{display:none!important}
-.f{outline:none;transition:transform .12s,box-shadow .12s,background .12s}
-.f.on{transform:scale(1.05);box-shadow:0 0 0 5px #38bdf8,0 12px 40px rgba(56,189,248,.35);position:relative;z-index:5}
+.f{outline:none;transition:transform .08s}
+.f.on{transform:scale(1.05);box-shadow:0 0 0 5px #38bdf8;position:relative;z-index:5}
 .row.on,.cat.on,.ep.on{transform:none;box-shadow:inset 0 0 0 5px #38bdf8;background:#1b3a73}
 .card.on{transform:scale(1.04);box-shadow:0 0 0 4px #38bdf8}
 .hbar .btn.red{background:#7f1d1d}
@@ -145,7 +145,7 @@ html.playing #pl{display:block}
 #site .bh .btn{min-width:150px;padding:10px 16px;font-size:25px;margin:0 6px}
 html,body{background:#0e1131}
 .scr{background:radial-gradient(1200px 700px at 20% 0%,#2a2f7c 0%,transparent 60%),radial-gradient(900px 600px at 100% 100%,#3a1f6b 0%,transparent 55%),#0e1131}
-.f.on{transform:scale(1.04);box-shadow:0 0 0 4px #ffd75e,0 14px 44px rgba(255,190,70,.38)}
+.f.on{transform:scale(1.04);box-shadow:0 0 0 4px #ffd75e}
 .btn{background:rgba(130,140,255,.16);border:1px solid rgba(255,255,255,.08);border-radius:20px}
 .btn.on{background:linear-gradient(90deg,#f6a823,#ffd75e);color:#1a1a2e;font-weight:700}
 .btn.pri{background:linear-gradient(90deg,#4f46e5,#7c3aed)}
@@ -154,7 +154,7 @@ html,body{background:#0e1131}
 .tr{display:flex;direction:ltr}
 .ib{width:88px;height:88px;line-height:88px;border-radius:50%;text-align:center;font-size:42px;margin-left:28px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .hcards{direction:ltr;left:130px;right:130px;top:190px;height:640px;justify-content:center}
-.hc{position:relative;width:560px;height:480px;border-radius:34px;padding-top:120px;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.hc{position:relative;width:560px;height:480px;border-radius:34px;padding-top:120px}
 .hc.big{width:500px;height:600px;padding-top:180px;margin-right:34px}
 .hc em{position:absolute;left:0;right:0;bottom:44px;font-style:normal;font-size:44px;font-weight:700}
 .hc small{position:absolute;left:0;right:0;bottom:8px;margin:0;font-size:22px;opacity:.85}
@@ -180,7 +180,7 @@ html,body{background:#0e1131}
 .cat.on .ct{background:rgba(0,0,0,.14)}
 .listp{left:700px;right:40px;top:126px;bottom:30px;padding-top:8px}
 .card{width:218px;height:356px;margin:10px 8px;background:none;border-radius:18px}
-.card .pic{height:276px;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.4)}
+.card .pic{height:276px;border-radius:18px}
 .card .t{height:64px;padding:8px 4px 0;font-size:22px;text-align:center;white-space:nowrap;text-overflow:ellipsis;color:#fff}
 .card .t b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis}
 .card .t small{display:block;font-size:18px;color:#ffd75e;line-height:24px}
@@ -397,20 +397,22 @@ p = p.parentNode;
 }
 function move(dir) {
 var root = activeRoot(); if (!root) return;
-var l = root.querySelectorAll('.f'), c = [], i;
-for (i = 0; i < l.length; i++) if (vis(l[i])) c.push(l[i]);
-if (!c.length) return;
-if (!cur || !D.body.contains(cur) || !vis(cur)) return setFocus(c[0]);
-var a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2, best = null, bs = 1e12;
-for (i = 0; i < c.length; i++) {
-if (c[i] === cur) continue;
-var r = c[i].getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, pri, sec;
+var l = root.querySelectorAll('.f'), c = [], R = [], i, r;
+if (!cur || !D.body.contains(cur)) { for (i = 0; i < l.length; i++) if (vis(l[i])) return setFocus(l[i]); return; }
+var a = cur.getBoundingClientRect();
+if (!a.width) { for (i = 0; i < l.length; i++) if (vis(l[i])) return setFocus(l[i]); return; }
+var ax = a.left + a.width / 2, ay = a.top + a.height / 2, best = null, bs = 1e12;
+for (i = 0; i < l.length; i++) {
+if (l[i] === cur) continue;
+r = l[i].getBoundingClientRect();
+if (!r.width || !r.height) continue;
+var cx = r.left + r.width / 2, cy = r.top + r.height / 2, pri, sec;
 if (dir === 39) { if (cx <= ax + 4) continue; pri = r.left - a.right; sec = Math.abs(cy - ay); if (pri < 0) pri = Math.abs(cx - ax) * .6; }
 else if (dir === 37) { if (cx >= ax - 4) continue; pri = a.left - r.right; sec = Math.abs(cy - ay); if (pri < 0) pri = Math.abs(cx - ax) * .6; }
 else if (dir === 40) { if (cy <= ay + 4) continue; pri = r.top - a.bottom; sec = Math.abs(cx - ax); if (pri < 0) pri = Math.abs(cy - ay) * .6; }
 else { if (cy >= ay - 4) continue; pri = a.top - r.bottom; sec = Math.abs(cx - ax); if (pri < 0) pri = Math.abs(cy - ay) * .6; }
 var sc = pri + sec * 2.2;
-if (sc < bs) { bs = sc; best = c[i]; }
+if (sc < bs) { bs = sc; best = l[i]; }
 }
 if (best) setFocus(best); else if (cur && cur._edge) cur._edge(dir);
 }
@@ -608,7 +610,7 @@ var seen = {}; pins.forEach(function (c) { seen[String(c.id)] = 1; });
 (cats || []).forEach(function (c) { if (!seen[String(c.category_id)]) B.cats.push({id: String(c.category_id), name: c.category_name}); });
 buildCats();
 var start = mode;
-if (!start) start = '__new';
+if (!start) { var fc = catList().filter(function (x) { return x.id.charAt(0) !== '_'; })[0]; start = fc ? fc.id : '__fav'; }
 selectCat(start, true);
 });
 }
