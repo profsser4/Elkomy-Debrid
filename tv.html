@@ -1896,14 +1896,21 @@ if (sid !== P.sid || !P.on || err || st !== 200 || !tx) return done(null);
 var x = srtParse(tx); done(x.c.length ? x : null);
 });
 }
-function autoSync(it, ai, sp, sid) {
+function autoSync(it, ai, sp, sid, ck, c) {
 var src = P.url || ''; if (!/^https?:\/\//i.test(src)) return;
-var key = String(src).split('?')[0], n = 0;
+var key = (sp.vh ? 'h:' + sp.vh : (sp.vname || P.vtitle) ? 'n:' + (sp.vname || P.vtitle) : String(src).split('?')[0]), n = 0;
 function live() { return sid === P.sid && P.on; }
 function fin(d) {
 if (!live()) return;
-if (d.ok && d.synced) return toast('✅ الترجمة متظبطة مع الصوت');
-if (d.ok) return subFetch(it, ai, d.shift, d.scale || 1, sp, sid, function (x) { if (x && live()) { XS = x; subShow(''); toast('🎯 اتضبطت الترجمة بالصوت (' + (d.shift > 0 ? '+' : '') + d.shift + ' ث)'); } });
+var sh = d.synced ? 0 : +d.shift, sc = d.synced ? 1 : (+d.scale || 1);
+if (d.ok && isFinite(sh) && isFinite(sc)) {
+var same = c && Math.abs(c.sh - sh) < 0.5 && Math.abs(c.sc - sc) < 0.001;
+sj(ck, {sh: sh, sc: sc, n: same ? (c.n || 1) + 1 : 1});
+if (same) return;
+if (d.synced) return toast('✅ الترجمة متظبطة مع الصوت');
+return subFetch(it, ai, sh, sc, sp, sid, function (x) { if (x && live()) { XS = x; subShow(''); toast('🎯 اتضبطت الترجمة بالصوت (' + (sh > 0 ? '+' : '') + sh + ' ث)'); } });
+}
+if (c) sj(ck, null);
 if (d.reason === 'split' || d.reason === 'low') toast('الترجمة دي مش متطابقة مع الفيديو، مقدرتش أظبطها');
 }
 function poll(d) {
@@ -1922,12 +1929,18 @@ var se = sp.s != null ? '&s=' + sp.s + '&e=' + sp.e : '';
 function ok() { return sid === P.sid && P.on && !P.subDone; }
 function apply(it, ai) {
 if (!ok()) return;
-subFetch(it, ai, 0, 1, sp, sid, function (x) {
+var ck = 'sc:' + shash([it.u, sp.s, sp.e, o.vtitle || sp.vname || ''].join('|')), c = lj(ck, null);
+if (c && (c.sh || c.sc !== 1) && !(isFinite(c.sh) && isFinite(c.sc))) c = null;
+subFetch(it, ai, c ? c.sh : 0, c ? c.sc : 1, sp, sid, function (x) {
+if (!x && c) { sj(ck, null); c = null; return subFetch(it, ai, 0, 1, sp, sid, function (x2) { go(x2); }); }
+go(x);
+});
+function go(x) {
 if (!x || !ok()) return;
 XS = x; P.subDone = true; subShow('');
-toast(ai ? '🤖 ترجمة عربي بالذكاء الاصطناعي' : '💬 ترجمة عربي');
-autoSync(it, ai, sp, sid);
-});
+toast(c ? '✅ ترجمة متظبطة (محفوظة)' : (ai ? '🤖 ترجمة عربي بالذكاء الاصطناعي' : '💬 ترجمة عربي'));
+if (!c || c.n < 2) autoSync(it, ai, sp, sid, ck, c);
+}
 }
 api('/subs?lang=AR&' + base + se, {timeout: 30000}, function (e, s, r) {
 if (!ok()) return;
