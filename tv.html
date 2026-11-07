@@ -996,10 +996,10 @@ function seekBy(dir, rep) {
    بدل ما نعتمد على ترجمة AVPlay الخارجية (بتفشل مع العربي وبتتقفل بمهلة 7 ثواني) بنحمّل ملف الترجمة بنفسنا
    ونعرضه بتوقيت الفيديو: بيشتغل مع أي مشغّل، بدون مهلة تقطع التحميل، مع ضبط التوقيت وحجم الخط. */
 var TM = null, subT = null;
-var SB = {tok: 0, cues: [], list: [], li: -1, shift: 0, off: false, force: false, mode: '', st: '', audAr: false, hint: 0, name: '', prefU: '', emb: [], last: -1, txt: '', tm: null, desc: null, said: false};
+var SB = {tok: 0, cues: [], raw: [], scale: 1, au: 0, list: [], li: -1, shift: 0, off: false, force: false, mode: '', st: '', audAr: false, hint: 0, name: '', prefU: '', emb: [], last: -1, txt: '', tm: null, desc: null, said: false};
 var AR_RX = /^(ar|ara|arb|arz|arabic)$|arab|عرب/i;
 function sbPK() { return 'sbp:' + (S.user || 'u') + ':' + (P.key || P.url || ''); }
-function sbSavePref() { if (!P.key) return; sj(sbPK(), {shift: SB.shift, off: SB.off, u: (SB.list[SB.li] && SB.list[SB.li].u) || ''}); }
+function sbSavePref() { if (!P.key) return; sj(sbPK(), {shift: SB.shift, off: SB.off, scale: SB.scale, au: SB.au, u: (SB.list[SB.li] && SB.list[SB.li].u) || ''}); }
 function sbClean(t) {
   return String(t || '').replace(/\.[a-z0-9]{2,4}$/i, '').replace(/[._]+/g, ' ').replace(/\[[^\]]*\]|\{[^}]*\}|\([^)]*\)/g, ' ')
     .replace(/^\s*(?:[A-Za-z]{2,3}\s*[-:|]+|\|[A-Za-z]{2,3}\|)\s*/, '')
@@ -1062,7 +1062,7 @@ function sbTick() {
 function sbSay(t) { var e = $('plsubst'); e.textContent = t; e.style.display = 'block'; clearTimeout(sbSay.t); sbSay.t = setTimeout(function () { e.style.display = 'none'; }, 3500); }
 function sbReset() {
   SB.tok++; clearInterval(SB.tm); SB.tm = null;
-  SB.cues = []; SB.list = []; SB.li = -1; SB.shift = 0; SB.off = false; SB.force = false; SB.mode = ''; SB.st = ''; SB.audAr = false; SB.name = ''; SB.prefU = ''; SB.emb = []; SB.txt = ''; SB.desc = null; SB.said = false; SB.audDone = false;
+  SB.cues = []; SB.list = []; SB.li = -1; SB.shift = 0; SB.off = false; SB.force = false; SB.mode = ''; SB.st = ''; SB.audAr = false; SB.name = ''; SB.prefU = ''; SB.emb = []; SB.txt = ''; SB.desc = null; SB.said = false; SB.audDone = false; SB.raw = []; SB.scale = 1; SB.au = 0; SB.aiTried = false; SB.prep = false;
   try { $('plsubst').style.display = 'none'; } catch (e) {}
 }
 /* ---- شكل الترجمة (حجم/خلفية) محفوظ للجهاز ---- */
@@ -1082,8 +1082,8 @@ function subShow(t, dur, own) {
 function sbRaw(path, cb, tmo) {
   xhr('GET', CFG.API + path, null, {'X-Token': S.tok || ''}, function (err, st, tx) { cb(err, st, tx); }, tmo || 40000);
 }
-function sbFind(d, tok, cb) {
-  var base = 'lang=AR' + (d.type ? '&type=' + d.type : '') + (d.s != null ? '&s=' + d.s + '&e=' + d.e : ''), qs = [];
+function sbFind(d, tok, cb, lang) {
+  var base = 'lang=' + (lang || 'AR') + (d.type ? '&type=' + d.type : '') + (d.s != null ? '&s=' + d.s + '&e=' + d.e : ''), qs = [];
   if (d.id && /^\d+$/.test(String(d.id)) && d.type) qs.push(base + '&id=' + d.id);
   if (d.q) qs.push(base + '&q=' + enc(d.q));
   (function step(i, retry) {
@@ -1102,18 +1102,19 @@ function sbTry(order, k, tok, d, done) {
   if (tok !== SB.tok) return;
   if (k >= order.length || k >= 4) return done(false);
   var it = order[k];
-  sbRaw('/sub?u=' + enc(it.u) + '&fmt=srt&shift=0&lang=' + enc(it.lang || 'AR') + (d.e != null ? '&e=' + d.e : '') + (d.s != null ? '&s=' + d.s : ''), function (err, st, tx) {
+  sbRaw('/sub?u=' + enc(it.u) + '&fmt=srt&shift=0&lang=' + enc(it.lang || 'AR') + (it.ai ? '&ai=' + enc(it.ai) : '') + (d.e != null ? '&e=' + d.e : '') + (d.s != null ? '&s=' + d.s : ''), function (err, st, tx) {
     if (tok !== SB.tok) return;
     var c = (!err && st === 200) ? sbParse(tx) : [];
     if (c.length < 5) return sbTry(order, k + 1, tok, d, done);
-    SB.cues = c; SB.mode = 'own'; SB.li = SB.list.indexOf(it); SB.name = it.name || ''; SB.txt = '';
+    SB.raw = c; SB.cues = sbScaled(c, SB.scale); SB.mode = 'own'; SB.li = SB.list.indexOf(it); SB.name = it.name || ''; SB.txt = '';
     done(true);
+    sbAuto(it, d, tok);
   }, 45000);
 }
 function sbLoadAt(ix) {
   var d = SB.desc, tok = SB.tok; if (!d || !SB.list.length) return;
   var order = []; for (var q = 0; q < Math.min(SB.list.length, 12); q++) order.push(SB.list[(ix + q) % Math.min(SB.list.length, 12)]);
-  sbSay('جاري تحميل الترجمة...');
+  sbSay('جاري تحميل الترجمة...'); SB.shift = 0; SB.scale = 1; SB.au = 0;
   sbTry(order, 0, tok, d, function (ok) {
     if (!ok) return sbSay('الترجمة دي مش شغالة، جرّب التانية');
     SB.off = false; SB.force = true; sbSavePref(); sbTick(); sbSay('💬 ' + SB.name);
@@ -1121,7 +1122,7 @@ function sbLoadAt(ix) {
 }
 function sbStart(d) {
   var tok = SB.tok; SB.desc = d;
-  var pf = lj(sbPK(), null); if (pf) { SB.shift = +pf.shift || 0; SB.off = !!pf.off; SB.prefU = pf.u || ''; }
+  var pf = lj(sbPK(), null); if (pf) { SB.shift = +pf.shift || 0; SB.off = !!pf.off; SB.prefU = pf.u || ''; SB.scale = +pf.scale || 1; SB.au = pf.au ? 1 : 0; }
   clearInterval(SB.tm); SB.tm = setInterval(sbTick, 250);
   if (!d || d.skip) { SB.st = 'skip'; return; }
   SB.st = 'loading';
@@ -1141,10 +1142,81 @@ function sbStart(d) {
     });
   });
 }
+/* ---- ضبط الترجمة تلقائياً بالصوت: السيرفر بيسمع الفيديو الفعلي ويطابق توقيت الترجمة (شغال على أي ملف) ---- */
+function sbScaled(c, k) { if (!k || Math.abs(k - 1) < 1e-6) return c; return c.map(function (x) { return {s: x.s * k, e: x.e * k, t: x.t}; }); }
+function sbApplyAuto(shift, scale) { SB.scale = scale; SB.cues = sbScaled(SB.raw, scale); SB.shift = shift; SB.au = 1; SB.txt = ''; sbSavePref(); sbTick(); }
+function sbAuto(it, d, tok, force) {
+  var src = P.url, pf = lj(sbPK(), null), n = 0;
+  if (!d || P.kind === 'live' || !/^https?:\/\//i.test(src || '')) return;
+  if (!force && pf && pf.au && pf.u === it.u) return;               // اتضبطت قبل كده
+  var H = {'X-Token': S.tok || '', 'Content-Type': 'application/json'};
+  function ok() { return tok === SB.tok && SB.mode === 'own' && SB.list[SB.li] === it; }
+  function fin(j) {
+    if (!ok() || !j) return;
+    if (j.ok) {
+      if (j.synced) { sbApplyAuto(0, 1); return sbSay('✅ الترجمة متظبطة (اتأكدت بالصوت)'); }
+      sbApplyAuto(j.shift, j.scale); return sbSay('🎯 اتضبطت الترجمة تلقائياً بالصوت');
+    }
+    if (j.reason === 'split' || j.reason === 'low') sbSay('مش قادر أضبط الترجمة دي بالصوت — جرّب ترجمة تانية');
+    else if (force) sbSay('الضبط بالصوت مش متاح دلوقتي');
+  }
+  function poll(job) {
+    if (!ok() || ++n > 80) return;
+    setTimeout(function () {
+      xhr('GET', CFG.API + '/sub/auto?job=' + enc(job), null, H, function (err, st, tx) {
+        var j = jparse(tx);
+        if (err || !j) return poll(job);
+        if (j.done) return fin(j);
+        poll(j.job || job);
+      }, 20000);
+    }, 2500);
+  }
+  xhr('POST', CFG.API + '/sub/auto', JSON.stringify({u: it.u, src: src, s: d.s, e: d.e, lang: it.lang || 'AR', key: src.split('?')[0], dur: P.dur || 0, force: !!force}), H, function (err, st, tx) {
+    var j = jparse(tx);
+    if (err || !j || st >= 400) { if (force) sbSay('الضبط بالصوت مش متاح دلوقتي'); return; }
+    if (j.done) return fin(j);
+    poll(j.job);
+  }, 30000);
+}
+/* ---- ترجمة بالذكاء الاصطناعي: لما مفيش ترجمة عربي بنترجم أحسن ترجمة إنجليزي بنفس التوقيت ---- */
+function sbAi() {
+  var d = SB.desc, tok = SB.tok, n = 0, H = {'X-Token': S.tok || '', 'Content-Type': 'application/json'};
+  sbSay('مفيش ترجمة عربي... بترجم الإنجليزي بالذكاء الاصطناعي');
+  sbFind(d, tok, function (list) {
+    if (tok !== SB.tok) return;
+    if (!list.length) return sbSay('مفيش ترجمة متاحة للعمل ده');
+    var it = subRank(list, d.fname || '')[0];
+    function fin(j) {
+      if (tok !== SB.tok) return;
+      if (!j || !j.ok || !j.ai) return sbSay(j && j.reason === 'noai' ? 'الترجمة بالذكاء الاصطناعي مش مفعّلة على السيرفر' : 'الترجمة بالذكاء الاصطناعي مش متاحة');
+      var ai = {u: it.u, lang: 'EN', name: '🤖 ' + (it.name || ''), ai: j.ai};
+      SB.list = [ai]; SB.st = 'ready';
+      sbTry([ai], 0, tok, d, function (ok) { if (ok) { SB.off = false; SB.force = true; sbSavePref(); sbTick(); sbSay('🤖 ترجمة بالذكاء الاصطناعي'); } });
+    }
+    function poll(job) {
+      if (tok !== SB.tok || ++n > 120) return;
+      setTimeout(function () {
+        xhr('GET', CFG.API + '/sub/ai?job=' + enc(job), null, H, function (err, st, tx) {
+          var j = jparse(tx);
+          if (err || !j) return poll(job);
+          if (j.done) return fin(j);
+          poll(j.job || job);
+        }, 20000);
+      }, 3000);
+    }
+    xhr('POST', CFG.API + '/sub/ai', JSON.stringify({u: it.u, s: d.s, e: d.e, title: d.q || d.fname || ''}), H, function (err, st, tx) {
+      var j = jparse(tx);
+      if (err || !j || st >= 400) return sbSay('الترجمة بالذكاء الاصطناعي مش متاحة');
+      if (j.done) return fin(j);
+      poll(j.job);
+    }, 30000);
+  }, 'EN');
+}
 function sbNoExt() {
   if (SB.mode === 'emb') return;
   var ix = -1, i; for (i = 0; i < SB.emb.length; i++) if (SB.emb[i].ar) { ix = SB.emb[i].idx; break; }
   if (ix >= 0) return sbUseEmb(ix);
+  if (!SB.audAr && SB.desc && !SB.desc.skip && !SB.aiTried && (SB.prep || !P.av)) { SB.aiTried = true; return sbAi(); }
   if (!SB.audAr && !SB.said) { SB.said = true; sbSay('مفيش ترجمة عربي متاحة للعمل ده'); }
 }
 function sbUseEmb(idx) {
@@ -1154,6 +1226,7 @@ function trLang(t) { var l = ''; try { var x = JSON.parse(t.extra_info || '{}');
 /* بعد ما الفيديو يبدأ: اختار الصوت العربي (لو موجود) وسجّل ترجمات الملف الداخلية */
 function sbOnPrepared() {
   if (!P.av || !P.on) return;
+  SB.prep = true;
   var A = webapis.avplay, tr = []; try { tr = A.getTotalTrackInfo() || []; } catch (e) {}
   var arAud = -1, n = 0;
   SB.emb = [];
@@ -1194,6 +1267,7 @@ function subMenu() {
     else toast('مفيش ترجمة متاحة للمحتوى ده');
   }});
   if (SB.list.length > 1) items.push({label: '🔁 ترجمة تانية (' + (SB.li + 1) + '/' + Math.min(SB.list.length, 12) + ')', keep: 1, fn: function () { sbLoadAt(((SB.li < 0 ? 0 : SB.li) + 1) % Math.min(SB.list.length, 12)); }});
+  if (SB.mode === 'own' && P.kind !== 'live') items.push({label: '🎯 اضبط الترجمة بالصوت (تلقائي)', fn: function () { var it = SB.list[SB.li]; if (it && SB.desc) { sbSay('بسمع الصوت وبظبط الترجمة... ممكن ياخد نص دقيقة'); sbAuto(it, SB.desc, SB.tok, true); } }});
   if (SB.mode === 'own') {
     var lab = function (d) { return (d < 0 ? '⏪ قدّم الترجمة ' : '⏩ أخّر الترجمة ') + Math.abs(d) + ' ث   (الحالي: ' + (SB.shift > 0 ? '+' : '') + SB.shift.toFixed(1) + ')'; };
     [[-0.5], [0.5], [-5], [5]].forEach(function (a) {
