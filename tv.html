@@ -896,7 +896,7 @@ $('plcur').textContent = fmt(p) + (P.acc ? (P.acc > 0 ? '  ▶▶' : '  ◀◀')
 }
 function startPlay(o) {
 P.sid++; P.on = true; P.kind = o.kind; P.url = o.url; P.title = o.title; P.key = o.key || ''; P.meta = o.meta || null;
-P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; $('plmenu').style.display = 'none'; subShow('');
+P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; XS = null; P.subDone = false; $('plmenu').style.display = 'none'; subShow('');
 D.documentElement.className = 'playing';
 plmsg(''); buf(true); ovPaint(); ovShow();
 if (o.kind === 'live') epg();
@@ -904,7 +904,6 @@ engineStart(o.resume || 0);
 }
 function engineStart(resume) {
 var sid = P.sid, url = P.url;
-XS = null; P.subDone = false;
 if (hasAV()) {
 P.av = true; $('vid').style.display = 'none';
 var A = webapis.avplay;
@@ -913,12 +912,11 @@ try {
 A.open(url);
 A.setDisplayRect(0, 0, window.innerWidth || 1920, window.innerHeight || 1080);
 try { A.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX'); } catch (e) {}
-try { if (P.subUrl) A.setExternalSubtitlePath(P.subUrl); } catch (e) {}
 A.setListener({
 onbufferingstart: function () { if (sid === P.sid) buf(true); },
 onbufferingprogress: function () {},
 onbufferingcomplete: function () { if (sid === P.sid) buf(false); },
-onsubtitlechange: function (dur, text) { if (sid === P.sid) subShow(text, dur); },
+onsubtitlechange: function (dur, text) { if (sid === P.sid && !XS) subShow(text, dur); },
 oncurrentplaytime: function (ms) { if (sid === P.sid) onTime(ms / 1000); },
 onevent: function () {}, ondrmevent: function () {},
 onstreamcompleted: function () { if (sid === P.sid) onEnded(); },
@@ -938,7 +936,6 @@ P.av = false;
 var v = $('vid'); v.style.display = 'block';
 v.onloadedmetadata = function () { if (sid !== P.sid) return; if (P.kind !== 'live') P.dur = v.duration || 0; if (resume > 5) v.currentTime = resume; autoSubHTML(v); };
 try { v.textTracks.onaddtrack = function () { if (sid === P.sid) autoSubHTML(v); }; } catch (e) {}
-loadExtSub(sid);
 v.onplaying = function () { buf(false); }; v.onwaiting = function () { buf(true); };
 v.ontimeupdate = function () { if (sid === P.sid) onTime(v.currentTime); };
 v.onended = function () { if (sid === P.sid) onEnded(); };
@@ -947,12 +944,11 @@ v.src = url; try { v.play(); } catch (e) {}
 }
 }
 function engineStop() {
-XS = null;
 try { if (P.av) { webapis.avplay.stop(); webapis.avplay.close(); } else { var v = $('vid'); v.pause(); v.removeAttribute('src'); v.load(); v.style.display = 'none'; } } catch (e) {}
 }
 function onTime(t) {
 P.pos = t;
-if (XS && !P.av) xsTick(t);
+if (XS) xsTick(t);
 if (P.kind !== 'live' && !P.dur && P.av) { try { P.dur = webapis.avplay.getDuration() / 1000; } catch (e) {} }
 if ($('plbar').className === 'show' && !P.acc) ovPaint();
 if (P.key && P.kind !== 'live' && t - P.lastSave > 12) { P.lastSave = t; saveP(false); }
@@ -1041,7 +1037,7 @@ var XS = null;
 function isAr(l) { l = String(l || '').toLowerCase(); return /^(ar|ara|arb)([-_]|$)|arab|عرب/.test(l); }
 function trLang(t) { try { var x = JSON.parse(t.extra_info || '{}'); return String(x.language || x.track_lang || x.lang || ''); } catch (e) { return ''; } }
 function autoSubAV() {
-if (P.subDone) return;
+if (P.subDone || XS) return;
 var A = webapis.avplay, tr = [], pick = -1;
 try { tr = A.getTotalTrackInfo() || []; } catch (e) {}
 tr.forEach(function (t) { if (t.type === 'TEXT' && pick < 0 && isAr(trLang(t))) pick = t.index; });
@@ -1067,10 +1063,6 @@ if (t) out.push({s: a, e: e, t: t});
 });
 out.sort(function (x, y) { return x.s - y.s; });
 return {c: out, i: -1};
-}
-function loadExtSub(sid) {
-XS = null; if (!P.subUrl) return;
-xhr('GET', P.subUrl, null, null, function (err, st, tx) { if (sid !== P.sid || err || st !== 200 || !tx) return; var x = srtParse(tx); if (x.c.length) XS = x; }, 15000);
 }
 function xsTick(t) {
 var c = XS.c, lo = 0, hi = c.length - 1, f = -1;
@@ -1885,7 +1877,7 @@ var d = o.hlsFrom; delete o.hlsFrom;
 if (d && d.hls) o.altUrl = d.hls;
 var go2 = function () {
 sxLeave();
-startPlay(o);
+startPlay(o); subLoad(o, P.sid);
 if (d && !d.hls && d.torrent_id && /^\d+$/.test(String(d.torrent_id))) {
 var u0 = o.url;
 api('/play/hls', {method: 'POST', body: {torrent_id: d.torrent_id, file_id: d.file_id, direct_link: d.direct || ''}, timeout: 30000}, function (e, s, r) {
@@ -1893,21 +1885,48 @@ if (r && r.hls && P.on && P.url === u0 && !P.altUrl) P.altUrl = r.hls;
 });
 }
 };
-/* ترجمة عربي خارجية (نفس تجهيز الموقع) لو الملف مش مدبلج */
-var sp = o.sp;
-if (sp && sp.id && sp.type && !isDub({title: o.vtitle || ''})) {
-sxBusy('جاري تجهيز الترجمة...', '');
-var q = 'lang=AR&type=' + sp.type + '&id=' + sp.id + (sp.s != null ? '&s=' + sp.s + '&e=' + sp.e : ''), fired = false;
-var fin = function (u) { if (fired) return; fired = true; o.subUrl = u || ''; go2(); };
-setTimeout(function () { fin(''); }, 7000);
-return api('/subs?' + q, {timeout: 7000}, function (e, s, r) {
-var l = (!e && s === 200 && r && r.items) || [];
-if (!l.length) return fin('');
-var it = subRank(l, o.vtitle || '')[0];
-api('/sub/link?u=' + enc(it.u) + '&fmt=srt&shift=0&lang=' + enc(it.lang || 'AR') + (sp.e != null ? '&e=' + sp.e : '') + (sp.s != null ? '&s=' + sp.s : ''), {timeout: 7000}, function (e2, s2, r2) { fin((!e2 && s2 === 200 && r2 && r2.url) || ''); });
+go2();
+}
+
+function apiText(path, cb) { xhr('GET', CFG.API + path, null, {'X-Token': S.tok || ''}, cb, 30000); }
+function subLoad(o, sid) {
+var sp = o.sp; if (!sp || isDub({title: o.vtitle || ''})) return;
+var base = (sp.id && sp.type) ? 'type=' + sp.type + '&id=' + sp.id : (sp.title ? 'q=' + enc(sp.title) + (sp.s != null ? '&type=tv' : '') : '');
+if (!base) return;
+var se = sp.s != null ? '&s=' + sp.s + '&e=' + sp.e : '';
+function ok() { return sid === P.sid && P.on && !P.subDone; }
+function apply(it, ai) {
+if (!ok()) return;
+var qs = 'u=' + enc(it.u) + '&fmt=srt&shift=0&lang=' + enc(it.lang || (ai ? 'EN' : 'AR')) + (ai ? '&ai=' + enc(ai) : '') + (sp.e != null ? '&e=' + sp.e + '&s=' + sp.s : '');
+apiText('/sub?' + qs, function (err, st, tx) {
+if (!ok() || err || st !== 200 || !tx) return;
+var x = srtParse(tx); if (!x.c.length) return;
+XS = x; P.subDone = true; subShow('');
+toast(ai ? '🤖 ترجمة عربي بالذكاء الاصطناعي' : '💬 ترجمة عربي');
 });
 }
-go2();
+api('/subs?lang=AR&' + base + se, {timeout: 30000}, function (e, s, r) {
+if (!ok()) return;
+var l = (!e && s === 200 && r && r.items) || [];
+if (l.length) return apply(subRank(l, o.vtitle || '')[0], '');
+api('/subs?lang=EN&' + base + se, {timeout: 30000}, function (e2, s2, r2) {
+var l2 = (!e2 && s2 === 200 && r2 && r2.items) || [];
+if (!ok() || !l2.length) return;
+var it = subRank(l2, o.vtitle || '')[0];
+toast('🤖 مفيش ترجمة عربي، بترجم الإنجليزي (ممكن ياخد دقيقة)...');
+aiTr(it, sp, o, sid, function (ai) { if (ai) apply(it, ai); });
+});
+});
+}
+function aiTr(it, sp, o, sid, cb) {
+var n = 0;
+function poll(d) {
+if (sid !== P.sid || !d || !d.job && !d.done) return cb(null);
+if (d.done) return cb(d.ok && d.ai ? d.ai : null);
+if (++n > 120) return cb(null);
+setTimeout(function () { api('/sub/ai?job=' + enc(d.job), {timeout: 30000}, function (e, s, d2) { poll(d2); }); }, 3000);
+}
+api('/sub/ai', {method: 'POST', timeout: 30000, body: {u: it.u, s: sp.s, e: sp.e, title: sp.title || o.title || ''}}, function (e, s, d) { poll(d); });
 }
 function subRank(list, fname) {
 function tk(s) { return String(s || '').toLowerCase().replace(/\.[a-z0-9]{2,4}$/i, '').split(/[^a-z0-9]+/).filter(Boolean); }
