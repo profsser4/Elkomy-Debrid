@@ -94,13 +94,6 @@ html.playing .scr{display:none!important}
 /* player overlay */
 #pl{position:absolute;left:0;top:0;width:1920px;height:1080px;display:none;z-index:9;background:transparent}
 html.playing #pl{display:block}
-#plbar{position:absolute;left:0;right:0;bottom:0;padding:60px 90px 50px;background:linear-gradient(0deg,rgba(0,0,0,.92),rgba(0,0,0,0));display:none}
-#plbar.show{display:block}
-#pltitle{font-size:46px;font-weight:700;margin-bottom:8px}
-#plsub{font-size:28px;color:#b6c6ea;margin-bottom:18px;min-height:38px}
-#plprog{height:10px;background:rgba(255,255,255,.25);border-radius:6px;overflow:hidden;direction:ltr}
-#plfill{height:10px;width:0;background:#38bdf8}
-#pltime{font-size:26px;color:#e8eefc;margin-top:10px;display:flex;justify-content:space-between;direction:ltr}
 #plbuf{position:absolute;left:910px;top:490px;width:100px;height:100px;border:10px solid rgba(255,255,255,.25);border-top-color:#38bdf8;border-radius:50%;animation:sp 1s linear infinite;display:none}
 #plmsg{position:absolute;left:0;right:0;top:44%;text-align:center;font-size:44px;background:rgba(0,0,0,.7);padding:30px;display:none}
 #plnum{position:absolute;left:70px;top:50px;font-size:60px;font-weight:800;background:rgba(0,0,0,.6);padding:6px 26px;border-radius:14px;display:none}
@@ -137,11 +130,9 @@ html.playing #pl{display:block}
 .pc .pn{font-size:34px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 14px}
 #favbox{position:absolute;left:260px;right:260px;top:130px;bottom:40px;overflow:hidden}
 #favbox .seas{margin-bottom:14px}
-#plsubt{position:absolute;left:120px;right:120px;bottom:150px;text-align:center;font-size:46px;line-height:1.35;color:#fff;text-shadow:0 0 5px #000,2px 2px 3px #000;white-space:pre-line;display:none}
 #plmenu{position:absolute;right:90px;top:120px;min-width:560px;background:rgba(10,16,30,.95);border:3px solid #38bdf8;border-radius:20px;padding:18px;display:none;font-size:32px}
 #plmenu .mi{padding:12px 24px;border-radius:12px;margin:4px 0}
 #plmenu .mi.on{background:#2563eb}
-#plhint{position:absolute;left:90px;top:56px;font-size:24px;color:#cbd5f5;background:rgba(0,0,0,.55);padding:6px 18px;border-radius:12px;display:none}
 #site .bh .btn{min-width:150px;padding:10px 16px;font-size:25px;margin:0 6px}
 html,body{background:#0e1131}
 .scr{background:#0e1131}
@@ -192,6 +183,24 @@ html,body{background:#0e1131}
 .pbar i{display:block;height:8px;background:linear-gradient(90deg,#f6a823,#ffd75e)}
 .row{height:88px;border-radius:20px;background:rgba(130,140,255,.16);border:1px solid rgba(255,255,255,.06)}
 .row .no{width:92px;flex:none;font-size:30px;color:#e5e9ff;direction:ltr;text-align:center}
+#plbar{position:absolute;left:0;right:0;bottom:0;padding:130px 90px 46px;background:linear-gradient(0deg,rgba(0,0,0,.92),rgba(0,0,0,.5) 60%,rgba(0,0,0,0));display:none;direction:ltr}
+#plbar.show{display:block}
+#pltop{position:absolute;left:0;right:0;top:0;padding:46px 90px 110px;background:linear-gradient(180deg,rgba(0,0,0,.85),rgba(0,0,0,0));display:none}
+#plbar.show~#pltop{display:block}
+#pltitle{font-size:46px;font-weight:700;color:#fff}
+#plsub{font-size:28px;color:#c9c9c9;margin-top:6px;min-height:34px}
+#plrow{display:flex;align-items:center}
+#plprog{position:relative;flex:1;height:8px;background:rgba(255,255,255,.3);border-radius:4px}
+#plfill{position:relative;height:8px;width:0;background:#e50914;border-radius:4px}
+#plfill:after{content:"";position:absolute;right:-13px;top:-9px;width:26px;height:26px;border-radius:50%;background:#e50914}
+#plcur{position:absolute;right:-70px;top:-70px;min-width:140px;text-align:center;font-size:30px;font-weight:700;background:#fff;color:#000;border-radius:8px;padding:2px 10px;display:none}
+#pldur{margin-left:30px;font-size:32px;color:#fff;min-width:130px;text-align:right}
+#plctl{display:flex;align-items:center;margin-top:28px;font-size:32px;color:#fff}
+#plctl .ci{margin-right:52px}#plctl .sp{flex:1}#plctl .lv{background:#e50914;padding:4px 20px;border-radius:6px;font-weight:700}
+#plpause{position:absolute;left:50%;top:50%;margin:-75px 0 0 -75px;width:150px;height:150px;line-height:142px;border-radius:50%;background:rgba(0,0,0,.55);border:4px solid #fff;text-align:center;font-size:58px;display:none}
+#plbuf{border-top-color:#e50914}
+#plsubt{position:absolute;left:140px;right:140px;bottom:90px;text-align:center;font-size:44px;font-weight:600;line-height:1.35;color:#fff;font-family:Arial,Helvetica,sans-serif;text-shadow:0 0 5px #000,2px 2px 3px #000;white-space:pre-line;display:none}
+#plbar.show~#plsubt{bottom:260px}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -251,8 +260,9 @@ html,body{background:#0e1131}
 <div id="sbusy" class="scr"><div class="center"><div class="spin" style="margin:0 auto 40px"></div><h2 id="sbT">جاري التجهيز...</h2><p id="sbP"></p><p style="font-size:24px">اضغط رجوع للإلغاء</p></div></div>
 
 <div id="pl">
-  <div id="plsubt"></div><div id="plhint">🔴 الصوت · 🔵 الترجمة</div><div id="plmenu"></div><div id="plnum"></div><div id="plbuf"></div><div id="plmsg"></div>
-  <div id="plbar"><div id="pltitle"></div><div id="plsub"></div><div id="plprog"><div id="plfill"></div></div><div id="pltime"><span id="plcur">00:00</span><span id="pldur">00:00</span></div></div>
+  <div id="plbar"><div id="plrow"><div id="plprog"><div id="plfill"><b id="plcur"></b></div></div><span id="pldur"></span></div><div id="plctl"></div></div>
+  <div id="pltop"><div id="pltitle"></div><div id="plsub"></div></div><div id="plpause">&#10074;&#10074;</div>
+  <div id="plsubt"></div><div id="plmenu"></div><div id="plnum"></div><div id="plbuf"></div><div id="plmsg"></div>
 </div>
 
 <div id="kb"><div id="kbt"></div><div id="kbpv"></div><div id="kbk"></div></div>
@@ -598,9 +608,9 @@ selectCat(start, true);
 }
 function buildCats() {
 var p = $('catp'); p.innerHTML = ''; p.scrollTop = 0;
-var ren = lj('ren_' + B.kind, {});
+var ren = (S.names || {})[B.kind] || {};
 catList().forEach(function (c) {
-var d = D.createElement('div'); d.className = 'f cat'; d.innerHTML = '<span class="nm">' + esc(ren[c.id] || c.name) + '</span><span class="ct"></span>'; d._cid = c.id; d._lpf = function () { catMenu(c); };
+var d = D.createElement('div'); d.className = 'f cat'; d.innerHTML = '<span class="nm">' + esc(ren[c.id] || c.name) + '</span><span class="ct"></span>'; d._cid = c.id;
 d._ok = function () { selectCat(c.id, false); };
 p.appendChild(d);
 });
@@ -621,20 +631,6 @@ if (!ord.length) return l;
 return l.map(function (c, n) { var k = ord.indexOf(c.id); return {c: c, k: k >= 0 ? k : (c.id.charAt(0) === '_' ? n - 1e6 : 1e6 + n)}; }).sort(function (a, b) { return a.k - b.k; }).map(function (o) { return o.c; });
 }
 function catRefocus(id) { buildCats(); markCat(); var c = $('catp').children; for (var i = 0; i < c.length; i++) if (c[i]._cid === id) { setFocus(c[i]); ensureVisible(c[i]); return; } focusFirst(); }
-function catMenu(c) {
-var k = B.kind, ren = lj('ren_' + k, {}), w = function (fn) { return function () { show('browse'); fn(); }; };
-var real = function () { return catList().map(function (x) { return x.id; }).filter(function (x) { return x.charAt(0) !== '_'; }); };
-var mv = function (d) { var ids = real(), i = ids.indexOf(c.id), j = i + d; if (i >= 0 && j >= 0 && j < ids.length) { ids.splice(i, 1); ids.splice(j, 0, c.id); S.ord = S.ord || {}; S.ord[k] = ids; pinsSave(); } catRefocus(c.id); };
-if (c.id.charAt(0) === '_') return toast('القسم ده ثابت في مكانه');
-showMsg('الفئة: ' + (ren[c.id] || c.name), 'اختر ما تريد', [
-{t: '▲ تحريك لأعلى', pri: 1, fn: w(function () { mv(-1); })},
-{t: '▼ تحريك لأسفل', fn: w(function () { mv(1); })},
-{t: '✎ إعادة تسمية', fn: function () { show('browse'); catRefocus(c.id); kbOpen('اسم الفئة', ren[c.id] || c.name, false, function (v) { var r = lj('ren_' + k, {}); if (v.trim()) r[c.id] = v.trim(); else delete r[c.id]; sj('ren_' + k, r); catRefocus(c.id); }); }},
-{t: '✖ إخفاء من القائمة', fn: w(function () { S.hid = S.hid || {}; S.hid[k] = (S.hid[k] || []).concat([c.id]); pinsSave(); catRefocus(''); toast('تم الإخفاء'); })},
-{t: '↺ الترتيب الأصلي (وإرجاع المخفي)', fn: w(function () { S.ord = S.ord || {}; S.hid = S.hid || {}; delete S.ord[k]; delete S.hid[k]; pinsSave(); ls('ren_' + k, null); catRefocus(c.id); })},
-{t: 'إلغاء', fn: w(function () { catRefocus(c.id); })}
-]);
-}
 function markCat() {
 var l = $('catp').children;
 for (var i = 0; i < l.length; i++) l[i].className = l[i].className.replace(/ ?\bsel\b/g, '') + (l[i]._cid === B.cat ? ' sel' : '');
@@ -743,7 +739,6 @@ d.className = 'f card';
 d.innerHTML = '<div class="pic"' + (it.img ? ' style="background-image:url(\'' + esc(it.img) + '\')"' : '') + '></div>' +
 (it.rating && +it.rating > 0 ? '<div class="rt">' + esc((+it.rating).toFixed(1)) + '</div>' : '') + (fav ? '<div class="fv">★</div>' : '') + nw + pb + '<div class="t"><b>' + esc(it.name) + '</b>' + pi + '</div>';
 }
-d._lp = 1;
 d._ok = function () { openItem(it, i); };
 d._focus = function () { if (B.view && i >= B.n - 10 && B.n < B.view.length) more(); };
 return d;
@@ -755,15 +750,6 @@ if (it.cw) return playVod(it, it.cw.pos);
 return openVod(it);
 }
 openSeries(it, it.cw ? it.cw.meta.ep : null);
-}
-function longPress(el) {
-if (el && el._lpf) return el._lpf(el);
-if (!el || !el._it || !el._lp) return;
-var on = toggleFav(B.kind, el._it);
-if (B.cat === '__fav' && !on) { var idx = B.view.indexOf(el._it); B.items = UD.fav[B.kind].slice(); applyView(); var l = $('listp').querySelectorAll('.f'); if (l.length) setFocus(l[Math.min(idx, l.length - 1)]); return; }
-var s = el.querySelector('.st,.fv');
-if (on && !s) { var n = D.createElement('div'); n.className = B.kind === 'live' ? 'st' : 'fv'; n.textContent = '★'; el.appendChild(n); }
-else if (!on && s) s.parentNode.removeChild(s);
 }
 $('bSearch')._ok = function () {
 kbOpen('بحث في ' + KT[B.kind], B.q, false, function (v) {
@@ -885,17 +871,24 @@ function hasAV() { try { return !!(window.webapis && webapis.avplay); } catch (e
 function buf(on) { $('plbuf').style.display = on ? 'block' : 'none'; }
 function plmsg(t) { var e = $('plmsg'); e.textContent = t || ''; e.style.display = t ? 'block' : 'none'; }
 function ovShow(keep) {
-$('plbar').className = 'show'; clearTimeout(P.ovT); $('plhint').style.display = (P.kind === 'site' && P.av) ? 'block' : 'none';
-if (!keep) P.ovT = setTimeout(function () { $('plbar').className = ''; $('plnum').style.display = 'none'; $('plhint').style.display = 'none'; }, 4500);
+$('plbar').className = 'show'; clearTimeout(P.ovT);
+if (!keep) P.ovT = setTimeout(function () { $('plbar').className = ''; $('plnum').style.display = 'none'; }, 4500);
 }
 function ovPaint() {
 var live = P.kind === 'live';
 $('pltitle').textContent = P.title;
-$('plprog').style.display = $('pltime').style.display = live ? 'none' : '';
+$('plrow').style.display = live ? 'none' : 'flex';
+$('plpause').style.display = (P.paused && !P.err) ? 'block' : 'none';
+var h = live ? '<span class="lv">● مباشر</span>' : '<span class="ci">' + (P.paused ? '▶' : '❚❚') + '</span><span class="ci">⟲ 10</span><span class="ci">10 ⟳</span>';
+h += '<span class="sp"></span>';
+if (P.kind === 'site' && P.next) h += '<span class="ci">⏭ التالية 🟡</span>';
+if (P.kind === 'site' && P.av) h += '<span class="ci">🔊 🔴</span><span class="ci">💬 🔵</span>';
+if (h !== P.ch) { P.ch = h; $('plctl').innerHTML = h; }
 if (!live) {
 var p = P.pos + (P.acc || 0); if (p < 0) p = 0; if (P.dur && p > P.dur) p = P.dur;
 $('plfill').style.width = (P.dur ? Math.min(100, p / P.dur * 100) : 0) + '%';
-$('plcur').textContent = fmt(p) + (P.acc ? (P.acc > 0 ? '  ▶▶' : '  ◀◀') : ''); $('pldur').textContent = fmt(P.dur);
+var c = $('plcur'); c.style.display = (P.acc || P.paused) ? 'block' : 'none'; c.textContent = fmt(p) + (P.acc ? (P.acc > 0 ? '  ▶▶' : '  ◀◀') : '');
+$('pldur').textContent = P.dur ? fmt(Math.max(0, P.dur - p)) : '';
 }
 }
 function startPlay(o) {
@@ -1021,7 +1014,7 @@ EPGC[it.id] = t; show(t);
 function pauseToggle(force) {
 var want = force == null ? !P.paused : force;
 try { if (P.av) { if (want) webapis.avplay.pause(); else webapis.avplay.play(); } else { var v = $('vid'); if (want) v.pause(); else v.play(); } } catch (e) {}
-P.paused = want; plmsg(want ? 'متوقف' : ''); ovPaint(); ovShow(want);
+P.paused = want; plmsg(''); ovPaint(); ovShow(want);
 }
 function seekBy(dir, rep) {
 if (P.kind === 'live') return ovShow();
@@ -1131,7 +1124,6 @@ if (k === 39 || k === 417) { seekBy(1, rep); return true; }
 if (k === 37 || k === 412) { seekBy(-1, rep); return true; }
 if (k === 38 || k === 428) { if (P.kind === 'live') { zap(-1); } else ovShow(); return true; }
 if (k === 40 || k === 427) { if (P.kind === 'live') { zap(1); } else ovShow(); return true; }
-if (k === 405 && P.kind === 'live') { var it = P.list[P.idx]; toggleFav('live', it); return true; }
 ovShow(); return true;
 }
 /* ===================== أزرار الريموت ===================== */
@@ -1148,14 +1140,7 @@ e.preventDefault(); e.stopPropagation(); return;
 }
 if (P.on) { if (playerKey(e)) { e.preventDefault(); e.stopPropagation(); } return; }
 if (k >= 37 && k <= 40) { move(k); e.preventDefault(); return; }
-if (k === 13) {
-e.preventDefault();
-if (e.repeat) return;
-if (cur && cur._lp) { okFired = false; clearTimeout(okT); okT = setTimeout(function () { okFired = true; okT = null; longPress(cur); }, 650); }
-else activate();
-return;
-}
-if (k === 405 && cur && cur._lp) { longPress(cur); e.preventDefault(); return; }
+if (k === 13) { e.preventDefault(); if (!e.repeat) activate(); return; }
 if (k === 10009 || k === 8 || k === 27) {
 e.preventDefault();
 if (curScr === 'login' || curScr === 'splash') return exitApp();
@@ -1165,13 +1150,7 @@ if (curScr === 'mode') return showMsg('الخروج', 'عايز تقفل الت�
 return back();
 }
 }
-function onKeyUp(e) {
-if (e.keyCode !== 13 || P.on || KB) return;
-if (okT) { clearTimeout(okT); okT = null; if (!okFired) activate(); }
-okFired = false;
-}
 D.addEventListener('keydown', onKeyDown, true);
-D.addEventListener('keyup', onKeyUp, true);
 try { ['MediaPlay', 'MediaPause', 'MediaPlayPause', 'MediaStop', 'MediaRewind', 'MediaFastForward', 'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue', 'ChannelUp', 'ChannelDown'].forEach(function (k) { try { tizen.tvinputdevice.registerKey(k); } catch (e) {} }); } catch (e) {}
 function fit() { var w = window.innerWidth || 1920, h = window.innerHeight || 1080, z = Math.min(w / 1920, h / 1080), b = D.body.style; if (Math.abs(z - 1) < 0.005) { b.transform = ''; b.left = b.top = '0px'; return; } b.transform = 'scale(' + z + ')'; b.left = Math.round((w - 1920 * z) / 2) + 'px'; b.top = Math.round((h - 1080 * z) / 2) + 'px'; }
 window.addEventListener('resize', fit); fit();
@@ -1198,7 +1177,7 @@ S.pid = ipid();
 api('/iptv/pins?pid=' + enc(S.pid), {timeout: 15000}, function (e, st, pd) {
 var p = (pd && pd.pins) || {}, g = (pd && pd.g) || {};
 S.pins = {live: (p.live || g.live || []).map(String), cats: p.cats || g.cats || []};
-S.ord = p.order || {}; S.hid = p.hidden || {};
+S.ord = p.order || {}; S.hid = p.hidden || {}; S.names = p.names || {};
 cb();
 });
 }
@@ -1392,12 +1371,7 @@ if (doneTv) { var n = x.next || nextEpOf(x); lbl = (n && n.s != null) ? '⏭ S' 
 else lbl = 'S' + p2(x.s) + 'E' + p2(x.e) + ' · ' + fmt(x.pos);
 } else if (doneTv) lbl = '⏭ التالي'; else lbl = fmt(x.pos);
 var c = sxCard({title: x.title, poster: x.poster, sub: lbl, pct: pct}, function () { playItem(x.key); });
-c._lp = 1; c._lpf = function () { hideCw(x.key); };
 return c;
-}
-function hideCw(key) {
-var it = getItem(key); if (!it) return;
-setItem(sxMix(it, {hide: true})); toast('اتشالت من كمّل المشاهدة'); sxSecCw();
 }
 function latestOf(tmdb) {
 var its = SD.items[PID] || {}, best = null, k;
@@ -2134,9 +2108,7 @@ var IALL = [], IROWS = [];
 $('xMore')._ok = function () {
 sxList('⋯ المزيد', [
 {txt: '👤 تبديل البروفايل', sub: 'اختيار مين بيشاهد', fn: function () { sxProfiles(false); }},
-{txt: '🌐 بحث روابط الويب', sub: 'بيدوّر في صفحات الويب على روابط مدعومة', fn: function () { wsStart(false); }},
-{txt: '🧩 إضافات Stremio', sub: 'عرض · إضافة · حذف · مزامنة', fn: stView},
-{txt: '⭐ اهتماماتي', sub: 'اختار اللي بتحبه وهتظهر صفوفه في الرئيسية', fn: intView}
+{txt: '🌐 بحث روابط الويب', sub: 'بيدوّر في صفحات الويب على روابط مدعومة', fn: function () { wsStart(false); }}
 ]);
 };
 function wsStart(deep, q0) {
@@ -2164,41 +2136,6 @@ var pr = getItem(key), rs = (pr && !pr.del && !pr.done && pr.pos > 10) ? Math.fl
 sxStartPlay({kind: 'site', url: r.direct_link, title: nm, key: key, resume: rs, sp: {src: q, title: nm, type: null, poster: '', vname: f.name || ''}, next: null,
 hlsFrom: {hls: r.hls, torrent_id: r.torrent_id || d.torrent_id, file_id: r.file_id != null ? r.file_id : f.id, direct: r.direct_link}});
 }, null, 0);
-}
-function stView() {
-sxBusy('بجيب الإضافات...');
-api('/stremio/addons', {}, function (err, st, d) {
-if (err || !d || d.error) return sxFail(err || (d && d.error) || 'تعذّر', stView, null);
-var rows = (d.items || []).map(function (x) { return {txt: x.name || x.id, sub: x.stream ? '🎞 بتدي نتايج تشغيل' : 'معلومات / كتالوج بس', mark: '🗑 اضغط للحذف', fn: function () {
-showMsg('حذف الإضافة؟', x.name || '', [{t: 'حذف', pri: 1, fn: function () { api('/stremio/addons/' + enc(x.id), {method: 'DELETE'}, function () { stView(); }); }}, {t: 'إلغاء', fn: stView}]);
-}}; });
-var tabs = [{t: '➕ إضافة برابط', on: 1, fn: stAddUrl}, {t: '🔄 مزامنة', fn: stSyncTv}];
-if (!d.logged) tabs.push({t: '🔑 دخول Stremio', fn: stLoginTv});
-sxList('🧩 إضافات Stremio (' + rows.length + ')' + (d.logged && d.email ? ' · ' + d.email : ''), rows, 'مفيش إضافات. ضيف رابط أو سجّل دخول.', tabs);
-});
-}
-function stDone(e, d) { toast(e ? 'تعذّر الاتصال' : ((d && d.error) || ('تم ✅ إضافات جديدة: ' + ((d && d.added) || 0)))); stView(); }
-function stAddUrl() { kbOpen('رابط الإضافة (manifest.json)', '', false, function (v) { v = v.trim(); if (v) api('/stremio/addon', {method: 'POST', body: {url: v}}, function (e, s, d) { stDone(e, d); }); }); }
-function stSyncTv() { api('/stremio/sync', {method: 'POST', body: {}}, function (e, s, d) { stDone(e, d); }); }
-function stLoginTv() {
-kbOpen('إيميل Stremio', '', false, function (em) { setTimeout(function () {
-kbOpen('باسورد Stremio', '', true, function (pw) { api('/stremio/login', {method: 'POST', body: {email: em.trim(), password: pw}}, function (e, s, d) { stDone(e, d); }); });
-}, 80); });
-}
-function intView() {
-var p = prof(); if (!p) return;
-function draw() {
-var pick = {}; (p.int || []).forEach(function (k) { pick[k] = 1; });
-var rows = IALL.map(function (x) { return {txt: (pick[x.k] ? '✅ ' : '⬜ ') + x.name, fn: function () {
-var a = (p.int || []).slice(), i = a.indexOf(x.k); if (i >= 0) a.splice(i, 1); else a.push(x.k);
-p.int = a; sdSaveProf(p); IROWS = [];
-var n = cur && cur.querySelector('.nm'); if (n) n.textContent = (i >= 0 ? '⬜ ' : '✅ ') + x.name;
-}}; });
-sxList('⭐ اهتماماتي', rows, 'مفيش اهتمامات متاحة', [{t: 'تمام', on: 1, fn: function () { back(); }}]);
-}
-if (IALL.length) return draw();
-sxBusy('بجيب الاهتمامات...');
-api('/interest/list', {}, function (e, s, d) { IALL = (d && d.items) || []; draw(); });
 }
 function sxSecInt() { sxPut('sec-int', function (box) { IROWS.forEach(function (r) { sxRowIn(box, r.title, xlFilter(r.items), null); }); }); }
 function loadIntRows() {

@@ -2641,8 +2641,8 @@ async function ivPinsLoad() {
     const p = d.pins || {}, gg = d.g || {};
     IV.g = {live: gg.live || [], cats: gg.cats || []};
     IV.pins = gm
-      ? {live: IV.g.live.slice(), cats: IV.g.cats.slice(), order: p.order || {}, hidden: p.hidden || {}}
-      : {live: p.live || [], cats: p.cats || [], order: p.order || {}, hidden: p.hidden || {}};
+      ? {live: IV.g.live.slice(), cats: IV.g.cats.slice(), order: p.order || {}, hidden: p.hidden || {}, names: p.names || {}}
+      : {live: p.live || [], cats: p.cats || [], order: p.order || {}, hidden: p.hidden || {}, names: p.names || {}};
     IV.pinsPid = pid; IV.pinsGm = gm;
   } catch (e) { IV.pins = {live: [], cats: [], order: {}, hidden: {}}; }
 }
@@ -2687,6 +2687,10 @@ function ivToggleCat(k, id, n) {
 
 // ---------- ترتيب أقسام الـIPTV (لكل تبويب، لكل بروفايل) ----------
 function ivSortCats(kind, cats) {
+  const nm = (IV.pins.names || {})[kind] || {};
+  return ivSortCats0(kind, cats).map(c => nm[String(c.category_id)] ? Object.assign({}, c, {category_name: nm[String(c.category_id)], _on: c.category_name}) : c);
+}
+function ivSortCats0(kind, cats) {
   const base = new Map(cats.map((c, i) => [String(c.category_id), i]));
   const ord = (IV.pins.order || {})[kind];
   if (ord && ord.length) {
@@ -2722,11 +2726,11 @@ function ivOrderRender() {
   const hid = new Set(((IV.pins.hidden || {})[kind] || []).map(String));
   const box = $('ivOrdBody'), keep = box.scrollTop;
   const rows = list.map((c, i) => ({c: c, i: i})).filter(x => !q || String(x.c.category_name).toLowerCase().includes(q));
-  box.innerHTML = '<p style="color:var(--mut);font-size:12px;margin:4px 2px 10px;line-height:1.8">رتّب الأقسام براحتك: ⤒ فوق خالص · ▲▼ خطوة · ⤓ تحت خالص · 👁 إخفاء القسم من الشريط (بيفضل ظاهر في «الكل»). بيتحفظ لبروفايلك لوحده.</p>' +
+  box.innerHTML = '<p style="color:var(--mut);font-size:12px;margin:4px 2px 10px;line-height:1.8">رتّب الأقسام براحتك: ⤒ فوق خالص · ▲▼ خطوة · ⤓ تحت خالص · ✏️ تغيير الاسم · 👁 إخفاء القسم من الشريط (بيفضل ظاهر في «الكل»). بيتحفظ لبروفايلك لوحده.</p>' +
     (rows.map(x => {
       const id = esc(x.c.category_id), off = hid.has(String(x.c.category_id));
       return '<div class="ivor' + (off ? ' off' : '') + '" data-id="' + id + '"><span class="ivn">' + (x.i + 1) + '</span>' +
-        '<span class="ivnm">' + (ivCatPinned(kind, x.c.category_id) ? '⭐ ' : '') + esc(x.c.category_name) + '</span>' +
+        '<span class="ivnm">' + (ivCatPinned(kind, x.c.category_id) ? '⭐ ' : '') + esc(x.c.category_name) + (x.c._on ? ' <small style="color:var(--mut)">(' + esc(x.c._on) + ')</small>' : '') + '</span><button onclick="ivRenameCat(this)" aria-label="تغيير الاسم">✏️</button>' +
         '<button onclick="ivMove(this,\'top\')" aria-label="فوق خالص">⤒</button><button onclick="ivMove(this,\'up\')" aria-label="فوق">▲</button>' +
         '<button onclick="ivMove(this,\'down\')" aria-label="تحت">▼</button><button onclick="ivMove(this,\'bot\')" aria-label="تحت خالص">⤓</button>' +
         '<button onclick="ivHideCat(this)" aria-label="إخفاء">' + (off ? '🙈' : '👁') + '</button></div>';
@@ -2746,6 +2750,28 @@ function ivMove(btn, how) {
   ivPinsSave();
   ivOrderRender();
   if (how === 'top') $('ivOrdBody').scrollTop = 0;
+}
+function ivRenameCat(btn) {
+  const row = btn.parentNode, sp = row.querySelector('.ivnm'), id = row.dataset.id, kind = IV.ord.kind;
+  const c = ivSortCats(kind, IV.ord.cats).find(x => String(x.category_id) === id);
+  if (!c || !sp) return;
+  const orig = c._on || c.category_name;
+  const inp = document.createElement('input');
+  inp.className = 'search-input'; inp.value = c.category_name; inp.placeholder = orig;
+  inp.style.cssText = 'flex:1;min-width:0;height:36px;font-size:14px';
+  sp.replaceWith(inp); inp.focus(); inp.select();
+  let done = false;
+  const save = () => {
+    if (done) return; done = true;
+    const v = inp.value.trim();
+    IV.pins.names = IV.pins.names || {};
+    const m = IV.pins.names[kind] = IV.pins.names[kind] || {};
+    if (v && v !== orig) m[id] = v; else delete m[id];
+    ivPinsSave();
+    ivOrderRender();
+  };
+  inp.onblur = save;
+  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); };
 }
 function ivHideCat(btn) {
   const kind = IV.ord.kind, id = btn.parentNode.dataset.id;
