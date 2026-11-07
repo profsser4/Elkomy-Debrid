@@ -1889,6 +1889,31 @@ go2();
 }
 
 function apiText(path, cb) { xhr('GET', CFG.API + path, null, {'X-Token': S.tok || ''}, cb, 30000); }
+function subFetch(it, ai, shift, scale, sp, sid, done) {
+var qs = 'u=' + enc(it.u) + '&fmt=srt&shift=' + shift + '&lang=' + enc(it.lang || (ai ? 'EN' : 'AR')) + (scale && Math.abs(scale - 1) > 1e-6 ? '&scale=' + scale.toFixed(6) : '') + (ai ? '&ai=' + enc(ai) : '') + (sp.e != null ? '&e=' + sp.e + '&s=' + sp.s : '');
+apiText('/sub?' + qs, function (err, st, tx) {
+if (sid !== P.sid || !P.on || err || st !== 200 || !tx) return done(null);
+var x = srtParse(tx); done(x.c.length ? x : null);
+});
+}
+function autoSync(it, ai, sp, sid) {
+var src = P.url || ''; if (!/^https?:\/\//i.test(src)) return;
+var key = String(src).split('?')[0], n = 0;
+function live() { return sid === P.sid && P.on; }
+function fin(d) {
+if (!live()) return;
+if (d.ok && d.synced) return toast('✅ الترجمة متظبطة مع الصوت');
+if (d.ok) return subFetch(it, ai, d.shift, d.scale || 1, sp, sid, function (x) { if (x && live()) { XS = x; subShow(''); toast('🎯 اتضبطت الترجمة بالصوت (' + (d.shift > 0 ? '+' : '') + d.shift + ' ث)'); } });
+if (d.reason === 'split' || d.reason === 'low') toast('الترجمة دي مش متطابقة مع الفيديو، مقدرتش أظبطها');
+}
+function poll(d) {
+if (!live() || !d) return;
+if (d.done) return fin(d);
+if (!d.job || ++n > 80) return;
+setTimeout(function () { api('/sub/auto?job=' + enc(d.job), {timeout: 30000}, function (e, s2, d2) { poll(d2); }); }, 2500);
+}
+api('/sub/auto', {method: 'POST', timeout: 30000, body: {u: it.u, src: src, s: sp.s, e: sp.e, lang: it.lang || (ai ? 'EN' : 'AR'), key: key, force: false, dur: P.dur || 0}}, function (e, s2, d) { poll(d); });
+}
 function subLoad(o, sid) {
 var sp = o.sp; if (!sp || isDub({title: o.vtitle || ''})) return;
 var base = (sp.id && sp.type) ? 'type=' + sp.type + '&id=' + sp.id : (sp.title ? 'q=' + enc(sp.title) + (sp.s != null ? '&type=tv' : '') : '');
@@ -1897,12 +1922,11 @@ var se = sp.s != null ? '&s=' + sp.s + '&e=' + sp.e : '';
 function ok() { return sid === P.sid && P.on && !P.subDone; }
 function apply(it, ai) {
 if (!ok()) return;
-var qs = 'u=' + enc(it.u) + '&fmt=srt&shift=0&lang=' + enc(it.lang || (ai ? 'EN' : 'AR')) + (ai ? '&ai=' + enc(ai) : '') + (sp.e != null ? '&e=' + sp.e + '&s=' + sp.s : '');
-apiText('/sub?' + qs, function (err, st, tx) {
-if (!ok() || err || st !== 200 || !tx) return;
-var x = srtParse(tx); if (!x.c.length) return;
+subFetch(it, ai, 0, 1, sp, sid, function (x) {
+if (!x || !ok()) return;
 XS = x; P.subDone = true; subShow('');
 toast(ai ? '🤖 ترجمة عربي بالذكاء الاصطناعي' : '💬 ترجمة عربي');
+autoSync(it, ai, sp, sid);
 });
 }
 api('/subs?lang=AR&' + base + se, {timeout: 30000}, function (e, s, r) {
