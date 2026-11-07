@@ -150,6 +150,57 @@ html.playing #pl{display:block}
 #plmenu .mi.on{background:#2563eb}
 #plhint{position:absolute;left:90px;top:56px;font-size:24px;color:#cbd5f5;background:rgba(0,0,0,.55);padding:6px 18px;border-radius:12px;display:none}
 #site .bh .btn{min-width:150px;padding:10px 16px;font-size:25px;margin:0 6px}
+
+/* ===== IPTV Smarters look ===== */
+html,body{background:#141842}
+.scr{background:radial-gradient(circle at 25% 15%,#2b3180 0%,#181c52 45%,#0f1235 100%)}
+.f.on{transform:scale(1.04);box-shadow:0 0 0 5px #ffd36a,0 10px 36px rgba(255,190,60,.35)}
+.row.on,.cat.on,.ep.on{transform:none;box-shadow:none;background:linear-gradient(90deg,#f5a524,#fdd34d)!important;color:#1b1b2f}
+.btn{background:rgba(90,105,215,.45);border-radius:18px}
+.btn.on{background:linear-gradient(90deg,#f5a524,#fdd34d);color:#1b1b2f;font-weight:700}
+.btn.pri{background:linear-gradient(90deg,#4f46e5,#7c3aed)}
+.logo{font-size:44px}
+.top{left:80px;right:80px;direction:ltr}
+.tr{display:flex;align-items:center;direction:ltr}
+.tr .clock{margin-right:34px;font-size:56px;font-weight:700;color:#fff}
+.tr .clock small{font-size:22px;display:inline;margin-left:14px;color:#b9c3ee}
+.ib{width:84px;height:84px;line-height:84px;border-radius:50%;text-align:center;font-size:42px;margin-left:26px;color:#fff}
+.hcards{direction:ltr;left:150px;right:150px;top:190px;height:640px;justify-content:center}
+.hc{border-radius:26px;width:560px;height:480px;padding-top:110px;font-size:46px;position:relative}
+.hc em{display:block;font-style:normal;position:absolute;left:0;right:0;bottom:36px;font-size:44px}
+.hc small{position:absolute;left:0;right:0;bottom:-2px;font-size:22px;margin:0}
+.hc.big{width:500px;height:600px;padding-top:170px;margin-right:36px}
+.hcol{width:560px;margin-right:36px}.hcol:last-child{margin-right:0}
+.hcol .hc{margin:0 0 20px}
+.hb{height:100px;line-height:100px;border-radius:22px;background:rgba(40,100,130,.75);font-size:34px;text-align:center}
+.hb.on{background:linear-gradient(90deg,#f5a524,#fdd34d);color:#1b1b2f}
+.c1{background:linear-gradient(160deg,#38bdf8,#4338ca)}
+.c2{background:linear-gradient(145deg,#d946ef,#fb923c)}
+.c3{background:linear-gradient(145deg,#a855f7,#3b82f6)}
+.foot{direction:ltr;font-size:26px;color:#cbd5f5}
+/* browse */
+#browse .bh{left:700px;right:40px;top:26px}
+#browse .bh h2{text-align:center;font-size:42px;background:rgba(90,105,215,.3);border-radius:18px;padding:12px 0}
+#bSearch,#bHome,#bSort{position:absolute;top:30px;height:72px;line-height:40px;margin:0;padding:16px 24px;font-size:30px;min-width:0;text-align:left;direction:rtl}
+#bSearch{left:40px;width:330px}#bSort{left:390px;width:150px;text-align:center}#bHome{left:560px;width:120px;text-align:center}
+.catp{left:40px;right:auto;width:640px;top:125px;bottom:40px;direction:ltr}
+.cat{display:flex;align-items:center;height:80px;line-height:80px;background:rgba(90,105,215,.4);text-align:left}
+.cat.sel{background:rgba(110,125,235,.75)}
+.cat .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat .ct{font-size:24px;min-width:70px;text-align:center;margin-left:12px}
+.listp{left:700px;right:40px;top:125px;bottom:40px}
+.card{width:222px;height:350px;margin:10px 8px;background:transparent}
+.card .pic{height:276px;border-radius:14px}
+.card .t{height:60px;font-size:22px;color:#fff;padding:8px 4px 0}
+.card .rt{left:auto;right:8px;background:#f5c518;color:#222;font-weight:700;border-radius:10px}
+.card .fv{right:auto;left:8px}
+.row{background:rgba(90,105,215,.35);height:88px}
+.row .no{font-size:30px;width:90px;color:#e5e9ff;flex:none;direction:ltr}
+.hint{display:none}
+/* settings */
+#settings .bh h2{text-align:center}
+#setw .btn{display:block;width:820px;text-align:right;margin:10px 0;font-size:30px}
+#sInfo{position:absolute;left:900px;right:0;top:0;background:rgba(90,105,215,.3);border-radius:20px;padding:30px 36px;color:#e5e9ff;font-size:28px;line-height:2;text-align:right}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -169,46 +220,41 @@ html.playing #pl{display:block}
 </div>
 
 <div id="home" class="scr">
-  <div class="top"><div class="logo">Elkomy <b>VIP</b><i></i></div><div class="clock" id="clk"></div></div>
+  <div class="top"><div class="logo">Elkomy <b>VIP</b><i></i></div>
+    <div class="tr"><div class="clock" id="clk"></div>
+      <div class="f ib" id="hMode" style="background:#8b5cf6">&#128100;</div>
+      <div class="f ib" id="hOut" style="background:#ef4444">&#9211;</div>
+      <div class="f ib" id="hSet" style="background:#f97316">&#9881;</div></div></div>
   <div class="hcards">
-    <div class="f hc c1" id="hLive" data-k="live">
-      <svg width="170" height="150" viewBox="0 0 170 150"><rect x="10" y="16" width="150" height="100" rx="14" fill="none" stroke="#fff" stroke-width="10"/><path d="M60 130h50M85 116v14" stroke="#fff" stroke-width="10" stroke-linecap="round"/><path d="M70 44l38 22-38 22z" fill="#fff"/></svg>
-      القنوات المباشرة<small id="nLive"></small></div>
-    <div class="f hc c2" id="hVod" data-k="vod">
-      <svg width="170" height="150" viewBox="0 0 170 150"><rect x="14" y="36" width="142" height="96" rx="12" fill="none" stroke="#fff" stroke-width="10"/><path d="M14 36l24-26M62 36l24-26M110 36l24-26M14 62h142" stroke="#fff" stroke-width="10" stroke-linecap="round"/></svg>
-      الأفلام<small id="nVod"></small></div>
-    <div class="f hc c3" id="hSer" data-k="series">
-      <svg width="170" height="150" viewBox="0 0 170 150"><rect x="30" y="8" width="110" height="16" rx="6" fill="#fff" opacity=".6"/><rect x="18" y="32" width="134" height="16" rx="6" fill="#fff" opacity=".8"/><rect x="8" y="58" width="154" height="84" rx="12" fill="none" stroke="#fff" stroke-width="10"/><path d="M72 80l34 20-34 20z" fill="#fff"/></svg>
-      المسلسلات<small id="nSer"></small></div>
-  </div>
-  <div class="hbar">
-    <div class="f btn" id="hCw">▶ كمّل المشاهدة</div>
-    <div class="f btn" id="hFav">★ المفضلة</div>
-    <div class="f btn" id="hMode">⇄ تبديل القسم</div>
-    <div class="f btn" id="hSet">الإعدادات</div>
-    <div class="f btn red" id="hOut">خروج</div>
+    <div class="f hc c1 big" id="hLive" data-k="live"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="10" y="16" width="150" height="100" rx="14" fill="none" stroke="#fff" stroke-width="10"/><path d="M60 130h50M85 116v14" stroke="#fff" stroke-width="10" stroke-linecap="round"/><path d="M70 44l38 22-38 22z" fill="#fff"/></svg><em>البث المباشر</em><small id="nLive"></small></div>
+    <div class="hcol">
+      <div class="f hc c2" id="hVod" data-k="vod"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="14" y="36" width="142" height="96" rx="12" fill="none" stroke="#fff" stroke-width="10"/><path d="M14 36l24-26M62 36l24-26M110 36l24-26M14 62h142" stroke="#fff" stroke-width="10" stroke-linecap="round"/></svg><em>الأفلام</em><small id="nVod"></small></div>
+      <div class="f hb" id="hCw">&#9654; متابعة المشاهدة</div></div>
+    <div class="hcol">
+      <div class="f hc c3" id="hSer" data-k="series"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="30" y="8" width="110" height="16" rx="6" fill="#fff" opacity=".6"/><rect x="18" y="32" width="134" height="16" rx="6" fill="#fff" opacity=".8"/><rect x="8" y="58" width="154" height="84" rx="12" fill="none" stroke="#fff" stroke-width="10"/><path d="M72 80l34 20-34 20z" fill="#fff"/></svg><em>المسلسلات</em><small id="nSer"></small></div>
+      <div class="f hb" id="hFav">&#9733; المفضلة</div></div>
   </div>
   <div class="foot"><span id="hUser"></span><span id="hExp"></span></div>
 </div>
 
 <div id="browse" class="scr">
-  <div class="bh"><h2 id="bTitle"></h2><div class="f btn" id="bSearch">بحث</div><div class="f btn" id="bHome">الرئيسية</div></div>
+  <div class="bh"><h2 id="bTitle"></h2><div class="f btn" id="bSearch">&#128269;&nbsp; بحث</div><div class="f btn" id="bSort">&#8645;</div><div class="f btn" id="bHome">&#8962;</div></div>
   <div class="catp sc" id="catp"></div>
   <div class="listp sc" id="listp"></div>
-  <div class="hint">اضغط مطوّلاً على OK لإضافة/إزالة المفضلة (أو الزر الأصفر)</div>
+  <div class="hint">اضغط مطوّلاً على فئة لترتيبها/تسميتها/إخفائها</div>
 </div>
 
 <div id="detail" class="scr"></div>
 
 <div id="settings" class="scr">
   <div class="bh"><h2>الإعدادات</h2></div>
-  <div style="position:absolute;left:300px;right:300px;top:160px;text-align:center">
-    <div class="f btn" id="sLive" style="width:100%;margin:12px 0"></div>
-    <div class="f btn" id="sAsp" style="width:100%;margin:12px 0"></div>
-    <div class="f btn" id="sClr" style="width:100%;margin:12px 0">مسح الكاش وتحديث القوائم</div>
-    <div class="f btn" id="sTest" style="width:100%;margin:12px 0">اختبار الاتصال</div>
-    <div class="f btn" id="sBack" style="width:100%;margin:12px 0">رجوع</div>
-    <p id="sInfo" style="color:#7f93bd;font-size:24px;margin-top:20px;line-height:1.7;white-space:pre-line"></p>
+  <div id="setw" style="position:absolute;left:80px;right:80px;top:150px;text-align:right">
+    <div class="f btn" id="sLive" style=""></div>
+    <div class="f btn" id="sAsp" style=""></div>
+    <div class="f btn" id="sClr" style="">مسح الكاش وتحديث القوائم</div>
+    <div class="f btn" id="sTest" style="">اختبار الاتصال</div>
+    <div class="f btn" id="sBack" style="">رجوع</div>
+    <p id="sInfo" style="white-space:pre-line"></p>
   </div>
 </div>
 
@@ -539,7 +585,8 @@ function toggleFav(k, it) {
 function clockTick() {
   var d = new Date(), e = $('clk'); if (!e) return;
   var days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-  e.innerHTML = p2(d.getHours()) + ':' + p2(d.getMinutes()) + '<small>' + days[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear() + '</small>';
+  var hh = d.getHours(), ap = ''; if (ls('o_12') === '1') { ap = hh >= 12 ? ' م' : ' ص'; hh = hh % 12 || 12; }
+  e.innerHTML = p2(hh) + ':' + p2(d.getMinutes()) + ap + '<small>' + days[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear() + '</small>';
 }
 setInterval(clockTick, 15000);
 function homeRefresh() {
@@ -604,11 +651,36 @@ function openBrowse(kind, mode) {
 }
 function buildCats() {
   var p = $('catp'); p.innerHTML = ''; p.scrollTop = 0;
-  B.cats.forEach(function (c) {
-    var d = D.createElement('div'); d.className = 'f cat'; d.textContent = c.name; d._cid = c.id;
+  var hid = lj('hid_' + B.kind, []);
+  var ren = lj('ren_' + B.kind, {});
+  catList().forEach(function (c) {
+    var d = D.createElement('div'); d.className = 'f cat'; d.innerHTML = '<span class="nm">' + esc(ren[c.id] || c.name) + '</span><span class="ct"></span>'; d._cid = c.id;
     d._ok = function () { selectCat(c.id, false); };
+    d._lpf = function (el) { catMenu(c, el); };
     p.appendChild(d);
   });
+}
+
+// ---- custom category management: reorder / rename / hide ----
+function catList() {
+  var hid = lj('hid_' + B.kind, []), ord = lj('ord_' + B.kind, []);
+  var l = B.cats.filter(function (c) { return hid.indexOf(c.id) < 0; });
+  var ix = function (c, n) { var k = ord.indexOf(c.id); return k < 0 ? 1e6 + n : k; };
+  return l.map(function (c, n) { return {c: c, k: ix(c, n)}; }).sort(function (a, b) { return a.k - b.k; }).map(function (o) { return o.c; });
+}
+function catRefocus(id) { buildCats(); markCat(); cnt(); var c = $('catp').children; for (var i = 0; i < c.length; i++) if (c[i]._cid === id) { setFocus(c[i]); ensureVisible(c[i]); return; } focusFirst(); }
+function catMenu(c) {
+  var k = B.kind, back2 = function (fn) { return function () { show('browse'); fn(); }; };
+  var mv = function (d) { var ids = catList().map(function (x) { return x.id; }), i = ids.indexOf(c.id), j = i + d; if (j < 0 || j >= ids.length) return catRefocus(c.id); ids.splice(i, 1); ids.splice(j, 0, c.id); sj('ord_' + k, ids); catRefocus(c.id); };
+  var ren = lj('ren_' + k, {});
+  showMsg('الفئة: ' + (ren[c.id] || c.name), 'اختر ما تريد', [
+    {t: '▲ تحريك لأعلى', pri: 1, fn: back2(function () { mv(-1); })},
+    {t: '▼ تحريك لأسفل', fn: back2(function () { mv(1); })},
+    {t: '✎ إعادة تسمية', fn: function () { show('browse'); catRefocus(c.id); kbOpen('اسم الفئة', ren[c.id] || c.name, false, function (v) { var r = lj('ren_' + k, {}); if (v.trim()) r[c.id] = v.trim(); else delete r[c.id]; sj('ren_' + k, r); catRefocus(c.id); }); }},
+    {t: '✖ إخفاء/حذف من القائمة', fn: back2(function () { var h = lj('hid_' + k, []); h.push(c.id); sj('hid_' + k, h); catRefocus(''); toast('تم الإخفاء، رجّعها من الإعدادات'); })},
+    {t: '↺ إرجاع الترتيب والأسماء الأصلية', fn: back2(function () { ls('ord_' + k, null); ls('ren_' + k, null); catRefocus(c.id); })},
+    {t: 'إلغاء', fn: back2(function () { catRefocus(c.id); })}
+  ]);
 }
 function markCat() {
   var l = $('catp').children;
@@ -620,10 +692,11 @@ function selectCat(id, init) {
   var done = function (err, items) {
     if (B.cat !== id) return;
     if (err) { lp.innerHTML = '<div class="empty">تعذّر التحميل\n' + esc(err) + '</div>'; return finishLoad(init); }
-    B.items = items; applyView(); finishLoad(init);
+    B.items = items; applyView(); cnt(); finishLoad(init);
   };
   getItems(B.kind, id, done);
 }
+function cnt() { var l = $('catp').children; for (var i = 0; i < l.length; i++) { var c = l[i].querySelector('.ct'); if (c && l[i]._cid === B.cat) c.textContent = B.items.length; } }
 function finishLoad(init) {
   var f = $('listp').querySelector('.f');
   if (init) { var c = $('catp').children, i; for (i = 0; i < c.length; i++) if (c[i]._cid === B.cat) { setFocus(c[i]); return; } }
@@ -671,6 +744,9 @@ function norm(s) { return String(s || '').toLowerCase().replace(/[\u064B-\u065F]
 function applyView() {
   var q = norm(B.q);
   B.view = q ? B.items.filter(function (x) { return norm(x.name).indexOf(q) >= 0; }) : B.items;
+  var so = ls('o_sort') || 'def';
+  if (so === 'az') B.view = B.view.slice().sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
+  else if (so === 'rate') B.view = B.view.slice().sort(function (a, b) { return (+b.rating || 0) - (+a.rating || 0); });
   B.n = 0;
   var lp = $('listp'); lp.innerHTML = ''; lp.scrollTop = 0;
   if (!B.view.length) {
@@ -691,7 +767,7 @@ function mkItem(it, i) {
   d._it = it; d._i = i;
   if (k === 'live') {
     d.className = 'f row';
-    d.innerHTML = '<div class="lg"' + (it.img ? ' style="background-image:url(\'' + esc(it.img) + '\')"' : '') + '></div><div class="nm">' + esc(it.name) + '</div>' + (fav ? '<div class="st">★</div>' : '');
+    d.innerHTML = '<div class="no">' + (it.t || i + 1) + '</div><div class="lg"' + (it.img ? ' style="background-image:url(\'' + esc(it.img) + '\')"' : '') + '></div><div class="nm">' + esc(it.name) + '</div>' + (fav ? '<div class="st">★</div>' : '');
   } else {
     d.className = 'f card';
     d.innerHTML = '<div class="pic"' + (it.img ? ' style="background-image:url(\'' + esc(it.img) + '\')"' : '') + '></div>' +
@@ -2642,5 +2718,18 @@ function mxOpen() {
 /* ===================== نهاية الإضافات ===================== */
 
 boot();
+
+// ---- extras: sort, 12h clock, show hidden cats ----
+(function(){
+  var SN = {def: 'الافتراضي', az: 'أ-ي', rate: 'التقييم'};
+  function sl() { $('bSort').innerHTML = '&#8645;'; $('bSort').title = SN[ls('o_sort') || 'def']; }
+  $('bSort')._ok = function () { var o = ['def', 'az', 'rate'], c = ls('o_sort') || 'def', n = o[(o.indexOf(c) + 1) % 3]; ls('o_sort', n); toast('الترتيب: ' + SN[n]); if (B.items.length) applyViewFocus(); };
+  function mk(id, txt, fn) { var b = D.createElement('div'); b.className = 'f btn'; b.id = id; b.textContent = txt; b._ok = fn; var c = $('sClr'); c.parentNode.insertBefore(b, c); return b; }
+  var b12 = mk('s12', '', function () { ls('o_12', ls('o_12') === '1' ? '0' : '1'); l12(); clockTick(); });
+  function l12() { b12.textContent = 'إعدادات الوقت: ' + (ls('o_12') === '1' ? '12 ساعة' : '24 ساعة'); }
+  l12();
+  mk('sHid', 'إدارة الفئات: إرجاع الكل للوضع الأصلي', function () { ['live', 'vod', 'series'].forEach(function (k) { ls('hid_' + k, null); ls('ord_' + k, null); ls('ren_' + k, null); }); toast('تم إرجاع كل الفئات للوضع الأصلي'); });
+  mk('sSortS', 'ترتيب القوائم الافتراضي: ' + SN[ls('o_sort') || 'def'], function (el) { var o = ['def', 'az', 'rate'], n = o[(o.indexOf(ls('o_sort') || 'def') + 1) % 3]; ls('o_sort', n); el.textContent = 'ترتيب القوائم الافتراضي: ' + SN[n]; });
+})();
 })();
 </script></body></html>
