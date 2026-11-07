@@ -10110,11 +10110,14 @@ body.iv-on #pageVer{bottom:82px!important}
 body.iv-on #appVerBadge{bottom:82px!important}
 #iv #ivTabs{padding-left:max(10px,env(safe-area-inset-left))}
 #ivOrd{display:none;position:fixed;inset:0;z-index:110;background:#07080c;overflow-y:auto;direction:rtl;color:var(--text)}
-.ivor{display:flex;align-items:center;gap:5px;padding:8px 10px;margin-bottom:6px;border-radius:12px;background:#14151d;border:1px solid #ffffff10}
+.ivor{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;margin-bottom:6px;border-radius:12px;background:#14151d;border:1px solid #ffffff10}
 .ivor.off{opacity:.5}
 .ivor .ivn{flex:none;width:28px;text-align:center;color:#ff8a3d;font-weight:800;font-size:12px}
-.ivor .ivnm{flex:1;min-width:0;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ivor button{flex:none;width:34px;height:34px;border-radius:9px;border:1px solid #ffffff14;background:#1d1f2b;color:#e5e7ef;font-size:14px;cursor:pointer;padding:0}
+.ivor .ivnm{flex:1;min-width:0;font-size:13px;font-weight:700;white-space:normal;word-break:break-word;line-height:1.5}
+.ivor input.search-input{flex:1 1 0}
+.ivor button{flex:1 1 0;min-width:0;height:36px;border-radius:9px;border:1px solid #ffffff14;background:#1d1f2b;color:#e5e7ef;font-size:14px;cursor:pointer;padding:0}
+.ivor .ivn+.ivnm,.ivor .ivn+input{flex:1 1 calc(100% - 40px)}
+.ivor .ivnm+button,.ivor input+button{margin-inline-start:34px}
 .ivor button:active{transform:scale(.92);background:#ff5a36}
 </style>
 <script id="nf-js">
