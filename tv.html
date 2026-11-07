@@ -615,19 +615,23 @@ var a = MEM[id === '__all' ? 'all_' + B.kind : 'c_' + B.kind + '_' + id]; return
 }
 function cnt() { var l = $('catp').children; for (var i = 0; i < l.length; i++) { var c = l[i].querySelector('.ct'); if (c) c.textContent = cntOf(l[i]._cid); } }
 function catList() {
-var hid = lj('hid_' + B.kind, []), ord = lj('ord_' + B.kind, []);
-return B.cats.filter(function (c) { return hid.indexOf(c.id) < 0; }).map(function (c, n) { var k = ord.indexOf(c.id); return {c: c, k: k < 0 ? 1e6 + n : k}; }).sort(function (a, b) { return a.k - b.k; }).map(function (o) { return o.c; });
+var hid = (S.hid || {})[B.kind] || [], ord = (S.ord || {})[B.kind] || [];
+var l = B.cats.filter(function (c) { return hid.indexOf(c.id) < 0; });
+if (!ord.length) return l;
+return l.map(function (c, n) { var k = ord.indexOf(c.id); return {c: c, k: k >= 0 ? k : (c.id.charAt(0) === '_' ? n - 1e6 : 1e6 + n)}; }).sort(function (a, b) { return a.k - b.k; }).map(function (o) { return o.c; });
 }
 function catRefocus(id) { buildCats(); markCat(); var c = $('catp').children; for (var i = 0; i < c.length; i++) if (c[i]._cid === id) { setFocus(c[i]); ensureVisible(c[i]); return; } focusFirst(); }
 function catMenu(c) {
 var k = B.kind, ren = lj('ren_' + k, {}), w = function (fn) { return function () { show('browse'); fn(); }; };
-var mv = function (d) { var ids = catList().map(function (x) { return x.id; }), i = ids.indexOf(c.id), j = i + d; if (j >= 0 && j < ids.length) { ids.splice(i, 1); ids.splice(j, 0, c.id); sj('ord_' + k, ids); } catRefocus(c.id); };
+var real = function () { return catList().map(function (x) { return x.id; }).filter(function (x) { return x.charAt(0) !== '_'; }); };
+var mv = function (d) { var ids = real(), i = ids.indexOf(c.id), j = i + d; if (i >= 0 && j >= 0 && j < ids.length) { ids.splice(i, 1); ids.splice(j, 0, c.id); S.ord = S.ord || {}; S.ord[k] = ids; pinsSave(); } catRefocus(c.id); };
+if (c.id.charAt(0) === '_') return toast('القسم ده ثابت في مكانه');
 showMsg('الفئة: ' + (ren[c.id] || c.name), 'اختر ما تريد', [
 {t: '▲ تحريك لأعلى', pri: 1, fn: w(function () { mv(-1); })},
 {t: '▼ تحريك لأسفل', fn: w(function () { mv(1); })},
 {t: '✎ إعادة تسمية', fn: function () { show('browse'); catRefocus(c.id); kbOpen('اسم الفئة', ren[c.id] || c.name, false, function (v) { var r = lj('ren_' + k, {}); if (v.trim()) r[c.id] = v.trim(); else delete r[c.id]; sj('ren_' + k, r); catRefocus(c.id); }); }},
-{t: '✖ إخفاء من القائمة', fn: w(function () { var h = lj('hid_' + k, []); h.push(c.id); sj('hid_' + k, h); catRefocus(''); toast('تم الإخفاء (رجّعها من الإعدادات)'); })},
-{t: '↺ الترتيب والأسماء الأصلية', fn: w(function () { ls('ord_' + k, null); ls('ren_' + k, null); catRefocus(c.id); })},
+{t: '✖ إخفاء من القائمة', fn: w(function () { S.hid = S.hid || {}; S.hid[k] = (S.hid[k] || []).concat([c.id]); pinsSave(); catRefocus(''); toast('تم الإخفاء'); })},
+{t: '↺ الترتيب الأصلي (وإرجاع المخفي)', fn: w(function () { S.ord = S.ord || {}; S.hid = S.hid || {}; delete S.ord[k]; delete S.hid[k]; pinsSave(); ls('ren_' + k, null); catRefocus(c.id); })},
 {t: 'إلغاء', fn: w(function () { catRefocus(c.id); })}
 ]);
 }
@@ -1184,17 +1188,33 @@ $('mIptv')._ok = function () { iptvEnter(); };
 $('mSite')._ok = function () { siteEnter(); };
 $('mOut')._ok = function () { showMsg('تسجيل الخروج', 'متأكد إنك عايز تخرج من حسابك؟', [{t: 'لأ، رجوع', pri: 1, fn: function () { showMode(); }}, {t: 'خروج', fn: logout}]); };
 $('hMode')._ok = function () { stack = []; showMode(); };
+function ipid() {
+var id = ls('pid:' + S.user);
+if (!id) { try { sdLocal(); var pl = profList(); if (pl.length) id = pl[0].id; } catch (e) {} }
+return id || 'tv';
+}
+function loadPins(cb) {
+S.pid = ipid();
+api('/iptv/pins?pid=' + enc(S.pid), {timeout: 15000}, function (e, st, pd) {
+var p = (pd && pd.pins) || {}, g = (pd && pd.g) || {};
+S.pins = {live: (p.live || g.live || []).map(String), cats: p.cats || g.cats || []};
+S.ord = p.order || {}; S.hid = p.hidden || {};
+cb();
+});
+}
+var pinT = null;
+function pinsSave() {
+clearTimeout(pinT);
+pinT = setTimeout(function () { api('/iptv/pins', {method: 'POST', body: {pid: S.pid || ipid(), pins: {live: S.pins.live, cats: S.pins.cats, order: S.ord || {}, hidden: S.hid || {}}}, timeout: 20000}, function () {}); }, 700);
+}
 function iptvEnter() {
 if (!S.cfg) return showMsg('الـ IPTV غير متاح', (S.cfgErr || 'مفيش اشتراك IPTV لحسابك') + '\nكلّم الأدمن.', [{t: 'رجوع', pri: 1, fn: function () { showMode(); }}]);
-if (S.iptvOk) { stack = ['mode']; return showHome(); }
+if (S.iptvOk) { return loadPins(function () { stack = ['mode']; showHome(); }); }
 splash('جاري تجهيز الـ IPTV...');
 xt('', null, function (e3, j) {
 S.info = (!e3 && j && j.user_info) ? j.user_info : null;
 if (S.info && S.info.auth === 0) return showMsg('حساب الـ IPTV', 'بيانات اشتراك الـ IPTV غير صحيحة أو منتهية. كلّم الأدمن.', [{t: 'إعادة المحاولة', pri: 1, fn: iptvEnter}, {t: 'رجوع', fn: function () { showMode(); }}]);
-api('/iptv/pins?pid=tv', {}, function (e4, s4, pd) {
-var g = (pd && pd.g) || {}; S.pins = {live: (g.live || []).map(String), cats: g.cats || []};
-S.iptvOk = true; stack = ['mode']; showHome();
-});
+loadPins(function () { S.iptvOk = true; stack = ['mode']; showHome(); });
 }, 40000);
 }
 /* ===================== قسم الموقع (الإلكومي) — مربوط بنفس بيانات الموقع والأندرويد (بروفايلات + كمّل المشاهدة + مفضلتي) ===================== */
