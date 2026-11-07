@@ -255,7 +255,7 @@ html,body{background:#0e1131}
 </div>
 <div id="site" class="scr">
   <div class="bh"><h2 id="sxT">🎬 الموقع</h2>
-    <div class="f btn" id="xSearch">🔍 بحث</div><div class="f btn" id="xList">⭐ قائمتي</div><div class="f btn" id="xLib">📚 مكتبتي</div><div class="f btn" id="xLink">🔗 رابط</div><div class="f btn" id="xSet">⚙ إعداداتي</div></div>
+    <div class="f btn" id="xSearch">🔍 بحث</div><div class="f btn" id="xList">⭐ قائمتي</div><div class="f btn" id="xLib">📚 مكتبتي</div><div class="f btn" id="xLink">🔗 رابط</div><div class="f btn" id="xSet">⚙ إعداداتي</div><div class="f btn" id="xMore">⋯ المزيد</div></div>
   <div class="sc" id="sxrows" style="position:absolute;left:40px;right:40px;top:130px;bottom:30px;overflow:hidden"></div>
 </div>
 <div id="prof" class="scr"><div class="top"><div class="logo">Elkomy <b>VIP</b><i></i></div></div><div class="sxh" style="position:absolute;top:200px;left:0;right:0;text-align:center;font-size:48px">مين بيشاهد؟</div><div class="pgrid" id="pgrid"></div></div>
@@ -1493,8 +1493,8 @@ ROWS.forEach(function (r) { if (P.ar.indexOf(r.id) >= 0) sxRowIn(box, r.title, x
 }
 function sxLoad(force) {
 var rows = $('sxrows'); rows.scrollTop = 0;
-rows.innerHTML = '<div id="sec-cw"></div><div id="sec-new"></div><div id="sec-fav"></div><div id="sec-ar"></div>';
-sxSecCw(); sxSecNew(); sxSecFav(); sxSecAr();
+rows.innerHTML = '<div id="sec-cw"></div><div id="sec-new"></div><div id="sec-fav"></div><div id="sec-ar"></div><div id="sec-int"></div>';
+sxSecCw(); sxSecNew(); sxSecFav(); sxSecAr(); sxSecInt(); loadIntRows();
 var pid = PID;
 if (force || !NEWD || Date.now() - SX.t > 15 * 60000) {
 api('/new', {timeout: 60000}, function (err, st, d) {
@@ -1524,7 +1524,7 @@ worker();
 }
 worker(); worker(); worker();
 }
-['xSearch', 'xList', 'xLib', 'xLink', 'xSet'].forEach(function (id) { $(id)._focus = function () { $('sxrows').scrollTop = 0; }; });
+['xSearch', 'xList', 'xLib', 'xLink', 'xSet', 'xMore'].forEach(function (id) { $(id)._focus = function () { $('sxrows').scrollTop = 0; }; });
 /* ---------- شبكة نتائج عامة + قايمة عامة ---------- */
 function sxHead(title, tabs) {
 $('sresT').textContent = title;
@@ -2026,7 +2026,7 @@ var tok = ++SX.pid, key = 'u:' + shash(q);
 sxBusy('جاري سحب الرابط...', q.length > 70 ? q.slice(0, 70) + '…' : q);
 sxPoll('/generate', {query: q}, tok, function (err, d) {
 if (err || !d || !d.direct_link) return sxFail(err || (d && d.error) || 'الرابط ماشتغلش', function () { linkPlay(q, resume, title); }, null);
-if (d.pack && d.files && d.files.length > 1) return sxFail('الرابط ده ملف مجمّع (موسم/ZIP). مش مدعوم على التلفزيون.', function () { linkPlay(q, resume, title); }, null);
+if (d.pack && d.files && d.files.length > 1) return packPick(d, q, title);
 var pr = getItem(key), rs = resume != null ? resume : ((pr && !pr.del && !pr.done && pr.pos > 10) ? Math.floor(pr.pos) : 0);
 var nm = d.name || title || 'رابط مباشر';
 sxStartPlay({kind: 'site', url: d.direct_link, title: nm, key: key, resume: rs,
@@ -2058,6 +2058,85 @@ sxGrid('⭐ قائمتي', out, sxOpen, 'قائمتك فاضية\nافتح أي 
 };
 /* ---- إعداداتي (بروفايل + مفضلتي + ترتيب النسخ + الدبلجة + التشغيل التلقائي) ---- */
 $('xSet')._ok = function () { sxSettings(); };
+/* ---------- المزيد: بحث الويب · الباكات · إضافات Stremio · الاهتمامات ---------- */
+var IALL = [], IROWS = [];
+$('xMore')._ok = function () {
+sxList('⋯ المزيد', [
+{txt: '🌐 بحث روابط الويب', sub: 'بيدوّر في صفحات الويب على روابط مدعومة', fn: function () { wsStart(false); }},
+{txt: '🧩 إضافات Stremio', sub: 'عرض · إضافة · حذف · مزامنة', fn: stView},
+{txt: '⭐ اهتماماتي', sub: 'اختار اللي بتحبه وهتظهر صفوفه في الرئيسية', fn: intView}
+]);
+};
+function wsStart(deep, q0) {
+function go(q) {
+sxBusy('بدوّر وبفتح الصفحات...', q);
+api('/websearch', {method: 'POST', body: {q: q, deep: !!deep}, timeout: 90000}, function (err, st, d) {
+if (err || !d || d.error) return sxFail(err || (d && d.error) || 'تعذّر البحث', function () { wsStart(deep, q); }, null);
+var rows = [];
+(d.groups || []).forEach(function (g) { (g.links || []).forEach(function (l) { rows.push({txt: l.title || l.url, sub: g.host + ' · ' + String(l.url).slice(0, 80), fn: function () { linkPlay(l.url, null, l.title); }}); }); });
+sxList('🌐 روابط الويب (' + rows.length + ')', rows, 'مفيش روابط مدعومة ظاهرة. جرّب البحث الأعمق.', [{t: '🔁 بحث أعمق', fn: function () { wsStart(true, q); }}]);
+});
+}
+if (q0) go(q0); else kbOpen('اسم العمل', '', false, function (v) { v = v.trim(); if (v) go(v); });
+}
+function packPick(d, q, title) {
+var rows = d.files.map(function (f) { return {txt: f.name, sub: (f.season != null ? 'موسم ' + f.season + ' ' : '') + (f.episode != null ? 'حلقة ' + f.episode : ''), fn: function () { packPlay(d, f, q, title); }}; });
+sxList('📦 الباك (' + rows.length + ' ملف)', rows, 'الباك فاضي');
+}
+function packPlay(d, f, q, title) {
+var tok = ++SX.pid, key = 'u:' + shash(q + '#' + f.id);
+sxBusy('جاري تجهيز الحلقة...', f.name);
+sxPoll('/generate', {query: '', torrent_id: d.torrent_id, file_id: f.id}, tok, function (err, r) {
+if (err || !r || !r.direct_link) return sxFail(err || (r && r.error) || 'الملف ماشتغلش', function () { packPlay(d, f, q, title); }, null);
+var pr = getItem(key), rs = (pr && !pr.del && !pr.done && pr.pos > 10) ? Math.floor(pr.pos) : 0, nm = f.name || title || 'حلقة';
+sxStartPlay({kind: 'site', url: r.direct_link, title: nm, key: key, resume: rs, sp: {src: q, title: nm, type: null, poster: '', vname: f.name || ''}, next: null,
+hlsFrom: {hls: r.hls, torrent_id: r.torrent_id || d.torrent_id, file_id: r.file_id != null ? r.file_id : f.id, direct: r.direct_link}});
+}, null, 0);
+}
+function stView() {
+sxBusy('بجيب الإضافات...');
+api('/stremio/addons', {}, function (err, st, d) {
+if (err || !d || d.error) return sxFail(err || (d && d.error) || 'تعذّر', stView, null);
+var rows = (d.items || []).map(function (x) { return {txt: x.name || x.id, sub: x.stream ? '🎞 بتدي نتايج تشغيل' : 'معلومات / كتالوج بس', mark: '🗑 اضغط للحذف', fn: function () {
+showMsg('حذف الإضافة؟', x.name || '', [{t: 'حذف', pri: 1, fn: function () { api('/stremio/addons/' + enc(x.id), {method: 'DELETE'}, function () { stView(); }); }}, {t: 'إلغاء', fn: stView}]);
+}}; });
+var tabs = [{t: '➕ إضافة برابط', on: 1, fn: stAddUrl}, {t: '🔄 مزامنة', fn: stSyncTv}];
+if (!d.logged) tabs.push({t: '🔑 دخول Stremio', fn: stLoginTv});
+sxList('🧩 إضافات Stremio (' + rows.length + ')' + (d.logged && d.email ? ' · ' + d.email : ''), rows, 'مفيش إضافات. ضيف رابط أو سجّل دخول.', tabs);
+});
+}
+function stDone(e, d) { toast(e ? 'تعذّر الاتصال' : ((d && d.error) || ('تم ✅ إضافات جديدة: ' + ((d && d.added) || 0)))); stView(); }
+function stAddUrl() { kbOpen('رابط الإضافة (manifest.json)', '', false, function (v) { v = v.trim(); if (v) api('/stremio/addon', {method: 'POST', body: {url: v}}, function (e, s, d) { stDone(e, d); }); }); }
+function stSyncTv() { api('/stremio/sync', {method: 'POST', body: {}}, function (e, s, d) { stDone(e, d); }); }
+function stLoginTv() {
+kbOpen('إيميل Stremio', '', false, function (em) { setTimeout(function () {
+kbOpen('باسورد Stremio', '', true, function (pw) { api('/stremio/login', {method: 'POST', body: {email: em.trim(), password: pw}}, function (e, s, d) { stDone(e, d); }); });
+}, 80); });
+}
+function intView() {
+var p = prof(); if (!p) return;
+function draw() {
+var pick = {}; (p.int || []).forEach(function (k) { pick[k] = 1; });
+var rows = IALL.map(function (x) { return {txt: (pick[x.k] ? '✅ ' : '⬜ ') + x.name, fn: function () {
+var a = (p.int || []).slice(), i = a.indexOf(x.k); if (i >= 0) a.splice(i, 1); else a.push(x.k);
+p.int = a; sdSaveProf(p); IROWS = [];
+var n = cur && cur.querySelector('.nm'); if (n) n.textContent = (i >= 0 ? '⬜ ' : '✅ ') + x.name;
+}}; });
+sxList('⭐ اهتماماتي', rows, 'مفيش اهتمامات متاحة', [{t: 'تمام', on: 1, fn: function () { back(); }}]);
+}
+if (IALL.length) return draw();
+sxBusy('بجيب الاهتمامات...');
+api('/interest/list', {}, function (e, s, d) { IALL = (d && d.items) || []; draw(); });
+}
+function sxSecInt() { sxPut('sec-int', function (box) { IROWS.forEach(function (r) { sxRowIn(box, r.title, xlFilter(r.items), null); }); }); }
+function loadIntRows() {
+var ks = (prof() || {}).int || [], pid = PID;
+if (!ks.length) { IROWS = []; return sxSecInt(); }
+api('/interest?k=' + enc(ks.join(',')), {timeout: 60000}, function (e, s, d) {
+if (!e && s === 200 && d && d.rows && pid === PID) { IROWS = d.rows; if (curScr === 'site') sxSecInt(); }
+});
+}
+
 function sxSettings() {
 var box = $('ssbox'), p = prof();
 if (curScr !== 'sset') go('sset');
