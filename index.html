@@ -4,9 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v40: الأيام بتنقص كل يوم لوحدها (بتتحسب من تاريخ الانتهاء وبتتحدّث تلقائي) + العضو الجديد/المجاني يشوف كل حاجة من غير مشاهدة ولا تحميل ولا IPTV + تقوية الأمان (محتاج bot-41: راجع ملاحظات السيرفر)
   v39: ضبط الترجمة تلقائياً بالصوت من السيرفر (يشتغل مع المتصفح والأندرويد والتلفزيون وVLC) + ترجمة بالذكاء الاصطناعي لما مفيش ترجمة عربي
   v38: التلفزيون (سامسونج): مشغّل AVPlay جوه الصفحة (يدعم MKV/HEVC/DDP) بنفس واجهة مشغّل الأندرويد (كمّل مشاهدة + الحلقة التالية + الترجمة والصوت بالألوان) + تحديث تلقائي للصفحة من غير إعادة رفع التطبيق + رجوع مرتين للخروج
   v37: تاريخ آخر إضافة على نتايج التورنت (شارة 📅 + زرار «🆕 الأحدث أولاً») — بيقرأ التاريخ من السيرفر لو بعته
@@ -937,7 +940,8 @@ body.m-tv .nwhome .hrow>.poster,body.m-tv .nwhome .hrow>.cw{contain-intrinsic-si
 </head>
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
-<script>window.PAGE_VER=39;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
+<script>window.PAGE_VER=40;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -1172,18 +1176,32 @@ let TOK = sessionStorage.getItem('tok') || localStorage.getItem('rtok') || "";
 let PLAN = {state: '', until: 0, left: null};
 let UNAME = '', ROLE = 'user', USERS = [], NOCHK = false, LOCK = 0, LOCK_MSG = '';
 // LOCK: 0 عادي · 1 ممنوع التحميل · 2 تصفح فقط (ممنوع المشاهدة والتحميل). الرسالة من الأدمن.
+// القفل الفعلي = اللي جاي من السيرفر أو اللي بيطلع من الباقة (مجاني/منتهي = تصفح فقط) — بيتحسب محلياً كمان عشان ما يعتمدش على السيرفر لوحده
+function planLock() {
+  if (ROLE === 'admin') return 0;
+  const st = planState();
+  return (st === 'free' || st === 'expired') ? 2 : 0;
+}
+function effLock() { return Math.max(LOCK, planLock()); }
+function lockMsg() {
+  const st = planState();
+  if (LOCK_MSG) return LOCK_MSG;
+  if (st === 'free') return 'حسابك مجاني: تقدر تتصفح وتشوف كل حاجة، لكن المشاهدة والتحميل لأعضاء الباقة المميزة. كلّم الأدمن للاشتراك.';
+  if (st === 'expired') return 'انتهى اشتراكك المميز. كلّم الأدمن للتجديد.';
+  return '';
+}
 function noDl() {                       // تحميل
-  if (LOCK < 1) return false;
-  alert(LOCK_MSG || 'التحميل مش متاح لحسابك.');
+  if (effLock() < 1) return false;
+  alert(lockMsg() || 'التحميل مش متاح لحسابك.');
   return true;
 }
 function noWatch() {                    // مشاهدة
-  if (LOCK < 2) return false;
-  alert(LOCK_MSG || 'المشاهدة مش متاحة لحسابك.');
+  if (effLock() < 2) return false;
+  alert(lockMsg() || 'المشاهدة مش متاحة لحسابك.');
   return true;
 }
 document.addEventListener('click', e => {
-  if (LOCK < 1 || !e.target.closest) return;
+  if (effLock() < 1 || !e.target.closest) return;
   const a = e.target.closest('a.btn-download, [onclick^="copyText("]');
   if (a) { e.preventDefault(); e.stopPropagation(); noDl(); }
 }, true);
@@ -2617,6 +2635,7 @@ function ivCats(kind) {
   return ivCached([IV.C, kind], () => ivApi(IV_CATACT[kind], null, '', 120), 60 * 60 * 1000);
 }
 async function ivCfg(force) {
+  if (!isPremiumOK()) { IV.cfg = null; IV.loaded = true; return null; }   // المجاني/المنتهي: ما نطلبش بيانات الحساب خالص
   if (IV.loaded && !force) return IV.cfg;
   if (IV._cp) return IV._cp;
   IV._cp = (async () => {
@@ -2959,6 +2978,7 @@ function ivProgress(pos, dur, ended) {
   }
 }
 function ivPlay(url, title, o) {
+  if (!isPremiumOK() || noWatch()) return;
   o = o || {};
   if (ivApp() || (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined')) {
     window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid, meta: o.meta}; window.NP_PLAYED = Date.now();
@@ -2968,6 +2988,7 @@ function ivPlay(url, title, o) {
   ivWebPlay(url, title, o);
 }
 function ivDownload(url, name) {
+  if (!isPremiumOK() || noDl()) return;
   if (window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined') { AndroidPlayer.download(url, name); return; }
   const a = document.createElement('a');
   a.href = url; a.download = name; a.rel = 'noopener';
@@ -2975,9 +2996,11 @@ function ivDownload(url, name) {
   toast('اتبعت للمتصفح. لو ما بدأش انسخ الرابط وحمّله من VLC أو IDM');
 }
 function ivCopy(t) {
+  if (!isPremiumOK() || noDl()) return;
   try { navigator.clipboard.writeText(t).then(() => toast('اتنسخ ✅'), () => prompt('انسخ الرابط:', t)); } catch (e) { prompt('انسخ الرابط:', t); }
 }
 function ivM3U(url, title) {
+  if (!isPremiumOK() || noDl()) return;
   const b = new Blob(['#EXTM3U\n#EXTINF:-1,' + title + '\n' + url + '\n'], {type: 'audio/x-mpegurl'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(b); a.download = ivClean(title) + '.m3u';
@@ -3097,9 +3120,10 @@ async function ivHomeLoad(pid) {
 function ivHomeRetry() { IV.L = {}; IV.C = {}; IV.homePid = null; IV.homeFor = PID; ivHomeLoad(PID); }
 // ---------- صفحة «المزيد» ----------
 async function ivOpen(tab, cat) {
-  if (!isPremiumOK()) { alert('اشترك في الخدمة المميزة'); return; }
-  if (!IV.cfg) await ivCfg(true);
-  if (!IV.cfg) { alert('اشترك في الخدمة المميزة'); return; }
+  if (isPremiumOK()) {
+    if (!IV.cfg) await ivCfg(true);
+    if (!IV.cfg) { alert('مفيش اشتراك IPTV على حسابك لسه.'); return; }
+  }
   IV.tab = tab || IV.tab || 'vod';
   IV.cat = cat || '';
   IV.q = ''; IV.lim = 90; IV.sel = null;
@@ -3140,6 +3164,7 @@ async function ivRender() {
   const box = $('ivBody');
   $('ivQ').style.display = (IV.tab === 'me' || IV.sel) ? 'none' : '';
   if (!IV.loaded) { box.innerHTML = pend('جاري التحميل...'); return; }
+  if (!isPremiumOK()) { box.innerHTML = '<p style="color:var(--mut);text-align:center;margin-top:40px;line-height:1.9">🔒 الـIPTV للأعضاء المميزين بس.<br>' + esc(lockMsg()) + '</p>'; return; }
   if (!IV.cfg) { box.innerHTML = '<p style="color:var(--mut);text-align:center;margin-top:40px;line-height:1.9">مفيش اشتراك IPTV على حسابك لسه.<br>كلّم الأدمن عشان يضيفه لك.</p>'; return; }
   if (IV.sel) return ivDetail(box);
   if (IV.tab === 'me') return ivMe(box);
@@ -7024,32 +7049,58 @@ async function usDel(n) {
 
 // ================= باقة العضو (مجاني / مميز) =================
 const DAY_MS = 86400000;
+function planLeft(until) { return Math.max(0, Math.ceil((until * 1000 - Date.now()) / DAY_MS)); }
+// حالة الباقة الفعلية: لو تاريخ الانتهاء عدّى بتتحول «منتهي» فوراً من غير ما تستنى السيرفر
+function planState() {
+  const p = PLAN || {};
+  if (ROLE === 'admin' || p.state === 'admin') return 'admin';
+  if (!p.state) return 'premium';
+  if (p.state === 'premium' && p.until && p.until * 1000 <= Date.now()) return 'expired';
+  return p.state;
+}
 function planText(pl) {
   pl = pl || {};
-  if (pl.state === 'free') return '🆓 عضو مجاني';
-  if (pl.state === 'expired') return '⌛ انتهى الاشتراك المميز';
-  if (pl.state === 'premium') {
+  const st = (pl.state === 'premium' && pl.until && pl.until * 1000 <= Date.now()) ? 'expired' : pl.state;
+  if (st === 'free') return '🆓 عضو مجاني';
+  if (st === 'expired') return '⌛ انتهى الاشتراك المميز';
+  if (st === 'premium') {
     if (!pl.until) return '💎 عضو مميز · دائم';
-    const l = pl.left == null ? Math.ceil((pl.until * 1000 - Date.now()) / DAY_MS) : pl.left;
-    return '💎 عضو مميز · باقي ' + (l > 60 ? Math.round(l / 30) + ' شهر' : l + ' يوم');
+    const l = planLeft(pl.until);   // دايماً من تاريخ الانتهاء (مش من left القديم) عشان ينقص كل يوم
+    return '💎 عضو مميز · باقي ' + (l > 60 ? Math.round(l / 30) + ' شهر' : l + (l === 1 ? ' يوم' : ' يوم'));
   }
   return '';
 }
 function renderPlanBar() {
   const el = $('planBar');
   if (!el) return;
-  const pl = PLAN || {};
-  if (ROLE === 'admin' || !pl.state || pl.state === 'admin') { el.innerHTML = ''; return; }
-  let cls = pl.state, extra = '';
-  if (pl.state === 'free') extra = ' <span style="font-weight:400">· المشاهدة والتحميل غير متاحين</span>';
-  if (pl.state === 'expired') extra = ' <span style="font-weight:400">· كلّم الأدمن للتجديد</span>';
-  if (pl.state === 'premium' && pl.until && (pl.left != null ? pl.left : 99) <= 3) { cls = 'warn'; extra = ' <span style="font-weight:400">· قربت تخلص</span>'; }
-  el.innerHTML = '<div class="pbar ' + cls + '">' + esc(planText(pl)) + extra + '</div>';
+  const pl = PLAN || {}, st = planState();
+  if (st === 'admin') { el.innerHTML = ''; return; }
+  let cls = st, extra = '';
+  if (st === 'free') extra = ' <span style="font-weight:400">· تتصفح بس: المشاهدة والتحميل والـIPTV غير متاحين</span>';
+  if (st === 'expired') extra = ' <span style="font-weight:400">· كلّم الأدمن للتجديد</span>';
+  if (st === 'premium' && pl.until && planLeft(pl.until) <= 3) { cls = 'warn'; extra = ' <span style="font-weight:400">· قربت تخلص</span>'; }
+  el.innerHTML = '<div class="pbar ' + cls + '">' + esc(planText({state: st === 'expired' ? 'expired' : pl.state, until: pl.until})) + extra + '</div>';
 }
-const isPremiumOK = () => ROLE === 'admin' || !PLAN || PLAN.state === 'premium' || !PLAN.state;
+const isPremiumOK = () => { const st = planState(); return st === 'admin' || st === 'premium'; };
+// تحديث الباقة من السيرفر كل ما التطبيق يرجع للواجهة وكل 5 دقايق، وتحديث العدّاد كل ساعة
+async function refreshMe() {
+  if (!TOK) return;
+  try {
+    const {d} = await api('/me', {timeout: 15000});
+    if (!d || d.error) return;
+    ROLE = d.role || ROLE;
+    LOCK = d.lock || 0; LOCK_MSG = d.lock_msg || '';
+    PLAN = d.plan || PLAN;
+    renderPlanBar();
+    if (!isPremiumOK()) { IV.cfg = null; IV.loaded = true; }
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderPlanBar(); refreshMe(); } });
+setInterval(() => { renderPlanBar(); }, 3600000);
+setInterval(refreshMe, 300000);
 function usPlanTag(u) {
   const st = u.plan || 'premium';
-  const t = st === 'premium' ? planText({state: 'premium', until: u.until, left: u.left}) : planText({state: st});
+  const t = st === 'premium' ? planText({state: 'premium', until: u.until}) : planText({state: st});
   return '<span class="pl-tag ' + st + '">' + esc(t) + '</span>';
 }
 function usPlan(n) {
