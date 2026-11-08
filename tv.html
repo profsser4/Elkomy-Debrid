@@ -200,7 +200,27 @@ html,body{background:#0e1131}
 #plpause{position:absolute;left:50%;top:50%;margin:-75px 0 0 -75px;width:150px;height:150px;line-height:142px;border-radius:50%;background:rgba(0,0,0,.55);border:4px solid #fff;text-align:center;font-size:58px;display:none}
 #plbuf{border-top-color:#e50914}
 #plsubt{position:absolute;left:140px;right:140px;bottom:90px;text-align:center;font-size:44px;font-weight:600;line-height:1.35;color:#fff;font-family:Arial,Helvetica,sans-serif;text-shadow:0 0 5px #000,2px 2px 3px #000;white-space:pre-line;display:none}
-#plbar.show~#plsubt{bottom:260px}
+#plbar.show~#plsubt{bottom:290px}
+
+/* ===== Netflix-style player ===== */
+#plbar{padding:160px 96px 56px;background:linear-gradient(0deg,rgba(0,0,0,.95) 0,rgba(0,0,0,.6) 55%,rgba(0,0,0,0) 100%);font-family:"Helvetica Neue",Arial,"Segoe UI",Tahoma,sans-serif}
+#pltop{padding:50px 96px 140px;background:linear-gradient(180deg,rgba(0,0,0,.8),rgba(0,0,0,0));direction:ltr;text-align:left}
+#pltitle{font-size:40px;font-weight:700;letter-spacing:.3px;text-shadow:0 2px 8px #000}
+#plsub{font-size:26px;color:#b3b3b3}
+#plprog{height:6px;background:rgba(255,255,255,.28);border-radius:3px}
+#plfill{height:6px;background:#e50914;border-radius:3px;transition:width .25s linear}
+#plfill:after{width:24px;height:24px;right:-12px;top:-9px;box-shadow:0 0 12px rgba(229,9,20,.9)}
+#plcur{background:rgba(20,20,20,.95);color:#fff;border:2px solid #fff;top:-78px;font-size:28px}
+#pldur{font-size:28px;color:#fff;font-weight:600;margin-left:34px}
+#plctl{margin-top:34px;font-size:30px}
+#plctl .ci{margin-right:44px;padding:8px 22px;border-radius:40px;background:rgba(255,255,255,.12)}
+#plctl .lv{background:#e50914}
+#plpause{width:140px;height:140px;line-height:132px;margin:-70px 0 0 -70px;background:rgba(0,0,0,.6);border:3px solid rgba(255,255,255,.9)}
+#plmenu{background:rgba(20,20,20,.97);border:0;border-radius:8px;box-shadow:0 10px 40px #000;direction:rtl}
+#plmenu .mi.on{background:#fff;color:#000;font-weight:700}
+#plbuf{border-color:rgba(255,255,255,.2);border-top-color:#e50914;width:110px;height:110px;left:905px;top:485px}
+#plsubt{left:200px;right:200px;font-size:46px;font-weight:500;line-height:1.4;font-family:"Helvetica Neue",Arial,Tahoma,sans-serif;text-shadow:0 0 4px #000,0 0 8px #000,2px 2px 4px #000,-2px -2px 4px #000;direction:rtl;unicode-bidi:plaintext}
+#plsubt.vis{display:block}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -943,7 +963,15 @@ v.src = url; try { v.play(); } catch (e) {}
 function engineStop() {
 try { if (P.av) { webapis.avplay.stop(); webapis.avplay.close(); } else { var v = $('vid'); v.pause(); v.removeAttribute('src'); v.load(); v.style.display = 'none'; } } catch (e) {}
 }
+var CLK = {t: 0, at: 0};
+function curT() {
+if (P.paused || P.err) return P.pos;
+var t = CLK.t + (Date.now() - CLK.at) / 1000;
+return (t - P.pos > 1.5 || P.pos - t > 0.3) ? P.pos : t;
+}
+setInterval(function () { if (P.on && XS && !P.paused) xsTick(curT()); }, 100);
 function onTime(t) {
+CLK.t = t; CLK.at = Date.now();
 P.pos = t;
 if (XS) xsTick(t);
 if (P.kind !== 'live' && !P.dur && P.av) { try { P.dur = webapis.avplay.getDuration() / 1000; } catch (e) {} }
@@ -1065,13 +1093,13 @@ function xsTick(t) {
 var c = XS.c, lo = 0, hi = c.length - 1, f = -1;
 while (lo <= hi) { var mid = (lo + hi) >> 1; if (c[mid].s <= t) { f = mid; lo = mid + 1; } else hi = mid - 1; }
 if (f >= 0 && t > c[f].e) f = -1;
-if (f !== XS.i) { XS.i = f; if (f >= 0) subShow(c[f].t, Math.max(500, (c[f].e - t) * 1000)); else subShow(''); }
+if (f !== XS.i) { XS.i = f; if (f >= 0) subShow(c[f].t, 0, 1); else subShow('', 0, 1); }
 }
-function subShow(t, dur) {
+function subShow(t, dur, own) {
 var e = $('plsubt'); clearTimeout(subT);
 if (!t) { e.style.display = 'none'; e.textContent = ''; return; }
-e.textContent = String(t).replace(/<[^>]+>/g, ''); e.style.display = 'block';
-subT = setTimeout(function () { e.style.display = 'none'; }, (+dur > 0 ? +dur : 4000) + 400);
+e.textContent = String(t).replace(/<[^>]+>/g, '').replace(/\s*\n\s*/g, '\n'); e.style.display = 'block';
+if (!own) subT = setTimeout(function () { e.style.display = 'none'; }, (+dur > 0 ? +dur : 4000) + 100);
 }
 var LNG = {ar: 'عربي', ara: 'عربي', en: 'English', eng: 'English', fr: 'Français', fre: 'Français', fra: 'Français', es: 'Español', spa: 'Español', de: 'Deutsch', ger: 'Deutsch', deu: 'Deutsch', tr: 'Türkçe', tur: 'Türkçe', ru: 'Русский', rus: 'Русский', ja: '日本語', jpn: '日本語', ko: '한국어', kor: '한국어', hi: 'हिन्दी', hin: 'हिन्दी', it: 'Italiano', ita: 'Italiano', pt: 'Português', por: 'Português', und: ''};
 function trackMenu(type) {
