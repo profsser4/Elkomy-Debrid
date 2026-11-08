@@ -3540,6 +3540,18 @@ async function ftResolve() {
     }
   } catch (e) {}
   FT.res = R;
+  FT.ready = PID;
+}
+async function ftBoot(pid) {
+  if (!pid || FT.bootFor === pid) return;
+  FT.bootFor = pid;
+  try {
+    const cfg = await ivCfg();
+    if (!cfg || PID !== pid) return;
+    await ftLoad(); await ftResolve();
+    renderShelvesSoon();
+    setTimeout(ftPopup, 1200);
+  } catch (e) { FT.bootFor = null; }
 }
 const ftMatch = m => '<div class="ftm-c" tabindex="0" role="button" data-ch="' + esc(m.ch) + '" data-n="' + esc(m.n) + '" onclick="ftMatchTap(this)">' +
   '<span class="ftm-live"><i></i>LIVE</span>' +
@@ -3559,7 +3571,7 @@ const ftBanner = b => {
     '</div></div></div>';
 };
 function ivFeatHTML() {
-  if (!PID || IV.homePid !== PID || !IV.cfg || !FT.d || !FT.res) return '';
+  if (!PID || FT.ready !== PID || !IV.cfg || !FT.d || !FT.res) return '';
   const d = FT.d, bn = FT.res.banners, ms = FT.res.matches;
   let h = '';
   if (bn.length) h += '<div class="ftb">' + bn.map(ftBanner).join('') + '</div>';
@@ -9095,7 +9107,9 @@ function favBarHTML() {
 function favGo(k) { const el = document.getElementById('favs-' + favId(k)); if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
 function newHomeHTML() {
   const P = pf();
-  let h = favBarHTML();
+  let h = '';
+  try { ftBoot(PID); h += ivFeatHTML(); } catch (e) {}
+  h += favBarHTML();
   try { h += cwRowHTML(); } catch (e) {}
   if (!NEWD) h += pend('جاري تحميل الجديد...');
   else {
