@@ -221,6 +221,28 @@ html,body{background:#0e1131}
 #plbuf{border-color:rgba(255,255,255,.2);border-top-color:#e50914;width:110px;height:110px;left:905px;top:485px}
 #plsubt{left:200px;right:200px;font-size:46px;font-weight:500;line-height:1.4;font-family:"Helvetica Neue",Arial,Tahoma,sans-serif;text-shadow:0 0 4px #000,0 0 8px #000,2px 2px 4px #000,-2px -2px 4px #000;direction:rtl;unicode-bidi:plaintext}
 #plsubt.vis{display:block}
+
+/* ===== match the browser player look ===== */
+#plbar,#pltop,#plsubt,#plmenu,#plctl,#pltitle{font-family:Tahoma,Arial,sans-serif}
+#plbar{padding:120px 60px 34px;background:linear-gradient(to top,rgba(0,0,0,.85),rgba(0,0,0,0))}
+#pltop{padding:40px 60px 100px;background:linear-gradient(to bottom,rgba(0,0,0,.8),rgba(0,0,0,0))}
+#pltitle{font-size:38px;font-weight:700;text-shadow:0 2px 6px #000}
+#plsub{font-size:24px;color:#cfcfcf}
+#plprog{height:8px;background:rgba(255,255,255,.3);border-radius:4px;margin:0 22px}
+#plfill{height:8px;background:#e50914;border-radius:4px;transition:none}
+#plfill:after{width:26px;height:26px;right:-13px;top:-9px;box-shadow:none}
+#plcur{background:rgba(20,20,20,.95);color:#fff;border:0;border-radius:6px;font-size:26px;top:-74px}
+.tm{font-size:28px;min-width:96px;text-align:center;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px #000}
+#pldur{margin:0;padding:0;min-width:96px;text-align:center;font-size:28px;font-weight:400}
+#plctl{margin-top:22px;font-size:30px}
+#plctl .ci{margin-right:26px;padding:0;background:none;border-radius:0;display:inline-flex;align-items:center;gap:10px}
+#plctl .ci svg{width:54px;height:54px;fill:#fff}
+#plctl .sp{flex:1}
+#plctl .lv{background:#e50914;padding:4px 20px;border-radius:6px}
+#plpause{width:130px;height:130px;margin:-65px 0 0 -65px;border:0;background:rgba(0,0,0,.5);line-height:130px;font-size:60px}
+#plsubt{left:120px;right:120px;bottom:100px;font-size:46px;font-weight:700;line-height:1.55;text-shadow:none}
+#plsubt{white-space:pre-line}
+#plbar.show~#plsubt{bottom:230px}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -280,7 +302,7 @@ html,body{background:#0e1131}
 <div id="sbusy" class="scr"><div class="center"><div class="spin" style="margin:0 auto 40px"></div><h2 id="sbT">جاري التجهيز...</h2><p id="sbP"></p><p style="font-size:24px">اضغط رجوع للإلغاء</p></div></div>
 
 <div id="pl">
-  <div id="plbar"><div id="plrow"><div id="plprog"><div id="plfill"><b id="plcur"></b></div></div><span id="pldur"></span></div><div id="plctl"></div></div>
+  <div id="plbar"><div id="plrow"><span id="pltm" class="tm"></span><div id="plprog"><div id="plfill"><b id="plcur"></b></div></div><span id="pldur"></span></div><div id="plctl"></div></div>
   <div id="pltop"><div id="pltitle"></div><div id="plsub"></div></div><div id="plpause">&#10074;&#10074;</div>
   <div id="plsubt"></div><div id="plmenu"></div><div id="plnum"></div><div id="plbuf"></div><div id="plmsg"></div>
 </div>
@@ -897,9 +919,9 @@ if (!keep) P.ovT = setTimeout(function () { $('plbar').className = ''; $('plnum'
 function ovPaint() {
 var live = P.kind === 'live';
 $('pltitle').textContent = P.title;
-$('plrow').style.display = live ? 'none' : 'flex';
+$('plrow').style.display = live ? 'none' : 'flex'; if (live) $('pltm').textContent = '';
 $('plpause').style.display = (P.paused && !P.err) ? 'block' : 'none';
-var h = live ? '<span class="lv">● مباشر</span>' : '<span class="ci">' + (P.paused ? '▶' : '❚❚') + '</span><span class="ci">⟲ 10</span><span class="ci">10 ⟳</span>';
+var h = live ? '<span class="lv">● مباشر</span>' : '<span class="ci">' + (P.paused ? '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>' : '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>') + '</span><span class="ci">' + '<svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/><text x="8" y="16" font-size="7" font-weight="700">10</text></svg>' + '</span><span class="ci">' + '<svg viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7a6 6 0 1 0 6 6h2a8 8 0 1 1-8-8z"/><text x="8" y="16" font-size="7" font-weight="700">10</text></svg>' + '</span>';
 h += '<span class="sp"></span>';
 if (P.kind === 'site' && P.next) h += '<span class="ci">⏭ التالية 🟡</span>';
 if (P.kind === 'site' && P.av) h += '<span class="ci">🔊 🔴</span><span class="ci">💬 🔵</span>';
@@ -908,12 +930,13 @@ if (!live) {
 var p = P.pos + (P.acc || 0); if (p < 0) p = 0; if (P.dur && p > P.dur) p = P.dur;
 $('plfill').style.width = (P.dur ? Math.min(100, p / P.dur * 100) : 0) + '%';
 var c = $('plcur'); c.style.display = (P.acc || P.paused) ? 'block' : 'none'; c.textContent = fmt(p) + (P.acc ? (P.acc > 0 ? '  ▶▶' : '  ◀◀') : '');
+$('pltm').textContent = fmt(p);
 $('pldur').textContent = P.dur ? fmt(Math.max(0, P.dur - p)) : '';
 }
 }
 function startPlay(o) {
 P.sid++; P.on = true; P.kind = o.kind; P.url = o.url; P.title = o.title; P.key = o.key || ''; P.meta = o.meta || null;
-P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; XS = null; P.subDone = false; $('plmenu').style.display = 'none'; subShow('');
+P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; XS = null; SUBC = {list: [], i: 0, apply: null}; try { XOFF = +lj('so:' + (o.key || o.url), 0) || 0; } catch (e) { XOFF = 0; }; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; XS = null; P.subDone = false; $('plmenu').style.display = 'none'; subShow('');
 D.documentElement.className = 'playing';
 plmsg(''); buf(true); ovPaint(); ovShow();
 if (o.kind === 'live') epg();
@@ -963,7 +986,7 @@ v.src = url; try { v.play(); } catch (e) {}
 function engineStop() {
 try { if (P.av) { webapis.avplay.stop(); webapis.avplay.close(); } else { var v = $('vid'); v.pause(); v.removeAttribute('src'); v.load(); v.style.display = 'none'; } } catch (e) {}
 }
-var CLK = {t: 0, at: 0};
+var CLK = {t: 0, at: 0}, XOFF = 0, SUBC = {list: [], i: 0, apply: null};
 function curT() {
 if (P.paused || P.err) return P.pos;
 var t = CLK.t + (Date.now() - CLK.at) / 1000;
@@ -1090,6 +1113,7 @@ out.sort(function (x, y) { return x.s - y.s; });
 return {c: out, i: -1};
 }
 function xsTick(t) {
+t -= XOFF;
 var c = XS.c, lo = 0, hi = c.length - 1, f = -1;
 while (lo <= hi) { var mid = (lo + hi) >> 1; if (c[mid].s <= t) { f = mid; lo = mid + 1; } else hi = mid - 1; }
 if (f >= 0 && t > c[f].e) f = -1;
@@ -1133,6 +1157,11 @@ tmClose(); return true;
 }
 tmClose(); return true;
 }
+function nudge(d) {
+XOFF = Math.round((XOFF + d) * 100) / 100; XS.i = -2;
+try { sj('so:' + (P.key || P.url), XOFF); } catch (e) {}
+toast('⏱ الترجمة ' + (XOFF === 0 ? 'متظبطة' : XOFF > 0 ? 'اتأخرت ' + XOFF + ' ث' : 'اتقدمت ' + (-XOFF) + ' ث') + '  (↑ أبكّر · ↓ أأخّر)'); ovShow();
+}
 function playerKey(e) {
 var k = e.keyCode;
 if (TM) return tmKey(k);
@@ -1150,8 +1179,8 @@ if (k === 19) { pauseToggle(true); return true; }
 if (k === 10252) { pauseToggle(); return true; }
 if (k === 39 || k === 417) { seekBy(1, rep); return true; }
 if (k === 37 || k === 412) { seekBy(-1, rep); return true; }
-if (k === 38 || k === 428) { if (P.kind === 'live') { zap(-1); } else ovShow(); return true; }
-if (k === 40 || k === 427) { if (P.kind === 'live') { zap(1); } else ovShow(); return true; }
+if (k === 38 || k === 428) { if (P.kind === 'live') { zap(-1); } else if (XS) nudge(-0.5); else ovShow(); return true; }
+if (k === 40 || k === 427) { if (P.kind === 'live') { zap(1); } else if (XS) nudge(0.5); else ovShow(); return true; }
 ovShow(); return true;
 }
 /* ===================== أزرار الريموت ===================== */
@@ -1933,7 +1962,11 @@ if (d.synced) return toast('✅ الترجمة متظبطة مع الصوت');
 return subFetch(it, ai, sh, sc, sp, sid, function (x) { if (x && live()) { XS = x; subShow(''); toast('🎯 اتضبطت الترجمة بالصوت (' + (sh > 0 ? '+' : '') + sh + ' ث)'); } });
 }
 if (c) sj(ck, null);
-if (d.reason === 'split' || d.reason === 'low') toast('الترجمة دي مش متطابقة مع الفيديو، مقدرتش أظبطها');
+if (!ai && SUBC.apply && SUBC.i + 1 < SUBC.list.length) {
+SUBC.i++; toast('🔄 بجرّب ترجمة تانية (' + (SUBC.i + 1) + '/' + SUBC.list.length + ')...');
+XS = null; P.subDone = false; subShow(''); return SUBC.apply(SUBC.list[SUBC.i], '');
+}
+toast('مقدرتش أظبطها أوتوماتيك، اضبطها بالأسهم ↑ ↓');
 }
 function poll(d) {
 if (!live() || !d) return;
@@ -1967,7 +2000,7 @@ if (!c || c.n < 2) autoSync(it, ai, sp, sid, ck, c);
 api('/subs?lang=AR&' + base + se, {timeout: 30000}, function (e, s, r) {
 if (!ok()) return;
 var l = (!e && s === 200 && r && r.items) || [];
-if (l.length) return apply(subRank(l, o.vtitle || '')[0], '');
+if (l.length) { SUBC.list = subRank(l, o.vtitle || '').slice(0, 4); SUBC.i = 0; SUBC.apply = apply; return apply(SUBC.list[0], ''); }
 api('/subs?lang=EN&' + base + se, {timeout: 30000}, function (e2, s2, r2) {
 var l2 = (!e2 && s2 === 200 && r2 && r2.items) || [];
 if (!ok() || !l2.length) return;

@@ -6571,7 +6571,12 @@ async function srvAutoSync(force) {
     }
     if (d.reason === 'split') ASY.msg = 'الترجمة دي من نسخة مختلفة عن الفيديو (التوقيت بيتغيّر في النص). جرّب ترجمة تانية من القايمة.';
     else if (d.reason === 'low') ASY.msg = 'مش متأكد من الضبط بالصوت للترجمة دي. جرّب ترجمة تانية أو اضبط يدوي.';
-    if (d.reason === 'split' || d.reason === 'low') asToast(ASY.msg);
+    if (d.reason === 'split' || d.reason === 'low') {
+      PLAY._tried = PLAY._tried || {}; PLAY._tried[it.u] = 1;
+      const nx = (subs || []).slice(0, 5).find(x => x && x.u && !PLAY._tried[x.u] && !x.ai);
+      if (nx) { asToast('🔄 الترجمة دي مش مطابقة، بجرّب ترجمة تانية...'); setTimeout(() => applySubItem(nx, 0, true), 300); return; }
+      asToast(ASY.msg + ' (تقدر تظبطها بـ ±0.5 من قايمة الترجمة)');
+    }
   } catch (e) {
   } finally { SRVAS.busy = false; }
 }
@@ -6683,7 +6688,7 @@ async function applySubItem(it, shift, quiet, scale, keepAs) {
   tr.src = URL.createObjectURL(new Blob([r.text], {type: 'text/vtt'}));
   v.appendChild(tr);
   tr.track.mode = 'showing';
-  try { if (isTv()) subOverlay(v, tr); } catch (e) {}
+  try { subOverlay(v, tr); } catch (e) {}
   try { subLock(v, tr); } catch (e) {}
   subSel = {it: it, shift: shift, scale: scale};
   if (PLAY) PLAY.subOff = false;
@@ -6749,14 +6754,21 @@ function subOverlay(v, tr) {
   let cc = box.querySelector('.nfx-cc');
   if (!cc) { cc = document.createElement('div'); cc.className = 'nfx-cc'; box.appendChild(cc); }
   tr.track.mode = 'hidden';
-  const draw = () => {
-    const a = tr.track.activeCues || [];
+  if (v._ccRaf) cancelAnimationFrame(v._ccRaf);
+  let last = null;
+  const tick = () => {
+    if (!v.isConnected || !tr.track || tr.track.mode === 'disabled') { cc.innerHTML = ''; return; }
+    const cs = tr.track.cues, now = v.currentTime;
     let t = '';
-    for (let i = 0; i < a.length; i++) t += (i ? '<br>' : '') + esc(String(a[i].text || '').replace(/<[^>]*>/g, '').replace(/[\u202a-\u202e]/g, '')).replace(/\n/g, '<br>');
-    cc.innerHTML = t ? '<span>' + t + '</span>' : '';
+    if (cs) for (let i = 0; i < cs.length; i++) {
+      const c = cs[i];
+      if (c.startTime > now) break;
+      if (now < c.endTime) t += (t ? '<br>' : '') + esc(String(c.text || '').replace(/<[^>]*>/g, '').replace(/[\u202a-\u202e]/g, '')).replace(/\n/g, '<br>');
+    }
+    if (t !== last) { last = t; cc.innerHTML = t ? '<span>' + t + '</span>' : ''; }
+    v._ccRaf = requestAnimationFrame(tick);
   };
-  tr.track.addEventListener('cuechange', draw);
-  draw();
+  tick();
 }
 function subOff() {
   const v = document.querySelector('#results video');
