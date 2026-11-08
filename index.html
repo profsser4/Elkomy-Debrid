@@ -6688,7 +6688,7 @@ async function applySubItem(it, shift, quiet, scale, keepAs) {
   tr.src = URL.createObjectURL(new Blob([r.text], {type: 'text/vtt'}));
   v.appendChild(tr);
   tr.track.mode = 'showing';
-  try { subOverlay(v, tr); } catch (e) {}
+  try { if (isTv() || document.fullscreenEnabled) subOverlay(v, tr); } catch (e) {}
   try { subLock(v, tr); } catch (e) {}
   subSel = {it: it, shift: shift, scale: scale};
   if (PLAY) PLAY.subOff = false;
@@ -6757,7 +6757,7 @@ function subOverlay(v, tr) {
   if (v._ccRaf) cancelAnimationFrame(v._ccRaf);
   let last = null;
   const tick = () => {
-    if (!v.isConnected || !tr.track || tr.track.mode === 'disabled') { cc.innerHTML = ''; return; }
+    if (!v.isConnected || !tr.isConnected || !tr.track || tr.track.mode === 'disabled') { cc.innerHTML = ''; return; }
     const cs = tr.track.cues, now = v.currentTime;
     let t = '';
     if (cs) for (let i = 0; i < cs.length; i++) {
