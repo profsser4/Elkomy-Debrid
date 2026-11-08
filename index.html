@@ -4009,7 +4009,8 @@ function ivMapRender() {
       '<button class="search-btn imgo" onclick="ivmRunCat()">⚡ اربط القسم تلقائياً</button><div id="imGrid" style="margin-top:12px"></div>';
   } else {
     b.innerHTML = '<input id="imq" class="search-input" placeholder="اسم القناة للبحث (مثلاً: bein 1)" oninput="ivMapFill()" autocapitalize="off">' +
-      IVM.accs.map((a, i) => '<small class="ltr" style="direction:ltr;text-align:left;display:block;margin-top:6px">' + (i ? 'حساب ' + (i + 1) : 'الأساسي') + ' · ' + esc(a.host) + '</small><select id="ims' + i + '" class="search-input"></select>').join('') +
+      IVM.accs.map((a, i) => '<small class="ltr" style="direction:ltr;text-align:left;display:block;margin-top:6px">' + (i ? 'حساب ' + (i + 1) : 'الأساسي') + ' · ' + esc(a.host) + '</small><input id="imq' + i + '" class="search-input" style="padding:8px;font-size:12px;margin:4px 0" placeholder="بحث خاص بالحساب ده (اختياري)" oninput="ivMapFill()" autocapitalize="off"><select id="ims' + i + '" class="search-input"></select>').join('') +
+      '<p style="color:var(--mut);font-size:12px;margin:0 0 8px">لو حساب مفيهوش القناة اختار «— بدون —» وهيتخطّاه (لازم الأساسي + حساب تاني على الأقل).</p>' +
       '<button class="search-btn" onclick="ivMapSave(this)">💾 حفظ ربط القناة</button>';
     ivMapFill();
     return;
@@ -4020,8 +4021,9 @@ function ivMapFill() {
   const q = ($('imq').value || '').toLowerCase().split(/\s+/).filter(Boolean);
   IVM.accs.forEach((a, i) => {
     const l = Array.isArray(IVM.lists[i]) ? IVM.lists[i] : [];
-    const hit = l.filter(c => { const n = String(c.name || '').toLowerCase(); return q.every(w => n.indexOf(w) >= 0); }).slice(0, 80);
-    $('ims' + i).innerHTML = hit.length ? hit.map(c => '<option value="' + esc(c.stream_id) + '">' + esc(c.name) + '</option>').join('') : '<option value="">— مفيش نتائج —</option>';
+    const own = (($('imq' + i) || {}).value || '').toLowerCase().split(/\s+/).filter(Boolean), qq = own.length ? own : q;
+    const hit = l.filter(c => { const n = String(c.name || '').toLowerCase(); return qq.every(w => n.indexOf(w) >= 0); }).slice(0, 80);
+    $('ims' + i).innerHTML = hit.map(c => '<option value="' + esc(c.stream_id) + '">' + esc(c.name) + '</option>').join('') + '<option value=""' + (i && !hit.length ? ' selected' : '') + '>— بدون —</option>';
   });
 }
 async function ivMapPost() {
@@ -4036,10 +4038,10 @@ async function ivMapSave(btn) {
   const ids = {};
   for (let i = 0; i < IVM.accs.length; i++) {
     const v = $('ims' + i).value;
-    if (!v) { alert('اختار القناة في كل الحسابات الأول'); return; }
-    ids[ivAk(IVM.accs[i])] = v;
+    if (v) ids[ivAk(IVM.accs[i])] = v;
   }
   const pk = ivAk(IVM.accs[0]);
+  if (!ids[pk] || Object.keys(ids).length < 2) { alert('لازم تختار القناة في الحساب الأساسي وحساب تاني على الأقل'); return; }
   IVM.cmap = IVM.cmap.filter(m => String(m.ids[pk]) !== String(ids[pk]));
   IVM.cmap.push({n: ($('imq').value || '').trim() || ivMapName(0, ids[pk]), ids: ids});
   btn.disabled = true;
