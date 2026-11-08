@@ -243,6 +243,31 @@ html,body{background:#0e1131}
 #plsubt{left:120px;right:120px;bottom:100px;font-size:46px;font-weight:700;line-height:1.55;text-shadow:none}
 #plsubt{white-space:pre-line}
 #plbar.show~#plsubt{bottom:230px}
+
+/* ===== رئيسية سينمائية ===== */
+#hBg{position:absolute;left:0;top:0;width:1920px;height:700px;background:radial-gradient(ellipse at 75% 20%,#1e3a8a 0,#0e1131 70%)}
+#hPic{position:absolute;right:110px;top:140px;width:200px;height:290px;border-radius:18px;background:#0b1326 center/cover no-repeat;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 0 3px rgba(255,255,255,.15)}
+#hInfo{position:absolute;right:350px;left:110px;top:165px;text-align:right}
+#hBadge{display:inline-block;background:linear-gradient(90deg,#f59e0b,#ef4444);color:#fff;font-size:24px;font-weight:700;padding:4px 20px;border-radius:20px;margin-bottom:14px}
+#hTit{font-size:58px;font-weight:800;line-height:1.2;max-height:140px;overflow:hidden;text-shadow:0 4px 20px #000}
+#hMeta{font-size:30px;color:#fbbf24;margin-top:12px}
+#home .hcards{top:452px;height:80px;justify-content:center}
+#home .hc,#home .hc.big{width:auto;height:80px;line-height:80px;padding:0 38px;margin:0 0 0 14px;border-radius:40px;font-size:32px;position:relative}
+#home .hc svg{display:inline-block;width:44px;height:40px;margin:0 0 -6px 14px}
+#home .hc em{position:static;font-size:32px}
+#home .hc small{display:none}
+#home .hcol,#home .hcol:last-child{display:flex;width:auto;margin:0}
+#home .hcol .hc{margin:0 0 0 14px}
+#home .hb{height:80px;line-height:80px;font-size:30px;padding:0 34px;margin:0 0 0 14px;border-radius:40px}
+#hNH,#hChH{position:absolute;right:90px;font-size:28px;font-weight:700;color:#cfe3ff}
+#hNH{top:548px}#hChH{top:826px}
+#hRail{position:absolute;right:80px;left:80px;top:588px;height:230px;display:flex;padding-top:10px}
+.hn{width:140px;height:210px;margin-left:14px;border-radius:14px;background:#0b1326 center/cover no-repeat;flex:none}
+.hn.cur{box-shadow:0 0 0 3px rgba(125,211,252,.55)}
+.hn.hm{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:26px;background:#141f3a;color:#7dd3fc}
+.hn.hm span{font-size:70px;line-height:70px}
+#hCh{position:absolute;right:80px;left:80px;top:866px;height:110px;display:flex;padding-top:8px}
+.hch{width:92px;height:92px;border-radius:50%;margin-left:16px;padding:12px;background:#0b1326 center/contain no-repeat;background-origin:content-box;border:3px solid #2a3a63;flex:none;text-align:center;line-height:62px;font-size:40px;color:#7dd3fc}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -263,6 +288,8 @@ html,body{background:#0e1131}
 </div>
 
 <div id="home" class="scr">
+<div id="hBg"></div>
+<div id="hPic"></div><div id="hInfo"><div id="hBadge">✦ جديد على الموقع</div><div id="hTit">جاري تحميل الجديد...</div><div id="hMeta"></div></div>
 <div class="top"><div class="logo">Elkomy <b>VIP</b><i></i></div>
 <div class="tr"><div class="f ib" id="hMode" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">&#128100;</div><div class="f ib" id="hOut" style="background:linear-gradient(135deg,#fb7185,#e11d48)">&#9211;</div></div></div>
 <div class="hcards">
@@ -270,6 +297,8 @@ html,body{background:#0e1131}
 <div class="hcol"><div class="f hc c2" id="hVod" data-k="vod"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="14" y="36" width="142" height="96" rx="12" fill="none" stroke="#fff" stroke-width="10"/><path d="M14 36l24-26M62 36l24-26M110 36l24-26M14 62h142" stroke="#fff" stroke-width="10" stroke-linecap="round"/></svg><em>الأفلام</em><small id="nVod"></small></div><div class="f hb" id="hCw">&#9654;&nbsp; متابعة المشاهدة</div></div>
 <div class="hcol"><div class="f hc c3" id="hSer" data-k="series"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="30" y="8" width="110" height="16" rx="6" fill="#fff" opacity=".6"/><rect x="18" y="32" width="134" height="16" rx="6" fill="#fff" opacity=".8"/><rect x="8" y="58" width="154" height="84" rx="12" fill="none" stroke="#fff" stroke-width="10"/><path d="M72 80l34 20-34 20z" fill="#fff"/></svg><em>المسلسلات</em><small id="nSer"></small></div><div class="f hb" id="hFav">&#9733;&nbsp; المفضلة</div></div>
 </div>
+<div id="hNH">✦ نزل جديد</div><div id="hRail"></div>
+<div id="hChH">📺 قنواتي</div><div id="hCh"></div>
 <div class="foot"><span id="hUser"></span><span id="hExp"></span></div>
 </div>
 
@@ -614,6 +643,70 @@ var days = Math.ceil((+i.exp_date * 1000 - Date.now()) / 86400000);
 e.className = days <= 5 ? 'low' : 'ok';
 e.textContent = days > 0 ? 'الاشتراك: باقي ' + days + ' يوم' : 'الاشتراك منتهي';
 } else { e.className = ''; e.textContent = (i && i.exp_date === null) ? 'الاشتراك: غير محدود' : ''; }
+heroInit();
+}
+
+/* ---------- رئيسية سينمائية: هيرو متغيّر + شريط جديد + قنواتي ---------- */
+var HH = {u: null, ld: 0, nw: [], i: -1, p: -1, cs: ''};
+function cssu(u) { return 'url("' + String(u).replace(/["\\\n\r]/g, '') + '")'; }
+function heroSet(i) {
+var a = HH.nw; if (!a.length) return;
+if (i >= a.length) i = 0; if (i < 0) i = a.length - 1;
+if (i === HH.i) return; HH.i = i;
+var it = a[i], r = +it.rating;
+$('hPic').style.backgroundImage = it.img ? cssu(it.img) : 'none';
+$('hTit').textContent = it.name || '';
+$('hMeta').textContent = (r > 0 ? '⭐ ' + r.toFixed(1) + '   ·   ' : '') + 'فيلم جديد';
+var c = $('hRail').children; if (HH.p >= 0 && c[HH.p]) c[HH.p].className = c[HH.p].className.replace(/ ?\bcur\b/g, '');
+if (c[i]) c[i].className += ' cur'; HH.p = i;
+}
+function heroBuild() {
+var box = $('hRail'); box.innerHTML = '';
+HH.nw.forEach(function (it, i) {
+var d = D.createElement('div'); d.className = 'f hn'; if (it.img) d.style.backgroundImage = cssu(it.img);
+d._focus = function () { heroSet(i); };
+d._ok = function () { openVod(it); };
+box.appendChild(d);
+});
+var m = D.createElement('div'); m.className = 'f hn hm'; m.innerHTML = '<span>‹</span>المزيد';
+m._ok = function () { openBrowse('vod', '__new'); }; box.appendChild(m);
+HH.i = -1; HH.p = -1; heroSet(0);
+}
+function chBuild() {
+var box = $('hCh'), l = [], all = MEM['all_live'];
+if (all) { var map = {}; all.forEach(function (x) { map[String(x.id)] = x; }); (S.pins.live || []).forEach(function (id) { if (map[String(id)]) l.push(map[String(id)]); }); }
+if (!l.length) l = (UD.fav.live || []).slice();
+l = l.slice(0, 11);
+if (HH.cs === l.length + ':' + (l[0] ? l[0].id : '')) return;
+HH.cs = l.length + ':' + (l[0] ? l[0].id : '');
+box.innerHTML = ''; $('hChH').style.display = l.length ? '' : 'none';
+l.forEach(function (it, i) {
+var d = D.createElement('div'); d.className = 'f hch';
+if (it.img) d.style.backgroundImage = cssu(it.img); else d.textContent = String(it.name || '?').replace(/^[^A-Za-z\u0600-\u06FF0-9]+/, '').charAt(0);
+d._focus = function () { $('hChH').textContent = '📺 قنواتي   ·   ' + (it.name || ''); };
+d._ok = function () { playLive(l, i); };
+box.appendChild(d);
+});
+}
+function heroPick(items) {
+var a = (items || []).map(function (x) { return normItem('vod', x); }).filter(function (x) { return x.img; });
+a.sort(function (x, y) { return y.t - x.t; });
+HH.nw = a.slice(0, 9);
+if (HH.nw.length) heroBuild(); else $('hTit').textContent = 'Elkomy VIP';
+}
+function heroLoad() {
+if (HH.ld) return; HH.ld = 1;
+if (MEM['all_vod']) { HH.nw = MEM['all_vod'].filter(function (x) { return x.img; }).slice(0, 9); if (HH.nw.length) heroBuild(); return; }
+xtc('cat_vod', KC.vod, null, function (err, cats) {
+if (err || !cats || !cats.length) { HH.ld = 0; $('hTit').textContent = 'Elkomy VIP'; return; }
+var pin = S.pins.cats.filter(function (c) { return c.k === 'vod'; })[0];
+var id = pin ? String(pin.id) : String(cats[0].category_id);
+xtc('hero_vod_' + id, KA.vod, {category_id: id}, function (e2, j) { if (e2) { HH.ld = 0; return; } heroPick(j); });
+});
+}
+function heroInit() {
+if (HH.u !== S.user) { HH.u = S.user; HH.ld = 0; HH.nw = []; HH.i = -1; HH.cs = ''; $('hRail').innerHTML = ''; $('hCh').innerHTML = ''; $('hTit').textContent = 'جاري تحميل الجديد...'; $('hMeta').textContent = ''; }
+if (S.cfg) { chBuild(); setTimeout(heroLoad, 700); }
 }
 function showHome() { homeRefresh(); show('home'); setFocus($('hLive')); }
 ['hLive', 'hVod', 'hSer'].forEach(function (id) { $(id)._ok = function (el) { openBrowse(el.getAttribute('data-k')); }; });
