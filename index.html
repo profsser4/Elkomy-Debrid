@@ -83,6 +83,12 @@ button,a,summary,.poster,.cw,.pcard,.gtile{touch-action:manipulation;-webkit-tap
 .lbtn2{width:100%;margin-top:10px;padding:11px;border-radius:10px;border:1px solid #334155;background:none;color:var(--mut);font-size:14px;cursor:pointer;font-family:inherit}
 .lbtn2:disabled{opacity:.5;cursor:default}
 .login-btn:disabled{opacity:.6;cursor:default}
+.ucard{background:var(--panel);border:1px solid #1e2a47;border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.uhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.uname{font-weight:bold;font-size:16px;direction:ltr;unicode-bidi:plaintext;word-break:break-all}
+.umeta{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:12.5px;color:var(--mut)}
+.uact{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.ub{flex:1 1 44px;min-width:44px;height:40px;border:none;border-radius:10px;color:#fff;font-size:18px;cursor:pointer}
 #main-content{display:none;padding:16px;max-width:800px;margin:0 auto}
 .action-box{background:var(--panel);padding:20px 16px;border-radius:10px;margin-bottom:18px;border:1px solid #334155;text-align:center}
 .ltr{text-align:left;direction:ltr}
@@ -7529,15 +7535,23 @@ async function loadUsers() {
 function renderUsers() {
   const el = $('usBox');
   if (!el) return;
-  el.innerHTML = (USERS.map(u =>
-    '<div class="ep"><div class="b">👤 ' + esc(u.name) + ' ' + usPlanTag(u) + (u.lim ? ' <small style="color:var(--mut)">📺' + (u.on || {}).tv + '/' + u.lim.tv + ' 📱' + (u.on || {}).app + '/' + u.lim.app + ' 🌐' + (u.on || {}).web + '/' + u.lim.web + '</small>' : '') + (u.susp ? ' <small style="color:#ef4444">⛔ موقوف (أجهزة زيادة)</small>' : (u.st ? ' <small style="color:#f59e0b">⚠️ ' + u.st + '/3 تحذير</small>' : '')) + (u.lock === 2 && u.plan !== 'free' && u.plan !== 'expired' ? ' <small style="color:#f59e0b">🔒 تصفح فقط</small>' : (u.lock === 1 ? ' <small style="color:#f59e0b">🚫 ممنوع من التحميل</small>' : '')) +
-    (u.wp ? ' <small style="color:var(--mut)">👁 ' + esc(spName(u.wp)) + '</small>' : '') + (u.dp ? ' <small style="color:var(--mut)">⬇ ' + esc(spName(u.dp)) + '</small>' : '') + '</div>' +
-    '<button style="background:#7c3aed;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="usLim(this.dataset.n)" aria-label="الأجهزة">📲</button>' +
-    ((u.susp || u.st) ? '<button style="background:#16a34a;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="usUnlock(this.dataset.n)" aria-label="تشغيل">🔓</button>' : '') +
-    '<button style="background:#b45309;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="usPlan(this.dataset.n)" aria-label="الباقة">💎</button>' +
-    '<button style="background:#0ea5e9;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="usPerm(this.dataset.n)">🔒</button>' +
-    '<button style="background:#475569;color:#fff" data-n="' + esc(u.name) + '" onclick="usPass(this.dataset.n)">🔑</button>' +
-    '<button style="background:var(--danger);color:#fff;margin-inline-start:6px" data-n="' + esc(u.name) + '" onclick="usDel(this.dataset.n)">🗑</button></div>').join('')
+  const ub = (bg, n, fn, ic, lb) => '<button class="ub" style="background:' + bg + '" data-n="' + esc(n) + '" onclick="' + fn + '(this.dataset.n)"' + (lb ? ' aria-label="' + lb + '"' : '') + '>' + ic + '</button>';
+  el.innerHTML = (USERS.map(u => {
+    const on = u.on || {}, meta = [];
+    if (u.lim) meta.push('<span>📺 ' + on.tv + '/' + u.lim.tv + '</span><span>📱 ' + on.app + '/' + u.lim.app + '</span><span>🌐 ' + on.web + '/' + u.lim.web + '</span>');
+    if (u.susp) meta.push('<span style="color:#ef4444">⛔ موقوف (أجهزة زيادة)</span>');
+    else if (u.st) meta.push('<span style="color:#f59e0b">⚠️ ' + u.st + '/3 تحذير</span>');
+    if (u.lock === 2 && u.plan !== 'free' && u.plan !== 'expired') meta.push('<span style="color:#f59e0b">🔒 تصفح فقط</span>');
+    else if (u.lock === 1) meta.push('<span style="color:#f59e0b">🚫 ممنوع من التحميل</span>');
+    if (u.wp) meta.push('<span>👁 ' + esc(spName(u.wp)) + '</span>');
+    if (u.dp) meta.push('<span>⬇ ' + esc(spName(u.dp)) + '</span>');
+    return '<div class="ucard"><div class="uhead"><span class="uname">👤 ' + esc(u.name) + '</span>' + usPlanTag(u) + '</div>' +
+      (meta.length ? '<div class="umeta">' + meta.join('') + '</div>' : '') +
+      '<div class="uact">' + ub('#7c3aed', u.name, 'usLim', '📲', 'الأجهزة') +
+      ((u.susp || u.st) ? ub('#16a34a', u.name, 'usUnlock', '🔓', 'تشغيل') : '') +
+      ub('#b45309', u.name, 'usPlan', '💎', 'الباقة') + ub('#0ea5e9', u.name, 'usPerm', '🔒', 'الصلاحيات') +
+      ub('#475569', u.name, 'usPass', '🔑', 'كلمة المرور') + ub('var(--danger)', u.name, 'usDel', '🗑', 'حذف') + '</div></div>';
+  }).join('')
     || warn('مفيش مستخدمين. ضيف أول واحد.')) +
     '<input id="usName" class="search-input ltr" style="margin-top:10px" placeholder="اسم المستخدم (إنجليزي وأرقام)" autocapitalize="off" autocorrect="off">' +
     '<div class="pw"><input id="usPass" type="password" class="search-input ltr" placeholder="الباسورد"><button type="button" class="eye" onclick="eye(\'usPass\',this)">👁</button></div>' +
