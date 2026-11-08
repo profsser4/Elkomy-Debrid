@@ -9,6 +9,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v43: لو تحميل «الجديد» فشل (حساب جديد) بيظهر سبب الخطأ وزرار «جرّب تاني» بدل ما يفضل «جاري التحميل» للأبد
   v42: الـIPTV المميز: صف ماتشات (كروت LIVE بميعاد واسم الماتش) + بانر إعلان فيلم/مسلسل + إعلان منبثق مرة واحدة، والأدمن يتحكم فيهم من «✨ مميّز الـIPTV» (محتاج bot.py الجديد)
   v41: إصلاح تداخل نص البانر الرئيسي (يوتيوب كان بيرفض التريلر بسبب Referer فبيعرض شاشة خطأ فوق العنوان): التريلر دلوقتي بيظهر بس لما يشتغل فعلاً ولو فشل بيتشال لوحده
   v40: الأيام بتنقص كل يوم لوحدها (بتتحسب من تاريخ الانتهاء وبتتحدّث تلقائي) + العضو الجديد/المجاني يشوف كل حاجة من غير مشاهدة ولا تحميل ولا IPTV + تقوية الأمان (محتاج bot-41: راجع ملاحظات السيرفر)
@@ -1010,7 +1011,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=42;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=43;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -9225,14 +9226,16 @@ function catView() {
 let HERO = [], heroI = 0, heroT = null;
 const BR = {on: false, k: '', title: '', items: [], skip: 0, more: false, busy: false, err: ''};
 const HOME_ONLY_NEW = true;   // true: الرئيسية فيها الجديد بس. غيّرها false لو عاوز ترجّع كمّل المشاهدة والصفوف القديمة
-let NEWD = null, NEW_T = 0, NEW_BUSY = false;
+let NEWD = null, NEW_T = 0, NEW_BUSY = false, NEW_ERR = '';
 async function loadNew(force) {
   if (NEW_BUSY || (!force && NEWD && Date.now() - NEW_T < 15 * 60 * 1000)) return;
   NEW_BUSY = true;
+  NEW_ERR = '';
   try {
-    const {d} = await api('/new');
+    const {r, d} = await api('/new', {timeout: 25000});
     if (d && d.rows) { NEWD = d; NEW_T = Date.now(); HERO = d.hero || []; }
-  } catch (e) {}
+    else NEW_ERR = (d && d.error) || ('السيرفر رد بكود ' + (r && r.status));
+  } catch (e) { NEW_ERR = 'السيرفر اتأخر أو مفيش اتصال'; }
   NEW_BUSY = false;
   if (CAT === 'home' && !FAV_OPEN) { renderHero(); renderShelves(); }
   try { homeBoot(); } catch (e) {}
@@ -9316,7 +9319,7 @@ function newHomeHTML() {
   try { ftBoot(PID); h += ivFeatHTML(); } catch (e) {}
   h += favBarHTML();
   try { h += cwRowHTML(); } catch (e) {}
-  if (!NEWD) h += pend('جاري تحميل الجديد...');
+  if (!NEWD) h += NEW_ERR ? warn('تعذّر تحميل الجديد: ' + NEW_ERR) + '<button class="search-btn" style="margin:8px 0" onclick="NEW_ERR=\'\';renderShelves();loadNew(true)">🔄 جرّب تاني</button>' : pend('جاري تحميل الجديد...');
   else {
     let any = false;
     (NEWD.rows || []).filter(r => !P.hn.includes(r.id)).forEach(r => {
