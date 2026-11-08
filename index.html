@@ -9,6 +9,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v44: إصلاح اختيار صورة/لون البروفايل (كانت ثابتة ومش بتتغيّر)
   v43: لو تحميل «الجديد» فشل (حساب جديد) بيظهر سبب الخطأ وزرار «جرّب تاني» بدل ما يفضل «جاري التحميل» للأبد
   v42: الـIPTV المميز: صف ماتشات (كروت LIVE بميعاد واسم الماتش) + بانر إعلان فيلم/مسلسل + إعلان منبثق مرة واحدة، والأدمن يتحكم فيهم من «✨ مميّز الـIPTV» (محتاج bot.py الجديد)
   v41: إصلاح تداخل نص البانر الرئيسي (يوتيوب كان بيرفض التريلر بسبب Referer فبيعرض شاشة خطأ فوق العنوان): التريلر دلوقتي بيظهر بس لما يشتغل فعلاً ولو فشل بيتشال لوحده
@@ -1011,7 +1012,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=43;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=44;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -1360,7 +1361,7 @@ let pack = null, packBase = null, curSrc = '', links = [];
 let PACKQ = false, LAST_ERR = '';
 let PLAY = null, subs = [], subSel = null, cdTimer = null, nextShown = false;
 let ROWS = null, showCfg = false;
-let manage = false, editId = null, form = {emoji: '😎', color: '#3b82f6'};
+let manage = false, editId = null, PF = {emoji: '😎', color: '#3b82f6'};
 let pq = {}, pushT = null, lastSave = 0;
 let ST = {logged: false, email: '', items: [], n: 0}, SLIB = [], stMode = false;
 const $ = id => document.getElementById(id);
@@ -2363,7 +2364,7 @@ function pickProfile(id) {
 function openForm(id) {
   editId = id || null;
   const p = id ? UD.profiles[id] : null;
-  form = {
+  PF = {
     emoji: p ? p.emoji : EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
     color: p ? p.color : COLORS[Math.floor(Math.random() * COLORS.length)]
   };
@@ -2375,11 +2376,11 @@ function openForm(id) {
 }
 function drawForm() {
   $('fEmoji').innerHTML = EMOJIS.map(e =>
-    '<button class="eb' + (form.emoji === e ? ' on' : '') + '" onclick="form.emoji=\'' + e + '\';drawForm()">' + e + '</button>').join('');
+    '<button class="eb' + (PF.emoji === e ? ' on' : '') + '" onclick="PF.emoji=\'' + e + '\';drawForm()">' + e + '</button>').join('');
   $('fColor').innerHTML = COLORS.map(c =>
-    '<button class="cb' + (form.color === c ? ' on' : '') + '" style="background:' + c + '" onclick="form.color=\'' + c + '\';drawForm()"></button>').join('');
-  $('fPrev').style.background = form.color;
-  $('fPrev').textContent = form.emoji;
+    '<button class="cb' + (PF.color === c ? ' on' : '') + '" style="background:' + c + '" onclick="PF.color=\'' + c + '\';drawForm()"></button>').join('');
+  $('fPrev').style.background = PF.color;
+  $('fPrev').textContent = PF.emoji;
 }
 function closeForm() { $('pform').style.display = 'none'; }
 function saveForm() {
@@ -2390,7 +2391,7 @@ function saveForm() {
   if (raw && pin.length !== 4) return alert('الرقم السري لازم يكون 4 أرقام');
   const base = editId ? UD.profiles[editId]
     : {id: Math.random().toString(36).slice(2, 10), c: Date.now(), auto: true, sl: 'AR'};
-  saveProfileObj(Object.assign(base, {name: name.slice(0, 20), emoji: form.emoji, color: form.color, pin: pin}));
+  saveProfileObj(Object.assign(base, {name: name.slice(0, 20), emoji: PF.emoji, color: PF.color, pin: pin}));
   closeForm();
   renderProfiles();
 }
