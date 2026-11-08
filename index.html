@@ -3778,33 +3778,243 @@ async function ivChkAll(btn) {
   el.innerHTML = rows.join('') || '<p style="color:var(--mut)">مفيش حسابات متسجلة</p>';
   btn.disabled = false;
 }
-const IVM = {n: '', accs: [], lists: [], cmap: []};
+const IVM = {n: '', accs: [], lists: [], cats: [], cmap: [], idx: [], tab: 'one', rows: [], flt: 'all', lim: 40, busy: false};
 const ivAk = a => a.host + '|' + a.user;
+// ---------- مطابقة أسماء القنوات بين السيرفرات ----------
+const IVM_STOP = new Set(['ar', 'arabic', 'arab', 'en', 'fr', 'tv', 'channel', 'chan', 'ch', 'plus', 'vip', 'live', 'the']);
+const IVM_Q = /\b(4k|8k|uhd|fhd|hd|sd|hevc|h265|h264|raw|50fps|60fps|1080p?|720p?|2160p?)\b/g;
+function ivmNorm(name) {
+  let s = String(name || '').toLowerCase().replace(/[\u064b-\u065f\u0670\u0640]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+  const q = (s.match(IVM_Q) || []).sort().join('');
+  s = s.replace(IVM_Q, ' ').replace(/([a-z\u0600-\u06ff])(\d)/g, '$1 $2').replace(/(\d)([a-z\u0600-\u06ff])/g, '$1 $2');
+  const t = [], nums = [];
+  s.split(/[^a-z0-9\u0600-\u06ff]+/).filter(Boolean).forEach(w => {
+    if (/^\d+$/.test(w)) nums.push(String(parseInt(w, 10)));
+    else { if (w === 'sports') w = 'sport'; if (!IVM_STOP.has(w)) t.push(w); }
+  });
+  return {t: Array.from(new Set(t)), nums: nums.join(','), q: q};
+}
+function ivmIndex(i) {
+  if (IVM.idx[i]) return IVM.idx[i];
+  const l = Array.isArray(IVM.lists[i]) ? IVM.lists[i] : [], inv = new Map(), nn = l.map(c => ivmNorm(c.name));
+  nn.forEach((n, k) => n.t.forEach(w => { let a = inv.get(w); if (!a) inv.set(w, a = []); a.push(k); }));
+  return IVM.idx[i] = {l: l, nn: nn, inv: inv};
+}
+function ivmScore(a, b) {
+  if (a.nums !== b.nums || !a.t.length || !b.t.length) return 0;
+  let n = 0; const sb = new Set(b.t); a.t.forEach(w => { if (sb.has(w)) n++; });
+  return n / (a.t.length + b.t.length - n) - (a.q === b.q ? 0 : 0.02);
+}
+function ivmFind(i, nm, k) {
+  const ix = ivmIndex(i), seen = new Set(), out = [];
+  nm.t.forEach(w => (ix.inv.get(w) || []).forEach(p => seen.add(p)));
+  seen.forEach(p => { const sc = ivmScore(nm, ix.nn[p]); if (sc > 0.3) out.push({p: p, sc: sc}); });
+  out.sort((x, y) => y.sc - x.sc || String(ix.l[x.p].name).length - String(ix.l[y.p].name).length);
+  return out.slice(0, k || 8);
+}
+function ivmRow(label, prim) {
+  const nm = ivmNorm(prim ? prim.name : label), row = {n: label, pick: [], cand: [], sc: [], mn: [], on: false};
+  IVM.accs.forEach((a, i) => {
+    const ix = ivmIndex(i);
+    let cs = ivmFind(i, nm, 8).map(x => ({id: String(ix.l[x.p].stream_id), name: ix.l[x.p].name, sc: x.sc}));
+    if (i === 0 && prim) { const id = String(prim.stream_id); cs = [{id: id, name: prim.name, sc: 1}].concat(cs.filter(c => c.id !== id)); }
+    row.cand.push(cs);
+    const b = cs[0], good = b && b.sc >= 0.55;
+    row.pick.push(good ? b.id : ''); row.sc.push(good ? b.sc : 0); row.mn.push(false);
+  });
+  row.on = ivmSt(row) === 'ok';
+  return row;
+}
+function ivmSt(r) {
+  let st = 'ok';
+  for (let i = 0; i < r.pick.length; i++) {
+    if (!r.pick[i]) return 'miss';
+    if (!r.mn[i] && r.sc[i] < 0.85) st = 'mid';
+  }
+  return st;
+}
+const ivmSavable = r => !!r.pick[0] && r.pick.filter(Boolean).length >= 2;
+// ---------- قراءة ملف / نص ----------
+function ivmUniq(a) {
+  const seen = new Set(), out = [];
+  a.forEach(x => { x = String(x).trim(); const k = x.toLowerCase(); if (x && !seen.has(k)) { seen.add(k); out.push(x); } });
+  return out.slice(0, 1500);
+}
+function ivmParse(t, fn) {
+  t = String(t || '').replace(/^\uFEFF/, '');
+  const s = t.trim(), out = [];
+  if (/\.json$/i.test(fn || '') || /^[\[{]/.test(s)) {
+    try {
+      const j = JSON.parse(s), arr = Array.isArray(j) ? j : (j.channels || j.items || []);
+      arr.forEach(x => { const n = typeof x === 'string' ? x : (x && (x.n || x.name || x.title)); if (n) out.push(String(n)); });
+      if (out.length) return ivmUniq(out);
+    } catch (e) {}
+  }
+  if (/#EXTINF/i.test(t)) {
+    t.split(/\r?\n/).forEach(l => { if (/^#EXTINF/i.test(l)) { const m = l.lastIndexOf(','); const n = m >= 0 ? l.slice(m + 1).trim() : ''; if (n) out.push(n); } });
+    return ivmUniq(out);
+  }
+  const sep = /\.csv$/i.test(fn || '') ? /[\t;,]/ : /[\t;]/;
+  t.split(/\r?\n/).forEach((l, i) => {
+    l = l.trim();
+    if (!l || l[0] === '#') return;
+    l = l.split(sep)[0].replace(/^"|"$/g, '').trim();
+    if (i === 0 && /^(name|channel|channels|الاسم|القناة|اسم القناة)$/i.test(l)) return;
+    if (l) out.push(l);
+  });
+  return ivmUniq(out);
+}
+function ivmFile(inp) {
+  const f = inp.files && inp.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { const a = ivmParse(r.result, f.name); $('imtx').value = a.join('\n'); toast('اتقرا ' + a.length + ' قناة من الملف'); ivmBuild(a.map(n => ({label: n, prim: null}))); };
+  r.readAsText(f);
+}
+function ivmRunText() {
+  const a = ivmParse($('imtx').value, '');
+  if (!a.length) return alert('اكتب أو الصق أسماء القنوات الأول');
+  ivmBuild(a.map(n => ({label: n, prim: null})));
+}
+function ivmRunCat() {
+  const cid = $('imcat').value, l = Array.isArray(IVM.lists[0]) ? IVM.lists[0] : [];
+  const items = l.filter(c => String(c.category_id) === String(cid)).slice(0, 800);
+  if (!items.length) return alert('القسم ده فاضي');
+  ivmBuild(items.map(c => ({label: c.name, prim: c})));
+}
+async function ivmBuild(entries) {
+  if (IVM.busy) return;
+  IVM.busy = true; IVM.rows = []; IVM.flt = 'all'; IVM.lim = 40;
+  const g = $('imGrid');
+  for (let k = 0; k < entries.length; k++) {
+    IVM.rows.push(ivmRow(entries[k].label, entries[k].prim));
+    if (k % 20 === 19) { if (g) g.innerHTML = pend('جاري المطابقة ' + (k + 1) + ' / ' + entries.length); await new Promise(r => setTimeout(r, 0)); }
+  }
+  IVM.busy = false;
+  ivmGridRender();
+}
+// ---------- العرض ----------
+function ivmCss() {
+  if ($('imcss')) return;
+  const st = document.createElement('style');
+  st.id = 'imcss';
+  st.textContent = '.imtabs{display:flex;gap:6px;background:var(--bg);border:1px solid #334155;border-radius:14px;padding:4px;margin:8px 0 12px}' +
+    '.imtabs button{flex:1;padding:10px 4px;border:0;border-radius:10px;background:transparent;color:var(--mut);font-weight:bold;font-size:12.5px;cursor:pointer}' +
+    '.imtabs button.on{background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff;box-shadow:0 4px 14px #6366f155}' +
+    '.imdz{display:block;border:2px dashed #475569;border-radius:18px;padding:26px 12px;text-align:center;color:var(--mut);cursor:pointer;background:#ffffff08;margin-bottom:10px;font-size:13px}' +
+    '.imdz b{display:block;color:#fff;font-size:15px;margin:6px 0 4px}.imdz .ic{font-size:34px}' +
+    '.imsum{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 8px}' +
+    '.imchip{padding:7px 12px;border-radius:999px;font-size:12px;font-weight:bold;border:1px solid #334155;background:var(--panel);color:#fff;cursor:pointer}' +
+    '.imchip.on{outline:2px solid #ffffff44}.imchip.ok{color:#4ade80}.imchip.mid{color:#fbbf24}.imchip.miss{color:#f87171}' +
+    '.improg{height:6px;border-radius:6px;background:#334155;overflow:hidden;margin-bottom:12px}.improg i{display:block;height:100%;background:linear-gradient(90deg,#22c55e,#4ade80)}' +
+    '.imc{background:var(--panel);border-radius:16px;padding:12px;margin-bottom:10px;border-inline-start:4px solid #475569;box-shadow:0 2px 10px #0003}' +
+    '.imc.ok{border-color:#22c55e}.imc.mid{border-color:#f59e0b}.imc.miss{border-color:#ef4444}' +
+    '.imh{display:flex;align-items:center;gap:9px}.imh b{flex:1;font-size:14px;word-break:break-word;line-height:1.5}' +
+    '.imh input{width:20px;height:20px;accent-color:#8b5cf6;flex:none}' +
+    '.imb{font-size:11px;font-weight:bold;padding:3px 9px;border-radius:999px;white-space:nowrap}' +
+    '.imb.ok{background:#22c55e22;color:#4ade80}.imb.mid{background:#f59e0b22;color:#fbbf24}.imb.miss{background:#ef444422;color:#f87171}' +
+    '.imr{display:flex;align-items:center;gap:8px;margin-top:8px}.imr select{flex:1;min-width:0;margin:0;padding:10px;border-radius:10px;border:1px solid #334155;background:var(--bg);color:#fff;font-size:13px}' +
+    '.ima{width:24px;height:24px;border-radius:50%;background:#334155;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;flex:none}' +
+    '.imtag{font-size:10px;color:#a78bfa;margin-inline-start:6px}' +
+    '.imsave{position:sticky;bottom:10px;z-index:5;padding-top:6px}.imsave .search-btn{background:linear-gradient(135deg,#8b5cf6,#6366f1);box-shadow:0 8px 24px #6366f166}' +
+    '.imgo{background:linear-gradient(135deg,#0ea5e9,#6366f1)!important}.imtx{min-height:90px;direction:ltr;text-align:left;resize:vertical}';
+  document.head.appendChild(st);
+}
+function ivmCard(r, k, have) {
+  const st = ivmSt(r), lb = {ok: '✅ مطابق', mid: '⚠️ راجعه', miss: '❌ ناقص'}[st], sv = ivmSavable(r);
+  const rows = IVM.accs.map((a, i) => '<div class="imr"><span class="ima">' + (i + 1) + '</span><select onchange="ivmSet(' + k + ',' + i + ',this.value)">' +
+    r.cand[i].map(c => '<option value="' + esc(c.id) + '"' + (r.pick[i] === c.id ? ' selected' : '') + '>' + esc(c.name) + ' · ' + Math.round(c.sc * 100) + '%</option>').join('') +
+    '<option value=""' + (r.pick[i] ? '' : ' selected') + '>— بدون —</option></select></div>').join('');
+  return '<div class="imc ' + st + '"><div class="imh"><input type="checkbox"' + (r.on && sv ? ' checked' : '') + (sv ? '' : ' disabled') + ' onchange="ivmTog(' + k + ',this.checked)">' +
+    '<b>' + esc(r.n) + (have ? '<span class="imtag">🔗 مربوطة قبل كده</span>' : '') + '</b><span class="imb ' + st + '">' + lb + '</span></div>' + rows + '</div>';
+}
+function ivmGrid() {
+  const R = IVM.rows;
+  if (!R.length) return '';
+  const cnt = {ok: 0, mid: 0, miss: 0};
+  R.forEach(r => cnt[ivmSt(r)]++);
+  const sel = R.filter(r => r.on && ivmSavable(r)).length, pk = ivAk(IVM.accs[0]);
+  const have = new Set(IVM.cmap.map(m => String(m.ids[pk])));
+  const vis = R.map((r, k) => ({r: r, k: k})).filter(x => IVM.flt === 'all' || ivmSt(x.r) === IVM.flt);
+  const chip = (k, t, n) => '<button class="imchip ' + k + (IVM.flt === k ? ' on' : '') + '" onclick="ivmFlt(\'' + k + '\')">' + t + ' ' + n + '</button>';
+  return '<div class="imsum">' + chip('all', 'الكل', R.length) + chip('ok', '✅ مطابق', cnt.ok) + chip('mid', '⚠️ راجعه', cnt.mid) + chip('miss', '❌ ناقص', cnt.miss) +
+    '<button class="imchip" onclick="ivmSelAll(true)">☑ تحديد المعروض</button><button class="imchip" onclick="ivmSelAll(false)">☐ إلغاء</button></div>' +
+    '<div class="improg"><i style="width:' + Math.round(cnt.ok / R.length * 100) + '%"></i></div>' +
+    vis.slice(0, IVM.lim).map(x => ivmCard(x.r, x.k, have.has(String(x.r.pick[0])))).join('') +
+    (vis.length > IVM.lim ? '<button class="search-btn" style="background:#334155;margin-bottom:10px" onclick="IVM.lim+=40;ivmGridRender()">عرض المزيد (' + (vis.length - IVM.lim) + ')</button>' : '') +
+    '<div class="imsave"><button class="search-btn" onclick="ivmSaveAll(this)"' + (sel ? '' : ' disabled') + '>💾 حفظ ' + sel + ' قناة</button></div>';
+}
+function ivmGridRender() { const g = $('imGrid'); if (g) g.innerHTML = ivmGrid(); }
+function ivmFlt(f) { IVM.flt = f; IVM.lim = 40; ivmGridRender(); }
+function ivmTog(k, v) { IVM.rows[k].on = !!v; ivmGridRender(); }
+function ivmSelAll(v) {
+  IVM.rows.filter(r => IVM.flt === 'all' || ivmSt(r) === IVM.flt).forEach(r => { r.on = v && ivmSavable(r); });
+  ivmGridRender();
+}
+function ivmSet(k, i, v) {
+  const r = IVM.rows[k], c = r.cand[i].find(x => x.id === v);
+  r.pick[i] = v; r.mn[i] = !!v; r.sc[i] = v ? (c ? c.sc : 1) : 0;
+  if (!ivmSavable(r)) r.on = false; else if (ivmSt(r) === 'ok') r.on = true;
+  ivmGridRender();
+}
+async function ivmSaveAll(btn) {
+  const pk = ivAk(IVM.accs[0]), take = IVM.rows.filter(r => r.on && ivmSavable(r));
+  if (!take.length) return alert('مفيش قنوات متحددة للحفظ');
+  const ids = new Set(take.map(r => String(r.pick[0])));
+  const keep = IVM.cmap.filter(m => !ids.has(String(m.ids[pk])));
+  take.forEach(r => { const o = {}; IVM.accs.forEach((a, i) => { if (r.pick[i]) o[ivAk(a)] = r.pick[i]; }); keep.push({n: r.n, ids: o}); });
+  IVM.cmap = keep;
+  btn.disabled = true;
+  if (await ivMapPost()) { toast('اتحفظ ' + take.length + ' قناة ✅'); IVM.rows = []; ivMapRender(); } else btn.disabled = false;
+}
+// ---------- فتح اللوحة ----------
 async function ivMapOpen(n) {
-  const u = IVADM.find(x => x.name === n);
-  const el = $('ivMap');
+  const u = IVADM.find(x => x.name === n), el = $('ivMap');
   if (!u || !u.set || !el) return;
   el.innerHTML = pend('جاري تحميل قنوات الحسابات...');
-  IVM.n = n; IVM.accs = [u].concat(u.extra || []); IVM.cmap = (u.cmap || []).slice();
+  Object.assign(IVM, {n: n, accs: [u].concat(u.extra || []), cmap: (u.cmap || []).slice(), idx: [], rows: [], tab: 'one', flt: 'all', lim: 40});
+  const base = a => a.host + '/player_api.php?username=' + encodeURIComponent(a.user) + '&password=' + encodeURIComponent(a.pass) + '&action=';
   try {
-    IVM.lists = await Promise.all(IVM.accs.map(a => ivFetch(a.host + '/player_api.php?username=' + encodeURIComponent(a.user) + '&password=' + encodeURIComponent(a.pass) + '&action=get_live_streams', 'stream_id,name', 0)));
+    IVM.lists = await Promise.all(IVM.accs.map(a => ivFetch(base(a) + 'get_live_streams', 'stream_id,name,category_id', 0)));
+    const c = await ivFetch(base(IVM.accs[0]) + 'get_live_categories', 'category_id,category_name', 0);
+    IVM.cats = Array.isArray(c) ? c : [];
   } catch (e) { el.innerHTML = warn('تعذّر تحميل قنوات أحد الحسابات: ' + esc((e && e.message) || '')); return; }
   ivMapRender();
 }
 function ivMapName(i, id) {
-  const l = IVM.lists[i] || [];
-  const x = Array.isArray(l) ? l.find(c => String(c.stream_id) === String(id)) : null;
+  const l = IVM.lists[i] || [], x = Array.isArray(l) ? l.find(c => String(c.stream_id) === String(id)) : null;
   return x ? x.name : '#' + id;
 }
+function ivMapTab(t) { IVM.tab = t; IVM.rows = []; IVM.flt = 'all'; IVM.lim = 40; ivMapRender(); }
 function ivMapRender() {
+  ivmCss();
   const el = $('ivMap');
-  const done = IVM.cmap.map((m, k) => '<div class="ep"><div class="b">🔗 ' + esc(m.n || '—') + '<small>' + IVM.accs.map((a, i) => 'حساب ' + (i + 1) + ': ' + esc(ivMapName(i, m.ids[ivAk(a)])))
-    .join(' · ') + '</small></div><button style="background:var(--danger);color:#fff" onclick="ivMapDel(' + k + ')">🗑</button></div>').join('');
-  el.innerHTML = '<h4 style="margin:14px 0 6px">🔗 ربط القنوات — ' + esc(ivAdmLbl(IVM.n)) + '</h4>' + done +
-    '<input id="imq" class="search-input" placeholder="اسم القناة للبحث (مثلاً: bein 1)" oninput="ivMapFill()" autocapitalize="off">' +
-    IVM.accs.map((a, i) => '<small class="ltr" style="direction:ltr;text-align:left;display:block;margin-top:6px">' + (i ? 'حساب ' + (i + 1) : 'الأساسي') + ' · ' + esc(a.host) + '</small><select id="ims' + i + '" class="search-input"></select>').join('') +
-    '<button class="search-btn" onclick="ivMapSave(this)">💾 حفظ ربط القناة</button>';
-  ivMapFill();
+  const done = IVM.cmap.slice(0, 120).map((m, k) => '<div class="ep"><div class="b">🔗 ' + esc(m.n || '—') + '<small>' + IVM.accs.map((a, i) => (m.ids[ivAk(a)] ? 'حساب ' + (i + 1) + ': ' + esc(ivMapName(i, m.ids[ivAk(a)])) : '')).filter(Boolean).join(' · ') +
+    '</small></div><button style="background:var(--danger);color:#fff" onclick="ivMapDel(' + k + ')">🗑</button></div>').join('');
+  const tb = (t, l) => '<button class="' + (IVM.tab === t ? 'on' : '') + '" onclick="ivMapTab(\'' + t + '\')">' + l + '</button>';
+  el.innerHTML = '<h4 style="margin:16px 0 6px">🔗 ربط القنوات — ' + esc(ivAdmLbl(IVM.n)) + '</h4>' +
+    '<details style="margin-bottom:6px"><summary style="cursor:pointer;color:var(--mut);padding:6px 0">القنوات المربوطة (' + IVM.cmap.length + ')</summary>' + (done || '<p style="color:var(--mut)">لسه مفيش</p>') +
+    (IVM.cmap.length ? '<button class="search-btn" style="background:var(--danger)" onclick="ivMapClear()">🗑 مسح كل الربط</button>' : '') + '</details>' +
+    '<div class="imtabs">' + tb('file', '📂 مجموعة من ملف') + tb('cat', '🗂 قسم كامل') + tb('one', '➕ قناة واحدة') + '</div><div id="imBody"></div>';
+  const b = $('imBody');
+  if (IVM.tab === 'file') {
+    b.innerHTML = '<label class="imdz"><div class="ic">📂</div><b>اختار ملف القنوات</b>txt · csv · m3u · json — اسم القناة في كل سطر' +
+      '<input type="file" hidden accept=".txt,.csv,.m3u,.m3u8,.json,text/*" onchange="ivmFile(this)"></label>' +
+      '<textarea id="imtx" class="search-input imtx" placeholder="أو الصق أسماء القنوات هنا (قناة في كل سطر)" autocapitalize="off"></textarea>' +
+      '<button class="search-btn imgo" onclick="ivmRunText()">⚡ طابق القنوات تلقائياً</button><div id="imGrid" style="margin-top:12px"></div>';
+  } else if (IVM.tab === 'cat') {
+    const cn = {};
+    (Array.isArray(IVM.lists[0]) ? IVM.lists[0] : []).forEach(c => { cn[c.category_id] = (cn[c.category_id] || 0) + 1; });
+    b.innerHTML = '<select id="imcat" class="search-input">' + IVM.cats.filter(c => cn[c.category_id]).map(c => '<option value="' + esc(c.category_id) + '">' + esc(c.category_name) + ' (' + cn[c.category_id] + ')</option>').join('') + '</select>' +
+      '<button class="search-btn imgo" onclick="ivmRunCat()">⚡ اربط القسم تلقائياً</button><div id="imGrid" style="margin-top:12px"></div>';
+  } else {
+    b.innerHTML = '<input id="imq" class="search-input" placeholder="اسم القناة للبحث (مثلاً: bein 1)" oninput="ivMapFill()" autocapitalize="off">' +
+      IVM.accs.map((a, i) => '<small class="ltr" style="direction:ltr;text-align:left;display:block;margin-top:6px">' + (i ? 'حساب ' + (i + 1) : 'الأساسي') + ' · ' + esc(a.host) + '</small><select id="ims' + i + '" class="search-input"></select>').join('') +
+      '<button class="search-btn" onclick="ivMapSave(this)">💾 حفظ ربط القناة</button>';
+    ivMapFill();
+    return;
+  }
+  ivmGridRender();
 }
 function ivMapFill() {
   const q = ($('imq').value || '').toLowerCase().split(/\s+/).filter(Boolean);
@@ -3838,6 +4048,11 @@ async function ivMapSave(btn) {
 async function ivMapDel(k) {
   if (!confirm('مسح الربط ده؟')) return;
   IVM.cmap.splice(k, 1);
+  if (await ivMapPost()) ivMapRender();
+}
+async function ivMapClear() {
+  if (!confirm('مسح كل ربط القنوات للعضو ده؟')) return;
+  IVM.cmap = [];
   if (await ivMapPost()) ivMapRender();
 }
 async function ivAdmDel(n) {
