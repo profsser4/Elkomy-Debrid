@@ -3271,9 +3271,41 @@ function ivProgress(pos, dur, ended) {
     if (np.go || !(pr && pr.auto === false)) { np.fired = 1; setTimeout(() => ivPlayEp(np.next), 800); }
   }
 }
-function ivPlay(url, title, o) {
+// ===== أكتر من حساب IPTV: قبل التشغيل نتأكد إن في اتصال فاضي، وإلا السيرفر يبدّلنا لحساب تاني =====
+function ivRebase(url, a, b) {
+  if (!url || !a || !b || (a.host === b.host && a.user === b.user && a.pass === b.pass)) return url;
+  if (url.indexOf(a.host + '/') !== 0) return url;
+  return b.host + url.slice(a.host.length).replace('/' + ivEnc(a.user) + '/' + ivEnc(a.pass) + '/', '/' + ivEnc(b.user) + '/' + ivEnc(b.pass) + '/');
+}
+async function ivSlotFull() {
+  try {
+    const d = await ivFetch(ivUrl('', null), '', 0), u = d && d.user_info;
+    if (!u) return false;
+    const mx = +u.max_connections || 0, ac = +u.active_cons || 0;
+    return mx > 0 && ac >= mx;
+  } catch (e) { return false; }
+}
+async function ivRotate() {
+  const c0 = IV.cfg;
+  try {
+    const {d} = await api('/iptv/cfg?rotate=1');
+    if (d && d.set && !(d.host === c0.host && d.user === c0.user)) { IV.cfg = d; IV.ck = d.host + '|' + d.user; return true; }
+  } catch (e) {}
+  return false;
+}
+async function ivSlot(url) {
+  const c0 = IV.cfg;
+  if (!c0 || !(c0.n > 1)) return url;
+  for (let i = 0; i < c0.n; i++) {
+    if (!(await ivSlotFull())) break;
+    if (!(await ivRotate())) break;
+  }
+  return ivRebase(url, c0, IV.cfg);
+}
+async function ivPlay(url, title, o) {
   if (!isPremiumOK() || noWatch()) return;
   o = o || {};
+  if (IV.cfg && IV.cfg.n > 1) { try { url = await ivSlot(url); } catch (e) {} }
   if (ivApp() || (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined')) {
     window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid, meta: o.meta}; window.NP_PLAYED = Date.now();
     AndroidPlayer.play(url, title, o.key ? ivPosGet(o.key) : 0);
@@ -3313,7 +3345,17 @@ function ivWebPlay(url, title, o) {
   document.body.appendChild(m);
   const v = $('ivpv');
   const err = t => { $('ivpe').innerHTML = '<div class="warn">' + esc(t) + '</div>'; };
-  v.onerror = () => err('المتصفح مش قادر يشغّل الصيغة دي (غالباً mkv أو http). افتح الرابط في VLC، أو استخدم التطبيق.');
+  const retry = async () => {   // لو في حساب IPTV تاني نجرّب عليه مرة واحدة
+    if (m._rt || !IV.cfg || !(IV.cfg.n > 1)) return false;
+    m._rt = 1;
+    const c0 = IV.cfg;
+    if (!(await ivRotate())) return false;
+    url = ivRebase(url, c0, IV.cfg);
+    if (m._h) { try { m._h.loadSource(url); } catch (e) { return false; } } else { v.src = url; try { v.play(); } catch (e) {} }
+    return true;
+  };
+  m._retry = retry;
+  v.onerror = async () => { if (await retry()) return; err('المتصفح مش قادر يشغّل الصيغة دي (غالباً mkv أو http). افتح الرابط في VLC، أو استخدم التطبيق.'); };
   if (o && o.key) {
     const p = ivPosGet(o.key);
     if (p) v.addEventListener('loadedmetadata', () => { try { v.currentTime = p; } catch (e) {} }, {once: true});
@@ -3332,7 +3374,7 @@ function ivWebPlay(url, title, o) {
     const h = new Hls();
     m._h = h;
     h.loadSource(url); h.attachMedia(v);
-    h.on(Hls.Events.ERROR, (e, d) => { if (d && d.fatal) err('القناة مش بتفتح من المتصفح. جرّب التطبيق أو VLC.'); });
+    h.on(Hls.Events.ERROR, async (e, d) => { if (d && d.fatal) { if (await retry()) return; err('القناة مش بتفتح من المتصفح. جرّب التطبيق أو VLC.'); } });
   } else v.src = url;
 }
 function ivWebClose() {
@@ -3666,20 +3708,23 @@ function ivAdmRender() {
     '<input id="ivaH" class="search-input ltr" placeholder="الهوست: http://example.com:8080" autocapitalize="off" autocorrect="off">' +
     '<input id="ivaU" class="search-input ltr" placeholder="اليوزر" autocapitalize="off" autocorrect="off">' +
     '<input id="ivaP" class="search-input ltr" placeholder="الباس" autocapitalize="off" autocorrect="off">' +
+    '<textarea id="ivaX" class="search-input ltr" rows="3" style="direction:ltr;text-align:left" placeholder="حسابات إضافية (اختياري) - سطر لكل حساب: host user pass" autocapitalize="off" autocorrect="off"></textarea>' +
     '<button class="search-btn" onclick="ivAdmSave(this)">💾 حفظ اشتراك العضو</button>' +
-    '<p style="color:var(--mut);font-size:12px">كل عضو ليه اشتراك خاص بيه. العضو بيشوف الأفلام والمسلسلات والقنوات من الحساب ده بس، والطلبات بتطلع من جهازه (آيبي مصري). باقي الأيام بتظهر له وليك أول ما يفتح التطبيق.</p>';
+    '<p style="color:var(--mut);font-size:12px">تقدر تضيف حسابات إضافية لنفس العضو (أو للمشترك): السيرفر بيوزّع الأجهزة عليهم تلقائياً عشان ما يحصلش «تعذر تشغيل الفيديو» من حد الاتصالات. كل عضو ليه اشتراك خاص بيه. العضو بيشوف الأفلام والمسلسلات والقنوات من الحساب ده بس، والطلبات بتطلع من جهازه (آيبي مصري). باقي الأيام بتظهر له وليك أول ما يفتح التطبيق.</p>';
 }
 function ivAdmEdit(n) {
   const u = IVADM.find(x => x.name === n) || {};
   $('ivaN').value = n;
   $('ivaH').value = u.host || ''; $('ivaU').value = u.user || ''; $('ivaP').value = u.pass || '';
+  $('ivaX').value = (u.extra || []).map(x => x.host + ' ' + x.user + ' ' + x.pass).join('\n');
   $('ivaH').focus();
 }
 async function ivAdmSave(btn) {
   btn.disabled = true;
   const nm = $('ivaN').value;
   try {
-    const {r, d} = await api('/iptv/admin/' + encodeURIComponent(nm), {method: 'POST', body: JSON.stringify({host: $('ivaH').value, user: $('ivaU').value, pass: $('ivaP').value})});
+    const {r, d} = await api('/iptv/admin/' + encodeURIComponent(nm), {method: 'POST', body: JSON.stringify({host: $('ivaH').value, user: $('ivaU').value, pass: $('ivaP').value,
+      extra: $('ivaX').value.split('\n').map(l => l.trim().split(/\s+/)).filter(a => a.length >= 3).map(a => ({host: a[0], user: a[1], pass: a.slice(2).join(' ')}))})});
     if (r.status === 404 && !d.error) alert('السيرفر ما بيعرفش الـIPTV لسه: ملف bot.py الجديد مش مرفوع أو السيرفر ما اتحدّثش (لازم Redeploy).');
     else if (d.error) alert(d.error);
     else if (!r.ok) alert('السيرفر رد بخطأ ' + r.status);
