@@ -1978,11 +1978,16 @@ function cleanName(t) {
     .split(/\b(?:19|20)\d{2}\b|\b(?:480|720|1080|2160)p\b|\bS\d{1,2}E\d{1,3}\b/i)[0].trim();
 }
 
-function authFail() {
+const DVID = (() => { try { let v = localStorage.getItem('dvid'); if (!v) { v = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('dvid', v); } return v; } catch (e) { return ''; } })();
+const dvType = () => { try { if (isTv()) return 'tv'; if (window.AndroidPlayer) return 'app'; } catch (e) {} return 'web'; };
+async function authFail(j) {
+  if (!j) { try { const r = await fetch(API + '/me', {headers: {'X-Token': TOK}}); j = await r.json().catch(() => ({})); } catch (e) { j = {}; } }
   sessionStorage.removeItem('tok');
   localStorage.removeItem('rtok');
+  if (j && (j.kicked || j.suspended) && j.error) { try { localStorage.setItem('kmsg', j.error); } catch (e) {} }
   location.reload();
 }
+setInterval(() => { if (typeof TOK === 'string' && TOK) api('/me').catch(() => {}); }, 60000);
 function wipeCaches() { try { if (window.caches && caches.keys) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {}); } catch (e) {} }
 function releaseMedia() {
   const v = document.querySelector('#results video');
@@ -1998,7 +2003,7 @@ async function api(path, opt = {}) {
     signal: tmo(opt.timeout || 150000),
     headers: {'Content-Type': 'application/json', 'X-Token': TOK}
   });
-  if (r.status === 401) authFail();
+  if (r.status === 401) { const j = await r.clone().json().catch(() => ({})); authFail(j); }
   return {r, d: await r.json().catch(() => ({}))};
 }
 async function fetchText(path) {
@@ -2095,6 +2100,7 @@ window.onload = () => {
   wipeCaches();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   if (TOK) showMain();
+  else { try { const m = localStorage.getItem('kmsg'); if (m) { localStorage.removeItem('kmsg'); setTimeout(() => alert(m), 400); } } catch (e) {} }
 };
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && $('login-screen').style.display !== 'none') checkLogin();
@@ -2105,10 +2111,12 @@ async function checkLogin() {
     const r = await fetch(API + '/auth', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({u, p})
+      body: JSON.stringify({u, p, dv: DVID, ty: dvType()})
     });
+    if (r.status === 423) { const j = await r.json().catch(() => ({})); alert(j.error || 'الحساب موقوف. كلّم الأدمن.'); return; }
     if (r.ok) {
       const j = await r.json();
+      if (j.warn) alert(j.warn);
       TOK = j.token;
       sessionStorage.setItem('tok', TOK);
       if ($('remember').checked) localStorage.setItem('rtok', TOK);
@@ -7319,8 +7327,10 @@ function renderUsers() {
   const el = $('usBox');
   if (!el) return;
   el.innerHTML = (USERS.map(u =>
-    '<div class="ep"><div class="b">👤 ' + esc(u.name) + ' ' + usPlanTag(u) + (u.lock === 2 && u.plan !== 'free' && u.plan !== 'expired' ? ' <small style="color:#f59e0b">🔒 تصفح فقط</small>' : (u.lock === 1 ? ' <small style="color:#f59e0b">🚫 ممنوع من التحميل</small>' : '')) +
+    '<div class="ep"><div class="b">👤 ' + esc(u.name) + ' ' + usPlanTag(u) + (u.lim ? ' <small style="color:var(--mut)">📺' + (u.on || {}).tv + '/' + u.lim.tv + ' 📱' + (u.on || {}).app + '/' + u.lim.app + ' 🌐' + (u.on || {}).web + '/' + u.lim.web + '</small>' : '') + (u.susp ? ' <small style="color:#ef4444">⛔ موقوف (أجهزة زيادة)</small>' : (u.st ? ' <small style="color:#f59e0b">⚠️ ' + u.st + '/3 تحذير</small>' : '')) + (u.lock === 2 && u.plan !== 'free' && u.plan !== 'expired' ? ' <small style="color:#f59e0b">🔒 تصفح فقط</small>' : (u.lock === 1 ? ' <small style="color:#f59e0b">🚫 ممنوع من التحميل</small>' : '')) +
     (u.wp ? ' <small style="color:var(--mut)">👁 ' + esc(spName(u.wp)) + '</small>' : '') + (u.dp ? ' <small style="color:var(--mut)">⬇ ' + esc(spName(u.dp)) + '</small>' : '') + '</div>' +
+    '<button style="background:#7c3aed;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="usLim(this.dataset.n)" aria-label="الأجهزة">📲</button>' +
+    ((u.susp || u.st) ? '<button style="background:#16a34a;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="usUnlock(this.dataset.n)" aria-label="تشغيل">🔓</button>' : '') +
     '<button style="background:#b45309;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="usPlan(this.dataset.n)" aria-label="الباقة">💎</button>' +
     '<button style="background:#0ea5e9;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="usPerm(this.dataset.n)">🔒</button>' +
     '<button style="background:#475569;color:#fff" data-n="' + esc(u.name) + '" onclick="usPass(this.dataset.n)">🔑</button>' +
@@ -7331,6 +7341,22 @@ function renderUsers() {
     '<button class="search-btn" onclick="usAdd(this)">➕ إضافة مستخدم</button>' +
     '<button class="search-btn" style="background:#475569;margin-top:8px" onclick="usExport()">💾 نسخة احتياطية للأعضاء (ملف JSON)</button>' +
     '<p style="color:var(--mut);font-size:12px">المستخدم بيدخل ويشاهد بحساباتك من غير ما يشوف المزوّدين أو مفاتيح الـ API أو إضافات Stremio. وكل مستخدم ليه بروفايلاته وسجل مشاهدته الخاص.</p>';
+}
+async function usLim(n) {
+  const u = USERS.find(x => x.name === n) || {}, l = u.lim || {tv: 1, app: 1, web: 1};
+  const t = prompt('عدد الأجهزة المسموحة لـ ' + n + ' (3 أرقام بينهم مسافة):\nشاشة تلفزيون · موبايل/تطبيق · متصفح\n0 = النوع ده ممنوع', [l.tv, l.app, l.web].join(' '));
+  if (t === null) return;
+  const a = t.trim().split(/\s+/).map(x => parseInt(x, 10));
+  if (a.length !== 3 || a.some(x => isNaN(x) || x < 0 || x > 5)) { alert('اكتب 3 أرقام من 0 لـ 5، مثلاً: 1 1 1'); return; }
+  const {d} = await api('/users/' + encodeURIComponent(n) + '/limits', {method: 'POST', body: JSON.stringify({tv: a[0], app: a[1], web: a[2]})});
+  if (d.error) alert(d.error); else toast('اتحفظ ✅');
+  loadUsers();
+}
+async function usUnlock(n) {
+  if (!confirm('تشغيل حساب ' + n + ' وتصفير التحذيرات؟')) return;
+  const {d} = await api('/users/' + encodeURIComponent(n) + '/unlock', {method: 'POST'});
+  if (d.error) alert(d.error); else toast('اتشغّل ✅');
+  loadUsers();
 }
 async function usAdd(btn) {
   btn.disabled = true;
