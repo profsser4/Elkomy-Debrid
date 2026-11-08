@@ -68,6 +68,21 @@ button,a,summary,.poster,.cw,.pcard,.gtile{touch-action:manipulation;-webkit-tap
 .login-input{text-align:center}
 .login-btn,.search-btn{width:100%;padding:13px;background:var(--success);color:#fff;font-weight:bold;border:none;border-radius:8px;cursor:pointer;font-size:15px}
 .login-btn{background:var(--primary);color:#000}
+.ltabs{display:flex;background:var(--bg);border:1px solid #334155;border-radius:12px;padding:4px;margin:2px 0 16px}
+.ltabs .lt{flex:1;padding:10px;border:none;border-radius:9px;background:none;color:var(--mut);font-weight:bold;font-size:15px;cursor:pointer;font-family:inherit}
+.ltabs .lt.on{background:var(--primary);color:#000}
+.lchips{display:flex;gap:6px;margin-bottom:10px}
+.lchips button{flex:1;padding:9px 4px;border:1px solid #334155;border-radius:10px;background:var(--bg);color:var(--mut);font-size:12.5px;font-weight:bold;cursor:pointer;font-family:inherit;line-height:1.4}
+.lchips button.on{border-color:var(--primary);color:#fff;background:rgba(56,189,248,.12)}
+.lhint{color:var(--mut);font-size:13px;line-height:1.7;margin:0 0 12px}
+.llinks{margin-top:14px;font-size:13px;color:var(--mut)}
+.llinks a{color:var(--primary);cursor:pointer;text-decoration:none;padding:4px 6px}
+.login-input.otp{font-size:26px;letter-spacing:10px;direction:ltr;font-weight:bold}
+.lmsg{margin-top:12px;font-size:14px;line-height:1.6;display:none}
+.lmsg.err{color:var(--danger)}.lmsg.ok{color:var(--success)}
+.lbtn2{width:100%;margin-top:10px;padding:11px;border-radius:10px;border:1px solid #334155;background:none;color:var(--mut);font-size:14px;cursor:pointer;font-family:inherit}
+.lbtn2:disabled{opacity:.5;cursor:default}
+.login-btn:disabled{opacity:.6;cursor:default}
 #main-content{display:none;padding:16px;max-width:800px;margin:0 auto}
 .action-box{background:var(--panel);padding:20px 16px;border-radius:10px;margin-bottom:18px;border:1px solid #334155;text-align:center}
 .ltr{text-align:left;direction:ltr}
@@ -993,13 +1008,53 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 
 <div id="login-screen">
 <div class="login-box">
-<h2 style="color:var(--primary)">Elkomy VIP 🚀</h2>
-<input id="username" class="login-input" placeholder="اسم المستخدم" autocapitalize="off" autocorrect="off">
-<div class="pw"><input id="password" type="password" class="login-input" placeholder="كلمة المرور"><button type="button" class="eye" onclick="eye('password',this)">👁</button></div>
+<h2 style="color:var(--primary);margin-top:0">Elkomy VIP 🚀</h2>
+<div class="ltabs" id="ltabs">
+<button type="button" class="lt on" id="ltIn" onclick="lTab('in')">دخول</button>
+<button type="button" class="lt" id="ltUp" onclick="lTab('up')">حساب جديد</button>
+</div>
+
+<div id="lpIn">
+<input id="username" class="login-input" placeholder="اسم المستخدم أو الإيميل" autocapitalize="off" autocorrect="off" autocomplete="username">
+<div class="pw"><input id="password" type="password" class="login-input" placeholder="كلمة المرور" autocomplete="current-password"><button type="button" class="eye" onclick="eye('password',this)">👁</button></div>
 <label style="display:block;margin-bottom:12px;color:var(--mut);font-size:14px"><input type="checkbox" id="remember"> تذكرني على الجهاز ده</label>
-<button class="login-btn" onclick="checkLogin()">دخول</button>
+<button class="login-btn" id="lgBtn" onclick="checkLogin()">دخول</button>
+<div class="llinks" id="lkMail" style="display:none"><a onclick="lCode('login')">دخول بكود على الإيميل</a> · <a onclick="lCode('reset')">نسيت كلمة المرور؟</a></div>
+</div>
+
+<div id="lpUp" style="display:none">
+<div class="lchips" id="lchips">
+<button type="button" data-m="quick" class="on" onclick="lMode('quick')">⚡ تسجيل سريع<br>بالإيميل</button>
+<button type="button" data-m="mail" onclick="lMode('mail')">📧 إيميل<br>وكلمة مرور</button>
+<button type="button" data-m="user" onclick="lMode('user')">👤 يوزر<br>وكلمة مرور</button>
+</div>
+<p class="lhint" id="lhint"></p>
+<input id="rgUser" class="login-input" placeholder="اسم المستخدم (إنجليزي)" autocapitalize="off" autocorrect="off" autocomplete="username">
+<input id="rgEmail" type="email" class="login-input" placeholder="الإيميل" autocapitalize="off" autocorrect="off" autocomplete="email" style="direction:ltr">
+<div class="pw" id="rgPassBox"><input id="rgPass" type="password" class="login-input" placeholder="كلمة المرور (6 حروف على الأقل)" autocomplete="new-password"><button type="button" class="eye" onclick="eye('rgPass',this)">👁</button></div>
+<input id="rgHp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+<button class="login-btn" id="rgGo" onclick="rgSubmit()">إنشاء الحساب</button>
+<p class="lhint" style="margin:12px 0 0;font-size:12px">الحساب الجديد بيبدأ مجاني (تصفح بس) لحد ما يتفعّل له اشتراك مميز.</p>
+</div>
+
+<div id="lpCode" style="display:none">
+<div id="lcA">
+<p class="lhint" id="lcAInfo"></p>
+<input id="lcEmail" type="email" class="login-input" placeholder="الإيميل" autocapitalize="off" autocorrect="off" autocomplete="email" style="direction:ltr">
+<button class="login-btn" id="lcSend" onclick="codeSend()">ابعتلي الكود</button>
+</div>
+<div id="lcB" style="display:none">
+<p class="lhint" id="lcBInfo"></p>
+<input id="lcCode" class="login-input otp" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code">
+<div class="pw" id="lcPassBox" style="display:none"><input id="lcPass" type="password" class="login-input" placeholder="كلمة المرور الجديدة (6+)" autocomplete="new-password"><button type="button" class="eye" onclick="eye('lcPass',this)">👁</button></div>
+<button class="login-btn" id="lcGo" onclick="codeVerify()">تأكيد</button>
+<button class="lbtn2" id="lcResend" onclick="codeSend(true)">إعادة إرسال الكود</button>
+</div>
+<div class="llinks"><a onclick="lBack()">← رجوع</a></div>
+</div>
+
+<p id="login-error" class="lmsg err"></p>
 <button class="fc" style="margin-top:12px" onclick="openView()">🖥 شكل الشاشة (موبايل / كمبيوتر / تلفزيون)</button>
-<p id="login-error" style="color:var(--danger);display:none;margin-top:10px">بيانات الدخول غير صحيحة!</p>
 </div>
 </div>
 
@@ -1007,6 +1062,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <h2 style="margin:0 0 22px">👤 مين بيشاهد؟</h2>
 <div id="pgrid" class="pgrid"></div>
 <button id="pmanage" class="fc" style="margin-top:26px;padding:10px 20px" onclick="toggleManage()">✏️ إدارة البروفايلات</button>
+<button class="fc" style="margin-top:12px" onclick="changePass()">🔑 تغيير / تحديد كلمة المرور</button>
 <button class="fc" style="margin-top:12px" onclick="logout()">🚪 خروج</button>
 </div>
 
@@ -1198,6 +1254,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <label class="lbl">⬇ التحميل من</label>
 <select id="spDl" class="search-input sv"></select>
 <label class="setchk"><input type="checkbox" class="sv" id="spStrict"> ماترجعش لمزوّد تاني لو المختار فشل</label>
+<label class="setchk"><input type="checkbox" class="sv" id="spReg"> فتح التسجيل للأعضاء الجدد (حساب مجاني: تصفح بس لحد ما تفعّله)</label>
 <div class="savebar"><span class="savest"></span><button class="setsave" disabled onclick="secSave(this)">✔ محفوظ</button></div>
 </div>
 </details>
@@ -2100,30 +2157,175 @@ window.onload = () => {
   wipeCaches();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   if (TOK) showMain();
-  else { try { const m = localStorage.getItem('kmsg'); if (m) { localStorage.removeItem('kmsg'); setTimeout(() => alert(m), 400); } } catch (e) {} }
+  else { lInit(); try { const m = localStorage.getItem('kmsg'); if (m) { localStorage.removeItem('kmsg'); setTimeout(() => alert(m), 400); } } catch (e) {} }
 };
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && $('login-screen').style.display !== 'none') checkLogin();
+  if (e.key !== 'Enter' || $('login-screen').style.display === 'none') return;
+  if ($('lpIn').style.display !== 'none') checkLogin();
+  else if ($('lpUp').style.display !== 'none') rgSubmit();
+  else if ($('lpCode').style.display !== 'none') { if ($('lcB').style.display !== 'none') codeVerify(); else codeSend(); }
 });
+function lErr(m, ok) {
+  const e = $('login-error');
+  if (!m) { e.style.display = 'none'; return; }
+  e.className = 'lmsg ' + (ok ? 'ok' : 'err');
+  e.textContent = m; e.style.display = 'block';
+}
+function finishLogin(j, rem) {
+  if (j.warn) alert(j.warn);
+  TOK = j.token;
+  sessionStorage.setItem('tok', TOK);
+  if (rem) localStorage.setItem('rtok', TOK);
+  lErr('');
+  showMain();
+}
+async function lPost(path, body) {
+  const r = await fetch(API + path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(Object.assign({dv: DVID, ty: dvType()}, body))});
+  return {r, j: await r.json().catch(() => ({}))};
+}
+function lBusy(id, on, txt) { const b = $(id); if (!b) return; if (on) { b.dataset.t = b.textContent; b.textContent = txt || '...'; } else if (b.dataset.t) b.textContent = b.dataset.t; b.disabled = on; }
 async function checkLogin() {
   const u = $('username').value.trim(), p = $('password').value.trim();
+  lErr('');
+  if (!u || !p) { lErr('اكتب اسم المستخدم (أو الإيميل) وكلمة المرور'); return; }
+  lBusy('lgBtn', true, 'جاري الدخول...');
   try {
-    const r = await fetch(API + '/auth', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({u, p, dv: DVID, ty: dvType()})
-    });
-    if (r.status === 423) { const j = await r.json().catch(() => ({})); alert(j.error || 'الحساب موقوف. كلّم الأدمن.'); return; }
-    if (r.ok) {
-      const j = await r.json();
-      if (j.warn) alert(j.warn);
-      TOK = j.token;
-      sessionStorage.setItem('tok', TOK);
-      if ($('remember').checked) localStorage.setItem('rtok', TOK);
-      $('login-error').style.display = 'none';
-      showMain();
-    } else if (r.status === 429) alert('محاولات كتير غلط، استنى شوية وجرّب تاني');
-    else $('login-error').style.display = 'block';
+    const {r, j} = await lPost('/auth', {u, p});
+    if (r.status === 423) { alert(j.error || 'الحساب موقوف. كلّم الأدمن.'); return; }
+    if (r.ok) finishLogin(j, $('remember').checked);
+    else if (r.status === 429) alert('محاولات كتير غلط، استنى شوية وجرّب تاني');
+    else lErr('بيانات الدخول غير صحيحة!');
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
+  finally { lBusy('lgBtn', false); }
+}
+
+// ---------- حساب جديد / كود الإيميل ----------
+const LG = {mode: 'quick', kind: 'register', email: '', pass: '', user: '', cfg: {reg: true, mail: false}, tm: 0, from: 'in'};
+const EML = /^[^@\s]{1,64}@[^@\s]+\.[^@\s.]{2,24}$/;
+const LHINT = {
+  quick: 'اكتب إيميلك وهنبعتلك كود من 6 أرقام، وحسابك يتفتح فورًا من غير كلمة مرور. بعد كده تدخل بكود أو تحدد كلمة مرور من حسابك.',
+  mail: 'سجّل بإيميلك وكلمة مرور، وهنبعتلك كود تأكيد للإيميل. تدخل بعد كده بالإيميل والكلمة.',
+  user: 'اختار اسم مستخدم وكلمة مرور وخلاص، من غير إيميل.'
+};
+async function lInit() {
+  try {
+    const r = await fetch(API + '/auth/config', {cache: 'no-store'});
+    if (r.ok) LG.cfg = await r.json();
+  } catch (e) { return; }
+  $('ltabs').style.display = LG.cfg.reg ? '' : 'none';
+  $('lkMail').style.display = LG.cfg.mail ? '' : 'none';
+  document.querySelectorAll('#lchips button').forEach(b => { if (b.dataset.m !== 'user') b.style.display = LG.cfg.mail ? '' : 'none'; });
+  lMode(LG.cfg.mail ? 'quick' : 'user');
+}
+function lShow(id) { ['lpIn', 'lpUp', 'lpCode'].forEach(x => { $(x).style.display = x === id ? '' : 'none'; }); lErr(''); }
+function lTab(t) {
+  $('ltIn').classList.toggle('on', t === 'in'); $('ltUp').classList.toggle('on', t === 'up');
+  $('ltabs').style.display = LG.cfg.reg ? '' : 'none';
+  lShow(t === 'in' ? 'lpIn' : 'lpUp'); LG.from = t;
+}
+function lBack() { clearInterval(LG.tm); lTab(LG.from === 'up' ? 'up' : 'in'); }
+function lMode(m) {
+  LG.mode = m;
+  document.querySelectorAll('#lchips button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  $('lhint').textContent = LHINT[m];
+  $('rgUser').style.display = m === 'user' ? '' : 'none';
+  $('rgEmail').style.display = m === 'user' ? 'none' : '';
+  $('rgPassBox').style.display = m === 'quick' ? 'none' : '';
+  $('rgGo').textContent = m === 'quick' ? 'ابعتلي الكود' : (m === 'mail' ? 'تسجيل وإرسال الكود' : 'إنشاء الحساب');
+  lErr('');
+}
+async function rgSubmit() {
+  lErr('');
+  const m = LG.mode, hp = $('rgHp').value;
+  if (m === 'user') {
+    const u = $('rgUser').value.trim().toLowerCase(), p = $('rgPass').value.trim();
+    if (!/^[a-z0-9_.-]{3,20}$/.test(u)) { lErr('الاسم 3-20 حرف إنجليزي أو أرقام أو _ . -'); return; }
+    if (p.length < 6) { lErr('كلمة المرور لازم 6 حروف على الأقل'); return; }
+    lBusy('rgGo', true, 'جاري الإنشاء...');
+    try {
+      const {r, j} = await lPost('/auth/register', {username: u, password: p, hp});
+      if (r.ok && j.token) finishLogin(j, true);
+      else if (r.status === 423) alert(j.error || 'الحساب موقوف. كلّم الأدمن.');
+      else lErr(j.error || 'مقدرتش أنشئ الحساب');
+    } catch (e) { lErr('مش قادر أوصل للسيرفر'); }
+    finally { lBusy('rgGo', false); }
+    return;
+  }
+  const em = $('rgEmail').value.trim().toLowerCase(), p = $('rgPass').value.trim();
+  if (!EML.test(em)) { lErr('اكتب إيميل صحيح'); return; }
+  if (m === 'mail' && p.length < 6) { lErr('كلمة المرور لازم 6 حروف على الأقل'); return; }
+  LG.kind = 'register'; LG.email = em; LG.pass = m === 'mail' ? p : '';
+  lBusy('rgGo', true, 'جاري إرسال الكود...');
+  const ok = await sendCode(em, hp);
+  lBusy('rgGo', false);
+  if (ok) openCodeStep();
+}
+async function sendCode(em, hp) {
+  try {
+    const {r, j} = await lPost('/auth/email/start', {email: em, hp: hp || ''});
+    if (r.ok) return true;
+    lErr(j.error || 'مقدرتش أبعت الكود'); return false;
+  } catch (e) { lErr('مش قادر أوصل للسيرفر'); return false; }
+}
+function lCode(kind) {          // من تبويب الدخول: دخول بكود أو استرجاع كلمة المرور
+  LG.kind = kind; LG.from = 'in'; LG.pass = '';
+  lShow('lpCode');
+  $('lcA').style.display = ''; $('lcB').style.display = 'none';
+  $('lcAInfo').textContent = kind === 'reset' ? 'اكتب إيميل حسابك وهنبعتلك كود تحدد بيه كلمة مرور جديدة.' : 'اكتب إيميل حسابك وهنبعتلك كود تدخل بيه من غير كلمة مرور.';
+  $('lcEmail').value = $('username').value.includes('@') ? $('username').value.trim() : '';
+}
+async function codeSend(resend) {
+  const em = resend ? LG.email : $('lcEmail').value.trim().toLowerCase();
+  if (!EML.test(em)) { lErr('اكتب إيميل صحيح'); return; }
+  LG.email = em; lErr('');
+  const id = resend ? 'lcResend' : 'lcSend';
+  lBusy(id, true, 'جاري الإرسال...');
+  const ok = await sendCode(em, '');
+  lBusy(id, false);
+  if (ok) { openCodeStep(); if (resend) lErr('اتبعت كود جديد', true); }
+}
+function openCodeStep() {
+  lShow('lpCode');
+  $('lcA').style.display = 'none'; $('lcB').style.display = '';
+  $('lcBInfo').textContent = 'بعتنا كود من 6 أرقام على ' + LG.email + (LG.kind === 'reset' ? '. اكتبه واكتب كلمة المرور الجديدة.' : '. اكتبه هنا (صالح 10 دقايق، وشوف الـSpam لو ما وصلش).');
+  $('lcPassBox').style.display = LG.kind === 'reset' ? '' : 'none';
+  $('lcCode').value = ''; $('lcPass').value = '';
+  setTimeout(() => $('lcCode').focus(), 50);
+  let left = 60; const b = $('lcResend'); clearInterval(LG.tm); b.disabled = true;
+  const tick = () => { if (left <= 0) { clearInterval(LG.tm); b.disabled = false; b.textContent = 'إعادة إرسال الكود'; } else { b.textContent = 'إعادة الإرسال بعد ' + left + ' ثانية'; left--; } };
+  tick(); LG.tm = setInterval(tick, 1000);
+}
+async function codeVerify() {
+  const code = $('lcCode').value.replace(/\D/g, '');
+  if (code.length !== 6) { lErr('اكتب الكود (6 أرقام)'); return; }
+  const body = {email: LG.email, code};
+  if (LG.kind === 'reset') {
+    const p = $('lcPass').value.trim();
+    if (p.length < 6) { lErr('كلمة المرور الجديدة لازم 6 حروف على الأقل'); return; }
+    body.password = p; body.reset = true;
+  } else if (LG.kind === 'register' && LG.pass) body.password = LG.pass;
+  lErr(''); lBusy('lcGo', true, 'جاري التأكيد...');
+  try {
+    const {r, j} = await lPost('/auth/email/verify', body);
+    if (r.ok && j.token) { clearInterval(LG.tm); finishLogin(j, true); }
+    else if (r.status === 423) alert(j.error || 'الحساب موقوف. كلّم الأدمن.');
+    else lErr(j.error || 'الكود غلط');
+  } catch (e) { lErr('مش قادر أوصل للسيرفر'); }
+  finally { lBusy('lcGo', false); }
+}
+async function changePass() {
+  const old = prompt('كلمة المرور الحالية\n(سيبها فاضية لو سجّلت بالتسجيل السريع ومعندكش كلمة مرور)', '');
+  if (old === null) return;
+  const nw = prompt('كلمة المرور الجديدة (6 حروف على الأقل):', '');
+  if (nw === null) return;
+  if (nw.trim().length < 6) { alert('كلمة المرور لازم 6 حروف على الأقل'); return; }
+  try {
+    const {r, d} = await api('/me/password', {method: 'POST', body: JSON.stringify({old: old.trim(), new: nw.trim()})});
+    if (r.ok && d.token) {
+      TOK = d.token; sessionStorage.setItem('tok', TOK);
+      try { if (localStorage.getItem('rtok')) localStorage.setItem('rtok', TOK); } catch (e) {}
+      alert('✅ اتغيّرت كلمة المرور');
+    } else alert(d.error || 'مقدرتش أغيّر كلمة المرور');
   } catch (e) { alert('مش قادر أوصل للسيرفر'); }
 }
 function logout() {
@@ -7284,7 +7486,7 @@ async function stDel(id) {
 // ================= المستخدمين (للأدمن) =================
 
 // ================= اختيار مزوّد المشاهدة والتحميل =================
-let SP = {settings: {watch: 'auto', dl: 'same', strict: false}, providers: []};
+let SP = {settings: {watch: 'auto', dl: 'same', strict: false, reg: true}, providers: []};
 const spName = id => { const p = SP.providers.find(x => x.id === id); return p ? p.name : id; };
 async function loadSettings() {
   try {
@@ -7300,11 +7502,12 @@ async function loadSettings() {
     if ($('spWatch')) $('spWatch').innerHTML = opt('auto', 'تلقائي (الأولوية العادية)', w) + ps.map(x => opt(x[0], x[1] + (x[1].indexOf('(torbox)') > 0 ? ' — موصى به للمشاهدة (HLS)' : ''), w)).join('');
     if ($('spDl')) $('spDl').innerHTML = opt('same', 'نفس مزوّد المشاهدة', dl) + ps.map(x => opt(x[0], x[1], dl)).join('');
     if ($('spStrict')) $('spStrict').checked = !!SP.settings.strict;
+    if ($('spReg')) $('spReg').checked = SP.settings.reg !== false;
   } catch (e) {}
 }
 async function saveSrvPick() {
   try {
-    const {r, d} = await api('/settings', {method: 'POST', body: JSON.stringify({watch: $('spWatch').value, dl: $('spDl').value, strict: $('spStrict').checked})});
+    const {r, d} = await api('/settings', {method: 'POST', body: JSON.stringify({watch: $('spWatch').value, dl: $('spDl').value, strict: $('spStrict').checked, reg: $('spReg') ? $('spReg').checked : true})});
     if (!r.ok || (d && d.error)) { alert((d && d.error) || 'مقدرتش أحفظ'); return false; }
     if (d && d.settings) SP.settings = d.settings;
     return true;

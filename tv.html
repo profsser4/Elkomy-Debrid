@@ -254,10 +254,11 @@ html,body{background:#0e1131}
   <div class="left"><div class="logo">Elkomy <b>VIP</b><i></i></div><p>سجّل دخولك واستمتع بالقنوات والأفلام والمسلسلات</p></div>
   <div class="lcard">
     <h2>تسجيل الدخول</h2>
-    <div id="lu" class="f fld ph">اسم المستخدم</div>
+    <div id="lu" class="f fld ph">اسم المستخدم أو الإيميل</div>
     <div id="lp" class="f fld ph">كلمة المرور</div>
     <div class="err" id="lerr"></div>
     <div id="lgo" class="f btn pri" style="width:100%;margin:8px 0">دخول</div>
+    <div style="margin-top:22px;font-size:26px;line-height:1.7;color:#8fa3cc">ماعندكش حساب؟ سجّل من الموقع (إيميل أو يوزر) وبعدها ادخل هنا بنفس البيانات.<br><span style="direction:ltr;display:inline-block;color:#60a5fa">profsser4.github.io/Elkomy-Debrid</span></div>
   </div>
 </div>
 
@@ -514,7 +515,7 @@ var okT = null, okFired = false;
 var LG = {u: '', p: ''};
 function lgPaint() {
 var u = $('lu'), p = $('lp');
-u.textContent = LG.u || 'اسم المستخدم'; u.className = u.className.replace(/ ?\bph\b/, '') + (LG.u ? '' : ' ph');
+u.textContent = LG.u || 'اسم المستخدم أو الإيميل'; u.className = u.className.replace(/ ?\bph\b/, '') + (LG.u ? '' : ' ph');
 p.textContent = LG.p ? new Array(LG.p.length + 1).join('•') : 'كلمة المرور'; p.className = p.className.replace(/ ?\bph\b/, '') + (LG.p ? '' : ' ph');
 }
 function showLogin(err) {
