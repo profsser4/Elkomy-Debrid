@@ -2713,6 +2713,7 @@ async function ivPinsLoad() {
     const {d} = await api('/iptv/pins?pid=' + encodeURIComponent(pid));
     const p = d.pins || {}, gg = d.g || {};
     IV.g = {live: gg.live || [], cats: gg.cats || []};
+    IV.gln = Object.assign({}, gg.ln || {});
     IV.pins = gm
       ? {live: IV.g.live.slice(), cats: IV.g.cats.slice(), order: p.order || {}, hidden: p.hidden || {}, names: p.names || {}}
       : {live: p.live || [], cats: p.cats || [], order: p.order || {}, hidden: p.hidden || {}, names: p.names || {}};
@@ -2723,7 +2724,7 @@ function ivPinsSave() {
   clearTimeout(_ivPT);
   const pid = PID, gm = !!IV.gm;
   _ivPT = setTimeout(() => {
-    const body = gm ? {global: true, pins: {live: IV.pins.live, cats: IV.pins.cats}} : {pid: pid, pins: IV.pins};
+    const body = gm ? {global: true, pins: {live: IV.pins.live, cats: IV.pins.cats, ln: IV.gln || {}}} : {pid: pid, pins: IV.pins};
     api('/iptv/pins', {method: 'POST', body: JSON.stringify(body)}).catch(() => {});
     ivHomeLoad(PID);
   }, 700);
@@ -2743,6 +2744,7 @@ function ivTogglePin(id, btn) {
   id = String(id);
   const i = IV.pins.live.indexOf(id);
   if (i >= 0) IV.pins.live.splice(i, 1); else IV.pins.live.unshift(id);
+  if (i < 0 && IV.gm) { try { IV.gln = IV.gln || {}; IV.gln[id] = (btn.parentNode.querySelector('.t') || {}).textContent || ''; } catch (e) {} }
   if (btn) btn.textContent = ivPinned(id) ? '⭐' : '📌';
   toast(i >= 0 ? 'اتشالت من المثبّتات' : 'اتثبّتت ⭐');
   ivPinsSave();
@@ -3132,12 +3134,14 @@ async function ivHomeLoad(pid) {
   if (IV.homeFor !== pid) return;
   await ivPinsLoad();
   await ftLoad();
+  await ftResolve();
   ivStatRefresh();
   const N = isTv() ? TV_ROW_N : 20;
   let err = '';
   const bad = e => { err = err || (e && e.message) || 'خطأ'; return []; };
   const [vod, ser] = await Promise.all([ivList('get_vod_streams').catch(bad), ivList('get_series').catch(bad)]);
-  const pc = k => IV.pins.cats.filter(c => c.k === k).map(ivCatTile).join('');
+  const pcs = await ftCatsFor();
+  const pc = k => pcs.filter(c => c.k === k).map(ivCatTile).join('');
   let h = '';
   const st = ivDaysTxt(cfg.stat);
   const d = ivDays(cfg.stat);
@@ -3156,7 +3160,7 @@ async function ivHomeLoad(pid) {
     if (IV.pins.live.length) {
       const all = await ivList('get_live_streams');
       const by = new Map(all.map(x => [String(x.stream_id), x]));
-      ch = IV.pins.live.map(id => by.get(String(id))).filter(Boolean);
+      ch = ftPinLive(all);
     } else {
       const cs = await ivCats('live');
       if (cs[0]) ch = (await ivList('get_live_streams', cs[0].category_id)).slice(0, N);
@@ -3238,7 +3242,7 @@ async function ivRender() {
   let items = list;
   if (kind === 'live' && IV.cat === '__pin' && !q) {
     const by = new Map(list.map(x => [String(x[idk]), x]));
-    items = IV.pins.live.map(id => by.get(String(id))).filter(Boolean);
+    items = ftPinLive(list);
   }
   if (q) items = items.filter(x => String(x.name || '').toLowerCase().includes(q));
   if (kind !== 'live' || q) {
@@ -3460,6 +3464,83 @@ async function ftLoad(force) {
   if (!FT.d) FT.d = {};
   return FT.d;
 }
+// ---------- مطابقة بالاسم: عشان نفس التثبيت يشتغل لو العضو على مزوّد تاني ----------
+const ftNorm = s => {
+  s = String(s || '').toLowerCase();
+  const i = Math.max(s.lastIndexOf('|'), s.lastIndexOf(':'));
+  if (i > -1 && i < s.length - 2) s = s.slice(i + 1);
+  return s.replace(/\b(hd|fhd|uhd|sd|4k|hevc|h265|raw|backup)\b/g, '').replace(/[^a-z0-9\u0600-\u06ff]+/g, '');
+};
+const ftSim = (a, b) => !!a && !!b && (a === b || (a.length >= 4 && b.length >= 4 && (a.includes(b) || b.includes(a))));
+const FT_IX = new WeakMap();
+function ftIx(list, idk) {
+  let ix = FT_IX.get(list);
+  if (ix) return ix;
+  ix = {id: new Map(), nm: new Map()};
+  list.forEach(x => { ix.id.set(String(x[idk]), x); const n = ftNorm(x.name); if (n && !ix.nm.has(n)) ix.nm.set(n, x); });
+  FT_IX.set(list, ix);
+  return ix;
+}
+function ftFind(list, idk, id, name) {
+  const ix = ftIx(list, idk), a = ix.id.get(String(id)), nn = ftNorm(name);
+  if (!nn) return a || null;
+  if (a && ftSim(ftNorm(a.name), nn)) return a;
+  const e = ix.nm.get(nn);
+  if (e) return e;
+  let best = null;
+  if (nn.length >= 4) ix.nm.forEach((v, k) => { if (ftSim(k, nn)) { const d = Math.abs(k.length - nn.length); if (!best || d < best.d) best = {v: v, d: d}; } });
+  return best ? best.v : null;
+}
+function ftPinLive(all) {
+  const ln = IV.gln || {}, seen = new Set(), out = [], ix = ftIx(all, 'stream_id');
+  IV.pins.live.forEach(id => {
+    id = String(id);
+    const c = ln[id] ? ftFind(all, 'stream_id', id, ln[id]) : ix.id.get(id);
+    if (c && !seen.has(String(c.stream_id))) { seen.add(String(c.stream_id)); out.push(c); }
+  });
+  return out;
+}
+async function ftCatsFor() {
+  const out = [];
+  for (const c of IV.pins.cats) {
+    const isG = !IV.gm && ((IV.g && IV.g.cats) || []).some(x => x.k === c.k && x.id === c.id);
+    if (!isG) { out.push(c); continue; }
+    try {
+      const cs = await ivCats(c.k), nn = ftNorm(String(c.n || '').replace(/^⭐\s*/, ''));
+      const byId = cs.find(x => String(x.category_id) === String(c.id));
+      const hit = (byId && ftSim(ftNorm(byId.category_name), nn)) ? byId : (cs.find(x => ftNorm(x.category_name) === nn) || cs.find(x => ftSim(ftNorm(x.category_name), nn)) || byId);
+      if (hit) out.push({k: c.k, id: String(hit.category_id), n: c.n});
+    } catch (e) { out.push(c); }
+  }
+  return out;
+}
+async function ftResolve() {
+  const d = FT.d || {}, R = {matches: [], banners: [], popup: null};
+  try {
+    const ms = (d.matches || []).filter(m => ftAlive(m.until));
+    if (ms.length) {
+      const all = await ivList('get_live_streams');
+      ms.forEach(m => { const c = ftFind(all, 'stream_id', m.ch, m.n); if (c) R.matches.push(Object.assign({}, m, {ch: String(c.stream_id), icon: m.icon || c.stream_icon || ''})); });
+    }
+    const L = {};
+    const lst = async k => L[k] || (L[k] = await ivList(k === 'vod' ? 'get_vod_streams' : 'get_series'));
+    for (const b of (d.banners || [])) {
+      if (!ftAlive(b.until)) continue;
+      if (!b.k) { R.banners.push(b); continue; }
+      const c = ftFind(await lst(b.k), b.k === 'vod' ? 'stream_id' : 'series_id', b.sid, b.nm || b.title);
+      if (c) R.banners.push(Object.assign({}, b, {sid: String(b.k === 'vod' ? c.stream_id : c.series_id)}));
+    }
+    const p = d.popup;
+    if (p && p.on) {
+      R.popup = Object.assign({}, p);
+      if (p.k) {
+        const c = ftFind(await lst(p.k), p.k === 'vod' ? 'stream_id' : 'series_id', p.sid, p.nm || p.title);
+        if (c) R.popup.sid = String(p.k === 'vod' ? c.stream_id : c.series_id); else { R.popup.k = ''; R.popup.sid = ''; }
+      }
+    }
+  } catch (e) {}
+  FT.res = R;
+}
 const ftMatch = m => '<div class="ftm-c" tabindex="0" role="button" data-ch="' + esc(m.ch) + '" data-n="' + esc(m.n) + '" onclick="ftMatchTap(this)">' +
   '<span class="ftm-live"><i></i>LIVE</span>' +
   (m.icon ? '<img src="' + esc(m.icon) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : '<b>📡</b>') +
@@ -3478,10 +3559,8 @@ const ftBanner = b => {
     '</div></div></div>';
 };
 function ivFeatHTML() {
-  if (!PID || IV.homePid !== PID || !IV.cfg || !FT.d) return '';
-  const d = FT.d;
-  const bn = (d.banners || []).filter(b => ftAlive(b.until));
-  const ms = (d.matches || []).filter(m => ftAlive(m.until));
+  if (!PID || IV.homePid !== PID || !IV.cfg || !FT.d || !FT.res) return '';
+  const d = FT.d, bn = FT.res.banners, ms = FT.res.matches;
   let h = '';
   if (bn.length) h += '<div class="ftb">' + bn.map(ftBanner).join('') + '</div>';
   if (ms.length) h += '<h3 class="sec ftmh"><span class="ftlive"></span>' + esc(d.mt || '⚽ مباريات النهارده') + '</h3><div class="hrow ftm">' + ms.map(ftMatch).join('') + '</div>';
@@ -3489,7 +3568,7 @@ function ivFeatHTML() {
 }
 function ftPopup() {
   try {
-    const p = FT.d && FT.d.popup;
+    const p = FT.res && FT.res.popup;
     if (!p || !p.on || !p.id || !(p.title || p.text) || !ftAlive(p.until) || !isPremiumOK() || FT.shown === p.id || $('ftpop')) return;
     if (localStorage.getItem('ftpop') === p.id) return;
     FT.shown = p.id;
@@ -3503,7 +3582,7 @@ function ftPopup() {
   } catch (e) {}
 }
 function ftPopClose(go) {
-  const p = (FT.d && FT.d.popup) || {};
+  const p = (FT.res && FT.res.popup) || {};
   try { localStorage.setItem('ftpop', p.id); } catch (e) {}
   const m = $('ftpop'); if (m) m.remove();
   if (go && p.k && p.sid) ivTap({dataset: {k: p.k, id: p.sid}});
@@ -3545,7 +3624,7 @@ function ftAdmRender() {
     dt(p.until, 'FA.popup.until', 'يقف بعد يوم:') +
     '<small style="color:var(--mut)">' + (p.sid ? '🔗 مربوط بـ ' + (p.k === 'series' ? 'مسلسل' : 'فيلم') + ' (id ' + esc(p.sid) + ')' : 'مش مربوط بفيلم') + '</small> ' +
     (p.sid ? '<button class="fc" onclick="FA.popup.k=\'\';FA.popup.sid=\'\';ftAdmRender()">فك الربط</button>' : '') + '</div>';
-  h += '<h4>🔎 ضيف من الـIPTV</h4><div class="row" style="gap:6px;flex-wrap:wrap">' +
+  h += '<h4>🔎 ضيف من الـIPTV</h4><small style="color:var(--mut);display:block;margin-bottom:6px">اختار من حسابك إنت. الأعضاء اللي على مزوّد تاني بيتدوّر لهم بالاسم، ولو القناة/الفيلم مش موجود عندهم الكارت بيتخفي.</small><div class="row" style="gap:6px;flex-wrap:wrap">' +
     '<button class="fc" onclick="ftMode(\'match\')">⚽ قناة ماتش</button><button class="fc" onclick="ftMode(\'banner\')">🆕 بانر فيلم/مسلسل</button>' +
     '<button class="fc" onclick="ftMode(\'popup\')">🪧 اربط المنبثق</button><button class="fc" onclick="ftAddCustom()">✍️ بانر مكتوب</button></div>' +
     '<small id="ftMode" style="color:var(--success)"></small>' +
@@ -3581,8 +3660,8 @@ function ftPick(i) {
   const x = FT_RES[i];
   if (!x) return;
   if (FT_MODE === 'match') FA.matches.push({id: ftId(), ch: x.id, n: x.n, icon: x.img || '', title: '', time: '', until: ftDay(0)});
-  else if (FT_MODE === 'banner') FA.banners.push({id: ftId(), k: x.k, sid: x.id, title: x.n, sub: '', img: x.img || '', tag: '🆕 نزل حالاً', until: ftDay(14)});
-  else Object.assign(FA.popup, {k: x.k, sid: x.id, img: FA.popup.img || x.img || '', title: FA.popup.title || x.n});
+  else if (FT_MODE === 'banner') FA.banners.push({id: ftId(), k: x.k, sid: x.id, title: x.n, sub: '', img: x.img || '', tag: '🆕 نزل حالاً', nm: x.n, until: ftDay(14)});
+  else Object.assign(FA.popup, {k: x.k, sid: x.id, nm: x.n, img: FA.popup.img || x.img || '', title: FA.popup.title || x.n});
   toast('اتضاف ✅ — افتح الكارت فوق وعدّل واضغط حفظ');
   ftAdmRender();
 }
@@ -3594,7 +3673,7 @@ async function ftAdmSave(btn) {
     const {r, d} = await api('/iptv/feat', {method: 'POST', body: JSON.stringify(FA)});
     if (r.status === 404) alert('السيرفر ما بيعرفش المميّز لسه: ارفع bot.py الجديد وأعد تشغيل السيرفر (Redeploy).');
     else if (!r.ok) alert(d.error || ('السيرفر رد بخطأ ' + r.status));
-    else { toast('اتحفظ ونزل للكل ✅'); await ftLoad(true); try { localStorage.removeItem('ftpop'); } catch (e) {} renderShelvesSoon(); }
+    else { toast('اتحفظ ونزل للكل ✅'); await ftLoad(true); await ftResolve(); try { localStorage.removeItem('ftpop'); } catch (e) {} renderShelvesSoon(); }
   } catch (e) { alert('مش قادر أوصل للسيرفر'); }
   btn.disabled = false;
 }
