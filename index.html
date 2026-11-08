@@ -1016,49 +1016,43 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <div class="login-box">
 <h2 style="color:var(--primary);margin-top:0">Elkomy VIP 🚀</h2>
 <div class="ltabs" id="ltabs">
-<button type="button" class="lt on" id="ltIn" onclick="lTab('in')">دخول</button>
-<button type="button" class="lt" id="ltUp" onclick="lTab('up')">حساب جديد</button>
+<button type="button" class="lt on" id="ltMail" onclick="lTab('mail')">📧 بالإيميل (كود)</button>
+<button type="button" class="lt" id="ltIn" onclick="lTab('in')">👤 يوزر وباسورد</button>
 </div>
 
-<div id="lpIn">
-<input id="username" class="login-input" placeholder="اسم المستخدم أو الإيميل" autocapitalize="off" autocorrect="off" autocomplete="username">
+<div id="lpMail">
+<div id="lmA">
+<p class="lhint">اكتب إيميلك وهنبعتلك كود من 6 أرقام. لو عندك حساب هتدخل، ولو جديد هنفتحلك حساب تلقائيًا.</p>
+<input id="lmEmail" type="email" class="login-input" placeholder="الإيميل" autocapitalize="off" autocorrect="off" autocomplete="email" style="direction:ltr">
+<button class="login-btn" id="lmSend" onclick="codeSend()">ابعتلي الكود</button>
+</div>
+<div id="lmB" style="display:none">
+<p class="lhint" id="lmInfo"></p>
+<input id="lmCode" class="login-input otp" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code">
+<button class="login-btn" id="lmGo" onclick="codeVerify()">تأكيد ودخول</button>
+<button class="lbtn2" id="lmResend" onclick="codeSend(true)">إعادة إرسال الكود</button>
+<div class="llinks"><a onclick="lmBack()">← تغيير الإيميل</a></div>
+</div>
+</div>
+
+<div id="lpIn" style="display:none">
+<input id="username" class="login-input" placeholder="اسم المستخدم" autocapitalize="off" autocorrect="off" autocomplete="username">
 <div class="pw"><input id="password" type="password" class="login-input" placeholder="كلمة المرور" autocomplete="current-password"><button type="button" class="eye" onclick="eye('password',this)">👁</button></div>
 <label style="display:block;margin-bottom:12px;color:var(--mut);font-size:14px"><input type="checkbox" id="remember"> تذكرني على الجهاز ده</label>
 <button class="login-btn" id="lgBtn" onclick="checkLogin()">دخول</button>
-<div class="llinks" id="lkMail" style="display:none"><a onclick="lCode('login')">دخول بكود على الإيميل</a> · <a onclick="lCode('reset')">نسيت كلمة المرور؟</a></div>
+<div class="llinks"><a id="lkUp" onclick="lTab('up')">حساب جديد بيوزر وباسورد</a></div>
 </div>
 
 <div id="lpUp" style="display:none">
-<div class="lchips" id="lchips">
-<button type="button" data-m="quick" class="on" onclick="lMode('quick')">⚡ تسجيل سريع<br>بالإيميل</button>
-<button type="button" data-m="mail" onclick="lMode('mail')">📧 إيميل<br>وكلمة مرور</button>
-<button type="button" data-m="user" onclick="lMode('user')">👤 يوزر<br>وكلمة مرور</button>
-</div>
-<p class="lhint" id="lhint"></p>
+<p class="lhint">اختار اسم مستخدم وكلمة مرور وخلاص، من غير إيميل.</p>
 <input id="rgUser" class="login-input" placeholder="اسم المستخدم (إنجليزي)" autocapitalize="off" autocorrect="off" autocomplete="username">
-<input id="rgEmail" type="email" class="login-input" placeholder="الإيميل" autocapitalize="off" autocorrect="off" autocomplete="email" style="direction:ltr">
-<div class="pw" id="rgPassBox"><input id="rgPass" type="password" class="login-input" placeholder="كلمة المرور (6 حروف على الأقل)" autocomplete="new-password"><button type="button" class="eye" onclick="eye('rgPass',this)">👁</button></div>
-<input id="rgHp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+<div class="pw"><input id="rgPass" type="password" class="login-input" placeholder="كلمة المرور (6 حروف على الأقل)" autocomplete="new-password"><button type="button" class="eye" onclick="eye('rgPass',this)">👁</button></div>
 <button class="login-btn" id="rgGo" onclick="rgSubmit()">إنشاء الحساب</button>
+<div class="llinks"><a onclick="lTab('in')">← رجوع للدخول</a></div>
 <p class="lhint" style="margin:12px 0 0;font-size:12px">الحساب الجديد بيبدأ مجاني (تصفح بس) لحد ما يتفعّل له اشتراك مميز.</p>
 </div>
 
-<div id="lpCode" style="display:none">
-<div id="lcA">
-<p class="lhint" id="lcAInfo"></p>
-<input id="lcEmail" type="email" class="login-input" placeholder="الإيميل" autocapitalize="off" autocorrect="off" autocomplete="email" style="direction:ltr">
-<button class="login-btn" id="lcSend" onclick="codeSend()">ابعتلي الكود</button>
-</div>
-<div id="lcB" style="display:none">
-<p class="lhint" id="lcBInfo"></p>
-<input id="lcCode" class="login-input otp" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code">
-<div class="pw" id="lcPassBox" style="display:none"><input id="lcPass" type="password" class="login-input" placeholder="كلمة المرور الجديدة (6+)" autocomplete="new-password"><button type="button" class="eye" onclick="eye('lcPass',this)">👁</button></div>
-<button class="login-btn" id="lcGo" onclick="codeVerify()">تأكيد</button>
-<button class="lbtn2" id="lcResend" onclick="codeSend(true)">إعادة إرسال الكود</button>
-</div>
-<div class="llinks"><a onclick="lBack()">← رجوع</a></div>
-</div>
-
+<input id="rgHp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <p id="login-error" class="lmsg err"></p>
 <button class="fc" style="margin-top:12px" onclick="openView()">🖥 شكل الشاشة (موبايل / كمبيوتر / تلفزيون)</button>
 </div>
@@ -2167,9 +2161,9 @@ window.onload = () => {
 };
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter' || $('login-screen').style.display === 'none') return;
-  if ($('lpIn').style.display !== 'none') checkLogin();
+  if ($('lpMail').style.display !== 'none') { if ($('lmB').style.display !== 'none') codeVerify(); else codeSend(); }
+  else if ($('lpIn').style.display !== 'none') checkLogin();
   else if ($('lpUp').style.display !== 'none') rgSubmit();
-  else if ($('lpCode').style.display !== 'none') { if ($('lcB').style.display !== 'none') codeVerify(); else codeSend(); }
 });
 function lErr(m, ok) {
   const e = $('login-error');
@@ -2193,7 +2187,7 @@ function lBusy(id, on, txt) { const b = $(id); if (!b) return; if (on) { b.datas
 async function checkLogin() {
   const u = $('username').value.trim(), p = $('password').value.trim();
   lErr('');
-  if (!u || !p) { lErr('اكتب اسم المستخدم (أو الإيميل) وكلمة المرور'); return; }
+  if (!u || !p) { lErr('اكتب اسم المستخدم وكلمة المرور'); return; }
   lBusy('lgBtn', true, 'جاري الدخول...');
   try {
     const {r, j} = await lPost('/auth', {u, p});
@@ -2205,119 +2199,76 @@ async function checkLogin() {
   finally { lBusy('lgBtn', false); }
 }
 
-// ---------- حساب جديد / كود الإيميل ----------
-const LG = {mode: 'quick', kind: 'register', email: '', pass: '', user: '', cfg: {reg: true, mail: false}, tm: 0, from: 'in'};
+// ---------- الدخول والتسجيل بكود الإيميل (أو يوزر وباسورد) ----------
+const LG = {email: '', cfg: {reg: true, mail: false}, tm: 0};
 const EML = /^[^@\s]{1,64}@[^@\s]+\.[^@\s.]{2,24}$/;
-const LHINT = {
-  quick: 'اكتب إيميلك وهنبعتلك كود من 6 أرقام، وحسابك يتفتح فورًا من غير كلمة مرور. بعد كده تدخل بكود أو تحدد كلمة مرور من حسابك.',
-  mail: 'سجّل بإيميلك وكلمة مرور، وهنبعتلك كود تأكيد للإيميل. تدخل بعد كده بالإيميل والكلمة.',
-  user: 'اختار اسم مستخدم وكلمة مرور وخلاص، من غير إيميل.'
-};
+function lShow(id) { ['lpMail', 'lpIn', 'lpUp'].forEach(x => { $(x).style.display = x === id ? '' : 'none'; }); lErr(''); }
+function lTab(t) {
+  if (t === 'mail' && !LG.cfg.mail) t = 'in';
+  $('ltMail').classList.toggle('on', t === 'mail'); $('ltIn').classList.toggle('on', t !== 'mail');
+  lShow(t === 'mail' ? 'lpMail' : (t === 'up' ? 'lpUp' : 'lpIn'));
+  try { if (t !== 'up') localStorage.setItem('ltab', t); } catch (e) {}
+}
 async function lInit() {
+  let t = 'mail';
+  try { const v = localStorage.getItem('ltab'); if (v === 'in' || v === 'mail') t = v; } catch (e) {}
+  lTab(t);
   try {
     const r = await fetch(API + '/auth/config', {cache: 'no-store'});
     if (r.ok) LG.cfg = await r.json();
   } catch (e) { return; }
-  $('ltabs').style.display = LG.cfg.reg ? '' : 'none';
-  $('lkMail').style.display = LG.cfg.mail ? '' : 'none';
-  document.querySelectorAll('#lchips button').forEach(b => { if (b.dataset.m !== 'user') b.style.display = LG.cfg.mail ? '' : 'none'; });
-  lMode(LG.cfg.mail ? 'quick' : 'user');
-}
-function lShow(id) { ['lpIn', 'lpUp', 'lpCode'].forEach(x => { $(x).style.display = x === id ? '' : 'none'; }); lErr(''); }
-function lTab(t) {
-  $('ltIn').classList.toggle('on', t === 'in'); $('ltUp').classList.toggle('on', t === 'up');
-  $('ltabs').style.display = LG.cfg.reg ? '' : 'none';
-  lShow(t === 'in' ? 'lpIn' : 'lpUp'); LG.from = t;
-}
-function lBack() { clearInterval(LG.tm); lTab(LG.from === 'up' ? 'up' : 'in'); }
-function lMode(m) {
-  LG.mode = m;
-  document.querySelectorAll('#lchips button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
-  $('lhint').textContent = LHINT[m];
-  $('rgUser').style.display = m === 'user' ? '' : 'none';
-  $('rgEmail').style.display = m === 'user' ? 'none' : '';
-  $('rgPassBox').style.display = m === 'quick' ? 'none' : '';
-  $('rgGo').textContent = m === 'quick' ? 'ابعتلي الكود' : (m === 'mail' ? 'تسجيل وإرسال الكود' : 'إنشاء الحساب');
-  lErr('');
+  $('ltabs').style.display = LG.cfg.mail ? '' : 'none';
+  $('lkUp').style.display = LG.cfg.reg ? '' : 'none';
+  if (!LG.cfg.mail && $('lpMail').style.display !== 'none') lTab('in');
 }
 async function rgSubmit() {
   lErr('');
-  const m = LG.mode, hp = $('rgHp').value;
-  if (m === 'user') {
-    const u = $('rgUser').value.trim().toLowerCase(), p = $('rgPass').value.trim();
-    if (!/^[a-z0-9_.-]{3,20}$/.test(u)) { lErr('الاسم 3-20 حرف إنجليزي أو أرقام أو _ . -'); return; }
-    if (p.length < 6) { lErr('كلمة المرور لازم 6 حروف على الأقل'); return; }
-    lBusy('rgGo', true, 'جاري الإنشاء...');
-    try {
-      const {r, j} = await lPost('/auth/register', {username: u, password: p, hp});
-      if (r.ok && j.token) finishLogin(j, true);
-      else if (r.status === 423) alert(j.error || 'الحساب موقوف. كلّم الأدمن.');
-      else lErr(j.error || 'مقدرتش أنشئ الحساب');
-    } catch (e) { lErr('مش قادر أوصل للسيرفر'); }
-    finally { lBusy('rgGo', false); }
-    return;
-  }
-  const em = $('rgEmail').value.trim().toLowerCase(), p = $('rgPass').value.trim();
-  if (!EML.test(em)) { lErr('اكتب إيميل صحيح'); return; }
-  if (m === 'mail' && p.length < 6) { lErr('كلمة المرور لازم 6 حروف على الأقل'); return; }
-  LG.kind = 'register'; LG.email = em; LG.pass = m === 'mail' ? p : '';
-  lBusy('rgGo', true, 'جاري إرسال الكود...');
-  const ok = await sendCode(em, hp);
-  lBusy('rgGo', false);
-  if (ok) openCodeStep();
-}
-async function sendCode(em, hp) {
+  const u = $('rgUser').value.trim().toLowerCase(), p = $('rgPass').value.trim();
+  if (!/^[a-z0-9_.-]{3,20}$/.test(u)) { lErr('الاسم 3-20 حرف إنجليزي أو أرقام أو _ . -'); return; }
+  if (p.length < 6) { lErr('كلمة المرور لازم 6 حروف على الأقل'); return; }
+  lBusy('rgGo', true, 'جاري الإنشاء...');
   try {
-    const {r, j} = await lPost('/auth/email/start', {email: em, hp: hp || ''});
-    if (r.ok) return true;
-    lErr(j.error || 'مقدرتش أبعت الكود'); return false;
-  } catch (e) { lErr('مش قادر أوصل للسيرفر'); return false; }
-}
-function lCode(kind) {          // من تبويب الدخول: دخول بكود أو استرجاع كلمة المرور
-  LG.kind = kind; LG.from = 'in'; LG.pass = '';
-  lShow('lpCode');
-  $('lcA').style.display = ''; $('lcB').style.display = 'none';
-  $('lcAInfo').textContent = kind === 'reset' ? 'اكتب إيميل حسابك وهنبعتلك كود تحدد بيه كلمة مرور جديدة.' : 'اكتب إيميل حسابك وهنبعتلك كود تدخل بيه من غير كلمة مرور.';
-  $('lcEmail').value = $('username').value.includes('@') ? $('username').value.trim() : '';
+    const {r, j} = await lPost('/auth/register', {username: u, password: p, hp: $('rgHp').value});
+    if (r.ok && j.token) finishLogin(j, true);
+    else if (r.status === 423) alert(j.error || 'الحساب موقوف. كلّم الأدمن.');
+    else lErr(j.error || 'مقدرتش أنشئ الحساب');
+  } catch (e) { lErr('مش قادر أوصل للسيرفر'); }
+  finally { lBusy('rgGo', false); }
 }
 async function codeSend(resend) {
-  const em = resend ? LG.email : $('lcEmail').value.trim().toLowerCase();
+  const em = resend ? LG.email : $('lmEmail').value.trim().toLowerCase();
   if (!EML.test(em)) { lErr('اكتب إيميل صحيح'); return; }
   LG.email = em; lErr('');
-  const id = resend ? 'lcResend' : 'lcSend';
+  const id = resend ? 'lmResend' : 'lmSend';
   lBusy(id, true, 'جاري الإرسال...');
-  const ok = await sendCode(em, '');
-  lBusy(id, false);
-  if (ok) { openCodeStep(); if (resend) lErr('اتبعت كود جديد', true); }
+  try {
+    const {r, j} = await lPost('/auth/email/start', {email: em, hp: $('rgHp').value});
+    if (r.ok) { openCodeStep(); if (resend) lErr('اتبعت كود جديد', true); }
+    else lErr(j.error || 'مقدرتش أبعت الكود');
+  } catch (e) { lErr('مش قادر أوصل للسيرفر'); }
+  finally { lBusy(id, false); }
 }
 function openCodeStep() {
-  lShow('lpCode');
-  $('lcA').style.display = 'none'; $('lcB').style.display = '';
-  $('lcBInfo').textContent = 'بعتنا كود من 6 أرقام على ' + LG.email + (LG.kind === 'reset' ? '. اكتبه واكتب كلمة المرور الجديدة.' : '. اكتبه هنا (صالح 10 دقايق، وشوف الـSpam لو ما وصلش).');
-  $('lcPassBox').style.display = LG.kind === 'reset' ? '' : 'none';
-  $('lcCode').value = ''; $('lcPass').value = '';
-  setTimeout(() => $('lcCode').focus(), 50);
-  let left = 60; const b = $('lcResend'); clearInterval(LG.tm); b.disabled = true;
+  $('lmA').style.display = 'none'; $('lmB').style.display = '';
+  $('lmInfo').textContent = 'بعتنا كود من 6 أرقام على ' + LG.email + '. اكتبه هنا (صالح 10 دقايق، وشوف الـSpam لو ما وصلش).';
+  $('lmCode').value = '';
+  setTimeout(() => $('lmCode').focus(), 50);
+  let left = 60; const b = $('lmResend'); clearInterval(LG.tm); b.disabled = true;
   const tick = () => { if (left <= 0) { clearInterval(LG.tm); b.disabled = false; b.textContent = 'إعادة إرسال الكود'; } else { b.textContent = 'إعادة الإرسال بعد ' + left + ' ثانية'; left--; } };
   tick(); LG.tm = setInterval(tick, 1000);
 }
+function lmBack() { clearInterval(LG.tm); $('lmB').style.display = 'none'; $('lmA').style.display = ''; lErr(''); }
 async function codeVerify() {
-  const code = $('lcCode').value.replace(/\D/g, '');
+  const code = $('lmCode').value.replace(/\D/g, '');
   if (code.length !== 6) { lErr('اكتب الكود (6 أرقام)'); return; }
-  const body = {email: LG.email, code};
-  if (LG.kind === 'reset') {
-    const p = $('lcPass').value.trim();
-    if (p.length < 6) { lErr('كلمة المرور الجديدة لازم 6 حروف على الأقل'); return; }
-    body.password = p; body.reset = true;
-  } else if (LG.kind === 'register' && LG.pass) body.password = LG.pass;
-  lErr(''); lBusy('lcGo', true, 'جاري التأكيد...');
+  lErr(''); lBusy('lmGo', true, 'جاري التأكيد...');
   try {
-    const {r, j} = await lPost('/auth/email/verify', body);
+    const {r, j} = await lPost('/auth/email/verify', {email: LG.email, code});
     if (r.ok && j.token) { clearInterval(LG.tm); finishLogin(j, true); }
     else if (r.status === 423) alert(j.error || 'الحساب موقوف. كلّم الأدمن.');
     else lErr(j.error || 'الكود غلط');
   } catch (e) { lErr('مش قادر أوصل للسيرفر'); }
-  finally { lBusy('lcGo', false); }
+  finally { lBusy('lmGo', false); }
 }
 async function changePass() {
   const old = prompt('كلمة المرور الحالية\n(سيبها فاضية لو سجّلت بالتسجيل السريع ومعندكش كلمة مرور)', '');
@@ -7648,7 +7599,7 @@ function renderPlanBar() {
   if (st === 'free') extra = ' <span style="font-weight:400">· تتصفح بس: المشاهدة والتحميل والـIPTV غير متاحين</span>';
   if (st === 'expired') extra = ' <span style="font-weight:400">· كلّم الأدمن للتجديد</span>';
   if (st === 'premium' && pl.until && planLeft(pl.until) <= 3) { cls = 'warn'; extra = ' <span style="font-weight:400">· قربت تخلص</span>'; }
-  el.innerHTML = '<div class="pbar ' + cls + '">' + esc(planText({state: st === 'expired' ? 'expired' : pl.state, until: pl.until})) + extra + '</div>';
+  el.innerHTML = '<div class="pbar ' + cls + '">👤 ' + esc(UNAME || '') + ' · ' + esc(planText({state: st === 'expired' ? 'expired' : pl.state, until: pl.until})) + extra + '</div>';
 }
 const isPremiumOK = () => { const st = planState(); return st === 'admin' || st === 'premium'; };
 // تحديث الباقة من السيرفر كل ما التطبيق يرجع للواجهة وكل 5 دقايق، وتحديث العدّاد كل ساعة
