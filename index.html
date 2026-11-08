@@ -3651,6 +3651,16 @@ function ftModeLbl() {
 }
 function ftMode(m) { FT_MODE = m; ftModeLbl(); ftSearch(); const q = $('ftQ'); if (q) q.focus(); }
 function ftAddCustom() { FA.banners.push({id: ftId(), k: '', sid: '', title: 'عنوان الإعلان', sub: '', img: '', tag: '📢 إعلان', until: ftDay(7)}); ftAdmRender(); }
+let FT_ALL = [], FT_LIM = 40;
+function ftShow() {
+  const box = $('ftRes');
+  if (!box) return;
+  FT_RES = FT_ALL.slice(0, FT_LIM);
+  box.innerHTML = FT_RES.length ? '<small style="color:var(--mut)">' + FT_ALL.length + ' نتيجة</small>' + FT_RES.map((x, i) => '<div class="ep" style="cursor:pointer" onclick="ftPick(' + i + ')"><div class="b">' +
+    (x.k === 'live' ? '📡' : x.k === 'vod' ? '🎬' : '📺') + ' ' + esc(x.n) + '</div></div>').join('') +
+    (FT_ALL.length > FT_LIM ? '<button class="fc" style="width:100%;margin-top:6px" onclick="FT_LIM+=40;ftShow()">⬇ عرض المزيد (' + (FT_ALL.length - FT_LIM) + ')</button>' : '') :
+    '<small style="color:var(--mut)">مفيش نتيجة</small>';
+}
 async function ftSearch() {
   const q = (($('ftQ') || {}).value || '').trim().toLowerCase(), box = $('ftRes');
   if (!box) return;
@@ -3663,9 +3673,10 @@ async function ftSearch() {
       const [v, s] = await Promise.all([ivList('get_vod_streams'), ivList('get_series')]);
       items = v.map(x => ({k: 'vod', id: String(x.stream_id), n: x.name, img: x.stream_icon})).concat(s.map(x => ({k: 'series', id: String(x.series_id), n: x.name, img: x.cover})));
     }
-    FT_RES = items.filter(x => (x.n || '').toLowerCase().includes(q)).slice(0, 15);
-    box.innerHTML = FT_RES.length ? FT_RES.map((x, i) => '<div class="ep" style="cursor:pointer" onclick="ftPick(' + i + ')"><div class="b">' +
-      (x.k === 'live' ? '📡' : x.k === 'vod' ? '🎬' : '📺') + ' ' + esc(x.n) + '</div></div>').join('') : '<small style="color:var(--mut)">مفيش نتيجة</small>';
+    const w = q.split(/\s+/).filter(Boolean);
+    FT_ALL = items.filter(x => { const n = (x.n || '').toLowerCase(); return w.every(t => n.includes(t)); });
+    FT_LIM = 40;
+    ftShow();
   } catch (e) { box.innerHTML = ERR; }
 }
 function ftPick(i) {
