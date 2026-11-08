@@ -3068,7 +3068,45 @@ async function ivStatRefresh() {
 }
 // ---------- روابط التشغيل والتحميل ----------
 const ivEnc = encodeURIComponent;
-const ivLiveUrl = id => IV.cfg.host + '/live/' + ivEnc(IV.cfg.user) + '/' + ivEnc(IV.cfg.pass) + '/' + id + (ivApp() ? '.ts' : '.m3u8');
+// القنوات المباشرة: لو الجهاز متوزّع على حساب تاني (IV.cfg.sa) ورقم القناة مربوط، بنستخدم رقمها عند الحساب ده
+function ivSrc(id) {
+  id = String(id);
+  const c = IV.cfg, sa = c.sa;
+  if (sa && sa.cm && sa.cm[id]) return {host: sa.host, user: sa.user, pass: sa.pass, id: sa.cm[id]};
+  return {host: c.host, user: c.user, pass: c.pass, id: id};
+}
+const ivLiveUrl = id => { const s = ivSrc(id); return s.host + '/live/' + ivEnc(s.user) + '/' + ivEnc(s.pass) + '/' + s.id + (ivApp() ? '.ts' : '.m3u8'); };
+async function ivSlotFull(s) {
+  try {
+    const d = await ivPing(s), u = d && d.user_info;
+    if (!u) return false;
+    const mx = +u.max_connections || 0, ac = +u.active_cons || 0;
+    return mx > 0 && ac >= mx;
+  } catch (e) { return false; }
+}
+async function ivRotate() {
+  const old = IV.cfg && IV.cfg.sa ? IV.cfg.sa.host + '|' + IV.cfg.sa.user : '';
+  try {
+    const {d} = await api('/iptv/cfg?rotate=1');
+    if (d && d.set) {
+      const nw = d.sa ? d.sa.host + '|' + d.sa.user : '';
+      IV.cfg = d;
+      return nw !== old;
+    }
+  } catch (e) {}
+  return false;
+}
+// بيشغّل قناة: لو الحساب ممتلئ بيبدّل لحساب تاني قبل التشغيل
+async function ivPlayLive(id, nm, o) {
+  o = Object.assign({liveId: String(id)}, o || {});
+  if (IV.cfg && IV.cfg.n > 1) {
+    for (let i = 0; i < IV.cfg.n; i++) {
+      if (!(await ivSlotFull(ivSrc(id)))) break;
+      if (!(await ivRotate())) break;
+    }
+  }
+  return ivPlay(ivLiveUrl(id), nm, o);
+}
 const ivMovieUrl = (id, ext) => IV.cfg.host + '/movie/' + ivEnc(IV.cfg.user) + '/' + ivEnc(IV.cfg.pass) + '/' + id + '.' + (ext || 'mp4');
 const ivEpUrl = (id, ext) => IV.cfg.host + '/series/' + ivEnc(IV.cfg.user) + '/' + ivEnc(IV.cfg.pass) + '/' + id + '.' + (ext || 'mp4');
 const ivClean = n => String(n || 'video').replace(/[\\/:*?"<>|]+/g, '_').trim().slice(0, 120) || 'video';
@@ -3271,41 +3309,9 @@ function ivProgress(pos, dur, ended) {
     if (np.go || !(pr && pr.auto === false)) { np.fired = 1; setTimeout(() => ivPlayEp(np.next), 800); }
   }
 }
-// ===== أكتر من حساب IPTV: قبل التشغيل نتأكد إن في اتصال فاضي، وإلا السيرفر يبدّلنا لحساب تاني =====
-function ivRebase(url, a, b) {
-  if (!url || !a || !b || (a.host === b.host && a.user === b.user && a.pass === b.pass)) return url;
-  if (url.indexOf(a.host + '/') !== 0) return url;
-  return b.host + url.slice(a.host.length).replace('/' + ivEnc(a.user) + '/' + ivEnc(a.pass) + '/', '/' + ivEnc(b.user) + '/' + ivEnc(b.pass) + '/');
-}
-async function ivSlotFull() {
-  try {
-    const d = await ivFetch(ivUrl('', null), '', 0), u = d && d.user_info;
-    if (!u) return false;
-    const mx = +u.max_connections || 0, ac = +u.active_cons || 0;
-    return mx > 0 && ac >= mx;
-  } catch (e) { return false; }
-}
-async function ivRotate() {
-  const c0 = IV.cfg;
-  try {
-    const {d} = await api('/iptv/cfg?rotate=1');
-    if (d && d.set && !(d.host === c0.host && d.user === c0.user)) { IV.cfg = d; IV.ck = d.host + '|' + d.user; return true; }
-  } catch (e) {}
-  return false;
-}
-async function ivSlot(url) {
-  const c0 = IV.cfg;
-  if (!c0 || !(c0.n > 1)) return url;
-  for (let i = 0; i < c0.n; i++) {
-    if (!(await ivSlotFull())) break;
-    if (!(await ivRotate())) break;
-  }
-  return ivRebase(url, c0, IV.cfg);
-}
-async function ivPlay(url, title, o) {
+function ivPlay(url, title, o) {
   if (!isPremiumOK() || noWatch()) return;
   o = o || {};
-  if (IV.cfg && IV.cfg.n > 1) { try { url = await ivSlot(url); } catch (e) {} }
   if (ivApp() || (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined')) {
     window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid, meta: o.meta}; window.NP_PLAYED = Date.now();
     AndroidPlayer.play(url, title, o.key ? ivPosGet(o.key) : 0);
@@ -3345,16 +3351,14 @@ function ivWebPlay(url, title, o) {
   document.body.appendChild(m);
   const v = $('ivpv');
   const err = t => { $('ivpe').innerHTML = '<div class="warn">' + esc(t) + '</div>'; };
-  const retry = async () => {   // لو في حساب IPTV تاني نجرّب عليه مرة واحدة
-    if (m._rt || !IV.cfg || !(IV.cfg.n > 1)) return false;
+  const retry = async () => {   // قناة مباشرة وفي حساب تاني: نجرّب عليه مرة واحدة
+    if (m._rt || !o || !o.liveId || !IV.cfg || !(IV.cfg.n > 1)) return false;
     m._rt = 1;
-    const c0 = IV.cfg;
     if (!(await ivRotate())) return false;
-    url = ivRebase(url, c0, IV.cfg);
+    url = ivLiveUrl(o.liveId);
     if (m._h) { try { m._h.loadSource(url); } catch (e) { return false; } } else { v.src = url; try { v.play(); } catch (e) {} }
     return true;
   };
-  m._retry = retry;
   v.onerror = async () => { if (await retry()) return; err('المتصفح مش قادر يشغّل الصيغة دي (غالباً mkv أو http). افتح الرابط في VLC، أو استخدم التطبيق.'); };
   if (o && o.key) {
     const p = ivPosGet(o.key);
@@ -3562,7 +3566,7 @@ function ivTap(el) {
   if (k === 'cat') return ivOpen(el.dataset.ck, id);
   if (k === 'live') {
     const nm = (el.querySelector('.t') || {}).textContent || 'قناة';
-    return ivPlay(ivLiveUrl(id), nm, {});
+    return ivPlayLive(id, nm);
   }
   if (!IV.open) { ivOpen(k); }
   IV.sel = {k: k, id: id};
@@ -3702,15 +3706,17 @@ function ivAdmRender() {
       '<small style="color:' + (!u.set ? 'var(--mut)' : (d !== null && d !== Infinity && d <= 5 ? '#ef4444' : 'var(--success)')) + '">' + esc(tx) +
       (u.set && u.stat && u.stat.t ? ' · آخر تحديث ' + new Date(u.stat.t * 1000).toLocaleDateString('ar-EG') : '') + '</small></div>' +
       '<button style="background:#0ea5e9;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="ivAdmEdit(this.dataset.n)">✏️</button>' +
+      (u.set && (u.extra || []).length ? '<button style="background:#8b5cf6;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="ivMapOpen(this.dataset.n)">🔗</button>' : '') +
       (u.set ? '<button style="background:var(--danger);color:#fff" data-n="' + esc(u.name) + '" onclick="ivAdmDel(this.dataset.n)">🗑</button>' : '') + '</div>';
   }).join('') +
+    '<button class="search-btn" style="background:#0ea5e9" onclick="ivChkAll(this)">🔍 فحص كل الحسابات (شغّال / فاصل)</button><div id="ivChk"></div><div id="ivMap"></div>' +
     '<select id="ivaN" class="search-input">' + IVADM.map(u => '<option value="' + esc(u.name) + '">' + esc(ivAdmLbl(u.name)) + '</option>').join('') + '</select>' +
     '<input id="ivaH" class="search-input ltr" placeholder="الهوست: http://example.com:8080" autocapitalize="off" autocorrect="off">' +
     '<input id="ivaU" class="search-input ltr" placeholder="اليوزر" autocapitalize="off" autocorrect="off">' +
     '<input id="ivaP" class="search-input ltr" placeholder="الباس" autocapitalize="off" autocorrect="off">' +
     '<textarea id="ivaX" class="search-input ltr" rows="3" style="direction:ltr;text-align:left" placeholder="حسابات إضافية (اختياري) - سطر لكل حساب: host user pass" autocapitalize="off" autocorrect="off"></textarea>' +
     '<button class="search-btn" onclick="ivAdmSave(this)">💾 حفظ اشتراك العضو</button>' +
-    '<p style="color:var(--mut);font-size:12px">تقدر تضيف حسابات إضافية لنفس العضو (أو للمشترك): السيرفر بيوزّع الأجهزة عليهم تلقائياً عشان ما يحصلش «تعذر تشغيل الفيديو» من حد الاتصالات. كل عضو ليه اشتراك خاص بيه. العضو بيشوف الأفلام والمسلسلات والقنوات من الحساب ده بس، والطلبات بتطلع من جهازه (آيبي مصري). باقي الأيام بتظهر له وليك أول ما يفتح التطبيق.</p>';
+    '<p style="color:var(--mut);font-size:12px">الحساب الأول هو الأساسي (القوائم والأفلام والمسلسلات). الحسابات الإضافية بتتوزّع عليها الأجهزة في القنوات المباشرة، وبعد الحفظ دوس 🔗 واربط كل قناة باسمها في كل حساب (لأن أرقام القنوات بتختلف من سيرفر لسيرفر). كل عضو ليه اشتراك خاص بيه. العضو بيشوف الأفلام والمسلسلات والقنوات من الحساب ده بس، والطلبات بتطلع من جهازه (آيبي مصري). باقي الأيام بتظهر له وليك أول ما يفتح التطبيق.</p>';
 }
 function ivAdmEdit(n) {
   const u = IVADM.find(x => x.name === n) || {};
@@ -3739,6 +3745,100 @@ async function ivAdmSave(btn) {
   btn.disabled = false;
   ivAdmLoad();
   IV.loaded = false; IV.homePid = null; IV.homeFor = null;
+}
+
+// ---------- فحص الحسابات + ربط القنوات بين الحسابات ----------
+function ivPing(a) {
+  const u = a.host + '/player_api.php?username=' + encodeURIComponent(a.user) + '&password=' + encodeURIComponent(a.pass);
+  return Promise.race([ivFetch(u, '', 0), new Promise((_, no) => setTimeout(() => no(new Error('مفيش رد (انتهت المهلة)')), 20000))]);
+}
+async function ivChkAll(btn) {
+  btn.disabled = true;
+  const el = $('ivChk');
+  el.innerHTML = pend('جاري الفحص...');
+  const jobs = [];
+  IVADM.filter(u => u.set).forEach(u => [u].concat(u.extra || []).forEach((a, i) => jobs.push({u: u, a: a, i: i})));
+  const rows = await Promise.all(jobs.map(async j => {
+    let st, col = '#ef4444';
+    try {
+      const d = await ivPing(j.a), x = d && d.user_info;
+      if (!x) st = '❌ رد غير مفهوم';
+      else if (+x.auth === 0) st = '❌ اليوزر أو الباس غلط';
+      else {
+        const ex = +x.exp_date, days = ex ? Math.ceil((ex * 1000 - Date.now()) / 86400000) : null, act = +x.active_cons || 0, mx = +x.max_connections || 0;
+        if (String(x.status || '').toLowerCase() !== 'active') st = '⚠️ ' + (x.status || 'غير مفعّل');
+        else if (days !== null && days <= 0) st = '❌ الاشتراك منتهي';
+        else { col = 'var(--success)'; st = '✅ شغّال · ' + (days === null ? 'غير محدود' : 'باقي ' + days + ' يوم') + ' · اتصالات ' + act + '/' + mx; }
+      }
+    } catch (e) { st = '❌ فاصل: ' + (e && e.message || ''); }
+    return '<div class="ep"><div class="b">👤 ' + esc(ivAdmLbl(j.u.name)) + ' · ' + (j.i ? 'حساب ' + (j.i + 1) : 'الأساسي') +
+      '<small class="ltr" style="direction:ltr;text-align:left">' + esc(j.a.host) + ' · ' + esc(j.a.user) + '</small>' +
+      '<small style="color:' + col + '">' + esc(st) + '</small></div></div>';
+  }));
+  el.innerHTML = rows.join('') || '<p style="color:var(--mut)">مفيش حسابات متسجلة</p>';
+  btn.disabled = false;
+}
+const IVM = {n: '', accs: [], lists: [], cmap: []};
+const ivAk = a => a.host + '|' + a.user;
+async function ivMapOpen(n) {
+  const u = IVADM.find(x => x.name === n);
+  const el = $('ivMap');
+  if (!u || !u.set || !el) return;
+  el.innerHTML = pend('جاري تحميل قنوات الحسابات...');
+  IVM.n = n; IVM.accs = [u].concat(u.extra || []); IVM.cmap = (u.cmap || []).slice();
+  try {
+    IVM.lists = await Promise.all(IVM.accs.map(a => ivFetch(a.host + '/player_api.php?username=' + encodeURIComponent(a.user) + '&password=' + encodeURIComponent(a.pass) + '&action=get_live_streams', 'stream_id,name', 0)));
+  } catch (e) { el.innerHTML = warn('تعذّر تحميل قنوات أحد الحسابات: ' + esc((e && e.message) || '')); return; }
+  ivMapRender();
+}
+function ivMapName(i, id) {
+  const l = IVM.lists[i] || [];
+  const x = Array.isArray(l) ? l.find(c => String(c.stream_id) === String(id)) : null;
+  return x ? x.name : '#' + id;
+}
+function ivMapRender() {
+  const el = $('ivMap');
+  const done = IVM.cmap.map((m, k) => '<div class="ep"><div class="b">🔗 ' + esc(m.n || '—') + '<small>' + IVM.accs.map((a, i) => 'حساب ' + (i + 1) + ': ' + esc(ivMapName(i, m.ids[ivAk(a)])))
+    .join(' · ') + '</small></div><button style="background:var(--danger);color:#fff" onclick="ivMapDel(' + k + ')">🗑</button></div>').join('');
+  el.innerHTML = '<h4 style="margin:14px 0 6px">🔗 ربط القنوات — ' + esc(ivAdmLbl(IVM.n)) + '</h4>' + done +
+    '<input id="imq" class="search-input" placeholder="اسم القناة للبحث (مثلاً: bein 1)" oninput="ivMapFill()" autocapitalize="off">' +
+    IVM.accs.map((a, i) => '<small class="ltr" style="direction:ltr;text-align:left;display:block;margin-top:6px">' + (i ? 'حساب ' + (i + 1) : 'الأساسي') + ' · ' + esc(a.host) + '</small><select id="ims' + i + '" class="search-input"></select>').join('') +
+    '<button class="search-btn" onclick="ivMapSave(this)">💾 حفظ ربط القناة</button>';
+  ivMapFill();
+}
+function ivMapFill() {
+  const q = ($('imq').value || '').toLowerCase().split(/\s+/).filter(Boolean);
+  IVM.accs.forEach((a, i) => {
+    const l = Array.isArray(IVM.lists[i]) ? IVM.lists[i] : [];
+    const hit = l.filter(c => { const n = String(c.name || '').toLowerCase(); return q.every(w => n.indexOf(w) >= 0); }).slice(0, 80);
+    $('ims' + i).innerHTML = hit.length ? hit.map(c => '<option value="' + esc(c.stream_id) + '">' + esc(c.name) + '</option>').join('') : '<option value="">— مفيش نتائج —</option>';
+  });
+}
+async function ivMapPost() {
+  const {r, d} = await api('/iptv/admin/' + encodeURIComponent(IVM.n) + '/cmap', {method: 'POST', body: JSON.stringify({cmap: IVM.cmap})});
+  if (!r.ok || !d.ok) { alert((d && d.error) || 'السيرفر رد بخطأ ' + r.status); return false; }
+  IVM.cmap = d.cmap || [];
+  const u = IVADM.find(x => x.name === IVM.n); if (u) u.cmap = IVM.cmap;
+  IV.loaded = false;
+  return true;
+}
+async function ivMapSave(btn) {
+  const ids = {};
+  for (let i = 0; i < IVM.accs.length; i++) {
+    const v = $('ims' + i).value;
+    if (!v) { alert('اختار القناة في كل الحسابات الأول'); return; }
+    ids[ivAk(IVM.accs[i])] = v;
+  }
+  const pk = ivAk(IVM.accs[0]);
+  IVM.cmap = IVM.cmap.filter(m => String(m.ids[pk]) !== String(ids[pk]));
+  IVM.cmap.push({n: ($('imq').value || '').trim() || ivMapName(0, ids[pk]), ids: ids});
+  btn.disabled = true;
+  if (await ivMapPost()) { toast('اتحفظ ✅'); ivMapRender(); } else btn.disabled = false;
+}
+async function ivMapDel(k) {
+  if (!confirm('مسح الربط ده؟')) return;
+  IVM.cmap.splice(k, 1);
+  if (await ivMapPost()) ivMapRender();
 }
 async function ivAdmDel(n) {
   if (!confirm('مسح اشتراك ' + n + '؟')) return;
@@ -3850,7 +3950,7 @@ const ftMatch = m => '<div class="ftm-c" tabindex="0" role="button" data-ch="' +
   '<div class="ftm-t">' + esc(m.title || m.n) + '</div>' +
   '<div class="ftm-s">' + esc(m.title ? m.n : '') + (m.time ? (m.title ? ' · ' : '') + '🕘 ' + esc(m.time) : '') + '</div>' +
   '<span class="ftm-go">▶ شاهد الآن</span></div>';
-function ftMatchTap(el) { ivPlay(ivLiveUrl(el.dataset.ch), el.dataset.n || 'قناة', {}); }
+function ftMatchTap(el) { ivPlayLive(el.dataset.ch, el.dataset.n || 'قناة'); }
 const ftBanner = b => {
   const act = b.k && b.sid;
   return '<div class="ftban"' + (act ? ' tabindex="0" role="button" data-k="' + esc(b.k) + '" data-id="' + esc(b.sid) + '" onclick="ivTap(this)"' : '') + '>' +

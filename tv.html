@@ -1220,9 +1220,9 @@ P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.pos = o.resume || 
 D.documentElement.className = 'playing';
 plmsg(''); buf(true); ovPaint(); ovShow();
 if (o.kind === 'live') epg();
-P.rot = false;
-if (S.cfg && S.cfg.n > 1 && o.url && o.url.indexOf(S.cfg.host + '/') === 0) {
-var sid1 = P.sid; tvSlot(o.url, function (u) { if (sid1 !== P.sid) return; P.url = u; engineStart(o.resume || 0); });
+P.liveId = o.liveId || ''; P.rot = false;
+if (o.kind === 'live' && P.liveId && S.cfg && S.cfg.n > 1) {
+var sid1 = P.sid; tvSlot(P.liveId, function (u) { if (sid1 !== P.sid) return; P.url = u; engineStart(0); });
 } else engineStart(o.resume || 0);
 }
 function engineStart(resume) {
@@ -1298,32 +1298,36 @@ if (P.kind === 'site' && P.next && autoNext()) { var nf0 = P.next; P.next = null
 if (P.kind === 'ep' && SE.eps[P.epIx + 1]) { var n = P.epIx + 1; toast('الحلقة التالية...'); return playEp(n); }
 stopPlay();
 }
-/* ---------- أكتر من حساب IPTV: نتأكد من اتصال فاضي قبل التشغيل ونبدّل الحساب لو لزم ---------- */
-function tvRebase(url, a, b) {
-if (!url || !a || !b || (a.host === b.host && a.user === b.user && a.pass === b.pass)) return url;
-if (url.indexOf(a.host + '/') !== 0) return url;
-return b.host + url.slice(a.host.length).replace('/' + enc(a.user) + '/' + enc(a.pass) + '/', '/' + enc(b.user) + '/' + enc(b.pass) + '/');
+/* ---------- أكتر من حساب IPTV للقنوات المباشرة: ربط القنوات + اتصال فاضي + تبديل تلقائي ---------- */
+function tvSrc(id) {
+id = String(id);
+var c = S.cfg, sa = c.sa;
+if (sa && sa.cm && sa.cm[id]) return {host: String(sa.host).replace(/\/+$/, ''), user: sa.user, pass: sa.pass, id: sa.cm[id]};
+return {host: c.host, user: c.user, pass: c.pass, id: id};
 }
-function tvRotate(cb) {
-var c0 = S.cfg;
-api('/iptv/cfg?rotate=1', {timeout: 15000}, function (e, st, d) {
-if (e || st !== 200 || !d || !d.set || !d.host || (String(d.host).replace(/\/+$/, '') === c0.host && d.user === c0.user)) return cb(false);
-d.host = String(d.host).replace(/\/+$/, ''); if (!/^https?:\/\//i.test(d.host)) d.host = 'http://' + d.host;
-S.cfg = d; cb(true);
-});
-}
-function tvSlotFull(cb) {
-xt('', null, function (err, j) {
-var u = !err && j && j.user_info; if (!u) return cb(false);
-var mx = +u.max_connections || 0, ac = +u.active_cons || 0; cb(mx > 0 && ac >= mx);
+function tvLiveUrl(id) { var s = tvSrc(id); return s.host + '/live/' + enc(s.user) + '/' + enc(s.pass) + '/' + s.id + '.' + OPT.live; }
+function tvSlotFull(s, cb) {
+var u = s.host + '/player_api.php?username=' + enc(s.user) + '&password=' + enc(s.pass);
+xhr('GET', u, null, {}, function (err, st, tx) {
+var j = !err && st === 200 ? jparse(tx) : null, x = j && j.user_info; if (!x) return cb(false);
+var mx = +x.max_connections || 0, ac = +x.active_cons || 0; cb(mx > 0 && ac >= mx);
 }, 12000);
 }
-function tvSlot(url, cb) {
-var c0 = S.cfg, n = 0;
+function tvRotate(cb) {
+var old = S.cfg.sa ? S.cfg.sa.host + '|' + S.cfg.sa.user : '';
+api('/iptv/cfg?rotate=1', {timeout: 15000}, function (e, st, d) {
+if (e || st !== 200 || !d || !d.set || !d.host) return cb(false);
+d.host = String(d.host).replace(/\/+$/, ''); if (!/^https?:\/\//i.test(d.host)) d.host = 'http://' + d.host;
+var nw = d.sa ? d.sa.host + '|' + d.sa.user : '';
+S.cfg = d; cb(nw !== old);
+});
+}
+function tvSlot(id, cb) {
+var n = 0;
 (function step() {
-tvSlotFull(function (full) {
-if (!full || n++ >= c0.n) return cb(tvRebase(url, c0, S.cfg));
-tvRotate(function (ok) { if (!ok) return cb(tvRebase(url, c0, S.cfg)); step(); });
+tvSlotFull(tvSrc(id), function (full) {
+if (!full || n++ >= S.cfg.n) return cb(tvLiveUrl(id));
+tvRotate(function (ok) { if (!ok) return cb(tvLiveUrl(id)); step(); });
 });
 })();
 }
@@ -1334,11 +1338,11 @@ var m = /\.(m3u8|ts)$/.exec(P.url);
 if (m) { P.url = P.url.replace(/\.(m3u8|ts)$/, m[1] === 'ts' ? '.m3u8' : '.ts'); P.sid++; engineStop(); return engineStart(0); }
 }
 if (P.kind === 'site' && P.altUrl) { var u2 = P.altUrl; P.altUrl = ''; toast('بجرّب البث البديل...'); P.url = u2; P.sid++; engineStop(); return engineStart(P.pos); }
-if (S.cfg && S.cfg.n > 1 && !P.rot && P.url.indexOf(S.cfg.host + '/') === 0) {
-P.rot = true; var c0 = S.cfg, s0 = P.sid;
+if (P.kind === 'live' && P.liveId && S.cfg && S.cfg.n > 1 && !P.rot) {
+P.rot = true; var s0 = P.sid;
 return tvRotate(function (ok) {
 if (s0 !== P.sid) return;
-if (ok) { toast('بجرّب حساب تاني...'); P.url = tvRebase(P.url, c0, S.cfg); P.sid++; engineStop(); return engineStart(P.pos); }
+if (ok) { toast('بجرّب حساب تاني...'); P.url = tvLiveUrl(P.liveId); P.alt = false; P.sid++; engineStop(); return engineStart(0); }
 playFail(e);
 });
 }
@@ -1364,8 +1368,8 @@ cur = null; if (t2) setFocus(t2);
 else if (cur && D.body.contains(cur)) { var c = cur; cur = null; setFocus(c); }
 }
 function playLive(list, idx) {
-var it = list[idx], c = S.cfg;
-startPlay({kind: 'live', url: c.host + '/live/' + enc(c.user) + '/' + enc(c.pass) + '/' + it.id + '.' + OPT.live, title: it.name, list: list, idx: idx});
+var it = list[idx];
+startPlay({kind: 'live', url: tvLiveUrl(it.id), liveId: String(it.id), title: it.name, list: list, idx: idx});
 $('plnum').textContent = idx + 1; $('plnum').style.display = 'block';
 }
 function zap(d) {
