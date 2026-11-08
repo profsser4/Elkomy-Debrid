@@ -5646,7 +5646,15 @@ async function nativePlayData(d, base) {
     smapAuto().then(() => { if (PLAY === my0 && my0.type === 'tv' && my0.tmdb) smapFillSeries(my0.tmdb); }).catch(() => {});
   }, 2500);
   window.NP_NEXT = my0;   // الصفحة بتمسح PLAY بعد فتح المشغّل (pgBack)، فنحتفظ بنسخة للتقدّم والحلقة التالية
-  try { await nativePlay(d.direct_link); }
+  // شاشة سودا على الأندرويد = الصورة بصيغة مش بيفكها الموبايل (HEVC / 10-bit / 4K / HDR / Dolby Vision / REMUX): نشغّل البث المحوَّل (H.264) لو متاح
+  let playUrl = d.direct_link;
+  try {
+    const nm = String(d.name || base.fname || '') + ' ' + String(base.title || '') + ' ' + String(d.direct_link || '').split('/').pop();
+    const bad = risky(nm) || /2160p|\b4k\b|\buhd\b|\bdv\b|dolby[ .\-]?vision|\bhdr|remux|hi10p?|\bav1\b|vc-?1|\.(mkv|avi|wmv|ts|m2ts)\b/i.test(nm);
+    if (bad && !d.hls) await ensureHls(d, d.file_id, pullId);
+    if (bad && d.hls) { playUrl = d.hls; PLAY.hls = d.hls; toast('🎞 الملف بصيغة تقيلة، بشغّل النسخة المحوَّلة عشان الصورة تظهر'); }
+  } catch (e) {}
+  try { await nativePlay(playUrl); }
   catch (e) {
     $('results').innerHTML = warn('المشغّل الداخلي ما اشتغلش: ' + esc(String((e && e.message) || e).slice(0, 120))) +
       '<button class="search-btn" style="margin-top:8px" data-u="' + esc(d.direct_link) + '" onclick="nativeGo(this)">🔄 جرّب المشغّل الداخلي تاني</button>' +
