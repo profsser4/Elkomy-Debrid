@@ -271,6 +271,9 @@ html,body{background:#0e1131}
 .ftM .t{font-size:31px;font-weight:800;line-height:1.3;margin-top:14px;max-height:82px;overflow:hidden}
 .ftM .s{font-size:22px;color:#fecaca;margin-top:4px;max-height:30px;overflow:hidden}
 .ftM .go{position:absolute;bottom:20px;right:22px;font-size:24px;font-weight:800;background:#fff;color:#7f1d1d;padding:4px 22px;border-radius:22px}
+.ftL{width:250px;background:linear-gradient(160deg,#1e3a8a,#0f172a);text-align:center}
+.ftL .ic{width:130px;height:130px;margin:30px auto 0;border-radius:24px;background:rgba(255,255,255,.12) center/contain no-repeat}
+.ftL .t{font-size:25px;font-weight:700;line-height:1.3;padding:14px 12px 0;max-height:80px;overflow:hidden}
 .ftP{width:190px}
 .ftP .bg{filter:none}
 .ftP .tt{position:absolute;left:0;right:0;bottom:0;padding:44px 10px 10px;background:linear-gradient(transparent,rgba(0,0,0,.92));font-size:22px;font-weight:600;text-align:center;line-height:1.25;max-height:120px;overflow:hidden}
@@ -350,7 +353,7 @@ html,body{background:#0e1131}
 /* ===================== إعدادات (عدّل هنا لو احتجت) ===================== */
 var CFG = {
 API: 'https://elkomy-server-neon.vercel.app',   // نفس سيرفر موقعك
-VER: '3.2.0',
+VER: '3.3.0',
 AUTO_USER: '',   // لو كتبت يوزر وباس هنا: التطبيق يدخل لوحده من غير ما تكتب حاجة
 AUTO_PASS: ''
 };
@@ -640,6 +643,42 @@ if (!on) a.unshift({id: it.id, name: it.name, img: it.img, ext: it.ext, rating: 
 saveFav(); toast(on ? 'اتشالت من المفضلة' : 'اتضافت للمفضلة ★');
 return !on;
 }
+/* ===================== مزامنة كمّل المشاهدة مع الموقع والأندرويد ===================== */
+var IVS = {q: {}, t: null, pull: 0};
+function ivsPid() { return 'iv:' + (S.pid || ipid()); }
+function ivsOk(o) { return o && o.meta && o.t && (o.meta.k === 'vod' || (o.meta.k === 'series' && o.meta.ep && typeof o.meta.ep === 'object')); }
+function ivsPush(key, o) {
+if (!S.tok || !ivsOk(o)) return;
+IVS.q[key] = {key: key, t: o.t, pos: o.pos, dur: o.dur, done: !!o.done, h: o.h ? 1 : 0, m: o.meta};
+if (!IVS.t) IVS.t = setTimeout(ivsFlush, 6000);
+}
+function ivsFlush() {
+clearTimeout(IVS.t); IVS.t = null;
+var q = IVS.q, any = false, k; IVS.q = {};
+for (k in q) any = true;
+if (!any || !S.tok) return;
+var items = {}; items[ivsPid()] = q;
+api('/ud/merge?lite=1', {method: 'POST', body: {profiles: {}, items: items}, timeout: 30000}, function (e, st) { if (e || st !== 200) { for (var x in q) IVS.q[x] = q[x]; } });
+}
+function ivsPull(cb, maxAge) {
+if (!S.tok) { if (cb) cb(); return; }
+if (maxAge && Date.now() - IVS.pull < maxAge) { if (cb) cb(); return; }
+IVS.pull = Date.now();
+api('/ud/merge', {method: 'POST', body: {profiles: {}, items: {}}, timeout: 30000}, function (e, st, d) {
+if (!e && st === 200 && d && d.items) {
+var src = d.items[ivsPid()] || {}, ch = false, k;
+for (k in src) {
+var s = src[k]; if (!s || !s.key || !s.m) continue;
+var o = UD.prog[k];
+if (!o || (s.t || 0) > (o.t || 0)) { var m = s.m; if (m.k === 'series' && !m.n) m.n = m.sn; UD.prog[k] = {pos: s.pos, dur: s.dur, t: s.t, done: !!s.done, h: s.h ? 1 : 0, meta: m}; ch = true; }
+}
+for (k in UD.prog) { var o2 = UD.prog[k], s2 = src[k]; if (ivsOk(o2) && (!s2 || o2.t > (s2.t || 0))) ivsPush(k, o2); }
+if (ch) saveProg();
+}
+if (cb) cb();
+});
+}
+D.addEventListener('visibilitychange', function () { if (D.hidden) ivsFlush(); });
 /* ===================== الرئيسية ===================== */
 function homeRefresh() {
 $('hUser').textContent = '' + (S.user || '');
@@ -650,7 +689,7 @@ e.className = days <= 5 ? 'low' : 'ok';
 e.textContent = days > 0 ? 'الاشتراك: باقي ' + days + ' يوم' : 'الاشتراك منتهي';
 } else { e.className = ''; e.textContent = (i && i.exp_date === null) ? 'الاشتراك: غير محدود' : ''; }
 }
-function showHome() { homeRefresh(); show('home'); featKick(); setFocus($('hLive')); }
+function showHome() { homeRefresh(); show('home'); featKick(); ivsPull(null, 45000); setFocus($('hLive')); }
 ['hLive', 'hVod', 'hSer', 'hCw', 'hFav', 'hMode', 'hOut'].forEach(function (id) { $(id)._focus = function () { $('home').className = $('home').className.replace(/ ?\bfs\b/g, ''); }; });
 ['hLive', 'hVod', 'hSer'].forEach(function (id) { $(id)._ok = function (el) { openBrowse(el.getAttribute('data-k')); }; });
 function chooser(title, mode, kinds) {
@@ -658,7 +697,7 @@ var b = kinds.map(function (k) { return {t: KT[k], pri: k === kinds[0], fn: func
 b.push({t: 'رجوع', fn: function () { showHome(); }});
 showMsg(title, 'اختار القسم', b);
 }
-$('hCw')._ok = function () { chooser('كمّل المشاهدة', '__cw', ['vod', 'series']); };
+$('hCw')._ok = function () { splash('جاري مزامنة آخر ما شاهدته...'); ivsPull(function () { chooser('كمّل المشاهدة', '__cw', ['vod', 'series']); }, 8000); };
 $('hFav')._ok = function () { chooser('المفضلة', '__fav', ['live', 'vod', 'series']); };
 $('hOut')._ok = function () { showMsg('تسجيل الخروج', 'متأكد إنك عايز تخرج من حسابك؟', [{t: 'لأ، رجوع', pri: 1, fn: function () { showHome(); }}, {t: 'خروج', fn: logout}]); };
 /* ===================== مميّز الـIPTV على الرئيسية ===================== */
@@ -734,19 +773,13 @@ FT.busy = 1; var tok = ++FT.run;
 FT.pc = {};
 api('/iptv/feat', {timeout: 15000}, function (e, st, d) {
 if (tok !== FT.run) return;
-if (!e && st === 200 && d) FT.d = d; else if (!FT.d) FT.d = {};
+if (!e && st === 200 && d) FT.d = d; else { if (!FT.d) FT.d = {}; if (!FT.res) toast('تعذّر تحميل المميّز من السيرفر'); }
 featResolve(tok);
 });
 }
 function featResolve(tok) {
-var d = FT.d || {}, R = {banners: [], matches: [], pv: [], ps: [], popup: null, title: d.mt || '⚽ مباريات النهارده'}, tasks = [];
-var ms = (d.matches || []).filter(function (m) { return ftAlive(m.until); });
-if (ms.length) tasks.push(function (cb) {
-allItems('live', function (e, all) {
-if (!e) ms.forEach(function (m) { var c = ftFind(all, m.ch, m.n); if (c) R.matches.push({m: m, c: c}); });
-cb();
-});
-});
+var d = FT.d || {}, R = {banners: [], matches: [], pl: [], pv: [], ps: [], popup: null, title: d.mt || '⚽ مباريات النهارده'}, tasks = [];
+(d.matches || []).filter(function (m) { return ftAlive(m.until); }).forEach(function (m) { R.matches.push({m: m, c: {id: String(m.ch), name: m.n || '', img: m.icon || ''}}); });
 var bn = (d.banners || []).filter(function (b) { return ftAlive(b.until); }), bs = [];
 bn.forEach(function (b, i) {
 if (!b.k) { bs[i] = b; return; }
@@ -765,6 +798,17 @@ if (tok !== FT.run) return;
 R.banners = bs.filter(Boolean); R.pv = pv.filter(Boolean); R.ps = ps.filter(Boolean);
 FT.res = R; FT.t = Date.now(); FT.busy = 0;
 if (curScr === 'home') { featRender(); featPopup(); }
+featLive(tok, R);
+});
+}
+function featLive(tok, R) {
+if (!R.matches.length && !(S.pins.live || []).length) return;
+allItems('live', function (e, all) {
+if (e || tok !== FT.run || FT.res !== R) return;
+R.matches.forEach(function (x) { var c = ftFind(all, x.m.ch, x.m.n); if (c) x.c = {id: c.id, name: c.name, img: c.img}; });
+var ln = S.gln || {}, seen = {}, ix = ftIx(all);
+(S.pins.live || []).slice(0, 40).forEach(function (id) { id = String(id); var c = ln[id] ? ftFind(all, id, ln[id]) : ix.id[id]; if (c && !seen[c.id]) { seen[c.id] = 1; R.pl.push(c); } });
+if (curScr === 'home') featRender();
 });
 }
 function ftOpen(kind, c) { if (kind === 'vod') openVod(c); else openSeries(c, null); }
@@ -809,6 +853,15 @@ el.innerHTML = '<span class="lv"><i></i>LIVE</span><div class="ic"' + ftBg(ic) +
 ftTile(o2.r, el, 'm' + i, function () { playLive(ml, i); });
 });
 box.appendChild(o2.w); n++;
+}
+if (R.pl.length) {
+var o4 = ftRow(R.pl, '📡 قنوات مثبّتة'), pll = R.pl.map(function (c) { return {id: c.id, name: c.name, img: c.img}; });
+pll.forEach(function (c, i) {
+var el = D.createElement('div'); el.className = 'ft ftL';
+el.innerHTML = '<div class="ic"' + ftBg(c.img) + '></div><div class="t">' + esc(c.name) + '</div>';
+ftTile(o4.r, el, 'pl' + i, function () { playLive(pll, i); });
+});
+box.appendChild(o4.w); n++;
 }
 [['pv', 'vod', '⭐ أفلامي المثبّتة'], ['ps', 'series', '⭐ مسلسلاتي المثبّتة']].forEach(function (g) {
 var l = R[g[0]]; if (!l.length) return;
@@ -950,11 +1003,11 @@ MEM[key] = a; cb(null, a);
 }
 function cwList(kind) {
 var out = [], seenS = {};
-Object.keys(UD.prog).map(function (k) { return UD.prog[k]; }).filter(function (o) { return o.meta && !o.done && o.meta.k === kind; })
+Object.keys(UD.prog).map(function (k) { return UD.prog[k]; }).filter(function (o) { return o.meta && !o.done && !o.h && o.meta.k === kind; })
 .sort(function (a, b) { return b.t - a.t; }).forEach(function (o) {
 var m = o.meta;
 if (kind === 'series') { if (seenS[m.id]) return; seenS[m.id] = 1; }
-out.push({id: m.id, name: m.n, img: m.img, ext: m.ext, cw: o});
+out.push({id: m.id, name: m.n || m.sn, img: m.img, ext: m.ext, cw: o});
 });
 return out;
 }
@@ -1018,7 +1071,7 @@ if (B.kind === 'vod') {
 if (it.cw) return playVod(it, it.cw.pos);
 return openVod(it);
 }
-openSeries(it, it.cw ? it.cw.meta.ep : null);
+openSeries(it, it.cw ? (typeof it.cw.meta.ep === 'object' && it.cw.meta.ep ? it.cw.meta.ep.id : it.cw.meta.ep) : null);
 }
 $('bSearch')._ok = function () {
 kbOpen('بحث في ' + KT[B.kind], B.q, false, function (v) {
@@ -1132,7 +1185,7 @@ function playEp(ix) {
 var x = SE.eps[ix], c = S.cfg; if (!x) return;
 var o = UD.prog['s:' + SE.id + ':' + x.id], pos = (o && !o.done && o.pos > 10) ? Math.floor(o.pos) : 0;
 startPlay({kind: 'ep', url: c.host + '/series/' + enc(c.user) + '/' + enc(c.pass) + '/' + x.id + '.' + x.ext, title: SE.name + '  —  S' + p2(x.s) + 'E' + p2(x.e) + (x.t ? '  ' + x.t : ''),
-key: 's:' + SE.id + ':' + x.id, meta: {k: 'series', id: SE.id, n: SE.name, img: SE.img, ext: x.ext, ep: x.id}, resume: pos, epIx: ix});
+key: 's:' + SE.id + ':' + x.id, meta: {k: 'series', id: SE.id, n: SE.name, sn: SE.name, img: SE.img, ext: x.ext, ep: {id: x.id, ext: x.ext, s: x.s, e: x.e}, nx: SE.eps[ix + 1] ? {id: SE.eps[ix + 1].id, ext: SE.eps[ix + 1].ext, s: SE.eps[ix + 1].s, e: SE.eps[ix + 1].e} : null}, resume: pos, epIx: ix});
 }
 /* ===================== المشغّل ===================== */
 var P = {on: false, sid: 0, kind: '', url: '', title: '', key: '', meta: null, list: null, idx: 0, alt: false, pos: 0, dur: 0, paused: false, av: false, acc: 0, seekT: null, ovT: null, lastSave: 0, epIx: -1, err: false};
@@ -1233,7 +1286,7 @@ if (P.kind === 'site') return sdProgress(done);
 if (!P.key || !P.meta) return;
 if (P.pos < 5 && !done) return;
 var d = done || (P.dur > 0 && P.pos > P.dur - 40);
-UD.prog[P.key] = {pos: P.pos, dur: P.dur, t: Date.now(), done: d, meta: P.meta}; saveProg();
+UD.prog[P.key] = {pos: P.pos, dur: P.dur, t: Date.now(), done: d, meta: P.meta}; saveProg(); ivsPush(P.key, UD.prog[P.key]);
 }
 function onEnded() {
 if (P.kind === 'live') { buf(true); return engineStart(0); }
@@ -1254,7 +1307,7 @@ try { P.errText = String(e && (e.message || e.name || e)); } catch (x) {}
 }
 function stopPlay() {
 if (!P.on) return;
-saveP(false); if (P.kind === 'site') sdFlush(); P.on = false; P.sid++; clearTimeout(P.ovT); clearTimeout(P.seekT); TM = null; $('plmenu').style.display = 'none'; subShow('');
+saveP(false); if (P.kind === 'site') sdFlush(); ivsFlush(); P.on = false; P.sid++; clearTimeout(P.ovT); clearTimeout(P.seekT); TM = null; $('plmenu').style.display = 'none'; subShow('');
 engineStop(); plmsg(''); buf(false); $('plbar').className = ''; $('plnum').style.display = 'none';
 D.documentElement.className = '';
 if (P.kind === 'site') sxAfterPlay();
@@ -1463,6 +1516,7 @@ var p = (pd && pd.pins) || {}, g = (pd && pd.g) || {};
 function un(a, b) { var o = [], s = {}; (a || []).concat(b || []).forEach(function (x) { x = String(x); if (!s[x]) { s[x] = 1; o.push(x); } }); return o; }
 S.pins = {live: (p.live || g.live || []).map(String), cats: p.cats || g.cats || [], vod: un(p.vod, g.vod), ser: un(p.ser, g.ser)};
 S.own = {vod: (p.vod || []).map(String), ser: (p.ser || []).map(String)};
+S.gln = g.ln || {};
 S.ord = p.order || {}; S.hid = p.hidden || {}; S.names = p.names || {};
 cb();
 });

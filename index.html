@@ -9,6 +9,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v47: «كمّل المشاهدة» للـIPTV بقت متزامنة بين الموقع والأندرويد والتلفزيون لكل عضو وبروفايل (بتتحفظ مع بيانات البروفايل تحت معرّف خاص)
   v46: «تثبيت للكل» بقى بيشتغل على الأفلام والمسلسلات كمان
   v45: تثبيت الأفلام والمسلسلات من الـIPTV (📌) وظهورها في الرئيسية في صفوف «أفلامي/مسلسلاتي المثبّتة»
   v44: إصلاح اختيار صورة/لون البروفايل (كانت ثابتة ومش بتتغيّر)
@@ -1014,7 +1015,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=46;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=47;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2103,7 +2104,7 @@ function mergeInto(a, b) {
 async function syncUD() {
   try {
     const {r, d} = await api('/ud/merge', {method: 'POST', body: JSON.stringify(UD)});
-    if (r.ok && d.profiles) { mergeInto(UD, d); saveLocal(); return true; }
+    if (r.ok && d.profiles) { mergeInto(UD, d); saveLocal(); try { ivSyncAbsorb(); } catch (e) {} return true; }
   } catch (e) {}
   return false;
 }
@@ -3094,9 +3095,72 @@ function ivSave(key, pos, dur, ended, meta) {
     IV_PC = all; IV_PCK = ivPK();
     localStorage.setItem(IV_PCK, JSON.stringify(all));
     IV._pm = null;
+    ivSyncPush(key, all[key]);
+    if (ended) ivSyncFlush();
   } catch (e) {}
   const n = Date.now();
   if (ended || n - (IV._rs || 0) > 30000) { IV._rs = n; try { ivCwRefresh(); renderShelvesSoon(); } catch (e) {} }
+}
+// ===== مزامنة «كمّل المشاهدة» للـIPTV بين الأجهزة (موقع / أندرويد / تلفزيون) =====
+// بتتخزّن مع بيانات المستخدم (/ud/merge) تحت معرّف خاص 'iv:<بروفايل>' عشان ما تتخلطش بكمّل الموقع، وكل بروفايل ليه تقدّمه
+const ivSK = () => 'iv:' + (PID || '');
+let _ivPushT = null, _ivPq = {}, _ivPullAt = 0;
+function ivSyncPush(key, o) {
+  if (!PID || !key || !o) return;
+  const it = {key: key, t: o.t, pos: o.pos, dur: o.dur, done: !!o.done, h: o.h ? 1 : 0, m: o.m || null};
+  const sk = ivSK();
+  (UD.items[sk] = UD.items[sk] || {})[key] = it;
+  (_ivPq[sk] = _ivPq[sk] || {})[key] = it;
+  if (!_ivPushT) _ivPushT = setTimeout(ivSyncFlush, 6000);
+}
+async function ivSyncFlush() {
+  clearTimeout(_ivPushT); _ivPushT = null;
+  const items = _ivPq; _ivPq = {};
+  if (!Object.keys(items).length || !TOK) return;
+  try { saveLocal(); } catch (e) {}
+  try {
+    const profiles = (PID && UD.profiles[PID]) ? {[PID]: UD.profiles[PID]} : {};
+    await api('/ud/merge?lite=1', {method: 'POST', body: JSON.stringify({profiles, items})});
+  } catch (e) { Object.keys(items).forEach(sk => Object.assign(_ivPq[sk] = _ivPq[sk] || {}, items[sk])); }
+}
+function ivSyncBeacon() {
+  const items = _ivPq; _ivPq = {};
+  if (!Object.keys(items).length || !TOK) return;
+  try {
+    const profiles = (PID && UD.profiles[PID]) ? {[PID]: UD.profiles[PID]} : {};
+    navigator.sendBeacon(API + '/ud/beacon', new Blob([JSON.stringify({t: TOK, data: {profiles, items}})], {type: 'text/plain'}));
+  } catch (e) {}
+}
+// بتاخد من السحابة اللي أحدث من اللي عندنا، وترفع اللي عندنا لو أحدث أو مش موجود
+function ivSyncAbsorb() {
+  if (!PID) return false;
+  const src = UD.items[ivSK()] || {}, all = ivProgAll();
+  let ch = false;
+  Object.keys(src).forEach(k => {
+    const s = src[k];
+    if (!s || !s.key || !s.m) return;
+    const o = all[k];
+    if (!o || (s.t || 0) > (o.t || 0)) {
+      all[k] = {pos: s.pos, dur: s.dur, done: !!s.done, t: s.t, m: s.m};
+      if (s.h) all[k].h = 1;
+      ch = true;
+    }
+  });
+  Object.keys(all).forEach(k => { const o = all[k], s = src[k]; if (o && o.t && o.m && (!s || o.t > (s.t || 0))) ivSyncPush(k, o); });
+  if (ch) {
+    const ks = Object.keys(all);
+    if (ks.length > 200) ks.sort((a, b) => all[a].t - all[b].t).slice(0, ks.length - 200).forEach(k => delete all[k]);
+    try { localStorage.setItem(ivPK(), JSON.stringify(all)); } catch (e) {}
+    IV._pm = null;
+    try { ivCwRefresh(); renderShelvesSoon(); } catch (e) {}
+  }
+  return ch;
+}
+async function ivSyncPull(force) {
+  if (!PID || !TOK) return;
+  if (!force && Date.now() - _ivPullAt < 45000) return;
+  _ivPullAt = Date.now();
+  await syncUD();
 }
 // عناصر «كمّل المشاهدة»: فيلم لسه ما خلصش، ومسلسل (آخر حلقة وقفت عندها، أو الحلقة التالية لو خلصت)
 function ivCwItems(only) {
@@ -3149,9 +3213,10 @@ function ivCwRefresh() {
 function ivCwHide(key) {
   const all = ivProgAll(), o = all[key];
   if (!o) return;
-  o.h = 1;
+  o.h = 1; o.t = Date.now();
   IV._pm = null;
   try { localStorage.setItem(ivPK(), JSON.stringify(all)); } catch (e) {}
+  ivSyncPush(key, o);
   ivCwRefresh();
   renderShelvesSoon();
 }
@@ -3298,6 +3363,7 @@ function ivTile(kind, x) {
 const ivMore = (tab, txt) => '<div class="poster mtile" tabindex="0" role="button" data-k="more" data-id="' + tab + '" onclick="ivTap(this)">' + (txt || 'المزيد ⬅') + '</div>';
 const ivCatTile = c => '<div class="poster mtile" tabindex="0" role="button" data-k="cat" data-ck="' + c.k + '" data-id="' + esc(c.id) + '" data-n="' + esc(c.n) + '" onclick="ivTap(this)">⭐ ' + esc(c.n) + '</div>';
 async function ivHomeLoad(pid) {
+  try { ivSyncPull(); } catch (e) {}
   const cfg = await ivCfg();
   const btn = $('ivHomeBtn');
   if (btn) btn.style.display = '';
@@ -3357,6 +3423,7 @@ async function ivHomeLoad(pid) {
 function ivHomeRetry() { IV.L = {}; IV.C = {}; IV.homePid = null; IV.homeFor = PID; ivHomeLoad(PID); }
 // ---------- صفحة «المزيد» ----------
 async function ivOpen(tab, cat) {
+  try { ivSyncPull(); } catch (e) {}
   if (isPremiumOK()) {
     if (!IV.cfg) await ivCfg(true);
     if (!IV.cfg) { alert('مفيش اشتراك IPTV على حسابك لسه.'); return; }
@@ -3373,7 +3440,9 @@ async function ivOpen(tab, cat) {
   ivRender();
   ivCfg().then(c => { if (IV.open && c) ivPinsLoad().then(() => { if (IV.open && !IV.sel) ivRender(); }); if (IV.open) ivRender(); });
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { try { ivCwRefresh(); } catch (e) {} } });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { try { ivSyncBeacon(); } catch (e) {} } else { try { ivCwRefresh(); ivSyncPull(); } catch (e) {} } });
+window.addEventListener('focus', () => { try { ivSyncPull(); } catch (e) {} });
+window.addEventListener('pagehide', () => { try { ivSyncBeacon(); } catch (e) {} });
 function ivHide() { IV.open = false; IV.sel = null; $('iv').style.display = 'none'; document.body.classList.remove('iv-on'); renderShelvesSoon(); }
 function ivBack() {
   if (IV.sel) { IV.sel = null; ivRender(); return; }
