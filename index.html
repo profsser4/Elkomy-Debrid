@@ -9,6 +9,8 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v46: «تثبيت للكل» بقى بيشتغل على الأفلام والمسلسلات كمان
+  v45: تثبيت الأفلام والمسلسلات من الـIPTV (📌) وظهورها في الرئيسية في صفوف «أفلامي/مسلسلاتي المثبّتة»
   v44: إصلاح اختيار صورة/لون البروفايل (كانت ثابتة ومش بتتغيّر)
   v43: لو تحميل «الجديد» فشل (حساب جديد) بيظهر سبب الخطأ وزرار «جرّب تاني» بدل ما يفضل «جاري التحميل» للأبد
   v42: الـIPTV المميز: صف ماتشات (كروت LIVE بميعاد واسم الماتش) + بانر إعلان فيلم/مسلسل + إعلان منبثق مرة واحدة، والأدمن يتحكم فيهم من «✨ مميّز الـIPTV» (محتاج bot.py الجديد)
@@ -1012,7 +1014,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=44;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=46;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2758,7 +2760,7 @@ function closeDetails() {
 // ================= مكتبتي الخاصة (أفلام / مسلسلات / كرتون) — الأدمن بس بيضيف، والروابط مخفية عن الباقي =================
 // ================= IPTV: حساب خاص لكل عضو (الأدمن بس هو اللي بيضيف الهوست/اليوزر/الباس) =================
 // الطلبات بتطلع من جهاز العضو نفسه (التطبيق عن طريق الجسر AndroidPlayer.httpGet) عشان الآيبي مصري ومن غير CORS.
-const IV = {cfg: null, loaded: false, ck: '', L: {}, C: {}, pins: {live: [], cats: [], order: {}, hidden: {}}, pinsPid: null, homeFor: null, homePid: null, homeHTML: '',
+const IV = {cfg: null, loaded: false, ck: '', L: {}, C: {}, pins: {live: [], cats: [], vod: [], ser: [], order: {}, hidden: {}}, pinsPid: null, homeFor: null, homePid: null, homeHTML: '',
   open: false, tab: 'vod', cat: '', q: '', lim: 90, sort: 'new', sel: null, ss: null, flat: [], flatSid: null, rt: 0, info: null};
 const IV_PEND = {};
 let _ivN = 0, _ivPT = null;
@@ -2881,19 +2883,19 @@ async function ivPinsLoad() {
   try {
     const {d} = await api('/iptv/pins?pid=' + encodeURIComponent(pid));
     const p = d.pins || {}, gg = d.g || {};
-    IV.g = {live: gg.live || [], cats: gg.cats || []};
+    IV.g = {live: gg.live || [], cats: gg.cats || [], vod: gg.vod || [], ser: gg.ser || []};
     IV.gln = Object.assign({}, gg.ln || {});
     IV.pins = gm
-      ? {live: IV.g.live.slice(), cats: IV.g.cats.slice(), order: p.order || {}, hidden: p.hidden || {}, names: p.names || {}}
-      : {live: p.live || [], cats: p.cats || [], order: p.order || {}, hidden: p.hidden || {}, names: p.names || {}};
+      ? {live: IV.g.live.slice(), cats: IV.g.cats.slice(), vod: IV.g.vod.slice(), ser: IV.g.ser.slice(), order: p.order || {}, hidden: p.hidden || {}, names: p.names || {}}
+      : {live: p.live || [], cats: p.cats || [], vod: p.vod || [], ser: p.ser || [], order: p.order || {}, hidden: p.hidden || {}, names: p.names || {}};
     IV.pinsPid = pid; IV.pinsGm = gm;
-  } catch (e) { IV.pins = {live: [], cats: [], order: {}, hidden: {}}; }
+  } catch (e) { IV.pins = {live: [], cats: [], vod: [], ser: [], order: {}, hidden: {}}; }
 }
 function ivPinsSave() {
   clearTimeout(_ivPT);
   const pid = PID, gm = !!IV.gm;
   _ivPT = setTimeout(() => {
-    const body = gm ? {global: true, pins: {live: IV.pins.live, cats: IV.pins.cats, ln: IV.gln || {}}} : {pid: pid, pins: IV.pins};
+    const body = gm ? {global: true, pins: {live: IV.pins.live, cats: IV.pins.cats, vod: IV.pins.vod || [], ser: IV.pins.ser || [], ln: IV.gln || {}}} : {pid: pid, pins: IV.pins};
     api('/iptv/pins', {method: 'POST', body: JSON.stringify(body)}).catch(() => {});
     ivHomeLoad(PID);
   }, 700);
@@ -2908,14 +2910,16 @@ async function ivGmToggle() {
   if (IV.open) ivRender();
 }
 const ivAdmLbl = n => n === '__all__' ? '👥 الكل (حساب مشترك)' : n;
-const ivPinned = id => IV.pins.live.includes(String(id));
-function ivTogglePin(id, btn) {
+const ivPinArr = k => k === 'vod' ? (IV.pins.vod = IV.pins.vod || []) : k === 'series' ? (IV.pins.ser = IV.pins.ser || []) : IV.pins.live;
+const ivPinned = (id, k) => ivPinArr(k).includes(String(id));
+function ivTogglePin(id, btn, k) {
   id = String(id);
-  const i = IV.pins.live.indexOf(id);
-  if (i >= 0) IV.pins.live.splice(i, 1); else IV.pins.live.unshift(id);
+  const arr = ivPinArr(k);
+  const i = arr.indexOf(id);
+  if (i >= 0) arr.splice(i, 1); else arr.unshift(id);
   if (i < 0 && IV.gm) { try { IV.gln = IV.gln || {}; IV.gln[id] = (btn.parentNode.querySelector('.t') || {}).textContent || ''; } catch (e) {} }
-  if (btn) btn.textContent = ivPinned(id) ? '⭐' : '📌';
-  toast(i >= 0 ? 'اتشالت من المثبّتات' : 'اتثبّتت ⭐');
+  if (btn) btn.textContent = ivPinned(id, k) ? '⭐' : '📌';
+  toast((IV.gm ? 'للكل: ' : '') + (i >= 0 ? 'اتشالت من الرئيسية' : 'اتثبّتت في الرئيسية ⭐'));
   ivPinsSave();
   if (IV.open && IV.cat === '__pin') ivRender();
 }
@@ -3287,7 +3291,7 @@ function ivTile(kind, x) {
   const isnew = !live && ((+x.added || +x.last_modified || 0) > Date.now() / 1000 - 7 * 86400);
   const mk = live ? {done: 0, bar: ''} : ivTileMark(kind, id);
   return '<div class="poster' + (live ? ' ivl' : '') + '" tabindex="0" role="button" data-k="' + kind + '" data-id="' + esc(id) + '" onclick="ivTap(this)">' +
-    (live ? '<button class="ivpin" tabindex="-1" onclick="event.stopPropagation();ivTogglePin(this.parentNode.dataset.id,this)">' + (ivPinned(id) ? '⭐' : '📌') + '</button>' : (mk.done ? '<span class="pbadge ok">✓ شوهد</span>' : (isnew ? '<span class="pbadge">جديد</span>' : ''))) +
+    '<button class="ivpin" tabindex="-1" onclick="event.stopPropagation();ivTogglePin(this.parentNode.dataset.id,this,this.parentNode.dataset.k)">' + (ivPinned(id, kind) ? '⭐' : '📌') + '</button>' + (live ? '' : (mk.done ? '<span class="pbadge ok">✓ شوهد</span>' : (isnew ? '<span class="pbadge">جديد</span>' : ''))) +
     (img ? '<img ' + lzA(img) + ' alt="">' : '<div class="noimg">' + (live ? '📡' : '🎬') + '</div>') + mk.bar +
     '<div class="t">' + esc(x.name) + '</div></div>';
 }
@@ -3320,6 +3324,10 @@ async function ivHomeLoad(pid) {
   } else {
     const mv = vod.slice().sort((a, b) => (+b.added || 0) - (+a.added || 0)).slice(0, N);
     const sr = ser.slice().sort((a, b) => (+b.last_modified || 0) - (+a.last_modified || 0)).slice(0, N);
+    const pickP = (ids, lst, key) => { const m = new Map(lst.map(x => [String(x[key]), x])); return (ids || []).map(i => m.get(String(i))).filter(Boolean); };
+    const pv = pickP(IV.pins.vod, vod, 'stream_id'), ps = pickP(IV.pins.ser, ser, 'series_id');
+    if (pv.length) h += '<h3 class="sec">⭐ أفلامي المثبّتة</h3><div class="hrow">' + pv.map(x => ivTile('vod', x)).join('') + '</div>';
+    if (ps.length) h += '<h3 class="sec">⭐ مسلسلاتي المثبّتة</h3><div class="hrow">' + ps.map(x => ivTile('series', x)).join('') + '</div>';
     if (mv.length || pc('vod')) h += '<h3 class="sec">🎬 آخر الأفلام المضافة</h3><div class="hrow">' + pc('vod') + mv.map(x => ivTile('vod', x)).join('') + ivMore('vod') + '</div>';
     if (sr.length || pc('series')) h += '<h3 class="sec">📺 آخر المسلسلات المضافة</h3><div class="hrow">' + pc('series') + sr.map(x => ivTile('series', x)).join('') + ivMore('series') + '</div>';
   }
