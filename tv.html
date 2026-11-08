@@ -349,6 +349,8 @@ function api(path, opt, cb) {
 opt = opt || {};
 var h = {'Content-Type': 'application/json', 'X-Token': S.tok || ''};
 xhr(opt.method || 'GET', CFG.API + path, opt.body ? JSON.stringify(opt.body) : null, h, function (err, st, tx) {
+var kj = jparse(tx) || {};
+if (st === 401 && (kj.kicked || kj.suspended)) { return kickedOut(kj); }
 if (st === 401 && S.tok && !opt.noauth) { return relogin(); }
 cb(err, st, jparse(tx) || {});
 }, opt.timeout || 45000);
@@ -529,10 +531,12 @@ doLogin(LG.u, LG.p, true);
 };
 function doLogin(u, p, fromForm) {
 splash('جاري تسجيل الدخول...');
-xhr('POST', CFG.API + '/auth', JSON.stringify({u: u, p: p}), {'Content-Type': 'application/json'}, function (err, st, tx) {
+xhr('POST', CFG.API + '/auth', JSON.stringify({u: u, p: p, dv: dvid(), ty: 'tv'}), {'Content-Type': 'application/json'}, function (err, st, tx) {
 var j = jparse(tx) || {};
+if (st === 423 || j.suspended) return showMsg(j.title || 'الحساب موقوف', j.error || 'كلّم الأدمن.', [{t: 'رجوع', pri: 1, fn: function () { showLogin(); }}]);
 if (st === 200 && j.token) {
 S.tok = j.token; ls('tok', S.tok); sj('cred', {u: u, p: p}); ls('last_user', u);
+if (j.warn) return showMsg('تحذير', j.warn, [{t: 'تمام', pri: 1, fn: afterAuth}]);
 return afterAuth();
 }
 if (st === 429) return failLogin('محاولات كتير غلط، استنى شوية وجرّب تاني', fromForm);
@@ -549,6 +553,12 @@ return showMsg('تعذّر الدخول', msg, [
 }
 showLogin(msg);
 }
+function dvid() { var v = ls('dvid'); if (!v) { v = Math.random().toString(36).slice(2) + Date.now().toString(36); ls('dvid', v); } return v; }
+function kickedOut(j) {
+sj('cred', null); ls('cred', null); ls('tok', null); S.tok = ''; S.cfg = null; S.iptvOk = false; MEM = {};
+showLogin(j.error || 'اتقفل الحساب. سجّل دخولك تاني.');
+}
+setInterval(function () { if (S.tok) api('/me', {}, function () {}); }, 60000);
 function relogin() {
 var c = lj('cred', null);
 if (c && c.u) return doLogin(c.u, c.p, false);
