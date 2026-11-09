@@ -244,6 +244,7 @@ html,body{background:#0e1131}
 #plsubt{white-space:pre-line}
 #plbar.show~#plsubt{bottom:230px}
 /* ===== مميّز الـIPTV على الرئيسية: بانرات + ماتشات + أفلام/مسلسلات مثبّتة ===== */
+#sec-feat{direction:ltr}
 #hfeat{display:none;position:absolute;left:60px;right:60px;top:880px;height:980px;direction:ltr}
 #home.hf #hfeat{display:block}
 #home.hf .foot{bottom:auto;top:130px}
@@ -594,7 +595,7 @@ showLogin(msg);
 }
 function dvid() { var v = ls('dvid'); if (!v) { v = Math.random().toString(36).slice(2) + Date.now().toString(36); ls('dvid', v); } return v; }
 function kickedOut(j) {
-sj('cred', null); ls('cred', null); ls('tok', null); S.tok = ''; S.cfg = null; S.iptvOk = false; MEM = {};
+sj('cred', null); ls('cred', null); ls('tok', null); S.tok = ''; S.cfg = null; S.iptvOk = false; S.gpl = false; MEM = {};
 showLogin(j.error || 'اتقفل الحساب. سجّل دخولك تاني.');
 }
 setInterval(function () { if (S.tok) api('/me', {}, function () {}); }, 60000);
@@ -603,7 +604,7 @@ var c = lj('cred', null);
 if (c && c.u) return doLogin(c.u, c.p, false);
 S.tok = ''; ls('tok', null); showLogin('انتهت الجلسة، سجّل دخولك تاني');
 }
-function logout() { ls('cred', null); ls('tok', null); S.tok = ''; S.cfg = null; S.iptvOk = false; MEM = {}; try { FT.res = null; FT.d = null; FT.ic = {}; FT.pc = {}; } catch (e) {} try { sdFlush(); sdReset(); } catch (e) {} showLogin(); }
+function logout() { ls('cred', null); ls('tok', null); S.tok = ''; S.cfg = null; S.iptvOk = false; S.gpl = false; MEM = {}; try { FT.res = null; FT.d = null; FT.ic = {}; FT.pc = {}; } catch (e) {} try { sdFlush(); sdReset(); } catch (e) {} showLogin(); }
 /* ===================== بعد الدخول: بيانات الحساب + الاشتراك ===================== */
 function afterAuth() {
 splash('جاري تحميل بيانات حسابك...');
@@ -616,7 +617,7 @@ if (!ok) return showMsg('الاشتراك', d.lock_msg || 'اشتراكك منت
 loadUserData();
 splash('جاري التحميل...');
 api('/iptv/cfg', {}, function (e2, s2, c) {
-S.cfg = null; S.info = null; S.iptvOk = false; S.cfgErr = '';
+S.cfg = null; S.info = null; S.iptvOk = false; S.gpl = false; S.cfgErr = '';
 if (!e2 && s2 === 200 && c && c.set && c.host) {
 c.host = String(c.host).replace(/\/+$/, ''); if (!/^https?:\/\//i.test(c.host)) c.host = 'http://' + c.host;
 S.cfg = c; MEM = {};
@@ -689,7 +690,7 @@ e.className = days <= 5 ? 'low' : 'ok';
 e.textContent = days > 0 ? 'الاشتراك: باقي ' + days + ' يوم' : 'الاشتراك منتهي';
 } else { e.className = ''; e.textContent = (i && i.exp_date === null) ? 'الاشتراك: غير محدود' : ''; }
 }
-function showHome() { homeRefresh(); show('home'); featKick(); ivsPull(null, 45000); setFocus($('hLive')); }
+function showHome() { homeRefresh(); show('home'); ivsPull(null, 45000); setFocus($('hLive')); }
 ['hLive', 'hVod', 'hSer', 'hCw', 'hFav', 'hMode', 'hOut'].forEach(function (id) { $(id)._focus = function () { $('home').className = $('home').className.replace(/ ?\bfs\b/g, ''); }; });
 ['hLive', 'hVod', 'hSer'].forEach(function (id) { $(id)._ok = function (el) { openBrowse(el.getAttribute('data-k')); }; });
 function chooser(title, mode, kinds) {
@@ -763,8 +764,15 @@ var ids = ((kind === 'vod' ? S.pins.vod : S.pins.ser) || []).slice(0, 60), out =
 ids.forEach(function (id, i) { tasks.push(function (d) { ftInfo(kind, id, function (c) { if (c) out[i] = c; d(); }); }); });
 ftPool(tasks, 4, function () { var a = out.filter(Boolean); FT.pc[kind] = a; cb(a); });
 }
+function siteFeat(force) {
+if (!S.cfg) return;
+if (S.gpl) return featKick(force);
+if (S.gplB) return;
+S.gplB = 1;
+loadPins(function () { S.gpl = true; S.gplB = 0; if (curScr === 'site') featKick(force); });
+}
 function featKick(force) {
-if (!S.cfg || !S.iptvOk) return;
+if (!S.cfg) return;
 if (FT.res) featRender();
 if (!FT.busy && (force || !FT.res || Date.now() - FT.t > 90000)) featLoad();
 }
@@ -791,24 +799,24 @@ R.popup = {}; for (var kk in p) R.popup[kk] = p[kk];
 if (p.k) tasks.push(function (cb) { ftResolveK(p.k, p.sid, p.nm || p.title, function (c) { if (c) R.popup._c = c; else { R.popup.k = ''; } cb(); }); });
 }
 var pv = [], ps = [];
-(S.pins.vod || []).slice(0, 16).forEach(function (id, i) { tasks.push(function (cb) { ftInfo('vod', id, function (c) { if (c) pv[i] = c; cb(); }); }); });
-(S.pins.ser || []).slice(0, 16).forEach(function (id, i) { tasks.push(function (cb) { ftInfo('series', id, function (c) { if (c) ps[i] = c; cb(); }); }); });
+((S.gpins || {}).vod || []).slice(0, 16).forEach(function (id, i) { tasks.push(function (cb) { ftInfo('vod', id, function (c) { if (c) pv[i] = c; cb(); }); }); });
+((S.gpins || {}).ser || []).slice(0, 16).forEach(function (id, i) { tasks.push(function (cb) { ftInfo('series', id, function (c) { if (c) ps[i] = c; cb(); }); }); });
 ftPool(tasks, 4, function () {
 if (tok !== FT.run) return;
 R.banners = bs.filter(Boolean); R.pv = pv.filter(Boolean); R.ps = ps.filter(Boolean);
 FT.res = R; FT.t = Date.now(); FT.busy = 0;
-if (curScr === 'home') { featRender(); featPopup(); }
+if (curScr === 'site') { featRender(); featPopup(); }
 featLive(tok, R);
 });
 }
 function featLive(tok, R) {
-if (!R.matches.length && !(S.pins.live || []).length) return;
+if (!R.matches.length && !((S.gpins || {}).live || []).length) return;
 allItems('live', function (e, all) {
 if (e || tok !== FT.run || FT.res !== R) return;
 R.matches.forEach(function (x) { var c = ftFind(all, x.m.ch, x.m.n); if (c) x.c = {id: c.id, name: c.name, img: c.img}; });
 var ln = S.gln || {}, seen = {}, ix = ftIx(all);
-(S.pins.live || []).slice(0, 40).forEach(function (id) { id = String(id); var c = ln[id] ? ftFind(all, id, ln[id]) : ix.id[id]; if (c && !seen[c.id]) { seen[c.id] = 1; R.pl.push(c); } });
-if (curScr === 'home') featRender();
+((S.gpins || {}).live || []).slice(0, 40).forEach(function (id) { id = String(id); var c = ln[id] ? ftFind(all, id, ln[id]) : ix.id[id]; if (c && !seen[c.id]) { seen[c.id] = 1; R.pl.push(c); } });
+if (curScr === 'site') featRender();
 });
 }
 function ftOpen(kind, c) { if (kind === 'vod') openVod(c); else openSeries(c, null); }
@@ -821,7 +829,6 @@ return {w: w, r: r};
 function ftTile(r, el, key, ok) {
 el.className += ' f'; el._fk = key; el._ok = ok;
 el._focus = function () {
-var h = $('home'); if (h.className.indexOf('fs') < 0) h.className += ' fs';
 var L = el.offsetLeft, W = el.offsetWidth, vw = r.clientWidth, sl = r.scrollLeft;
 if (L < sl + 24) r.scrollLeft = Math.max(0, L - 40); else if (L + W > sl + vw - 24) r.scrollLeft = L + W - vw + 40;
 };
@@ -829,8 +836,8 @@ r.appendChild(el);
 }
 function ftBg(u) { return u ? ' style="background-image:url(\'' + esc(u) + '\')"' : ''; }
 function featRender() {
-var R = FT.res, box = $('hfeat'), home = $('home');
-if (!R) return;
+var R = FT.res, box = $('sec-feat');
+if (!R || !box) return;
 var fk = cur && cur._fk ? cur._fk : null;
 box.innerHTML = ''; box.scrollTop = 0;
 var n = 0;
@@ -873,19 +880,17 @@ ftTile(o3.r, el, g[0] + i, function () { ftOpen(g[1], c); });
 });
 box.appendChild(o3.w); n++;
 });
-home.className = home.className.replace(/ ?\bhf\b/g, '') + (n ? ' hf' : '');
-if (!n) home.className = home.className.replace(/ ?\bfs\b/g, '');
-if (curScr === 'home' && cur && !D.body.contains(cur)) {
+if (curScr === 'site' && cur && !D.body.contains(cur)) {
 var t = null;
 if (fk) { var all = box.querySelectorAll('.f'); for (var i = 0; i < all.length; i++) if (all[i]._fk === fk) { t = all[i]; break; } }
-setFocus(t || $('hLive'));
+setFocus(t || $('xSearch'));
 }
 }
 function featPopup() {
 var p = FT.res && FT.res.popup;
-if (curScr !== 'home' || !p || !p.on || !p.id || !(p.title || p.text) || !ftAlive(p.until) || FT.shown === p.id || ls('ftpop') === String(p.id)) return;
+if (curScr !== 'site' || !p || !p.on || !p.id || !(p.title || p.text) || !ftAlive(p.until) || FT.shown === p.id || ls('ftpop') === String(p.id)) return;
 FT.shown = p.id;
-var done = function (go) { ls('ftpop', String(p.id)); showHome(); if (go && p.k && p._c) ftOpen(p.k === 'vod' ? 'vod' : 'series', p._c); };
+var done = function (go) { ls('ftpop', String(p.id)); show('site'); cur = null; setFocus($('xSearch')); if (go && p.k && p._c) ftOpen(p.k === 'vod' ? 'vod' : 'series', p._c); };
 var b = [];
 if (p.k && p._c) b.push({t: p.k === 'series' ? '📺 شوف المسلسل' : '▶ شوف الفيلم', pri: 1, fn: function () { done(1); }});
 b.push({t: 'إغلاق', pri: b.length ? 0 : 1, fn: function () { done(0); }});
@@ -1604,7 +1609,8 @@ S.pid = ipid();
 api('/iptv/pins?pid=' + enc(S.pid), {timeout: 15000}, function (e, st, pd) {
 var p = (pd && pd.pins) || {}, g = (pd && pd.g) || {};
 function un(a, b) { var o = [], s = {}; (a || []).concat(b || []).forEach(function (x) { x = String(x); if (!s[x]) { s[x] = 1; o.push(x); } }); return o; }
-S.pins = {live: (p.live || g.live || []).map(String), cats: p.cats || g.cats || [], vod: un(p.vod, g.vod), ser: un(p.ser, g.ser)};
+S.pins = {live: (p.live || []).map(String), cats: p.cats || g.cats || [], vod: (p.vod || []).map(String), ser: (p.ser || []).map(String)};
+S.gpins = {live: (g.live || []).map(String), vod: un(g.vod, []), ser: un(g.ser, [])};
 S.own = {vod: (p.vod || []).map(String), ser: (p.ser || []).map(String)};
 S.gln = g.ln || {};
 S.ord = p.order || {}; S.hid = p.hidden || {}; S.names = p.names || {};
@@ -1906,8 +1912,10 @@ ROWS.forEach(function (r) { if (P.ar.indexOf(r.id) >= 0) sxRowIn(box, r.title, x
 }
 function sxLoad(force) {
 var rows = $('sxrows'); rows.scrollTop = 0;
-rows.innerHTML = '<div id="sec-cw"></div><div id="sec-new"></div><div id="sec-fav"></div><div id="sec-ar"></div><div id="sec-int"></div>';
+rows.innerHTML = '<div id="sec-feat"></div><div id="sec-cw"></div><div id="sec-new"></div><div id="sec-fav"></div><div id="sec-ar"></div><div id="sec-int"></div>';
 sxSecCw(); sxSecNew(); sxSecFav(); sxSecAr(); sxSecInt(); loadIntRows();
+if (FT.res) featRender();
+siteFeat(force);
 var pid = PID;
 if (force || !NEWD || Date.now() - SX.t > 15 * 60000) {
 api('/new', {timeout: 60000}, function (err, st, d) {
