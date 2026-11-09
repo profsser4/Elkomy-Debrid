@@ -3765,7 +3765,7 @@ function ivAdmRender() {
       (u.set && (u.extra || []).length ? '<button style="background:#8b5cf6;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="ivMapOpen(this.dataset.n)">🔗</button>' : '') +
       (u.set ? '<button style="background:var(--danger);color:#fff" data-n="' + esc(u.name) + '" onclick="ivAdmDel(this.dataset.n)">🗑</button>' : '') + '</div>';
   }).join('') +
-    '<button class="search-btn" style="background:#0ea5e9" onclick="ivChkAll(this)">🔍 فحص كل الحسابات (شغّال / فاصل)</button><div id="ivChk"></div><div id="ivMap"></div>' +
+    '<button class="search-btn" style="background:#0ea5e9" onclick="ivChkAll(this)">🔍 فحص كل الحسابات (شغّال / فاصل)</button><button class="search-btn" style="background:#8b5cf6" onclick="ivPoolOpen()">📦 مخزن الحسابات (مئات الحسابات + فحص تلقائي)</button><div id="ivPool"></div><div id="ivChk"></div><div id="ivMap"></div>' +
     '<select id="ivaN" class="search-input">' + IVADM.map(u => '<option value="' + esc(u.name) + '">' + esc(ivAdmLbl(u.name)) + '</option>').join('') + '</select>' +
     '<input id="ivaH" class="search-input ltr" placeholder="الهوست: http://example.com:8080" autocapitalize="off" autocorrect="off">' +
     '<input id="ivaU" class="search-input ltr" placeholder="اليوزر" autocapitalize="off" autocorrect="off">' +
@@ -3834,6 +3834,228 @@ async function ivChkAll(btn) {
   el.innerHTML = rows.join('') || '<p style="color:var(--mut)">مفيش حسابات متسجلة</p>';
   btn.disabled = false;
 }
+
+// ---------- مخزن الحسابات الكبير (مئات/آلاف): إضافة بالجملة + فحص تلقائي + مسح الواقف + اختيار الأساسي ----------
+const IVP = {n: '__all__', items: [], prim: null, flt: 'all', q: '', sort: 'days', lim: 50, run: false, stop: false, done: 0, total: 0, loaded: false};
+const ivpKey = a => a.host + '|' + a.user;
+const ivpDays = a => a.exp ? Math.ceil((a.exp * 1000 - Date.now()) / 864e5) : null;
+function ivpParse(txt) {
+  const out = [], seen = new Set();
+  let bad = 0;
+  String(txt || '').split(/\r?\n/).forEach(raw => {
+    const l = raw.trim();
+    if (!l) return;
+    let h = '', u = '', p = '';
+    let m = l.match(/^(https?:\/\/[^\s\/?#]+).*?[?&]username=([^&\s]+).*?[?&]password=([^&\s]+)/i);
+    if (m) { h = m[1]; try { u = decodeURIComponent(m[2]); p = decodeURIComponent(m[3]); } catch (e) { u = m[2]; p = m[3]; } }
+    else {
+      const a = l.split(/[\s|,;]+/).filter(Boolean);
+      if (a.length >= 3 && /[.:]/.test(a[0])) { h = a[0]; u = a[1]; p = a.slice(2).join(' '); }
+    }
+    if (!h || !u || !p) { bad++; return; }
+    const k = h.toLowerCase().replace(/\/+$/, '') + '|' + u;
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push({host: h, user: u, pass: p});
+  });
+  return {items: out, bad: bad};
+}
+async function ivPoolOpen() {
+  const el = $('ivPool');
+  if (!el) return;
+  if (el.dataset.open === '1') { el.dataset.open = ''; el.innerHTML = ''; return; }
+  el.dataset.open = '1';
+  await ivpLoad();
+}
+async function ivpLoad() {
+  const el = $('ivPool');
+  if (!el) return;
+  if (!IVP.loaded) el.innerHTML = pend('جاري تحميل المخزن...');
+  try {
+    const {r, d} = await api('/iptv/admin/' + encodeURIComponent(IVP.n) + '/pool');
+    if (!r.ok || !d.items) { el.innerHTML = warn('السيرفر ما بيدعمش المخزن لسه (كود ' + r.status + '). ارفع bot.py الجديد وأعد تشغيل السيرفر.'); return; }
+    IVP.items = d.items; IVP.prim = d.primary; IVP.loaded = true;
+  } catch (e) { el.innerHTML = ERR; return; }
+  ivpRender();
+}
+function ivpStats() {
+  const s = {ok: 0, dead: 0, down: 0, fresh: 0, dev: 0};
+  IVP.items.forEach(a => { if (a.st === 'ok') { s.ok++; s.dev += a.maxc || 0; } else if (a.st === 'dead') s.dead++; else if (a.st === 'down') s.down++; else s.fresh++; });
+  return s;
+}
+function ivpSum() {
+  const s = ivpStats();
+  return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;font-weight:700">' +
+    '<span style="color:var(--success)">✅ شغّال ' + s.ok + '</span><span style="color:#ef4444">❌ واقف ' + s.dead + '</span>' +
+    '<span style="color:#f59e0b">⚠️ مفيش رد ' + s.down + '</span><span style="color:var(--mut)">🆕 ما اتفحصش ' + s.fresh + '</span>' +
+    '<span style="color:var(--mut)">· الإجمالي ' + IVP.items.length + '</span></div>' +
+    (s.ok ? '<p style="color:var(--mut);margin:0 0 6px;font-size:13px">مجموع الأجهزة اللي تقدر تشتغل في نفس الوقت على الحسابات الشغّالة: <b>' + s.dev + '</b></p>' : '');
+}
+function ivpRender() {
+  const el = $('ivPool');
+  if (!el) return;
+  const fl = [['all', 'الكل'], ['ok', '✅ شغّال'], ['dead', '❌ واقف'], ['down', '⚠️ مفيش رد'], ['fresh', '🆕 جديد']];
+  const pr = IVP.prim;
+  el.innerHTML = '<div class="action-box" style="text-align:right">' +
+    '<h3 style="margin-top:0">📦 مخزن الحسابات</h3>' +
+    '<select id="ivpN" class="search-input" onchange="IVP.n=this.value;IVP.loaded=false;IVP.lim=50;ivpLoad()">' +
+    IVADM.map(u => '<option value="' + esc(u.name) + '"' + (u.name === IVP.n ? ' selected' : '') + '>' + esc(ivAdmLbl(u.name)) + '</option>').join('') + '</select>' +
+    (pr ? '<div class="ep" style="border:1px solid var(--success)"><div class="b">⭐ الأساسي الحالي (أفلام/مسلسلات/قوائم)<small class="ltr" style="direction:ltr;text-align:left">' + esc(pr.host) + ' · ' + esc(pr.user) + '</small>' +
+      '<small style="color:var(--mut)">' + esc(pr.stat && pr.stat.t ? (ivDaysTxt(pr.stat) + (pr.stat.maxc ? ' · أجهزة ' + (pr.stat.active || 0) + '/' + pr.stat.maxc : '')) : 'لسه ما اتفحصش') + '</small></div></div>'
+      : '<p style="color:var(--mut)">مفيش حساب أساسي لسه — اختار واحد من المخزن بـ ⭐</p>') +
+    '<div id="ivpSum">' + ivpSum() + '</div>' +
+    '<div id="ivpProg"></div>' +
+    '<div class="row" style="gap:6px;flex-wrap:wrap">' +
+    '<button class="search-btn" id="ivpGo" onclick="ivpCheck(false)">🔍 فحص الكل</button>' +
+    '<button class="search-btn" id="ivpGo2" style="background:#0ea5e9" onclick="ivpCheck(true)">🔍 فحص الجديد + اللي مردش</button>' +
+    '<button class="search-btn" id="ivpStop" style="background:#6b7280;display:none" onclick="IVP.stop=true">⏹ إيقاف</button></div>' +
+    '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">' +
+    '<button style="background:var(--danger);color:#fff" onclick="ivpDelStatus(\'dead\')">🗑 امسح كل الواقف</button>' +
+    '<button style="background:#f59e0b;color:#fff" onclick="ivpDelStatus(\'down\')">🗑 امسح اللي مردش</button></div>' +
+    '<hr style="border-color:#ffffff18;margin:12px 0">' +
+    '<textarea id="ivpAdd" class="search-input ltr" rows="4" style="direction:ltr;text-align:left" placeholder="الصق الحسابات هنا (حتى آلاف) - سطر لكل حساب:&#10;host user pass&#10;أو رابط M3U كامل: http://host/get.php?username=..&password=.." autocapitalize="off" autocorrect="off" oninput="ivpAddHint()"></textarea>' +
+    '<p id="ivpHint" style="color:var(--mut);font-size:12px;margin:2px 0 6px"></p>' +
+    '<button class="search-btn" onclick="ivpAddGo(this)">➕ أضف للمخزن</button>' +
+    '<hr style="border-color:#ffffff18;margin:12px 0">' +
+    '<div class="row" style="gap:6px;flex-wrap:wrap">' + fl.map(f => '<button style="' + (IVP.flt === f[0] ? 'background:#0ea5e9;color:#fff' : '') + '" onclick="IVP.flt=\'' + f[0] + '\';IVP.lim=50;ivpRender()">' + f[1] + '</button>').join('') + '</div>' +
+    '<input class="search-input ltr" style="direction:ltr;text-align:left;margin-top:6px" placeholder="بحث بالهوست أو اليوزر" value="' + esc(IVP.q) + '" oninput="IVP.q=this.value;IVP.lim=50;ivpList()">' +
+    '<select class="search-input" onchange="IVP.sort=this.value;ivpList()"><option value="days"' + (IVP.sort === 'days' ? ' selected' : '') + '>ترتيب: أطول مدة متبقية</option><option value="dev"' + (IVP.sort === 'dev' ? ' selected' : '') + '>ترتيب: أكتر أجهزة</option></select>' +
+    '<div id="ivpList"></div></div>';
+  ivpList();
+}
+function ivpList() {
+  const el = $('ivpList');
+  if (!el) return;
+  const q = IVP.q.trim().toLowerCase();
+  let l = IVP.items.filter(a => {
+    const st = a.st || 'fresh';
+    if (IVP.flt !== 'all' && st !== IVP.flt) return false;
+    return !q || (a.host + ' ' + a.user).toLowerCase().includes(q);
+  });
+  const rank = {ok: 0, fresh: 1, down: 2, dead: 3};
+  l.sort((a, b) => (rank[a.st || 'fresh'] - rank[b.st || 'fresh']) ||
+    (IVP.sort === 'dev' ? (b.maxc || 0) - (a.maxc || 0) : ((ivpDays(b) === null ? 1e9 : ivpDays(b)) - (ivpDays(a) === null ? 1e9 : ivpDays(a)))));
+  const tot = l.length;
+  l = l.slice(0, IVP.lim);
+  el.innerHTML = '<p style="color:var(--mut);font-size:12px">' + tot + ' حساب</p>' + l.map(a => {
+    const st = a.st || 'fresh', d = ivpDays(a);
+    let tx, col;
+    if (st === 'ok') { col = 'var(--success)'; tx = '✅ شغّال · ' + (d === null ? 'غير محدود' : 'باقي ' + d + ' يوم') + ' · ' + (a.maxc ? 'يشغّل ' + a.maxc + ' جهاز مع بعض (شغّال دلوقتي ' + (a.act || 0) + ')' : 'عدد الأجهزة مش معروف'); }
+    else if (st === 'dead') { col = '#ef4444'; tx = '❌ واقف' + (a.why ? ' · ' + a.why : ''); }
+    else if (st === 'down') { col = '#f59e0b'; tx = '⚠️ مفيش رد' + (a.why ? ' · ' + a.why : ''); }
+    else { col = 'var(--mut)'; tx = '🆕 لسه ما اتفحصش'; }
+    return '<div class="ep"><div class="b"><small class="ltr" style="direction:ltr;text-align:left;font-size:13px">' + esc(a.host) + ' · ' + esc(a.user) + '</small>' +
+      '<small style="color:' + col + '">' + esc(tx) + (a.t ? ' · ' + new Date(a.t * 1000).toLocaleDateString('ar-EG') : '') + '</small></div>' +
+      '<button style="background:#f59e0b;color:#fff;margin-inline-end:6px" title="خليه أساسي" data-k="' + esc(ivpKey(a)) + '" onclick="ivpPrimary(this.dataset.k)">⭐</button>' +
+      '<button style="background:var(--danger);color:#fff" data-k="' + esc(ivpKey(a)) + '" onclick="ivpDelOne(this.dataset.k)">🗑</button></div>';
+  }).join('') + (tot > IVP.lim ? '<button class="search-btn" style="background:#6b7280" onclick="IVP.lim+=100;ivpList()">عرض المزيد (' + (tot - IVP.lim) + ')</button>' : '');
+}
+function ivpAddHint() {
+  const p = ivpParse($('ivpAdd').value);
+  $('ivpHint').textContent = p.items.length || p.bad ? ('هيتضاف ' + p.items.length + ' حساب' + (p.bad ? ' · ' + p.bad + ' سطر مش مفهوم' : '')) : '';
+}
+async function ivpAddGo(btn) {
+  const p = ivpParse($('ivpAdd').value);
+  if (!p.items.length) { toast('مفيش حسابات صالحة في النص'); return; }
+  btn.disabled = true;
+  let added = 0, dup = 0, bad = 0;
+  try {
+    for (let i = 0; i < p.items.length; i += 500) {
+      const {r, d} = await api('/iptv/admin/' + encodeURIComponent(IVP.n) + '/pool/add', {method: 'POST', body: JSON.stringify({items: p.items.slice(i, i + 500)})});
+      if (!r.ok || d.error) { alert(d.error || ('السيرفر رد بخطأ ' + r.status)); break; }
+      added += d.added; dup += d.dup; bad += d.bad;
+    }
+    toast('اتضاف ' + added + (dup ? ' · مكرر ' + dup : '') + (bad ? ' · مرفوض ' + bad : ''));
+    $('ivpAdd').value = '';
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
+  btn.disabled = false;
+  IVP.loaded = false;
+  ivpLoad();
+}
+// تصنيف رد الفحص: ok = شغّال | dead = واقف نهائي (يوزر/باس غلط، منتهي، موقوف) | down = مفيش رد (ممكن مؤقت)
+async function ivpProbe(a) {
+  try {
+    const d = await ivPing(a), x = d && d.user_info;
+    if (!x) return {st: 'down', why: 'رد غير مفهوم'};
+    if (+x.auth === 0) return {st: 'dead', why: 'اليوزر أو الباس غلط'};
+    const ex = +x.exp_date || 0, o = {exp: ex, maxc: +x.max_connections || 0, act: +x.active_cons || 0};
+    const s = String(x.status || '').toLowerCase();
+    if (s !== 'active') return Object.assign(o, {st: 'dead', why: x.status || 'غير مفعّل'});
+    if (ex && ex * 1000 < Date.now()) return Object.assign(o, {st: 'dead', why: 'منتهي'});
+    return Object.assign(o, {st: 'ok'});
+  } catch (e) { return {st: 'down', why: String(e && e.message || '').slice(0, 40)}; }
+}
+async function ivpCheck(onlyNew) {
+  if (IVP.run) return;
+  const list = IVP.items.filter(a => !onlyNew || !a.st || a.st === 'down');
+  if (!list.length) { toast(onlyNew ? 'مفيش حسابات جديدة أو بدون رد' : 'المخزن فاضي'); return; }
+  IVP.run = true; IVP.stop = false; IVP.done = 0; IVP.total = list.length;
+  $('ivpGo').disabled = $('ivpGo2').disabled = true; $('ivpStop').style.display = '';
+  const owner = IVP.n;
+  let buf = [], q = list.slice(), cnt = {ok: 0, dead: 0, down: 0};
+  const flush = async () => {
+    if (!buf.length) return;
+    const b = buf; buf = [];
+    try { await api('/iptv/admin/' + encodeURIComponent(owner) + '/pool/stat', {method: 'POST', body: JSON.stringify({items: b})}); } catch (e) {}
+  };
+  const prog = () => {
+    const p = $('ivpProg'); if (!p) return;
+    p.innerHTML = '<div style="background:#ffffff14;border-radius:8px;overflow:hidden;height:10px;margin:6px 0"><div style="height:10px;width:' + Math.round(IVP.done / IVP.total * 100) + '%;background:#0ea5e9"></div></div>' +
+      '<p style="margin:0 0 6px;font-size:13px">اتفحص ' + IVP.done + ' من ' + IVP.total + ' · ✅ ' + cnt.ok + ' · ❌ ' + cnt.dead + ' · ⚠️ ' + cnt.down + '</p>';
+    const s = $('ivpSum'); if (s) s.innerHTML = ivpSum();
+  };
+  const worker = async () => {
+    while (q.length && !IVP.stop) {
+      const a = q.shift();
+      const r = await ivpProbe(a);
+      cnt[r.st]++;
+      a.st = r.st; a.why = r.why || ''; a.t = Math.floor(Date.now() / 1000);
+      if (r.st !== 'down') { a.exp = r.exp || 0; a.maxc = r.maxc || 0; a.act = r.act || 0; }
+      buf.push({k: ivpKey(a), st: r.st, why: r.why || '', exp: r.exp || 0, maxc: r.maxc || 0, act: r.act || 0});
+      IVP.done++;
+      if (buf.length >= 25) await flush();
+      if (IVP.done % 3 === 0 || !q.length) prog();
+    }
+  };
+  await Promise.all(Array.from({length: 10}, worker));
+  await flush();
+  IVP.run = false;
+  prog();
+  if ($('ivpGo')) { $('ivpGo').disabled = $('ivpGo2').disabled = false; $('ivpStop').style.display = 'none'; }
+  ivpList();
+  if (IVP.done >= 5 && cnt.down / IVP.done >= 0.9) alert('تقريباً كل الحسابات "مفيش رد". غالباً المشكلة في الشبكة أو الآيبي عندك (الـIPTV عايز آيبي مصري) أو المتصفح بيمنع http. جرّب من تطبيق الأندرويد. متمسحش "اللي مردش" دلوقتي.');
+  else toast(IVP.stop ? 'اتوقف الفحص' : 'خلص الفحص ✅');
+}
+async function ivpDelStatus(st) {
+  const s = ivpStats(), n = s[st];
+  if (!n) { toast('مفيش حسابات في الحالة دي'); return; }
+  if (!confirm(st === 'dead' ? 'مسح ' + n + ' حساب واقف (يوزر/باس غلط أو منتهي أو موقوف)؟' : 'مسح ' + n + ' حساب مردش وقت الفحص؟ ممكن يكون عطل مؤقت، متأكد؟')) return;
+  try {
+    const {r, d} = await api('/iptv/admin/' + encodeURIComponent(IVP.n) + '/pool/del', {method: 'POST', body: JSON.stringify({status: st})});
+    if (!r.ok) alert(d.error || 'السيرفر رد بخطأ ' + r.status); else toast('اتمسح ' + d.deleted);
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
+  IVP.loaded = false; ivpLoad();
+}
+async function ivpDelOne(k) {
+  if (!confirm('مسح الحساب ده؟')) return;
+  try { await api('/iptv/admin/' + encodeURIComponent(IVP.n) + '/pool/del', {method: 'POST', body: JSON.stringify({keys: [k]})}); } catch (e) {}
+  IVP.items = IVP.items.filter(a => ivpKey(a) !== k);
+  $('ivpSum').innerHTML = ivpSum(); ivpList();
+}
+async function ivpPrimary(k) {
+  const a = IVP.items.find(x => ivpKey(x) === k);
+  if (!a) return;
+  if (a.st === 'dead' && !confirm('الحساب ده واقف. تخليه أساسي برضو؟')) return;
+  if (!confirm('تخلّي ' + a.user + ' هو الأساسي للأفلام والمسلسلات؟ (الأساسي القديم هيرجع للمخزن)')) return;
+  try {
+    const {r, d} = await api('/iptv/admin/' + encodeURIComponent(IVP.n) + '/pool/primary', {method: 'POST', body: JSON.stringify({k: k})});
+    if (!r.ok || d.error) { alert(d.error || 'السيرفر رد بخطأ ' + r.status); return; }
+    toast('بقى هو الأساسي ⭐');
+    IV.loaded = false; IV.homePid = null; IV.homeFor = null;
+  } catch (e) { alert('مش قادر أوصل للسيرفر'); return; }
+  IVP.loaded = false; await ivpLoad(); ivAdmLoad();
+}
+
 const IVM = {n: '', accs: [], lists: [], cats: [], cmap: [], idx: [], tab: 'one', rows: [], flt: 'all', lim: 40, busy: false};
 const ivAk = a => a.host + '|' + a.user;
 // ---------- مطابقة أسماء القنوات بين السيرفرات ----------
