@@ -9,6 +9,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v50: أسماء الأفلام والمسلسلات في الـIPTV بقت تظهر كاملة (لحد 3 سطور) ومنضّفة من كود اللغة والسنة والتاجات
   v49: الأفلام والمسلسلات والقنوات المثبّتة من الـIPTV بقت تظهر في الرئيسية الجديدة (كانت مش بتظهر خالص)
   v48: زرار 📢 «تثبيت للكل» جوه قسم الـIPTV للأدمن + الأفلام والمسلسلات المثبّتة بقت تظهر في الرئيسية تحت القنوات المثبّتة
   v47: «كمّل المشاهدة» للـIPTV بقت متزامنة بين الموقع والأندرويد والتلفزيون لكل عضو وبروفايل (بتتحفظ مع بيانات البروفايل تحت معرّف خاص)
@@ -607,6 +608,7 @@ body .nwhome .hrow{gap:14px!important;padding:4px 2px 16px!important}
 body .nwhome .hrow>.poster{flex:0 0 var(--nwpw)!important;width:var(--nwpw)!important;max-width:var(--nwpw)!important;border-radius:20px!important}
 body .nwhome .hrow>.cw{flex:0 0 var(--nwcw)!important;width:var(--nwcw)!important;max-width:var(--nwcw)!important;border-radius:20px!important}
 body .nwhome .poster .t{font-size:14px!important;padding:40px 11px 11px!important}
+body .nwhome .poster:not(.ivl) .t,#iv .poster:not(.ivl) .t{white-space:normal!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:3!important;overflow:hidden!important;text-overflow:clip!important;line-height:1.35!important;word-break:break-word;unicode-bidi:plaintext}
 body .nwhome .poster .rt,body .nwhome .poster .agb{font-size:12px!important;padding:3px 8px!important}
 body .nwhome .sec{font-size:19px;font-weight:800;margin:22px 2px 10px}
 @media(min-width:700px){body .nwhome{--nwpw:220px;--nwcw:250px}}
@@ -1017,7 +1019,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=49;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=50;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -3407,6 +3409,17 @@ function ivPinHTML() {   // صفوف المثبّتات (قنوات + أفلام
   if (IV.homePid !== PID) return '';
   return IV.pinHTML || '';
 }
+// تنضيف اسم الفيلم/المسلسل للعرض بس: شيل كود اللغة (AR|) والسنة والتاجات بين [ ] عشان الاسم يظهر كامل ومرتب
+function ivCleanName(n) {
+  let t = String(n || '');
+  const o = t;
+  t = t.replace(/^\s*[A-Za-z]{2,3}\s*\|\s*/, '')
+       .replace(/\[[^\]]*\]/g, ' ')
+       .replace(/\(\s*(?:19|20)\d\d\s*\)/g, ' ')
+       .replace(/\s[-–—]\s*(?:19|20)\d\d\s*$/, '')
+       .replace(/\s+/g, ' ').replace(/^[\s\-–—|:]+|[\s\-–—|:]+$/g, '');
+  return t || o;
+}
 function ivTile(kind, x) {
   const live = kind === 'live', id = kind === 'series' ? x.series_id : x.stream_id, img = kind === 'series' ? x.cover : x.stream_icon;
   const isnew = !live && ((+x.added || +x.last_modified || 0) > Date.now() / 1000 - 7 * 86400);
@@ -3414,7 +3427,7 @@ function ivTile(kind, x) {
   return '<div class="poster' + (live ? ' ivl' : '') + '" tabindex="0" role="button" data-k="' + kind + '" data-id="' + esc(id) + '" onclick="ivTap(this)">' +
     '<button class="ivpin" tabindex="-1" onclick="event.stopPropagation();ivTogglePin(this.parentNode.dataset.id,this,this.parentNode.dataset.k)">' + (ivPinned(id, kind) ? '⭐' : '📌') + '</button>' + (live ? '' : (mk.done ? '<span class="pbadge ok">✓ شوهد</span>' : (isnew ? '<span class="pbadge">جديد</span>' : ''))) +
     (img ? '<img ' + lzA(img) + ' alt="">' : '<div class="noimg">' + (live ? '📡' : '🎬') + '</div>') + mk.bar +
-    '<div class="t">' + esc(x.name) + '</div></div>';
+    '<div class="t" title="' + esc(x.name) + '">' + esc(live ? x.name : ivCleanName(x.name)) + '</div></div>';
 }
 const ivMore = (tab, txt) => '<div class="poster mtile" tabindex="0" role="button" data-k="more" data-id="' + tab + '" onclick="ivTap(this)">' + (txt || 'المزيد ⬅') + '</div>';
 const ivCatTile = c => '<div class="poster mtile" tabindex="0" role="button" data-k="cat" data-ck="' + c.k + '" data-id="' + esc(c.id) + '" data-n="' + esc(c.n) + '" onclick="ivTap(this)">⭐ ' + esc(c.n) + '</div>';
