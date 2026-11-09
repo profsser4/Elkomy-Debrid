@@ -1192,6 +1192,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <div class="ivlogo"><b>IPTV</b><i class="ivdot"></i></div>
 <span id="ivBadge"></span>
 <button id="ivOrdBtn" class="ivib" onclick="ivOrderOpen()" aria-label="ترتيب الأقسام">↕️</button>
+<button id="ivGmBtn2" class="ivib" style="display:none;background:#7c3aed" onclick="ivGmToggle()" aria-label="تثبيت للكل">📢</button>
 </div>
 <div class="sprow" id="ivQrow"><input id="ivQ" class="search-input" placeholder="ابحث في الـIPTV..." enterkeyhint="search" oninput="ivSetQ(this.value)"></div>
 </div>
@@ -2905,8 +2906,9 @@ async function ivGmToggle() {
   IV.gm = !IV.gm; IV.pinsPid = null;
   const b = $('ivGmBtn');
   if (b) { b.textContent = IV.gm ? '📢 تثبيت للكل: شغّال' : '📢 تثبيت للكل: مقفول'; b.style.background = IV.gm ? '#16a34a' : '#7c3aed'; }
+  { const b2 = $('ivGmBtn2'); if (b2) b2.style.background = IV.gm ? '#16a34a' : '#7c3aed'; }
   await ivPinsLoad();
-  toast(IV.gm ? 'أي تثبيت دلوقتي هيظهر في رئيسية كل الأعضاء' : 'رجعت لتثبيتاتك إنت بس');
+  toast(IV.gm ? '📢 تثبيت للكل شغّال: أي 📌 دلوقتي هتظهر عند كل الأعضاء' : 'رجعت لتثبيتاتك إنت بس');
   IV.homePid = null; IV.homeFor = PID; ivHomeLoad(PID);
   if (IV.open) ivRender();
 }
@@ -3504,6 +3506,7 @@ function ivHead() {
   $('ivBadge').innerHTML = bd ? '<span class="ivd' + (ivDays(IV.cfg.stat) <= 5 ? ' low' : '') + '">' + bd + '</span>' : '';
   $('ivQrow').style.display = (IV.tab === 'me' || IV.sel) ? 'none' : '';
   $('ivOrdBtn').style.display = (IV.tab === 'me' || IV.sel || !IV.cfg) ? 'none' : '';
+  { const g2 = $('ivGmBtn2'); if (g2) { g2.style.display = (ROLE === 'admin' && IV.cfg && !IV.sel && IV.tab !== 'me') ? '' : 'none'; g2.style.background = IV.gm ? '#16a34a' : '#7c3aed'; g2.title = IV.gm ? 'تثبيت للكل: شغّال' : 'تثبيت للكل: مقفول'; } }
 }
 function ivTab(t) { IV.tab = t; IV.cat = ''; IV.sel = null; IV.lim = 90; IV.q = ''; $('ivQ').value = ''; ivRender(); $('iv').scrollTop = 0; }
 function ivSetCat(c) { IV.cat = c; IV.lim = 90; ivRender(); }
