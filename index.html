@@ -9,6 +9,7 @@
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
+  v49: الأفلام والمسلسلات والقنوات المثبّتة من الـIPTV بقت تظهر في الرئيسية الجديدة (كانت مش بتظهر خالص)
   v48: زرار 📢 «تثبيت للكل» جوه قسم الـIPTV للأدمن + الأفلام والمسلسلات المثبّتة بقت تظهر في الرئيسية تحت القنوات المثبّتة
   v47: «كمّل المشاهدة» للـIPTV بقت متزامنة بين الموقع والأندرويد والتلفزيون لكل عضو وبروفايل (بتتحفظ مع بيانات البروفايل تحت معرّف خاص)
   v46: «تثبيت للكل» بقى بيشتغل على الأفلام والمسلسلات كمان
@@ -1016,7 +1017,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=48;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=49;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -3400,6 +3401,12 @@ function ivHomeHTML() {
   const hh = IV.homeHTML, cw = ivCwRow(), i = hh.indexOf('</h3>');
   return (cw && i > -1) ? hh.slice(0, i + 5) + cw + hh.slice(i + 5) : hh;
 }
+function ivPinHTML() {   // صفوف المثبّتات (قنوات + أفلام + مسلسلات) للرئيسية الجديدة
+  if (!PID) return '';
+  if (IV.homeFor !== PID) { IV.homeFor = PID; ivHomeLoad(PID); }
+  if (IV.homePid !== PID) return '';
+  return IV.pinHTML || '';
+}
 function ivTile(kind, x) {
   const live = kind === 'live', id = kind === 'series' ? x.series_id : x.stream_id, img = kind === 'series' ? x.cover : x.stream_icon;
   const isnew = !live && ((+x.added || +x.last_modified || 0) > Date.now() / 1000 - 7 * 86400);
@@ -3418,7 +3425,7 @@ async function ivHomeLoad(pid) {
   if (btn) btn.style.display = '';
   const ci = $('catIv'); if (ci) ci.style.display = '';
   const gb = $('ivGmBtn'); if (gb) gb.style.display = (cfg && ROLE === 'admin') ? '' : 'none';
-  if (!cfg) { IV.homeHTML = ''; IV.homePid = pid; return; }
+  if (!cfg) { IV.homeHTML = ''; IV.pinHTML = ''; IV.homePid = pid; return; }
   if (IV.homeFor !== pid) return;
   await ivPinsLoad();
   await ftLoad();
@@ -3430,7 +3437,7 @@ async function ivHomeLoad(pid) {
   const [vod, ser] = await Promise.all([ivList('get_vod_streams').catch(bad), ivList('get_series').catch(bad)]);
   const pcs = await ftCatsFor();
   const pc = k => pcs.filter(c => c.k === k).map(ivCatTile).join('');
-  let h = '', pinH = '';
+  let h = '', pinH = '', pv = [], ps = [], livePinH = '';
   const st = ivDaysTxt(cfg.stat);
   const d = ivDays(cfg.stat);
   h += '<h3 class="sec">📡 IPTV' + (st ? ' <small class="ivd' + (d !== null && d !== Infinity && d <= 5 ? ' low' : '') + '">' + st + '</small>' : '') + '</h3>';
@@ -3440,7 +3447,7 @@ async function ivHomeLoad(pid) {
     const mv = vod.slice().sort((a, b) => (+b.added || 0) - (+a.added || 0)).slice(0, N);
     const sr = ser.slice().sort((a, b) => (+b.last_modified || 0) - (+a.last_modified || 0)).slice(0, N);
     const pickP = (ids, lst, key) => { const m = new Map(lst.map(x => [String(x[key]), x])); return (ids || []).map(i => m.get(String(i))).filter(Boolean); };
-    const pv = pickP(IV.pins.vod, vod, 'stream_id'), ps = pickP(IV.pins.ser, ser, 'series_id');
+    pv = pickP(IV.pins.vod, vod, 'stream_id'); ps = pickP(IV.pins.ser, ser, 'series_id');
     if (pv.length) pinH += '<h3 class="sec">⭐ الأفلام المثبّتة</h3><div class="hrow">' + pv.map(x => ivTile('vod', x)).join('') + '</div>';
     if (ps.length) pinH += '<h3 class="sec">⭐ المسلسلات المثبّتة</h3><div class="hrow">' + ps.map(x => ivTile('series', x)).join('') + '</div>';
     if (mv.length || pc('vod')) h += '<h3 class="sec">🎬 آخر الأفلام المضافة</h3><div class="hrow">' + pc('vod') + mv.map(x => ivTile('vod', x)).join('') + ivMore('vod') + '</div>';
@@ -3453,6 +3460,7 @@ async function ivHomeLoad(pid) {
       const all = await ivList('get_live_streams');
       const by = new Map(all.map(x => [String(x.stream_id), x]));
       ch = ftPinLive(all);
+      if (ch.length || pc('live')) livePinH = '<h3 class="sec">⭐ القنوات المثبّتة</h3><div class="hrow">' + pc('live') + ch.slice(0, isTv() ? N : 40).map(x => ivTile('live', x)).join('') + ivMore('live') + '</div>';
     } else {
       const cs = await ivCats('live');
       if (cs[0]) ch = (await ivList('get_live_streams', cs[0].category_id)).slice(0, N);
@@ -3463,6 +3471,8 @@ async function ivHomeLoad(pid) {
     h += '<h3 class="sec">📡 القنوات المباشرة</h3><div class="hrow">' + pc('live') + ivMore('live') + '</div>';
   }
   h += pinH;   // الأفلام والمسلسلات المثبّتة تحت القنوات المثبّتة
+  const pr = (t, k, arr, tab) => (arr.length || pc(k)) ? '<h3 class="sec">' + t + '</h3><div class="hrow">' + pc(k) + arr.map(x => ivTile(k === 'vod' ? 'vod' : 'series', x)).join('') + ivMore(tab) + '</div>' : '';
+  IV.pinHTML = livePinH + pr('⭐ الأفلام المثبّتة', 'vod', pv, 'vod') + pr('⭐ المسلسلات المثبّتة', 'series', ps, 'series');
   if (IV.homeFor !== pid) return;
   IV.homePid = pid;
   IV.homeHTML = h;
@@ -9764,6 +9774,7 @@ function newHomeHTML() {
   try { ftBoot(PID); h += ivFeatHTML(); } catch (e) {}
   h += favBarHTML();
   try { h += cwRowHTML(); } catch (e) {}
+  try { h += ivPinHTML(); } catch (e) {}   // قنوات/أفلام/مسلسلات الـIPTV المثبّتة
   if (!NEWD) h += NEW_ERR ? warn('تعذّر تحميل الجديد: ' + NEW_ERR) + '<button class="search-btn" style="margin:8px 0" onclick="NEW_ERR=\'\';renderShelves();loadNew(true)">🔄 جرّب تاني</button>' : pend('جاري تحميل الجديد...');
   else {
     let any = false;
