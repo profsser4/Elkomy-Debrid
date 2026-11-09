@@ -23,14 +23,12 @@ html.playing .scr{display:none!important}
 .logo{font-size:64px;font-weight:800;letter-spacing:1px;color:#fff}
 .logo b{color:#38bdf8}
 .logo i{display:inline-block;width:16px;height:16px;border-radius:50%;background:#f59e0b;margin-right:8px}
-/* splash / msg */
 #splash,#msg{text-align:center}
 .center{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);padding:0 200px;text-align:center}
 .center h2{font-size:46px;margin-bottom:20px}
 .center p{font-size:30px;color:#9fb0d0;line-height:1.7;margin-bottom:30px;white-space:pre-line}
 .spin{width:70px;height:70px;border:8px solid #1e2a47;border-top-color:#38bdf8;border-radius:50%;margin:30px auto;animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
-/* login */
 #login .left{position:absolute;left:0;top:0;width:900px;height:1080px;background:radial-gradient(circle at 30% 40%,#1d4ed8 0%,#0a101e 75%);padding:380px 80px 0;text-align:center}
 #login .left p{font-size:32px;color:#b6c6ea;margin-top:20px}
 #login .lcard{position:absolute;right:140px;top:190px;width:760px;background:rgba(15,23,42,.9);border:2px solid #1e2a47;border-radius:28px;padding:50px 60px;text-align:center}
@@ -38,7 +36,6 @@ html.playing .scr{display:none!important}
 .fld{height:84px;line-height:84px;border-radius:16px;background:#0b1326;border:3px solid #2a3a63;margin:16px 0;padding:0 26px;font-size:32px;text-align:right;direction:ltr;overflow:hidden;white-space:nowrap}
 .fld.ph{color:#6b7da6;direction:rtl}
 .err{color:#f87171;font-size:28px;min-height:44px;margin:8px 0}
-/* home */
 .top{position:absolute;left:60px;right:60px;top:36px;height:90px;display:flex;align-items:center;justify-content:space-between}
 .top .logo{font-size:50px}
 .clock{font-size:34px;color:#cbd5f5;text-align:left;direction:ltr}
@@ -55,7 +52,6 @@ html.playing .scr{display:none!important}
 .hbar .btn.red{background:#7f1d1d}
 .foot{position:absolute;left:60px;right:60px;bottom:26px;display:flex;justify-content:space-between;font-size:24px;color:#7f93bd}
 .foot .ok{color:#34d399}.foot .low{color:#fbbf24}
-/* browse */
 .bh{position:absolute;left:50px;right:50px;top:26px;height:90px;display:flex;align-items:center}
 .bh h2{font-size:46px;flex:1}
 .bh .btn{min-width:200px;padding:10px 24px;margin:0 8px;font-size:28px}
@@ -76,7 +72,6 @@ html.playing .scr{display:none!important}
 .empty{text-align:center;color:#7f93bd;font-size:34px;padding-top:200px;line-height:1.8;white-space:pre-line}
 .hint{position:absolute;left:50px;right:50px;bottom:14px;font-size:22px;color:#6b7da6;text-align:center}
 .sc{overflow:hidden}
-/* detail */
 .dpic{position:absolute;right:80px;top:80px;width:420px;height:620px;border-radius:20px;background:#0b1326 center/cover no-repeat}
 .dinfo{position:absolute;left:80px;right:560px;top:70px}
 .dinfo h1{font-size:46px;line-height:1.25;margin-bottom:12px}
@@ -91,13 +86,11 @@ html.playing .scr{display:none!important}
 .ep .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ep .pg{color:#fbbf24;font-size:24px;margin-right:16px}
 .ep .dn{color:#34d399}
-/* player overlay */
 #pl{position:absolute;left:0;top:0;width:1920px;height:1080px;display:none;z-index:9;background:transparent}
 html.playing #pl{display:block}
 #plbuf{position:absolute;left:910px;top:490px;width:100px;height:100px;border:10px solid rgba(255,255,255,.25);border-top-color:#38bdf8;border-radius:50%;animation:sp 1s linear infinite;display:none}
 #plmsg{position:absolute;left:0;right:0;top:44%;text-align:center;font-size:44px;background:rgba(0,0,0,.7);padding:30px;display:none}
 #plnum{position:absolute;left:70px;top:50px;font-size:60px;font-weight:800;background:rgba(0,0,0,.6);padding:6px 26px;border-radius:14px;display:none}
-/* keyboard */
 #kb{position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:50;background:rgba(3,7,18,.96);display:none}
 #kb.show{display:block}
 #kbpv{position:absolute;left:260px;right:260px;top:90px;height:110px;line-height:110px;border:4px solid #38bdf8;border-radius:20px;background:#0b1326;text-align:center;font-size:56px;overflow:hidden;white-space:nowrap}
@@ -201,8 +194,6 @@ html,body{background:#0e1131}
 #plbuf{border-top-color:#e50914}
 #plsubt{position:absolute;left:140px;right:140px;bottom:90px;text-align:center;font-size:44px;font-weight:600;line-height:1.35;color:#fff;font-family:Arial,Helvetica,sans-serif;text-shadow:0 0 5px #000,2px 2px 3px #000;white-space:pre-line;display:none}
 #plbar.show~#plsubt{bottom:290px}
-
-/* ===== Netflix-style player ===== */
 #plbar{padding:160px 96px 56px;background:linear-gradient(0deg,rgba(0,0,0,.95) 0,rgba(0,0,0,.6) 55%,rgba(0,0,0,0) 100%);font-family:"Helvetica Neue",Arial,"Segoe UI",Tahoma,sans-serif}
 #pltop{padding:50px 96px 140px;background:linear-gradient(180deg,rgba(0,0,0,.8),rgba(0,0,0,0));direction:ltr;text-align:left}
 #pltitle{font-size:40px;font-weight:700;letter-spacing:.3px;text-shadow:0 2px 8px #000}
@@ -221,8 +212,6 @@ html,body{background:#0e1131}
 #plbuf{border-color:rgba(255,255,255,.2);border-top-color:#e50914;width:110px;height:110px;left:905px;top:485px}
 #plsubt{left:200px;right:200px;font-size:46px;font-weight:500;line-height:1.4;font-family:"Helvetica Neue",Arial,Tahoma,sans-serif;text-shadow:0 0 4px #000,0 0 8px #000,2px 2px 4px #000,-2px -2px 4px #000;direction:rtl;unicode-bidi:plaintext}
 #plsubt.vis{display:block}
-
-/* ===== match the browser player look ===== */
 #plbar,#pltop,#plsubt,#plmenu,#plctl,#pltitle{font-family:Tahoma,Arial,sans-serif}
 #plbar{padding:120px 60px 34px;background:linear-gradient(to top,rgba(0,0,0,.85),rgba(0,0,0,0))}
 #pltop{padding:40px 60px 100px;background:linear-gradient(to bottom,rgba(0,0,0,.8),rgba(0,0,0,0))}
@@ -243,7 +232,6 @@ html,body{background:#0e1131}
 #plsubt{left:120px;right:120px;bottom:100px;font-size:46px;font-weight:700;line-height:1.55;text-shadow:none}
 #plsubt{white-space:pre-line}
 #plbar.show~#plsubt{bottom:230px}
-/* ===== مميّز الـIPTV على الرئيسية: بانرات + ماتشات + أفلام/مسلسلات مثبّتة ===== */
 #sec-feat{direction:ltr}
 #hfeat{display:none;position:absolute;left:60px;right:60px;top:880px;height:980px;direction:ltr}
 #home.hf #hfeat{display:block}
@@ -280,6 +268,73 @@ html,body{background:#0e1131}
 .ftP .tt{position:absolute;left:0;right:0;bottom:0;padding:44px 10px 10px;background:linear-gradient(transparent,rgba(0,0,0,.92));font-size:22px;font-weight:600;text-align:center;line-height:1.25;max-height:120px;overflow:hidden}
 .ftP .st{position:absolute;top:8px;left:8px;font-size:28px;text-shadow:0 0 6px #000}
 .ftP .rt{position:absolute;top:8px;right:8px;background:#f5c518;color:#1a1a2e;font-weight:700;border-radius:10px;font-size:19px;padding:1px 10px}
+</style>
+<style>
+/* ============ تنسيق عصري جديد ============ */
+:root{--red:#e50914;--red-l:#ff1744;--gold:#ffd75e;--bg1:#0a0e1a;--bg2:#0d1320;--card:#161d2b;--txt:#e8eefc;--txt2:#9ca3af;--line:rgba(255,255,255,.06)}
+.scr{background:linear-gradient(180deg,var(--bg1) 0%,var(--bg2) 100%)!important}
+#site{background:linear-gradient(180deg,#0a0e1a 0%,#0d1320 100%)!important}
+#site .bh{padding:20px 40px!important;height:auto!important;display:flex!important;align-items:center!important;gap:14px!important;background:rgba(10,14,26,.96)!important;border-bottom:1px solid var(--line)!important}
+#site .bh h2{position:static!important;flex:1!important;height:auto!important;line-height:1.2!important;padding:0!important;background:none!important;border:none!important;font-size:38px!important;font-weight:800!important;color:#fff!important;text-align:right!important;letter-spacing:-.5px!important}
+#site .bh .btn{min-width:0!important;padding:14px 26px!important;font-size:24px!important;font-weight:600!important;background:rgba(255,255,255,.08)!important;border:1.5px solid rgba(255,255,255,.1)!important;border-radius:50px!important;margin:0!important;color:#e5e7eb!important;transition:all .2s!important}
+#site .bh .btn.on{background:var(--red)!important;border-color:var(--red)!important;color:#fff!important;transform:scale(1.04)!important;box-shadow:0 8px 24px rgba(229,9,20,.4)!important}
+#sxrows{padding:10px 0!important}
+.sxh{font-size:32px!important;font-weight:800!important;color:#fff!important;padding:0 60px!important;margin:32px 0 16px!important;letter-spacing:-.3px!important;display:flex!important;align-items:center!important;gap:14px!important}
+.sxh:before{content:'';display:inline-block;width:6px;height:30px;border-radius:3px;background:linear-gradient(180deg,var(--red),#ff6b6b)}
+.sxr{padding:0 50px!important;gap:0!important;height:auto!important;display:flex!important;overflow-x:auto!important;overflow-y:visible!important;scroll-behavior:smooth;scrollbar-width:none;padding-bottom:22px!important}
+.sxr::-webkit-scrollbar{display:none}
+.card{width:200px!important;height:auto!important;background:transparent!important;border-radius:14px!important;margin:6px!important;transition:transform .2s cubic-bezier(.4,0,.2,1)!important}
+.card .pic{width:100%!important;height:300px!important;border-radius:14px!important;background-color:#1a2332!important;box-shadow:0 4px 20px rgba(0,0,0,.4);position:relative;overflow:hidden}
+.card .pic:after{content:'';position:absolute;inset:0;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);pointer-events:none}
+.card .t{height:auto!important;padding:10px 4px 0!important;font-size:19px!important;color:#e5e7eb!important;text-align:center!important;line-height:1.3!important}
+.card .t b{font-weight:600!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical;overflow:hidden!important;white-space:normal!important}
+.card .t small{display:block!important;font-size:16px!important;color:#9ca3af!important;margin-top:3px!important;font-weight:500!important}
+.card.on{transform:scale(1.06)!important;z-index:10!important}
+.card.on .pic{box-shadow:0 0 0 3px var(--red),0 16px 40px rgba(229,9,20,.4)!important}
+.card.more .pic{background:linear-gradient(135deg,#1e293b,#334155)!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:72px!important;color:#60a5fa!important;font-weight:300!important}
+.card.more .t{color:#93c5fd!important;font-weight:600!important}
+.card .rt{background:rgba(229,9,20,.95)!important;color:#fff!important;font-weight:800!important;border-radius:8px!important;font-size:16px!important;padding:3px 10px!important;left:auto!important;right:10px!important;top:10px!important}
+.card .nw{background:linear-gradient(135deg,#10b981,#059669)!important;border-radius:8px!important;font-size:15px!important;padding:3px 9px!important;font-weight:800!important;top:10px!important;left:10px!important;color:#fff!important}
+.cwb{position:absolute;left:0;right:0;bottom:0!important;height:4px!important;background:rgba(255,255,255,.2)!important;border-radius:0 0 14px 14px!important;overflow:hidden}
+.cwb i{height:4px!important;background:linear-gradient(90deg,var(--red),var(--red-l))!important;display:block}
+.grid{padding:15px 40px!important}
+.grid .card{width:210px!important}
+.grid .card .pic{height:315px!important}
+.empty{color:#64748b!important;font-size:28px!important;padding:100px 40px!important;text-align:center!important;line-height:1.8!important;white-space:pre-line!important}
+#sres{background:linear-gradient(180deg,var(--bg1),var(--bg2))!important}
+#sres .bh{padding:20px 40px!important;height:auto!important;display:flex!important;align-items:center!important;gap:14px!important;background:rgba(10,14,26,.96)!important;border-bottom:1px solid var(--line)!important}
+#sres .bh h2{font-size:34px!important;font-weight:800!important;flex:1!important;text-align:right!important;color:#fff!important;margin:0!important}
+#sres .bh .btn{min-width:0!important;padding:12px 24px!important;font-size:23px!important;background:rgba(255,255,255,.08)!important;border:1.5px solid rgba(255,255,255,.1)!important;border-radius:50px!important;margin:0 6px!important;font-weight:600!important}
+#sres .bh .btn.pri{background:var(--red)!important;border-color:var(--red)!important}
+#sres .bh .btn.on{transform:scale(1.04)!important;box-shadow:0 8px 24px rgba(229,9,20,.4)!important}
+.pc{background:linear-gradient(145deg,#1a2332,#0f1729)!important;border:2px solid rgba(255,255,255,.06)!important;border-radius:20px!important;transition:all .25s!important}
+.pc.on{transform:scale(1.08)!important;border-color:var(--red)!important;box-shadow:0 20px 50px rgba(229,9,20,.4)!important}
+#plbar{padding:140px 100px 48px!important;background:linear-gradient(0deg,rgba(0,0,0,.97) 0%,rgba(0,0,0,.65) 45%,transparent 100%)!important}
+#pltop{padding:60px 100px 140px!important;background:linear-gradient(180deg,rgba(0,0,0,.9) 0%,transparent 100%)!important}
+#pltitle{font-size:44px!important;font-weight:800!important;letter-spacing:-.5px!important}
+#plsub{font-size:26px!important;color:#d1d5db!important;margin-top:8px!important}
+#plprog{height:5px!important;background:rgba(255,255,255,.22)!important;border-radius:3px!important}
+#plfill{height:5px!important;background:linear-gradient(90deg,var(--red),var(--red-l))!important;border-radius:3px!important}
+#plfill:after{width:22px!important;height:22px!important;right:-11px!important;top:-8.5px!important;box-shadow:0 0 15px rgba(229,9,20,.7)!important}
+#plctl{margin-top:36px!important;gap:8px!important}
+#plctl .ci{margin-right:32px!important;padding:10px 22px!important;border-radius:50px!important;background:rgba(255,255,255,.1)!important;font-size:28px!important;transition:all .2s!important}
+#plctl .ci.on{background:rgba(255,255,255,.22)!important}
+#plctl .ci svg{width:42px!important;height:42px!important;fill:#fff}
+#plctl .lv{background:var(--red)!important;color:#fff!important;font-weight:800!important;padding:6px 24px!important}
+#plpause{background:rgba(0,0,0,.55)!important;border:3px solid rgba(255,255,255,.85)!important}
+#plsubt{left:140px!important;right:140px!important;text-shadow:0 0 4px #000,0 0 8px #000,2px 2px 4px #000!important}
+#nxtcountdown{position:absolute;right:100px;bottom:280px;width:520px;background:linear-gradient(135deg,rgba(20,20,25,.97),rgba(35,20,25,.97));border-radius:16px;padding:24px 26px;box-shadow:0 20px 60px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.08);display:none;z-index:20;direction:rtl;font-family:Tahoma,Arial,sans-serif;animation:slideUp .4s cubic-bezier(.4,0,.2,1)}
+#nxtcountdown.show{display:block}
+#nxtcountdown .hdr{font-size:22px;color:#d1d5db;margin-bottom:14px;font-weight:600}
+#nxtcountdown .thumb{width:100%;height:180px;border-radius:10px;background:#0b1326 center/cover no-repeat;margin-bottom:14px;position:relative;overflow:hidden}
+#nxtcountdown .thumb:after{content:'';position:absolute;inset:0;background:linear-gradient(transparent 30%,rgba(0,0,0,.65));pointer-events:none}
+#nxtcountdown .cnt{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:38px;font-weight:800;color:#fff;text-shadow:0 2px 12px #000;z-index:2;background:rgba(0,0,0,.55);border-radius:50%;width:110px;height:110px;display:flex;align-items:center;justify-content:center;border:3px solid rgba(255,255,255,.85);font-variant-numeric:tabular-nums}
+#nxtcountdown .ttl{font-size:24px;font-weight:700;color:#fff;margin-bottom:16px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#nxtcountdown .btns{display:flex;gap:12px}
+#nxtcountdown .b{flex:1;padding:14px;border-radius:10px;text-align:center;font-size:24px;font-weight:700;background:rgba(255,255,255,.12);color:#fff;transition:all .2s}
+#nxtcountdown .b.pri{background:var(--red);color:#fff}
+#nxtcountdown .b.on{transform:scale(1.04);box-shadow:0 0 0 3px #fff,0 8px 24px rgba(229,9,20,.5);background:var(--red);color:#fff}
+@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -351,14 +406,12 @@ html,body{background:#0e1131}
 <script>
 (function () {
 'use strict';
-/* ===================== إعدادات (عدّل هنا لو احتجت) ===================== */
 var CFG = {
-API: 'https://elkomy-server-neon.vercel.app',   // نفس سيرفر موقعك
+API: 'https://elkomy-server-neon.vercel.app',
 VER: '3.3.0',
-AUTO_USER: '',   // لو كتبت يوزر وباس هنا: التطبيق يدخل لوحده من غير ما تكتب حاجة
+AUTO_USER: '',
 AUTO_PASS: ''
 };
-/* ======================================================================= */
 var D = document;
 function $(id) { return D.getElementById(id); }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
@@ -369,7 +422,6 @@ function p2(n) { return (n < 10 ? '0' : '') + n; }
 function fmt(sec) { sec = Math.max(0, Math.floor(sec || 0)); var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return (h ? h + ':' + p2(m) : m) + ':' + p2(s); }
 function enc(s) { return encodeURIComponent(s); }
 function b64d(s) { try { return decodeURIComponent(escape(atob(s))); } catch (e) { try { return atob(s); } catch (x) { return ''; } } }
-/* ---------- شبكة ---------- */
 function xhr(method, url, body, hdr, cb, tmo) {
 var x = new XMLHttpRequest(), done = false;
 function fin(err, st, tx) { if (done) return; done = true; cb(err, st, tx); }
@@ -410,12 +462,10 @@ function xtc(key, action, params, cb) {
 if (MEM[key]) return cb(null, MEM[key]);
 xt(action, params, function (err, j) { if (!err) MEM[key] = j; cb(err, j); });
 }
-/* ---------- الحالة ---------- */
 var S = {tok: '', user: '', role: '', cfg: null, info: null, pins: {live: [], cats: [], vod: [], ser: []}, own: {vod: [], ser: []}};
 var stack = [], curScr = '', cur = null, FOC = {};
 var OPT = {live: 'm3u8', asp: 'fit'};
 function toast(t) { var e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(function () { e.style.display = 'none'; }, 2200); }
-/* ---------- شاشات ---------- */
 function show(name) {
 var all = D.querySelectorAll('.scr');
 for (var i = 0; i < all.length; i++) all[i].className = 'scr' + (all[i].id === name ? ' show' : '');
@@ -445,7 +495,6 @@ var d = D.createElement('div'); d.className = 'f btn' + (o.pri ? ' pri' : ''); d
 show('msg'); focusFirst();
 }
 function splash(t) { $('splt').textContent = t || 'جاري التحميل...'; show('splash'); }
-/* ---------- تركيز (ريموت) ---------- */
 function activeRoot() { return $('kb').className.indexOf('show') >= 0 ? $('kbk') : $(curScr); }
 function vis(el) { return el.offsetWidth > 0 && el.offsetHeight > 0; }
 function setFocus(el) {
@@ -494,7 +543,6 @@ if (sc < bs) { bs = sc; best = l[i]; }
 if (best) setFocus(best); else if (cur && cur._edge) cur._edge(dir);
 }
 function activate(el) { el = el || cur; if (el && el._ok) el._ok(el); }
-/* ---------- كيبورد على الشاشة ---------- */
 var KB = null, KR = {
 en: ['1234567890', 'qwertyuiop', 'asdfghjkl', 'zxcvbnm', '@._-/:!#?=&%+'],
 ar: ['1234567890', 'ضصثقفغعهخحجد', 'شسيبلاتنمكط', 'ئءؤرىةوزظذ', '@._-/:!#?=&%+']
@@ -548,9 +596,7 @@ cur = null;
 if (k.prev && D.body.contains(k.prev)) setFocus(k.prev);
 if (ok && k.done) k.done(k.val);
 }
-/* ---------- مؤقت الضغط المطوّل على OK ---------- */
 var okT = null, okFired = false;
-/* ===================== تسجيل الدخول ===================== */
 var LG = {u: '', p: ''};
 function lgPaint() {
 var u = $('lu'), p = $('lp');
@@ -605,7 +651,6 @@ if (c && c.u) return doLogin(c.u, c.p, false);
 S.tok = ''; ls('tok', null); showLogin('انتهت الجلسة، سجّل دخولك تاني');
 }
 function logout() { ls('cred', null); ls('tok', null); S.tok = ''; S.cfg = null; S.iptvOk = false; S.gpl = false; MEM = {}; try { FT.res = null; FT.d = null; FT.ic = {}; FT.pc = {}; } catch (e) {} try { sdFlush(); sdReset(); } catch (e) {} showLogin(); }
-/* ===================== بعد الدخول: بيانات الحساب + الاشتراك ===================== */
 function afterAuth() {
 splash('جاري تحميل بيانات حسابك...');
 api('/me', {noauth: 1}, function (err, st, d) {
@@ -626,7 +671,6 @@ stack = []; showMode();
 });
 });
 }
-/* ===================== بيانات المستخدم المحلية ===================== */
 var UD = {fav: {live: [], vod: [], series: []}, prog: {}};
 function ukey(n) { return n + '_' + (S.user || 'u'); }
 function loadUserData() { UD.fav = lj(ukey('fav'), {live: [], vod: [], series: []}); UD.prog = lj(ukey('prog'), {}); ['live', 'vod', 'series'].forEach(function (k) { if (!UD.fav[k]) UD.fav[k] = []; }); }
@@ -644,7 +688,6 @@ if (!on) a.unshift({id: it.id, name: it.name, img: it.img, ext: it.ext, rating: 
 saveFav(); toast(on ? 'اتشالت من المفضلة' : 'اتضافت للمفضلة ★');
 return !on;
 }
-/* ===================== مزامنة كمّل المشاهدة مع الموقع والأندرويد ===================== */
 var IVS = {q: {}, t: null, pull: 0};
 function ivsPid() { return 'iv:' + (S.pid || ipid()); }
 function ivsOk(o) { return o && o.meta && o.t && (o.meta.k === 'vod' || (o.meta.k === 'series' && o.meta.ep && typeof o.meta.ep === 'object')); }
@@ -680,7 +723,6 @@ if (cb) cb();
 });
 }
 D.addEventListener('visibilitychange', function () { if (D.hidden) ivsFlush(); });
-/* ===================== الرئيسية ===================== */
 function homeRefresh() {
 $('hUser').textContent = '' + (S.user || '');
 var e = $('hExp'), i = S.info;
@@ -701,7 +743,6 @@ showMsg(title, 'اختار القسم', b);
 $('hCw')._ok = function () { splash('جاري مزامنة آخر ما شاهدته...'); ivsPull(function () { chooser('كمّل المشاهدة', '__cw', ['vod', 'series']); }, 8000); };
 $('hFav')._ok = function () { chooser('المفضلة', '__fav', ['live', 'vod', 'series']); };
 $('hOut')._ok = function () { showMsg('تسجيل الخروج', 'متأكد إنك عايز تخرج من حسابك؟', [{t: 'لأ، رجوع', pri: 1, fn: function () { showHome(); }}, {t: 'خروج', fn: logout}]); };
-/* ===================== مميّز الـIPTV على الرئيسية ===================== */
 var FT = {d: null, res: null, t: 0, busy: 0, run: 0, ic: {}, pc: {}, shown: ''};
 function ftAlive(u) { if (!u) return true; var e = new Date(u + 'T23:59:59'); return !isNaN(e.getTime()) && e.getTime() >= Date.now(); }
 function ftNorm(s) {
@@ -737,7 +778,6 @@ run++;
 }
 nx();
 }
-// تفاصيل عنصر واحد بالـid (من الكاش لو القايمة محمّلة، وإلا بطلب خفيف)
 function ftInfo(kind, id, cb) {
 var key = kind + ':' + id;
 if (FT.ic[key]) return cb(FT.ic[key]);
@@ -896,7 +936,6 @@ if (p.k && p._c) b.push({t: p.k === 'series' ? '📺 شوف المسلسل' : '�
 b.push({t: 'إغلاق', pri: b.length ? 0 : 1, fn: function () { done(0); }});
 showMsg('🆕 ' + (p.title || 'جديد'), p.text || '', b);
 }
-/* ===================== التصفح (قنوات / أفلام / مسلسلات) ===================== */
 var KT = {live: 'القنوات المباشرة', vod: 'الأفلام', series: 'المسلسلات'};
 var KA = {live: 'get_live_streams', vod: 'get_vod_streams', series: 'get_series'};
 var KC = {live: 'get_live_categories', vod: 'get_vod_categories', series: 'get_series_categories'};
@@ -1091,7 +1130,6 @@ B.cat = '__search'; markCat(); B.items = a; B.q = v; applyViewFocus();
 };
 function applyViewFocus() { applyView(); var f = $('listp').querySelector('.f'); if (f) setFocus(f); }
 $('bHome')._ok = function () { stack = []; showHome(); };
-/* ===================== تفاصيل فيلم / مسلسل ===================== */
 function shell(title, meta, plot, img) {
 return '<div class="dpic"' + (img ? ' style="background-image:url(\'' + esc(img) + '\')"' : '') + '></div><div class="dinfo"><h1>' + esc(title) + '</h1><div class="meta">' + esc(meta) + '</div><div class="plot">' + esc(plot) + '</div><div id="dbtns"></div></div>';
 }
@@ -1125,7 +1163,6 @@ var c = S.cfg;
 startPlay({kind: 'vod', url: c.host + '/movie/' + enc(c.user) + '/' + enc(c.pass) + '/' + it.id + '.' + (it.ext || 'mp4'), title: it.name,
 key: 'm:' + it.id, meta: {k: 'vod', id: it.id, n: it.name, img: it.img, ext: it.ext || 'mp4'}, resume: pos || 0});
 }
-/* ---- مسلسل ---- */
 var SE = {id: 0, name: '', img: '', eps: [], season: 0, item: null};
 function parseEps(v) {
 var out = [], eps = v.episodes || {};
@@ -1192,7 +1229,6 @@ var o = UD.prog['s:' + SE.id + ':' + x.id], pos = (o && !o.done && o.pos > 10) ?
 startPlay({kind: 'ep', url: c.host + '/series/' + enc(c.user) + '/' + enc(c.pass) + '/' + x.id + '.' + x.ext, title: SE.name + '  —  S' + p2(x.s) + 'E' + p2(x.e) + (x.t ? '  ' + x.t : ''),
 key: 's:' + SE.id + ':' + x.id, meta: {k: 'series', id: SE.id, n: SE.name, sn: SE.name, img: SE.img, ext: x.ext, ep: {id: x.id, ext: x.ext, s: x.s, e: x.e}, nx: SE.eps[ix + 1] ? {id: SE.eps[ix + 1].id, ext: SE.eps[ix + 1].ext, s: SE.eps[ix + 1].s, e: SE.eps[ix + 1].e} : null}, resume: pos, epIx: ix});
 }
-/* ===================== المشغّل ===================== */
 var P = {on: false, sid: 0, kind: '', url: '', title: '', key: '', meta: null, list: null, idx: 0, alt: false, pos: 0, dur: 0, paused: false, av: false, acc: 0, seekT: null, ovT: null, lastSave: 0, epIx: -1, err: false};
 function hasAV() { try { return !!(window.webapis && webapis.avplay); } catch (e) { return false; } }
 function buf(on) { $('plbuf').style.display = on ? 'block' : 'none'; }
@@ -1219,7 +1255,56 @@ $('pltm').textContent = fmt(p);
 $('pldur').textContent = P.dur ? fmt(Math.max(0, P.dur - p)) : '';
 }
 }
+/* ★ NC = Next Countdown (300s) ★ */
+var NC = {on: false, end: 0, next: null, tid: null, btn: 0};
+function ncShow(next) {
+if (!next || !next.fn) return;
+NC.on = true; NC.end = Date.now() + 300000; NC.next = next; NC.btn = 0;
+var box = $('nxtcountdown');
+if (!box) {
+box = D.createElement('div');
+box.id = 'nxtcountdown';
+box.innerHTML = '<div class="hdr">▶ الحلقة التالية</div>' +
+'<div class="thumb" id="ncThumb"><div class="cnt" id="ncCnt">300</div></div>' +
+'<div class="ttl" id="ncTitle"></div>' +
+'<div class="btns"><div class="b pri on" id="ncPlay">▶ شغّل الآن</div><div class="b" id="ncCancel">✕ إلغاء</div></div>';
+$('pl').appendChild(box);
+$('ncPlay')._ok = function(){ ncPlay(); };
+$('ncCancel')._ok = function(){ ncCancel(); };
+}
+$('ncTitle').textContent = next.title || 'الحلقة التالية';
+$('ncThumb').style.backgroundImage = next.img ? 'url(\'' + next.img + '\')' : '';
+box.className = 'show';
+subShow(''); $('plbar').className = '';
+setTimeout(function(){ if (NC.on && D.getElementById('ncPlay')) setFocus($('ncPlay')); }, 80);
+ncTick();
+}
+function ncTick() {
+if (!NC.on) return;
+var left = Math.max(0, Math.ceil((NC.end - Date.now()) / 1000));
+var c = $('ncCnt'); if (c) c.textContent = left;
+if (left <= 0) return ncPlay();
+NC.tid = setTimeout(ncTick, 400);
+}
+function ncPlay() {
+var n = NC.next; NC.on = false; clearTimeout(NC.tid);
+var box = $('nxtcountdown'); if (box) box.className = '';
+if (cur) { cur.className = cur.className.replace(/ ?\bon\b/g,''); cur = null; }
+if (n && n.fn) n.fn();
+}
+function ncCancel() {
+NC.on = false; clearTimeout(NC.tid);
+var box = $('nxtcountdown'); if (box) box.className = '';
+if (cur) { cur.className = cur.className.replace(/ ?\bon\b/g,''); cur = null; }
+ovShow(true);
+}
+function ncHide() {
+NC.on = false; clearTimeout(NC.tid);
+var box = $('nxtcountdown'); if (box) box.className = '';
+if (cur) { cur.className = cur.className.replace(/ ?\bon\b/g,''); cur = null; }
+}
 function startPlay(o) {
+ncHide();
 P.sid++; P.on = true; P.kind = o.kind; P.url = o.url; P.title = o.title; P.key = o.key || ''; P.meta = o.meta || null;
 P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.vf = 0; P.noav = false; P.u0 = ''; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; XS = null; P.subManual = false; SUBC = {list: [], i: 0, apply: null}; XOFF = 0; XFIX = null; P.subFixed = false; P.avOff = 0; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; XS = null; P.subDone = false; $('plmenu').style.display = 'none'; subShow('');
 D.documentElement.className = 'playing';
@@ -1300,11 +1385,25 @@ UD.prog[P.key] = {pos: P.pos, dur: P.dur, t: Date.now(), done: d, meta: P.meta};
 function onEnded() {
 if (P.kind === 'live') { buf(true); return engineStart(0); }
 saveP(true);
-if (P.kind === 'site' && P.next && autoNext()) { var nf0 = P.next; P.next = null; return nf0(); }
-if (P.kind === 'ep' && SE.eps[P.epIx + 1]) { var n = P.epIx + 1; toast('الحلقة التالية...'); return playEp(n); }
+if (P.kind === 'site' && P.next && autoNext()) {
+var nf0 = P.next; P.next = null;
+var sp = P.sp || {}, nx = sp.next || {};
+ncShow({
+title: (sp.title || '') + (nx.s != null ? '  —  S' + p2(nx.s) + 'E' + p2(nx.e) : ''),
+img: sp.poster || '', fn: nf0
+});
+return;
+}
+if (P.kind === 'ep' && SE.eps[P.epIx + 1]) {
+var n = P.epIx + 1, nx2 = SE.eps[n];
+ncShow({
+title: (SE.name || '') + '  —  S' + p2(nx2.s) + 'E' + p2(nx2.e),
+img: SE.img || '', fn: function(){ playEp(n); }
+});
+return;
+}
 stopPlay();
 }
-/* ---------- أكتر من حساب IPTV للقنوات المباشرة: ربط القنوات + اتصال فاضي + تبديل تلقائي ---------- */
 function tvSrc(id) {
 id = String(id);
 var c = S.cfg, sa = c.sa;
@@ -1377,6 +1476,7 @@ plmsg('تعذّر تشغيل المحتوى' + (P.errText ? '\n(' + P.errText.sl
 }
 function stopPlay() {
 if (!P.on) return;
+ncHide();
 saveP(false); if (P.kind === 'site') sdFlush(); ivsFlush(); P.on = false; P.sid++; clearTimeout(P.ovT); clearTimeout(P.seekT); TM = null; $('plmenu').style.display = 'none'; subShow('');
 engineStop(); plmsg(''); buf(false); $('plbar').className = ''; $('plnum').style.display = 'none';
 D.documentElement.className = '';
@@ -1428,9 +1528,7 @@ try { if (P.av) webapis.avplay.seekTo(Math.floor(t * 1000), function () {}, func
 P.pos = t; ovPaint(); ovShow();
 }, 600);
 }
-/* ===== ترجمة وصوت المشغّل (للموقع فقط) ===== */
 var TM = null, subT = null;
-
 var XS = null;
 function isAr(l) { l = String(l || '').toLowerCase(); return /^(ar|ara|arb)([-_]|$)|arab|عرب/.test(l); }
 function trLang(t) { try { var x = JSON.parse(t.extra_info || '{}'); return String(x.language || x.track_lang || x.lang || ''); } catch (e) { return ''; } }
@@ -1544,6 +1642,18 @@ return playerKey2(e);
 }
 function playerKey2(e) {
 var k = e.keyCode, rep = e.repeat ? (playerKey.r = (playerKey.r || 0) + 1) : (playerKey.r = 0);
+if (NC.on) {
+if (k === 10009 || k === 8 || k === 27 || k === 413) { ncCancel(); return true; }
+if (k === 37 || k === 39) {
+NC.btn = NC.btn === 0 ? 1 : 0;
+var p1 = $('ncPlay'), p2 = $('ncCancel');
+if (p1) p1.className = 'b pri' + (NC.btn === 0 ? ' on' : '');
+if (p2) p2.className = 'b' + (NC.btn === 1 ? ' on' : '');
+return true;
+}
+if (k === 13) { if (NC.btn === 0) ncPlay(); else ncCancel(); return true; }
+return true;
+}
 if (k === 10009 || k === 8 || k === 27 || k === 413) { stopPlay(); return true; }
 if (P.err && k === 13) { P.err = false; P.vf = 0; P.noav = false; if (P.u0) { P.url = P.u0; P.u0 = ''; } plmsg(''); buf(true); engineStart(P.pos); return true; }
 if ((k === 427 || k === 405) && P.kind === 'site' && P.next) { var nf1 = P.next; P.next = null; saveP(false); nf1(); return true; }
@@ -1558,7 +1668,6 @@ if (k === 40 || k === 427) { if (P.kind === 'live') { zap(1); } else if (XS || P
 if (k === 48 && XS && P.kind !== 'live') { fixReset(); return true; }
 ovShow(); return true;
 }
-/* ===================== أزرار الريموت ===================== */
 function onKeyDown(e) {
 var k = e.keyCode;
 if (KB) {
@@ -1586,14 +1695,12 @@ D.addEventListener('keydown', onKeyDown, true);
 try { ['MediaPlay', 'MediaPause', 'MediaPlayPause', 'MediaStop', 'MediaRewind', 'MediaFastForward', 'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue', 'ChannelUp', 'ChannelDown'].forEach(function (k) { try { tizen.tvinputdevice.registerKey(k); } catch (e) {} }); } catch (e) {}
 function fit() { var w = window.innerWidth || 1920, h = window.innerHeight || 1080, z = Math.min(w / 1920, h / 1080), b = D.body.style; if (Math.abs(z - 1) < 0.005) { b.transform = ''; b.left = b.top = '0px'; return; } b.transform = 'scale(' + z + ')'; b.left = Math.round((w - 1920 * z) / 2) + 'px'; b.top = Math.round((h - 1080 * z) / 2) + 'px'; }
 window.addEventListener('resize', fit); fit();
-/* ===================== تشغيل ===================== */
 function boot() {
 splash('جاري التحميل...');
 var c = (CFG.AUTO_USER && CFG.AUTO_PASS) ? {u: CFG.AUTO_USER, p: CFG.AUTO_PASS} : lj('cred', null);
 if (c && c.u && c.p) return doLogin(c.u, c.p, false);
 showLogin();
 }
-/* ===================== شاشة اختيار القسم (IPTV / الموقع) ===================== */
 function showMode() { $('mUser').textContent = S.user || ''; show('mode'); setFocus($('mIptv')); }
 $('mIptv')._ok = function () { iptvEnter(); };
 $('mSite')._ok = function () { siteEnter(); };
@@ -1632,7 +1739,6 @@ if (S.info && S.info.auth === 0) return showMsg('حساب الـ IPTV', 'بيا�
 loadPins(function () { S.iptvOk = true; stack = ['mode']; showHome(); });
 }, 40000);
 }
-/* ===================== قسم الموقع (الإلكومي) — مربوط بنفس بيانات الموقع والأندرويد (بروفايلات + كمّل المشاهدة + مفضلتي) ===================== */
 var SX = {pid: 0, qid: 0, failed: {}, cur: null, epsBy: {}, lib: null, libCat: 'movie', sn: -1, smap: {}, t: 0};
 var SD = {profiles: {}, items: {}}, PID = null, SDOK = false, sdQ = {}, sdT = null;
 var NEWD = null, FAVL = null, FAVD = {}, FAVB = {}, ROWS = null, BR = {};
@@ -1660,7 +1766,6 @@ if (sp && sp.imdb) b.push({t: '⚙ اختيار النسخة', fn: function () {
 b.push({t: 'رجوع', fn: function () { back(); }});
 showMsg('تعذّر التشغيل', String(msg || 'حصل خطأ').slice(0, 220), b);
 }
-/* ---------- بيانات المستخدم (نفس نظام الموقع: profiles + items + /ud/merge) ---------- */
 function sdLocal() { var x = lj('ud:' + S.user, null); SD = (x && x.profiles) ? {profiles: x.profiles, items: x.items || {}} : {profiles: {}, items: {}}; }
 function sdSave() { sj('ud:' + S.user, SD); }
 function sdMerge(a, b) {
@@ -1702,7 +1807,6 @@ api('/ud/merge?lite=1', {method: 'POST', body: {profiles: o, items: {}}, timeout
 function sdReset() { SD = {profiles: {}, items: {}}; PID = null; SDOK = false; sdQ = {}; NEWD = null; FAVL = null; FAVD = {}; FAVB = {}; ROWS = null; SX.lib = null; SX.epsBy = {}; SX.failed = {}; SX.smap = {}; }
 function autoNext() { var p = prof(); return !(p && p.auto === false); }
 function dubFirst() { var p = prof(); return !p || p.dubFirst !== false; }
-/* ---------- دخول القسم + اختيار البروفايل ---------- */
 function siteEnter() {
 stack = ['mode'];
 if (SDOK && PID && prof()) { return sxEnterProfile(PID, true); }
@@ -1757,7 +1861,6 @@ $('sxT').textContent = '🎬 الموقع  ·  ' + (p ? (p.emoji || '') + ' ' + 
 show('site'); setFocus($('xSearch'));
 sxLoad(false);
 }
-/* بيانات التلفزيون القديمة (قبل الربط): نحوّلها لنفس شكل الموقع مرة واحدة */
 function sxMigrate() {
 var mk = 'mig:' + S.user + ':' + PID;
 if (ls(mk)) return;
@@ -1777,7 +1880,6 @@ it.pos = Math.floor(o.pos || 0); it.dur = Math.floor(o.dur || 0); it.done = !!o.
 if (ch) { sdSave(); saveProg(); sdFlush(); }
 } catch (e) {}
 }
-/* ---------- كمّل المشاهدة (من بيانات الموقع) ---------- */
 function nextEpOf(c) {
 if (!c || c.type !== 'tv' || c.s == null || c.e == null) return null;
 if (c.eps && c.e >= c.eps) return (c.ms && c.s < c.ms) ? {s: c.s + 1, e: 1} : null;
@@ -1814,7 +1916,6 @@ var its = SD.items[PID] || {}, best = null, k;
 for (k in its) { var x = its[k]; if (!x || x.del || x.hide || !x.key || x.key.charAt(0) === 'l' || String(x.tmdb) !== String(tmdb)) continue; if (!best || x.t > best.t) best = x; }
 return best;
 }
-/* ---------- تشغيل عنصر محفوظ (نفس منطق الموقع: نفس النسخة اللي كنت بتشاهدها) ---------- */
 function playItem(key) {
 var it = getItem(key); if (!it || it.del) return;
 if (it.cl) return clibResume(it);
@@ -1832,7 +1933,6 @@ var n = it.next || nextEpOf(it);
 if (!n) return toast('خلصت كل الحلقات المتاحة 🎉');
 sitePlay({type: 'tv', id: it.tmdb, imdb: it.imdb || '', title: it.title, poster: it.poster || '', year: it.year || '', q: it.qn || it.title, s: n.s, e: n.e, eps: it.eps, ms: it.ms});
 }
-/* ---------- الرئيسية ---------- */
 function sxCard(t, fn) {
 var d = D.createElement('div'); d.className = 'f card' + (t.pct != null ? ' cwc' : '');
 d.innerHTML = '<div class="pic"' + (t.poster ? ' style="background-image:url(\'' + esc(t.poster) + '\')"' : '') + '></div>' +
@@ -1946,7 +2046,6 @@ worker();
 worker(); worker(); worker();
 }
 ['xSearch', 'xList', 'xLib', 'xLink', 'xMore'].forEach(function (id) { $(id)._focus = function () { $('sxrows').scrollTop = 0; }; });
-/* ---------- شبكة نتائج عامة + قايمة عامة ---------- */
 function sxHead(title, tabs) {
 $('sresT').textContent = title;
 var tb = $('sresB'); tb.innerHTML = '';
@@ -1976,7 +2075,6 @@ d._ok = r.fn; box.appendChild(d);
 });
 cur = null; var f = box.querySelector('.f') || $('sresB').firstChild; if (f) setFocus(f);
 }
-/* «المزيد»: تصفح بصفحات من السيرفر */
 function sxBrowse(q, title) {
 BR = {q: q, title: title, skip: 0, more: true, busy: false, seen: {}, grid: null, tok: ++SX.qid};
 var box = sxHead(title, []);
@@ -2004,7 +2102,6 @@ if (!BR.grid.querySelector('.f')) { box.innerHTML = '<div class="empty">مفيش
 cur = null; setFocus(first || BR.grid.querySelector('.f'));
 });
 }
-/* ---- بحث ---- */
 $('xSearch')._ok = function () {
 kbOpen('ابحث عن فيلم أو مسلسل', '', false, function (v) { v = v.trim(); if (v) sxSearch(v, 'titles'); });
 };
@@ -2058,7 +2155,6 @@ if (d && d.id) siteDetails(d.type || ty, d.id); else toast((d && d.error) || 'م
 }
 toast('العمل ده مش متاح للفتح على التلفزيون');
 }
-/* ---- تفاصيل (فيلم / مسلسل) ---- */
 function siteDetails(type, id, np) {
 SE.eps = [];
 loadingDetail(np);
@@ -2149,7 +2245,6 @@ bx.appendChild(row);
 if (focus) { var f = bx.querySelector('.f'); if (f) setFocus(f); }
 });
 }
-/* ---- النسخ: ترتيب الموقع (مدبلج ← hash ← فوري ← تفضيل الجودة ...) ---- */
 var T_DUB = /(مدبلج|دبلج|dubbed|dubbing|\bdub\b|\bmvo\b|\bdvo\b|\bavo\b|lostfilm)/i, T_AR = /(عربي|عربى|العربية|arabic|\barab\b|\bara\b|\bar\b|🇪🇬|🇸🇦|🇦🇪)/i;
 var T_ARSUB = /(مترجم|ترجمة|ترجمه|مدمج|محروق|\bhc\b|hard.?cod|burn(?:ed|t)?[ .\-]?in|hard.?sub|(?:arabic|\bara\b|\bar\b)[ .\-]{0,3}subs?)/i, T_SUB = /(multi.?subs?|\bmsubs?\b|\besubs?\b|\bsubbed\b|\bsubs?\b|subtitles?)/i;
 var T_FOREIGN = /(\b(?:russian|rus|polish|german|ger|french|fre|fra|vff|vfq|vostfr|italian|ita|spanish|spa|latino|castellano|portuguese|hindi|hin|tamil|telugu|turkish|tur|ukrainian|korean|kor|japanese|jpn|thai)\b)/i, EG_RX = /(مصري|مصرى|المصرية|egypt|🇪🇬)/i;
@@ -2195,7 +2290,6 @@ return (rk(a) - rk(b)) || (df ? verLang(b).r - verLang(a).r : 0) || ((b._pin ? 1
 (qPrefRank(a) - qPrefRank(b)) || (sc(b) - sc(a)) || (qRank(a.q) - qRank(b.q)) || ((b.seeders || 0) - (a.seeders || 0));
 });
 }
-/* فلتر الاسم الصارم (يمنع خلط مسلسل بمسلسل تاني) */
 var VN_STOP = {'مسلسل': 1, 'فيلم': 1, 'المسلسل': 1, 'الفيلم': 1, 'حلقات': 1, 'الحلقات': 1, 'كامل': 1, 'كاملة': 1, 'جميع': 1, 'الجزء': 1, 'الموسم': 1, 'the': 1, 'of': 1, 'a': 1, 'an': 1, 'and': 1, 'in': 1, 'on': 1, 'to': 1, 'web': 1, 'dl': 1, 'webrip': 1, 'bluray': 1, 'hdtv': 1};
 function vnNorm(t) { return String(t || '').toLowerCase().replace(/[ً-ٰٟـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\b(19|20)\d{2}\b/g, ' '); }
 function vnToks(t) { return vnNorm(t).split(/[\s\-_.,:;|\/\\()\[\]{}"'!?+&~]+/).filter(function (w) { return w && !VN_STOP[w] && !/^(s\d+|e\d+|s\d+e\d+|\d{3,4}p|x26[45]|h26[45]|hevc|aac|ddp?\d*|dts|ج\d+|\d+)$/i.test(w); }); }
@@ -2239,7 +2333,7 @@ var a = list.filter(function (v) { return v.instant && !SX.failed[v.hash || v.re
 var ok = a.filter(function (v) { return v.hash || !(v.risky || /2160|4K/i.test(v.q || '')); });
 var r = ok.length ? ok : a, p = verPref();
 if (p.m === 'high' || (p.m === 'target' && p.t === '4K')) return r[0] || null;
-var hd = r.filter(function (v) { return !/2160|4K/i.test(v.q || '') && qOf(v) !== '4K'; });   /* التلفزيون: نفضّل 1080 أو أقل */
+var hd = r.filter(function (v) { return !/2160|4K/i.test(v.q || '') && qOf(v) !== '4K'; });
 return (hd.length ? hd : r)[0] || null;
 }
 function sxPoll(path, body, tok, cb, tid, tries) {
@@ -2319,7 +2413,6 @@ if (r && r.hls && P.on && P.url === u0 && !P.altUrl) P.altUrl = r.hls;
 };
 go2();
 }
-
 function apiText(path, cb) { xhr('GET', CFG.API + path, null, {'X-Token': S.tok || ''}, cb, 30000); }
 function subFetch(it, ai, shift, scale, sp, sid, done) {
 var qs = 'u=' + enc(it.u) + '&fmt=srt&shift=' + shift + '&lang=' + enc(it.lang || (ai ? 'EN' : 'AR')) + (scale && Math.abs(scale - 1) > 1e-6 ? '&scale=' + scale.toFixed(6) : '') + (ai ? '&ai=' + enc(ai) : '') + (sp.e != null ? '&e=' + sp.e + '&s=' + sp.s : '');
@@ -2436,7 +2529,6 @@ sub: String(v.title || '').slice(0, 60), fn: function () { sitePlay(sxMix(sp, {v
 sxList('اختيار النسخة (⚡ = جاهزة فوراً)', rows);
 });
 }
-/* ---- مكتبتي (المكتبة المشتركة) ---- */
 var LIBC = [['movie', '🎬 أفلام'], ['series', '📺 مسلسلات'], ['cartoon', '🧸 كرتون']];
 $('xLib')._ok = function () { sxLib(SX.libCat || 'movie', false); };
 function sxLib(cat, force) {
@@ -2508,7 +2600,6 @@ sp: {cl: it.id, cle: isTv ? 1 : 0, type: isTv ? 'tv' : 'movie', title: it.title,
 next: nx, hlsFrom: {hls: d.hls, torrent_id: d.torrent_id, file_id: d.file_id, direct: d.direct_link}});
 }, null, null, 0);
 }
-/* ---- تشغيل من رابط مباشر / ماجنت ---- */
 $('xLink')._ok = function () {
 kbOpen('الصق الرابط أو الماجنت', '', false, function (v) { v = v.trim(); if (v) linkPlay(v, null); });
 };
@@ -2525,7 +2616,6 @@ sp: {src: q, title: nm, type: null, poster: '', vname: d.name || ''}, next: null
 hlsFrom: {hls: d.hls, torrent_id: d.torrent_id, file_id: d.file_id, direct: d.direct_link}});
 }, null, 0);
 }
-/* ---- حفظ التقدّم بنفس شكل الموقع (يتزامن مع الأندرويد والمتصفح) ---- */
 function sdProgress(done) {
 var sp = P.sp; if (!sp || P.kind !== 'site' || !P.key || !PID) return;
 var old = getItem(P.key) || {};
@@ -2540,14 +2630,12 @@ setItem(sxMix(old, {key: P.key, title: sp.title, poster: sp.poster || old.poster
 eps: sp.eps || old.eps || null, ms: sp.ms || old.ms || null, src: sp.src || old.src || '', cl: sp.cl || '', cle: sp.cle || 0, fid: old.fid != null ? old.fid : null, fname: sp.vname || old.fname || '',
 qn: sp.q || old.qn || '', pos: Math.floor(pos), dur: Math.floor(dur), done: dn, sub: old.sub || null, dr: false, imdb: sp.imdb || '', vh: sp.vh || '', ref: sp.ref || '', hide: false, next: sp.next || null}));
 }
-/* ---- القائمة ---- */
 $('xList')._ok = function () {
 var its = SD.items[PID] || {}, out = [], k;
 for (k in its) { var x = its[k]; if (x && !x.del && x.key && x.key.indexOf('l:') === 0) out.push({id: x.tmdb, type: x.type, title: x.title, poster: x.poster, t: x.t}); }
 out.sort(function (a, b) { return b.t - a.t; });
 sxGrid('⭐ قائمتي', out, sxOpen, 'قائمتك فاضية\nافتح أي فيلم أو مسلسل واختار «➕ قائمتي»');
 };
-/* ---------- المزيد: بحث الويب · الباكات · إضافات Stremio · الاهتمامات ---------- */
 var IALL = [], IROWS = [];
 $('xMore')._ok = function () {
 sxList('⋯ المزيد', [
@@ -2589,7 +2677,6 @@ api('/interest?k=' + enc(ks.join(',')), {timeout: 60000}, function (e, s, d) {
 if (!e && s === 200 && d && d.rows && pid === PID) { IROWS = d.rows; if (curScr === 'site') sxSecInt(); }
 });
 }
-
 var FAVCH = false;
 function sxFavsDone() {
 if (!FAVCH) return;
@@ -2597,11 +2684,11 @@ FAVCH = false; var p = prof(); if (!p) return;
 if (p.fav === undefined) p.fav = [];
 sdSaveProf(p); FAVD = {}; FAVB = {};
 }
-/* ---- كمّل المشاهدة: زر قديم متوافق ---- */
 function sxAfterPlay() {
 if (curScr === 'site') { sxSecCw(); cur = null; var f = $('sec-cw').querySelector('.f') || $('xSearch'); setFocus(f); }
 else if (curScr === 'detail' && SX.cur && D.getElementById('dbtns')) { var d = SX.cur; siteDetails(d.type === 'movie' ? 'movie' : 'tv', d.id, true); }
 else if (cur && D.body.contains(cur)) { var c = cur; cur = null; setFocus(c); }
 }
 boot();
-})();</script></body></html>
+})();
+</script></body></html>
