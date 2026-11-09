@@ -7488,15 +7488,17 @@ function asToggle() {
 const SRVAS = {busy: false, done: {}};
 async function srvAutoSync(force) {
   const it = subSel && subSel.it, src = PLAY && (PLAY.url || PLAY.hls);
-  if (!it || !src || !/^https?:\/\//i.test(src) || AUD.ar || !asEnabled()) return;
+  if (!it || !src || !/^https?:\/\//i.test(src) || AUD.ar) return;
+  const fixOnly = !asEnabled();
   const key = String(src).split('?')[0], id = [it.u, PLAY.s, PLAY.e, key].join('|');
+  const fkey = (PLAY.fname || PLAY.title) ? 'n:' + (PLAY.fname || PLAY.title) : key;
   if (SRVAS.busy || (SRVAS.done[id] && !force)) return;
   SRVAS.busy = true; SRVAS.done[id] = 1;
   const sh0 = subSel.shift, v = document.querySelector('#results video');
   const live = () => subSel && subSel.it === it && subSel.shift === sh0;
   try {
     let {d} = await api('/sub/auto', {method: 'POST', timeout: 30000, body: JSON.stringify({
-      u: it.u, src: src, s: PLAY.s, e: PLAY.e, lang: it.lang, key: key, force: !!force,
+      u: it.u, src: src, s: PLAY.s, e: PLAY.e, lang: it.lang, key: key, fkey: fkey, force: !!force, nofix: !!force, fixonly: fixOnly,
       dur: v && isFinite(v.duration) ? v.duration : 0})});
     for (let i = 0; i < 80 && d && !d.done; i++) {
       ASY.msg = '🎯 بسمع صوت الفيديو وبظبط الترجمة...';
@@ -7505,6 +7507,12 @@ async function srvAutoSync(force) {
       ({d} = await api('/sub/auto?job=' + encodeURIComponent(d.job), {timeout: 30000}));
     }
     if (!d || !d.done || !live()) return;
+    if (d.ok && d.manual) {
+      if (Math.abs(d.shift - subSel.shift) > 0.05 || Math.abs((d.scale || 1) - (subSel.scale || 1)) > 1e-5) await applySubItem(it, d.shift, true, d.scale, true);
+      ASY.msg = '✅ ترجمة متظبطة (ضبط محفوظ من قبل)';
+      return;
+    }
+    if (fixOnly) return;
     if (d.ok && d.synced) { ASY.msg = '✅ الترجمة متظبطة (اتأكدت بالصوت)'; return; }
     if (d.ok) {
       await applySubItem(it, d.shift, true, d.scale, true);
@@ -7575,6 +7583,7 @@ function syncFirst() {
   const delta = v.currentTime - cues[0].startTime;
   if (Math.abs(delta) > 900) return alert('الفرق كبير زيادة. ارجع لأول الفيلم وجرّب تاني، أو اختار ترجمة تانية.');
   applySubItem(subSel.it, Math.round((subSel.shift + delta - 0.3) * 10) / 10, false, subSel.scale || 1);
+  subFixSoon();
 }
 function openSubs() {
   const box = $('subBox');
@@ -7653,7 +7662,8 @@ async function applySubItem(it, shift, quiet, scale, keepAs) {
       '<button class="search-btn" onclick="shiftSub(-0.5)">-0.5</button>' +
       '<button class="search-btn" onclick="shiftSub(0.5)">+0.5</button>' +
       '<button class="search-btn" onclick="shiftSub(1)">+1</button></div>' +
-      '<p style="font-size:12px;color:var(--mut)">لو الترجمة بتسبق الصوت اضغط +، ولو متأخرة عنه اضغط -.</p>';
+      '<p style="font-size:12px;color:var(--mut)">لو الترجمة بتسبق الصوت اضغط +، ولو متأخرة عنه اضغط -. ضبطك بيتحفظ على حسابك لنفس الفيلم.</p>' +
+      '<button class="search-btn" style="background:#475569" onclick="subFixReset()">↩︎ رجّع الضبط التلقائي</button>';
   }
 }
 function applySub(i) {
@@ -7669,9 +7679,32 @@ function applySub(i) {
   if (p && sel) { p.sl = sel.value; saveProfileObj(p); }
   applySubItem(it, 0, false);
 }
+let SUBFIXT = 0;
+function subFixBody() {
+  const src = PLAY && (PLAY.url || PLAY.hls);
+  if (!subSel || !subSel.it || !src) return null;
+  const key = String(src).split('?')[0];
+  return {u: subSel.it.u, src: src, s: PLAY.s, e: PLAY.e, key: key, fkey: (PLAY.fname || PLAY.title) ? 'n:' + (PLAY.fname || PLAY.title) : key};
+}
+function subFixSoon() {
+  clearTimeout(SUBFIXT);
+  SUBFIXT = setTimeout(async () => {
+    const b = subFixBody(); if (!b) return;
+    b.shift = subSel.shift; b.scale = subSel.scale || 1;
+    try { const {d} = await api('/sub/fix', {method: 'POST', body: JSON.stringify(b)}); if (d && d.ok) asToast('💾 اتحفظ ضبطك للفيلم ده على حسابك'); } catch (e) {}
+  }, 2500);
+}
+async function subFixReset() {
+  const b = subFixBody(); if (!b) return;
+  clearTimeout(SUBFIXT); b.clear = true;
+  try { await api('/sub/fix', {method: 'POST', body: JSON.stringify(b)}); } catch (e) {}
+  const it = subSel.it; SRVAS.done = {};
+  await applySubItem(it, 0, false, 1);
+}
 function shiftSub(d) {
   if (!subSel) return;
   applySubItem(subSel.it, Math.round((subSel.shift + d) * 10) / 10, false, subSel.scale || 1);
+  subFixSoon();
 }
 // نثبّت ترجمتنا العربي: أي مسار ترجمة تاني (جاي من البث نفسه) نقفله عشان ما يبدّلش اللغة في نص الفيلم
 function subLock(v, tr) {
