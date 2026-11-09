@@ -1216,7 +1216,7 @@ $('pldur').textContent = P.dur ? fmt(Math.max(0, P.dur - p)) : '';
 }
 function startPlay(o) {
 P.sid++; P.on = true; P.kind = o.kind; P.url = o.url; P.title = o.title; P.key = o.key || ''; P.meta = o.meta || null;
-P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; XS = null; P.subManual = false; SUBC = {list: [], i: 0, apply: null}; try { XOFF = +lj('so:' + (o.key || o.url), 0) || 0; } catch (e) { XOFF = 0; }; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; XS = null; P.subDone = false; $('plmenu').style.display = 'none'; subShow('');
+P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.vf = 0; P.noav = false; P.u0 = ''; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; XS = null; P.subManual = false; SUBC = {list: [], i: 0, apply: null}; try { XOFF = +lj('so:' + (o.key || o.url), 0) || 0; } catch (e) { XOFF = 0; }; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; XS = null; P.subDone = false; $('plmenu').style.display = 'none'; subShow('');
 D.documentElement.className = 'playing';
 plmsg(''); buf(true); ovPaint(); ovShow();
 if (o.kind === 'live') epg();
@@ -1227,12 +1227,13 @@ var sid1 = P.sid; tvSlot(P.liveId, function (u) { if (sid1 !== P.sid) return; P.
 }
 function engineStart(resume) {
 var sid = P.sid, url = P.url;
-if (hasAV()) {
+if (hasAV() && !P.noav) {
 P.av = true; $('vid').style.display = 'none';
 var A = webapis.avplay;
 try { A.stop(); } catch (e) {} try { A.close(); } catch (e) {}
 try {
 A.open(url);
+if (P.kind === 'vod' || P.kind === 'ep') { try { A.setStreamingProperty('USER_AGENT', 'VLC/3.0.18 LibVLC/3.0.18'); } catch (e) {} }
 A.setDisplayRect(0, 0, window.innerWidth || 1920, window.innerHeight || 1080);
 try { A.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX'); } catch (e) {}
 A.setListener({
@@ -1331,7 +1332,23 @@ tvRotate(function (ok) { if (!ok) return cb(tvLiveUrl(id)); step(); });
 });
 })();
 }
+function vodRetry() {
+if (P.kind !== 'vod' && P.kind !== 'ep') return false;
+if (!P.u0) P.u0 = P.url;
+var m = /\.([A-Za-z0-9]{2,4})$/.exec(P.url);
+if (P.vf === 0 && m) {
+P.vf = 1; var alt = /^mp4$/i.test(m[1]) ? 'mkv' : 'mp4';
+P.url = P.url.replace(/\.[A-Za-z0-9]{2,4}$/, '.' + alt); toast('بجرّب صيغة تانية (' + alt + ')...');
+P.sid++; engineStop(); engineStart(P.pos); return true;
+}
+if (P.vf <= 1 && hasAV() && !P.noav) {
+P.vf = 2; P.noav = true; P.url = P.u0; toast('بجرّب مشغّل تاني...');
+P.sid++; engineStop(); engineStart(P.pos); return true;
+}
+return false;
+}
 function onPlayErr(e) {
+if (vodRetry()) return;
 if (P.kind === 'live' && !P.alt && P.url.indexOf('/live/') > 0) {
 P.alt = true;
 var m = /\.(m3u8|ts)$/.exec(P.url);
@@ -1349,8 +1366,9 @@ playFail(e);
 playFail(e);
 }
 function playFail(e) {
-P.err = true; buf(false); plmsg('تعذّر تشغيل المحتوى\nاضغط OK لإعادة المحاولة أو رجوع للخروج');
-try { P.errText = String(e && (e.message || e.name || e)); } catch (x) {}
+P.err = true; buf(false);
+try { P.errText = String(e && (e.message || e.name || e)); } catch (x) { P.errText = ''; }
+plmsg('تعذّر تشغيل المحتوى' + (P.errText ? '\n(' + P.errText.slice(0, 70) + ')' : '') + '\nاضغط OK لإعادة المحاولة أو رجوع للخروج');
 }
 function stopPlay() {
 if (!P.on) return;
@@ -1498,7 +1516,7 @@ return playerKey2(e);
 function playerKey2(e) {
 var k = e.keyCode, rep = e.repeat ? (playerKey.r = (playerKey.r || 0) + 1) : (playerKey.r = 0);
 if (k === 10009 || k === 8 || k === 27 || k === 413) { stopPlay(); return true; }
-if (P.err && k === 13) { P.err = false; plmsg(''); buf(true); engineStart(P.pos); return true; }
+if (P.err && k === 13) { P.err = false; P.vf = 0; P.noav = false; if (P.u0) { P.url = P.u0; P.u0 = ''; } plmsg(''); buf(true); engineStart(P.pos); return true; }
 if ((k === 427 || k === 405) && P.kind === 'site' && P.next) { var nf1 = P.next; P.next = null; saveP(false); nf1(); return true; }
 if (k === 13) { if (P.kind === 'live') { ovPaint(); ovShow(); epg(); } else pauseToggle(); return true; }
 if (k === 415) { pauseToggle(false); return true; }
