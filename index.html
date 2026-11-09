@@ -596,6 +596,8 @@ h3.sec::before{display:none}
 .poster.mtile{border-style:dashed}
 .poster .rt{position:absolute;top:8px;left:8px;z-index:2;background:#0009;backdrop-filter:blur(6px);border:1px solid #ffffff22;border-radius:8px;padding:2px 7px;font-size:12px;font-weight:800;color:#fbbf24}
 .poster:hover,.poster:focus-visible{border-color:#7aa2e8}
+
+.cw .cwtag{position:absolute;top:6px;left:6px;z-index:2;background:#e50914;color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:6px;letter-spacing:.5px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <style id="nw-css">
@@ -3239,14 +3241,40 @@ function ivCwItems(only) {
 }
 function ivCwCard(x) {
   return '<div class="cw" tabindex="0" role="button" data-key="' + esc(x.key) + '" onclick="ivCwTap(this.dataset.key)">' +
-    '<button class="cwx" tabindex="-1" onclick="event.stopPropagation();ivCwHide(this.parentNode.dataset.key)">✕</button>' +
+    '<button class="cwx" tabindex="-1" onclick="event.stopPropagation();ivCwHide(this.parentNode.dataset.key)">✕</button><span class="cwtag">IPTV</span>' +
     (x.img ? '<img ' + lzA(x.img) + ' alt="">' : '<div class="noimg">🎬</div>') +
     '<div class="cwb"><i style="width:' + x.pct.toFixed(0) + '%"></i></div>' +
     '<div class="t">' + esc(x.title || '') + '<div class="y">' + esc(x.lbl) + '</div></div></div>';
 }
+// «كمّل المشاهدة» الموحّدة: اللي اتشافت من الموقع + من الـIPTV في صف واحد مرتّب بآخر مشاهدة (على كل الأجهزة)
+function siteCwList() {
+  const its = Object.values((UD.items && UD.items[PID]) || {}).filter(x => !x.del && x.key);
+  const groups = new Map();
+  its.filter(x => x.key[0] !== 'l').forEach(x => {
+    const g = x.cl ? 'cl' + x.cl : (x.type === 'tv' && x.tmdb) ? 'tv' + x.tmdb : x.key;
+    const o = groups.get(g);
+    if (!o || x.t > o.t) groups.set(g, x);
+  });
+  return [...groups.values()].filter(cwOK);
+}
+function cwMerged(only, lim, inIv) {
+  const out = [];
+  try {
+    siteCwList().forEach(x => {
+      if (only === 'vod' && x.type === 'tv') return;
+      if (only === 'series' && x.type !== 'tv') return;
+      let h = cwHTML(x);
+      if (inIv) h = h.replace('onclick="playItem(this.dataset.k)"', 'onclick="ivHide();playItem(this.dataset.k)"');
+      out.push({t: x.t || 0, h: h});
+    });
+  } catch (e) {}
+  try { if (PID) (ivCwItems(only) || []).forEach(x => out.push({t: x.t || 0, h: ivCwCard(x)})); } catch (e) {}
+  out.sort((a, b) => b.t - a.t);
+  return out.slice(0, lim || 20).map(o => o.h);
+}
 function ivCwRow(only) {
-  const l = ivCwItems(only);
-  return l.length ? '<h3 class="sec">▶ كمّل مشاهدة الـIPTV</h3><div class="hrow">' + l.map(ivCwCard).join('') + '</div>' : '';
+  const l = cwMerged(only, 20, true);
+  return l.length ? '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + l.join('') + '</div>' : '';
 }
 function ivCwRefresh() {
   const el = $('ivCw');
@@ -9742,15 +9770,8 @@ async function loadNew(force) {
   try { homeBoot(); } catch (e) {}
 }
 function cwRowHTML() {
-  const its = Object.values(UD.items[PID] || {}).filter(x => !x.del && x.key);
-  const groups = new Map();
-  its.filter(x => x.key[0] !== 'l').forEach(x => {
-    const g = x.cl ? 'cl' + x.cl : (x.type === 'tv' && x.tmdb) ? 'tv' + x.tmdb : x.key;
-    const o = groups.get(g);
-    if (!o || x.t > o.t) groups.set(g, x);
-  });
-  const cw = [...groups.values()].filter(cwOK).sort((a, b) => b.t - a.t).slice(0, isTv() ? 8 : 12);
-  return cw.length ? '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>' : '';
+  const l = cwMerged(null, isTv() ? 10 : 14, false);
+  return l.length ? '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + l.join('') + '</div>' : '';
 }
 // ================= مفضلتي: نظام الرئيسية لكل عضو =================
 let FAVL = null, FAVD = {}, FAV_BUSY = {}, ARD_LOADED = false, FAV_OPEN = false, FAV_ASKED = false, _favT = 0;
@@ -9819,8 +9840,8 @@ function newHomeHTML() {
   let h = '';
   try { ftBoot(PID); h += ivFeatHTML(); } catch (e) {}
   h += favBarHTML();
-  try { h += cwRowHTML(); } catch (e) {}
   try { h += ivPinHTML(); } catch (e) {}   // قنوات/أفلام/مسلسلات الـIPTV المثبّتة
+  try { h += cwRowHTML(); } catch (e) {}   // كمّل المشاهدة (موقع + IPTV) تحت المثبّتات
   if (!NEWD) h += NEW_ERR ? warn('تعذّر تحميل الجديد: ' + NEW_ERR) + '<button class="search-btn" style="margin:8px 0" onclick="NEW_ERR=\'\';renderShelves();loadNew(true)">🔄 جرّب تاني</button>' : pend('جاري تحميل الجديد...');
   else {
     let any = false;
