@@ -4,10 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
+<script>try{if(window.AndroidPlayer||/; wv\)/.test(navigator.userAgent))document.documentElement.classList.add('wv');}catch(e){}</script>
+<style>html.wv *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}</style>
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v57: بحث داخل مخزن الحسابات، وتفاصيل الحساب بقت بتبويبات (قنوات/أفلام/مسلسلات بأسمائها) وبحث من غير ما الصفحة تتنطط، وتحميل تبويب واحد في المرة. تخفيف كراش WebView على الأندرويد (native crash): إيقاف captureStream/AudioContext، وتحميل قوائم قنوات حسابات IPTV (ربط القنوات) واحدة ورا التانية بدل التوازي، وحد 4 ميجا لملف استيراد الأسماء في «الضبط التلقائي بالصوت» داخل التطبيق + إلغاء الـ blur (backdrop-filter) على الـ WebView. الضبط اليدوي للترجمة شغّال زي ما هو
   v56: إصلاح لوحة اشتراكات IPTV على الموبايل: اسم العضو والهوست كانوا بيتكسّروا حرف حرف، دلوقتي الاسم في سطر والأزرار تحته
   v55: زر ℹ️ على كل حساب IPTV (لوحة الأدمن + المخزن): كام جهاز يشغّله وشغّال عليه كام، الإنشاء/الانتهاء، السيرفر، عدد القنوات/الأفلام/المسلسلات، وقائمة القنوات بأقسامها وبحث (من الجهاز مباشرة، من غير تعديل في السيرفر)
   v54: السيرفر (bot v24) بقى يسجّل IP/المدينة/المتصفح/آخر فتحة/عدد الفتحات/آخر عملية لكل جهاز، والصفحة بتعرضهم. «📊 نشاط المستخدمين» بقى كامل: 🟢 أونلاين دلوقتي + على أنهي جهاز (تلفزيون/تطبيق/متصفح) + آخر فتح بالتاريخ و«من كام» + آخر حاجة شاهدها/سحبها + تفاصيل الأجهزة (متوافق مع bot.py الحالي، ويعرض IP/المتصفح لو السيرفر بعتهم)
@@ -1032,7 +1035,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=56;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=57;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -3890,7 +3893,7 @@ function ivInfoPool(k) {
   if (a) ivInfoOpen(a, 'مخزن ' + ivAdmLbl(IVP.n));
 }
 async function ivInfoOpen(a, label) {
-  Object.assign(INFO, {a: a, label: label, ui: null, si: null, live: [], cats: [], vod: null, ser: null, vcats: [], scats: [], cat: '', q: '', lim: 80, err: '', ld: false});
+  Object.assign(INFO, {a: a, label: label, ui: null, si: null, kind: '', items: null, tok: (INFO.tok || 0) + 1, cats: [], cat: '', q: '', lim: 80, err: '', ld: false});
   const el = $('ivInfo');
   if (!el) return;
   el.innerHTML = pend('جاري تحميل تفاصيل الحساب...');
@@ -3904,14 +3907,39 @@ async function ivInfoOpen(a, label) {
   } catch (e) { INFO.err = 'فاصل: ' + ((e && e.message) || ''); }
   ivInfoRender();
   if (INFO.err) return;
-  const get = (act, keep) => ivFetch(b + act, keep, 0).then(x => Array.isArray(x) ? x : []).catch(() => null);
-  const [live, cats, vod, ser, vc, sc] = await Promise.all([
-    get('get_live_streams', 'stream_id,name,category_id,stream_icon,epg_channel_id,tv_archive,num'),
-    get('get_live_categories', 'category_id,category_name'),
-    get('get_vod_streams', 'stream_id,category_id'), get('get_series', 'series_id,category_id'),
-    get('get_vod_categories', 'category_id,category_name'), get('get_series_categories', 'category_id,category_name')]);
-  Object.assign(INFO, {live: live || [], cats: cats || [], vod: vod, ser: ser, vcats: vc || [], scats: sc || [], ld: true});
+  ivInfoTab('live');   // v57: تبويب واحد بس بيتحمّل في المرة (قنوات/أفلام/مسلسلات) عشان الذاكرة
+}
+const INFO_T = {live: ['get_live_streams', 'get_live_categories', 'stream_id,name,category_id,epg_channel_id,tv_archive', '📺 قنوات', 'stream_id'],
+  vod: ['get_vod_streams', 'get_vod_categories', 'stream_id,name,category_id', '🎬 أفلام', 'stream_id'],
+  ser: ['get_series', 'get_series_categories', 'series_id,name,category_id', '📚 مسلسلات', 'series_id']};
+async function ivInfoTab(kind) {
+  const T = INFO_T[kind], a = INFO.a;
+  if (!T || !a) return;
+  const my = INFO.tok = (INFO.tok || 0) + 1;
+  Object.assign(INFO, {kind: kind, items: null, cats: [], cat: '', q: '', lim: 80, tErr: ''});
   ivInfoRender();
+  const b = infoBase(a) + '&action=';
+  try {
+    const cats = await ivFetch(b + T[1], 'category_id,category_name', 0).catch(() => []);
+    if (my !== INFO.tok) return;
+    INFO.cats = Array.isArray(cats) ? cats : [];
+    const items = await ivFetch(b + T[0], T[2], 0);
+    if (my !== INFO.tok) return;
+    if (!Array.isArray(items)) throw new Error('رد غير مفهوم من السيرفر');
+    INFO.items = items;
+  } catch (e) { if (my === INFO.tok) INFO.tErr = (e && e.message) || 'تعذّر التحميل'; }
+  if (my === INFO.tok) ivInfoRender();
+}
+function ivInfoList() {
+  const box = $('infoList');
+  if (!box || !INFO.items) return;
+  const T = INFO_T[INFO.kind], q = String(INFO.q || '').trim().toLowerCase(), cn = {};
+  INFO.cats.forEach(c => cn[c.category_id] = c.category_name);
+  const view = INFO.items.filter(c => (!INFO.cat || String(c.category_id) === INFO.cat) && (!q || String(c.name || '').toLowerCase().includes(q)));
+  box.innerHTML = '<p style="color:var(--mut);font-size:12px;margin:6px 0">النتائج: ' + view.length + '</p>' +
+    view.slice(0, INFO.lim).map(c => '<div class="ep"><div class="b">' + esc(c.name) + '<small>#' + esc(c[T[4]]) + ' · ' + esc(cn[c.category_id] || '—') +
+      (c.epg_channel_id ? ' · EPG: ' + esc(c.epg_channel_id) : '') + (+c.tv_archive ? ' · ⏪ أرشيف' : '') + '</small></div></div>').join('') +
+    (view.length > INFO.lim ? '<button class="search-btn" onclick="INFO.lim+=150;ivInfoList()">عرض المزيد (' + (view.length - INFO.lim) + ')</button>' : '');
 }
 function ivInfoRender() {
   const el = $('ivInfo'), a = INFO.a, x = INFO.ui || {}, s = INFO.si || {};
@@ -3937,25 +3965,19 @@ function ivInfoRender() {
     row('🎞️ صيغ البث المسموحة', esc(fmts)) +
     (s.url || s.port ? row('🖥️ السيرفر', '<span class="ltr" style="direction:ltr">' + esc((s.server_protocol || 'http') + '://' + (s.url || '') + ':' + (s.port || '') + (s.https_port ? ' · https ' + s.https_port : '') + (s.rtmp_port ? ' · rtmp ' + s.rtmp_port : '')) + '</span>') : '') +
     (s.timezone ? row('🕒 توقيت السيرفر', esc(s.timezone) + (s.time_now ? ' · ' + esc(s.time_now) : '')) : '');
-  const cnt = v => v === null ? '⚠️ تعذّر' : v.length;
-  h += '<h3 class="sec" style="margin-top:12px">📊 المحتوى</h3>' +
-    row('📺 قنوات مباشرة', INFO.live.length ? INFO.live.length + ' قناة في ' + INFO.cats.length + ' قسم' : (!INFO.ld ? pend('جاري التحميل...') : '0')) +
-    row('🎬 أفلام', !INFO.ld ? '…' : cnt(INFO.vod) + (INFO.vcats.length ? ' في ' + INFO.vcats.length + ' قسم' : '')) +
-    row('📚 مسلسلات', !INFO.ld ? '…' : cnt(INFO.ser) + (INFO.scats.length ? ' في ' + INFO.scats.length + ' قسم' : ''));
-  if (INFO.live.length) {
+  h += '<h3 class="sec" style="margin-top:12px">📊 المحتوى</h3><div class="row" style="gap:6px;flex-wrap:wrap">' +
+    Object.keys(INFO_T).map(k => '<button class="search-btn" style="' + (INFO.kind === k ? 'background:#0ea5e9' : 'background:#334155') + ';padding:6px 12px;font-size:13px" onclick="ivInfoTab(\'' + k + '\')">' + INFO_T[k][3] + '</button>').join('') + '</div>';
+  if (INFO.kind && !INFO.items) h += INFO.tErr ? '<p style="color:#ef4444;font-weight:700">⚠️ ' + esc(INFO.tErr) + '</p>' : pend('جاري تحميل ' + INFO_T[INFO.kind][3] + '...');
+  else if (INFO.kind) {
     const byc = {};
-    INFO.live.forEach(c => { byc[c.category_id] = (byc[c.category_id] || 0) + 1; });
-    const cn = {}; INFO.cats.forEach(c => cn[c.category_id] = c.category_name);
-    const view = INFO.live.filter(c => (!INFO.cat || String(c.category_id) === INFO.cat) && (!INFO.q || String(c.name || '').toLowerCase().includes(INFO.q.toLowerCase())));
-    h += '<h3 class="sec" style="margin-top:12px">📺 القنوات (' + view.length + ')</h3>' +
-      '<select class="search-input" onchange="INFO.cat=this.value;INFO.lim=80;ivInfoRender()"><option value="">كل الأقسام (' + INFO.live.length + ')</option>' +
+    INFO.items.forEach(c => { byc[c.category_id] = (byc[c.category_id] || 0) + 1; });
+    h += '<select class="search-input" style="margin-top:8px" onchange="INFO.cat=this.value;INFO.lim=80;ivInfoList()"><option value="">كل الأقسام (' + INFO.items.length + ')</option>' +
       INFO.cats.map(c => '<option value="' + esc(c.category_id) + '"' + (INFO.cat === String(c.category_id) ? ' selected' : '') + '>' + esc(c.category_name) + ' (' + (byc[c.category_id] || 0) + ')</option>').join('') + '</select>' +
-      '<input class="search-input" id="infoQ" placeholder="ابحث في القنوات..." value="' + esc(INFO.q) + '" oninput="INFO.q=this.value;INFO.lim=80;clearTimeout(INFO._t);INFO._t=setTimeout(()=>{ivInfoRender();const e=$(\'infoQ\');e.focus();e.setSelectionRange(e.value.length,e.value.length)},300)">' +
-      view.slice(0, INFO.lim).map(c => '<div class="ep"><div class="b">' + (c.stream_icon ? '<img src="' + esc(c.stream_icon) + '" loading="lazy" referrerpolicy="no-referrer" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-left:8px" onerror="this.remove()">' : '') +
-        esc(c.name) + '<small>#' + esc(c.stream_id) + ' · ' + esc(cn[c.category_id] || '—') + (c.epg_channel_id ? ' · EPG: ' + esc(c.epg_channel_id) : '') + (+c.tv_archive ? ' · ⏪ أرشيف' : '') + '</small></div></div>').join('') +
-      (view.length > INFO.lim ? '<button class="search-btn" onclick="INFO.lim+=150;ivInfoRender()">عرض المزيد (' + (view.length - INFO.lim) + ')</button>' : '');
+      '<input class="search-input" id="infoQ" placeholder="🔎 ابحث في ' + INFO_T[INFO.kind][3] + '..." value="' + esc(INFO.q) + '" oninput="INFO.q=this.value;INFO.lim=80;clearTimeout(INFO._t);INFO._t=setTimeout(ivInfoList,250)" autocomplete="off">' +
+      '<div id="infoList"></div>';
   }
   el.innerHTML = h + '</div>';
+  if (INFO.kind && INFO.items) ivInfoList();
 }
 // ---------- فحص الحسابات + ربط القنوات بين الحسابات ----------
 function ivPing(a) {
@@ -4098,19 +4120,21 @@ async function ivpPrimary(k) {
   ivpLoad();
 }
 function ivpFlt(f) { IVP.flt = f; IVP.lim = 50; ivpRender(); }
-function ivpRender() {
+function ivpRender(listOnly) {
   const el = $('ivPool');
   if (!el) return;
   const all = IVP.items, c = {all: all.length, ok: 0, dead: 0, down: 0, new: 0};
   all.forEach(a => { if (a.st === 'ok') c.ok++; else if (a.st === 'dead') c.dead++; else if (a.st === 'down') c.down++; else c.new++; });
   const rank = a => a.st === 'ok' ? 0 : !a.st ? 1 : a.st === 'down' ? 2 : 3;
   const view = all.filter(a => IVP.flt === 'all' || (IVP.flt === 'new' ? !a.st : a.st === IVP.flt))
+    .filter(a => !IVP.q || (a.host + ' ' + a.user).toLowerCase().includes(String(IVP.q).trim().toLowerCase()))
     .sort((a, b) => rank(a) - rank(b) || (ivpDays(b) || 0) - (ivpDays(a) || 0));
   const chip = (f, t) => '<button class="search-btn" style="' + (IVP.flt === f ? 'background:#0ea5e9' : 'background:#334155') + ';padding:6px 10px;font-size:12px" onclick="ivpFlt(\'' + f + '\')">' + t + '</button>';
   let h = '<div style="border:1px solid #ffffff22;border-radius:12px;padding:10px;margin-top:10px">' +
     '<h3 class="sec">🗄️ مخزن حسابات ' + esc(ivAdmLbl(IVP.n)) + '</h3>' +
     (IVP.prim ? '<p style="color:var(--mut);font-size:12px;direction:ltr;text-align:left">⭐ الأساسي: ' + esc(IVP.prim.host) + ' · ' + esc(IVP.prim.user) + '</p>' : '') +
     '<div class="row" style="gap:6px;flex-wrap:wrap">' + chip('all', 'الكل ' + c.all) + chip('ok', '✅ شغّال ' + c.ok) + chip('dead', '❌ ميت ' + c.dead) + chip('down', '⚠️ مفيش رد ' + c.down) + chip('new', '🆕 مش مفحوص ' + c.new) + '</div>' +
+    '<input class="search-input" id="ivpQ" placeholder="🔎 ابحث في الحسابات (هوست أو يوزر)..." value="' + esc(IVP.q || '') + '" oninput="IVP.q=this.value;IVP.lim=50;ivpRender(true)" style="margin-top:8px;direction:ltr;text-align:left" autocapitalize="off" autocorrect="off">' +
     '<textarea id="ivpTx" class="search-input ltr" rows="4" style="direction:ltr;text-align:left;margin-top:10px" placeholder="الصق الحسابات هنا - سطر لكل حساب: host user pass (أو رابط get.php)" autocapitalize="off" autocorrect="off"></textarea>' +
     '<button class="search-btn" onclick="ivpAdd(this)">➕ إضافة للمخزن</button>' +
     '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">' +
@@ -4122,6 +4146,7 @@ function ivpRender() {
     '<button class="search-btn" style="background:var(--danger)" onclick="ivpDel(null,\'dead\',\'مسح كل الحسابات الميتة (' + c.dead + ')؟\')">🗑 مسح الميت</button>' +
     '<button class="search-btn" style="background:var(--danger)" onclick="ivpDel(null,\'down\',\'مسح كل حسابات «مفيش رد» (' + c.down + ')؟\')">🗑 مسح «مفيش رد»</button>' +
     '<button class="search-btn" style="background:var(--danger)" onclick="ivpDel(null,\'all\',\'مسح المخزن بالكامل (' + c.all + ' حساب)؟\')">🗑 مسح الكل</button></div>';
+  h += '<!--L--><p style="color:var(--mut);font-size:12px;margin:6px 0">النتائج: ' + view.length + '</p>';
   h += view.slice(0, IVP.lim).map(a => {
     const d = ivpDays(a), k = ivpK(a);
     const tx = a.st === 'ok' ? ('✅ شغّال · ' + (d === null ? 'غير محدود' : 'باقي ' + d + ' يوم') + ' · اتصالات ' + (a.act || 0) + '/' + (a.maxc || 0))
@@ -4133,8 +4158,10 @@ function ivpRender() {
       '<button style="background:#f59e0b;color:#fff;margin-inline-end:6px" data-k="' + esc(k) + '" onclick="ivpPrimary(this.dataset.k)">⭐</button>' +
       '<button style="background:var(--danger);color:#fff" data-k="' + esc(k) + '" onclick="ivpDel([this.dataset.k])">🗑</button></div>';
   }).join('') || '<p style="color:var(--mut);text-align:center">المخزن فاضي</p>';
-  if (view.length > IVP.lim) h += '<button class="search-btn" onclick="IVP.lim+=100;ivpRender()">عرض المزيد (' + (view.length - IVP.lim) + ')</button>';
-  el.innerHTML = h + '</div>';
+  if (view.length > IVP.lim) h += '<button class="search-btn" onclick="IVP.lim+=100;ivpRender(true)">عرض المزيد (' + (view.length - IVP.lim) + ')</button>';
+  h += '<!--/L-->';
+  if (listOnly && $('ivpList')) { $('ivpList').innerHTML = h.slice(h.indexOf('<!--L-->') + 8, h.indexOf('<!--/L-->')); return; }
+  el.innerHTML = h.replace('<!--L-->', '<div id="ivpList">').replace('<!--/L-->', '</div>') + '</div>';
 }
 const IVM = {n: '', accs: [], lists: [], cats: [], cmap: [], idx: [], tab: 'one', rows: [], flt: 'all', lim: 40, busy: false};
 const ivAk = a => a.host + '|' + a.user;
@@ -4225,6 +4252,7 @@ function ivmParse(t, fn) {
 function ivmFile(inp) {
   const f = inp.files && inp.files[0];
   if (!f) return;
+  if (f.size > 4 * 1024 * 1024) { alert('الملف كبير (' + Math.round(f.size / 1048576) + ' ميجا). قسّمه لملفات أصغر من 4 ميجا.'); inp.value = ''; return; }
   const r = new FileReader();
   r.onload = () => { const a = ivmParse(r.result, f.name); $('imtx').value = a.join('\n'); toast('اتقرا ' + a.length + ' قناة من الملف'); ivmBuild(a.map(n => ({label: n, prim: null}))); };
   r.readAsText(f);
@@ -4333,7 +4361,8 @@ async function ivMapOpen(n) {
   Object.assign(IVM, {n: n, accs: [u].concat(u.extra || []), cmap: (u.cmap || []).slice(), idx: [], rows: [], tab: 'one', flt: 'all', lim: 40});
   const base = a => a.host + '/player_api.php?username=' + encodeURIComponent(a.user) + '&password=' + encodeURIComponent(a.pass) + '&action=';
   try {
-    IVM.lists = await Promise.all(IVM.accs.map(a => ivFetch(base(a) + 'get_live_streams', 'stream_id,name,category_id', 0)));
+    IVM.lists = [];   // v57: واحد ورا التاني (مش بالتوازي) عشان ردود ضخمة مرة واحدة عبر جسر الأندرويد بتقفل الـWebView
+    for (const a of IVM.accs) { IVM.lists.push(await ivFetch(base(a) + 'get_live_streams', 'stream_id,name,category_id', 0)); await new Promise(r => setTimeout(r, 150)); }
     const c = await ivFetch(base(IVM.accs[0]) + 'get_live_categories', 'category_id,category_name', 0);
     IVM.cats = Array.isArray(c) ? c : [];
   } catch (e) { el.innerHTML = warn('تعذّر تحميل قنوات أحد الحسابات: ' + esc((e && e.message) || '')); return; }
@@ -7745,6 +7774,7 @@ function asToast(m) {
 function asArm() {
   const v = document.querySelector('#results video');
   if (!v || !subSel || AUD.ar || !asEnabled() || !ASY.raw) return;
+  if (document.documentElement.classList.contains('wv')) { ASY.msg = 'الضبط التلقائي بالصوت متوقف داخل التطبيق (بيسبّب قفل مفاجئ). استخدم الضبط اليدوي.'; return; }
   if (ASY.v === v && ASY.timer) return;
   const cap = v.captureStream || v.mozCaptureStream, AC = window.AudioContext || window.webkitAudioContext;
   if (!cap || !AC) { ASY.msg = 'الضبط التلقائي مش مدعوم في المتصفح ده. استخدم الضبط اليدوي.'; return; }
