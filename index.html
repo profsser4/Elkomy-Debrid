@@ -235,6 +235,7 @@ body.cl-on{overflow:hidden}
 .clep small{display:block;color:var(--mut);margin-top:2px}
 #clBody label{display:block;margin:12px 0 4px;color:var(--mut);font-size:13px}
 #clBody textarea.search-input{height:auto;min-height:96px;padding:10px 14px;direction:ltr;text-align:left}
+#sp .spk.iptv{background:#ff5a36;color:#fff}
 #sp{display:none;position:fixed;inset:0;z-index:100;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;direction:rtl;color:var(--text)}
 .sphd{position:sticky;top:0;z-index:2;background:var(--bg);padding:10px 12px 6px;border-bottom:1px solid #ffffff14}
 .sprow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
@@ -2969,6 +2970,7 @@ const ivPinArr = k => k === 'vod' ? (IV.pins.vod = IV.pins.vod || []) : k === 's
 const ivPinned = (id, k) => ivPinArr(k).includes(String(id));
 function ivTogglePin(id, btn, k) {
   id = String(id);
+  if (!IV.gm && (((IV.g || {})[k === 'vod' ? 'vod' : k === 'series' ? 'ser' : 'live']) || []).map(String).includes(id)) { toast('📢 مثبّت للكل من الأدمن — الأدمن بس يقدر يشيله (من زر «تثبيت للكل»)'); return; }
   const arr = ivPinArr(k);
   const i = arr.indexOf(id);
   if (i >= 0) arr.splice(i, 1); else arr.unshift(id);
@@ -2981,6 +2983,7 @@ function ivTogglePin(id, btn, k) {
 const ivCatPinned = (k, id) => IV.pins.cats.some(c => c.k === k && c.id === String(id));
 function ivToggleCat(k, id, n) {
   id = String(id);
+  if (!IV.gm && ((IV.g || {}).cats || []).some(x => x.k === k && String(x.id) === id)) { toast('📢 القسم مثبّت للكل من الأدمن — الأدمن بس يقدر يشيله'); return; }
   const i = IV.pins.cats.findIndex(c => c.k === k && c.id === id);
   if (i >= 0) IV.pins.cats.splice(i, 1); else IV.pins.cats.unshift({k: k, id: id, n: n});
   toast(i >= 0 ? 'القسم اتشال من المثبّتات' : 'القسم اتثبّت ⭐');
@@ -3604,7 +3607,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { try
 window.addEventListener('focus', () => { try { ivSyncPull(); ivPinsRefresh(); } catch (e) {} });
 window.addEventListener('pagehide', () => { try { ivSyncBeacon(); } catch (e) {} });
 setInterval(() => { if (!document.hidden) { try { ivPinsRefresh(); ivSyncPull(); } catch (e) {} } }, 60000);
-function ivHide() { IV.open = false; IV.sel = null; $('iv').style.display = 'none'; document.body.classList.remove('iv-on'); renderShelvesSoon(); }
+function ivHide() { try { setTimeout(spSync, 0); } catch (e) {} IV.open = false; IV.sel = null; $('iv').style.display = 'none'; document.body.classList.remove('iv-on'); renderShelvesSoon(); }
 function ivBack() {
   if (IV.sel) { IV.sel = null; ivRender(); return; }
   if (VS[VS.length - 1] === 'iv') history.back(); else ivHide();
@@ -5816,6 +5819,7 @@ async function torSearchQ(q){
 }
 
 const spCap = id => isTv() ? ({titles: 10, torrent: 20}[id] || 10) : 1e9;
+const spNorm = v => String(v || '').toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه');
 const SOURCES = [
   {id: 'titles', icon: '🎬', name: 'أعمال', color: '#8b5cf6',
    search: async q => {
@@ -5829,6 +5833,29 @@ const SOURCES = [
      if (t.imdb) return openImdb(t.imdb, t.type);
      if (t.lk) return openLookup({dataset: {q: t.title, t: t.type, y: t.year || ''}});
      openDetails(t.type, t.id);
+   }},
+  {id: 'iptv', icon: '📡', name: 'IPTV', color: '#ff5a36', quiet: true,
+   search: async q => {
+     if (!isPremiumOK()) return [];
+     const cfg = await ivCfg();
+     if (!cfg) return [];
+     const toks = spNorm(q).split(/\s+/).filter(Boolean);
+     if (!toks.length) return [];
+     const hit = x => { const n = spNorm(x.name); return toks.every(t => n.includes(t)); };
+     const [v, sr, lv] = await Promise.all([ivList('get_vod_streams').catch(() => []), ivList('get_series').catch(() => []), ivList('get_live_streams').catch(() => [])]);
+     const out = [];
+     (v || []).filter(hit).slice(0, 30).forEach(x => out.push({kind: 'vod', id: String(x.stream_id), title: ivCleanName(x.name), thumb: x.stream_icon || ''}));
+     (sr || []).filter(hit).slice(0, 30).forEach(x => out.push({kind: 'series', id: String(x.series_id), title: ivCleanName(x.name), thumb: x.cover || ''}));
+     (lv || []).filter(hit).slice(0, 20).forEach(x => out.push({kind: 'live', id: String(x.stream_id), title: x.name, thumb: x.stream_icon || ''}));
+     return out;
+   },
+   title: t => t.title, thumb: t => t.thumb || '', meta: t => '📡 IPTV',
+   open: t => {
+     try { const o = $('sp'); if (o) { SPG.sy = o.scrollTop; o.style.display = 'none'; } document.body.classList.remove('sp-on'); } catch (e) {}
+     if (t.kind === 'live') return ivPlayLive(t.id, t.title);
+     if (!IV.open) ivOpen(t.kind);
+     IV.sel = {k: t.kind, id: t.id}; IV.info = null; IV.ss = null;
+     ivRender(); $('iv').scrollTop = 0;
    }},
   {id: 'torrent', icon: '🧲', name: 'تورنت', color: '#2563eb',
    search: async q => {
@@ -5913,7 +5940,7 @@ function dmDur(s) {
 const SPG = {open: false, sy: 0, rt: {}};
 const spCat = x => x.s.id === 'titles' ? x.t.type : x.s.id;          // movie | tv | torrent | dm
 const spKey = x => spCat(x) + ':' + (x.t.id || x.t.imdb || x.t.title);
-const SP_TABS = [['all', 'الكل'], ['movie', '🎬 أفلام'], ['tv', '📺 مسلسلات'], ['torrent', '🧲 تورنت'], ['dm', '▶️ Dailymotion'], ['arc', '🏛 Archive.org'], ['rt', '🇷🇺 Rutube']];
+const SP_TABS = [['all', 'الكل'], ['movie', '🎬 أفلام'], ['tv', '📺 مسلسلات'], ['torrent', '🧲 تورنت'], ['dm', '▶️ Dailymotion'], ['iptv', '📡 IPTV'], ['arc', '🏛 Archive.org'], ['rt', '🇷🇺 Rutube']];
 const fmtMin = m => { m = Math.round(+m || 0); return !m ? '' : (m >= 60 ? Math.floor(m / 60) + 'س' + (m % 60 ? ' ' + (m % 60) + 'د' : '') : m + 'د'); };
 function spOpen(q) {
   const o = $('sp');
@@ -6130,6 +6157,13 @@ function spTor(x, i) {
     (tg ? '<span class="spb q">' + esc(tg) + '</span>' : '') + dateBadge(t, 'spb') + (t.cached ? '<span class="spb ok">⚡ فوري</span>' : '') +
     '</div></div></div>';
 }
+function spIv(x, i) {
+  const t = x.t, th = spImg(t.thumb);
+  return '<div class="spc" tabindex="0" onclick="srcOpen(' + i + ')">' +
+    '<div class="spi">' + (th ? '<img ' + lzA(th) + ' alt="">' : '<div class="noimg">' + (t.kind === 'live' ? '📡' : '🎬') + '</div>') +
+    '<span class="spk iptv">📡 ' + (t.kind === 'live' ? 'قناة' : t.kind === 'series' ? 'مسلسل' : 'فيلم') + '</span></div>' +
+    '<div class="spt">' + esc(t.title) + '</div></div>';
+}
 function spDm(x, i) {
   const t = x.t, th = x.s.thumb(t);
   return '<div class="spr" tabindex="0" onclick="srcOpen(' + i + ')"><div class="spth">' +
@@ -6155,13 +6189,15 @@ function renderAllNow(loading) {
   $('spBar').innerHTML = '<div class="fbar">' + SP_TABS.map(tb =>
     '<button class="fc' + (f === tb[0] ? ' on' : '') + '" onclick="setSrcF(\'' + tb[0] + '\')">' + tb[1] + ' (' + (tb[0] === 'all' ? ALL.length : by(tb[0]).length) + ')</button>').join('') + '</div>';
   let h = '';
-  [['movie', '🎬 الأفلام'], ['tv', '📺 المسلسلات'], ['torrent', '🧲 التورنت'], ['dm', '▶️ Dailymotion'], ['arc', '🏛 Archive.org'], ['rt', '🇷🇺 Rutube']].forEach(g => {
+  [['movie', '🎬 الأفلام'], ['tv', '📺 المسلسلات'], ['iptv', '📡 IPTV'], ['torrent', '🧲 التورنت'], ['dm', '▶️ Dailymotion'], ['arc', '🏛 Archive.org'], ['rt', '🇷🇺 Rutube']].forEach(g => {
     const c = g[0];
     if (f !== 'all' && f !== c) return;
     const l = by(c);
     if (!l.length) return;
-    const lim = (f === 'all' && c !== 'movie' && c !== 'tv') ? 6 : l.length;
-    const body = (c === 'movie' || c === 'tv')
+    const lim = (f === 'all' && c !== 'movie' && c !== 'tv') ? (c === 'iptv' ? 12 : 6) : l.length;
+    const body = c === 'iptv'
+      ? '<div class="spg">' + l.slice(0, lim).map(o => spIv(o.x, o.i)).join('') + '</div>'
+      : (c === 'movie' || c === 'tv')
       ? '<div class="spg">' + l.map(o => spCard(o.x, o.i)).join('') + '</div>'
       : '<div class="spl">' + l.slice(0, lim).map(o => (c === 'torrent' ? spTor : spDm)(o.x, o.i)).join('') + '</div>';
     h += '<div class="sph"><h3>' + g[1] + ' <small>(' + l.length + ')</small></h3>' +
@@ -6240,7 +6276,7 @@ async function libAddFromCur() {
 function srcOpen(i) {
   const x = ALL[i];
   if (!x) return;
-  if (x.s.id !== 'titles') { if (VS[VS.length - 1] !== 'p') pushView('p'); scrollToResults(); }
+  if (x.s.id !== 'titles' && x.s.id !== 'iptv') { if (VS[VS.length - 1] !== 'p') pushView('p'); scrollToResults(); }
   x.s.open(x.t);
 }
 
