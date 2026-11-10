@@ -8,7 +8,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
-  v54: «📊 نشاط المستخدمين» بقى كامل: 🟢 أونلاين دلوقتي + على أنهي جهاز (تلفزيون/تطبيق/متصفح) + آخر فتح بالتاريخ و«من كام» + آخر حاجة شاهدها/سحبها + تفاصيل الأجهزة (متوافق مع bot.py الحالي، ويعرض IP/المتصفح لو السيرفر بعتهم)
+  v54: السيرفر (bot v24) بقى يسجّل IP/المدينة/المتصفح/آخر فتحة/عدد الفتحات/آخر عملية لكل جهاز، والصفحة بتعرضهم. «📊 نشاط المستخدمين» بقى كامل: 🟢 أونلاين دلوقتي + على أنهي جهاز (تلفزيون/تطبيق/متصفح) + آخر فتح بالتاريخ و«من كام» + آخر حاجة شاهدها/سحبها + تفاصيل الأجهزة (متوافق مع bot.py الحالي، ويعرض IP/المتصفح لو السيرفر بعتهم)
   v53: رجوع «🗄️ مخزن الحسابات» في لوحة الأدمن (اشتراكات IPTV): إضافة بالجملة + فحص (شغّال/ميت/مفيش رد) + مسح + تعيين حساب أساسي ⭐ (متوافق مع bot.py الحالي)
   v52: قايمة الأعضاء بتبيّن تاريخ انتهاء الاشتراك بجانب الأيام المتبقية، وبتنبّه على الأعضاء القدام (من غير مدة) اللي أيامهم مش بتنقص
   v51: مراجعة أمان وتشغيل: منع javascript:/data: في الروابط، تنضيف رسائل الأخطاء من السيرفر قبل عرضها، منع حقن أسطر في ملفات M3U، حصر أزرار التشخيص على الأدمن، تحديد أصل رسائل يوتيوب، إعادة محاولة تحويل HLS مرة تانية، كشف غياب الصوت في Firefox، وزرار «شغّل في VLC» واضح لما الفيديو يفشل في المتصفح
@@ -8590,6 +8590,7 @@ function actOnline(u, us) {
 }
 function actCard(u, us) {
   const o = actOnline(u, us), on = o.on;
+
   const last = tsMs(u.last);
   const devs = ['tv', 'app', 'web'].filter(k => on[k]).map(k => DVN[k] + (on[k] > 1 ? ' ×' + on[k] : ''));
   const badge = o.live
@@ -8599,13 +8600,23 @@ function actCard(u, us) {
   const lastDevTxt = lastDev ? (DVN[lastDev] || esc(String(lastDev))) : '';
   const extra = [];
   if (u.ua) extra.push('🧭 المتصفح/الجهاز: ' + esc(String(u.ua).slice(0, 90)));
-  if (u.ip) extra.push('📍 IP: ' + esc(u.ip) + (u.geo ? ' · ' + esc(u.geo) : ''));
-  if (u.ver) extra.push('🏷️ نسخة التطبيق: ' + esc(u.ver));
+  const devList = (u.devs || []).map(x =>
+    '<div style="margin:4px 0;padding:6px 8px;border:1px solid rgba(128,128,128,.3);border-radius:8px;line-height:1.8">' +
+    (x.on ? '🟢 ' : '⚫ ') + '<b>' + (DVN[x.ty] || esc(x.ty)) + '</b>' + (x.ua ? ' · ' + esc(x.ua) : '') + '<br>' +
+    (x.ip ? '📍 ' + esc(x.ip) + (x.geo ? ' · ' + esc(x.geo) : '') + '<br>' : '') +
+    '🕒 آخر ظهور: ' + fmtDate(tsMs(x.ls)) + ' (' + agoTxt(tsMs(x.ls)) + ')' +
+    (x.lo ? '<br>🚪 آخر فتحة: ' + fmtDate(tsMs(x.lo)) + ' (' + agoTxt(tsMs(x.lo)) + ')' : '') +
+    (x.oc ? ' · ' + x.oc + ' فتحة' : '') +
+    (x.lg ? '<br>🔑 آخر تسجيل دخول: ' + fmtDate(tsMs(x.lg)) : '') +
+    (x.fs ? ' · أول استخدام: ' + fmtDate(tsMs(x.fs)) : '') +
+    (x.lp ? '<br>🧭 آخر شاشة/عملية: ' + esc(x.lp) + (x.lpt ? ' (' + agoTxt(tsMs(x.lpt)) + ')' : '') : '') + '</div>').join('');
+  if (devList) extra.push('📟 الأجهزة (' + u.devs.length + '):' + devList);
   return '<div class="action-box" style="text-align:right;margin-bottom:10px;padding:12px">' +
     '<b>👤 ' + esc(u.name) + (u.role === 'admin' ? ' (أدمن)' : ' ' + usPlanTag(u)) + '</b>' + badge +
     '<div style="color:var(--mut);font-size:13px;margin-top:6px;line-height:2">' +
     (o.live ? '🔌 شغّال على: ' + (devs.join(' · ') || lastDevTxt || 'جهاز غير معروف') + '<br>' : '') +
-    '🕒 آخر فتح/نشاط: <b>' + fmtDate(last) + '</b> (' + agoTxt(last) + ')<br>' +
+    '🕒 آخر نشاط: <b>' + fmtDate(last) + '</b> (' + agoTxt(last) + ')<br>' +
+    (u.lo ? '🚪 آخر مرة فتح التطبيق: <b>' + fmtDate(tsMs(u.lo)) + '</b> (' + agoTxt(tsMs(u.lo)) + ')' + (u.oc ? ' · إجمالي الفتحات ' + u.oc : '') + '<br>' : '') +
     (lastDevTxt && !o.live ? '📲 فتح آخر مرة من: ' + lastDevTxt + '<br>' : '') +
     (extra.length ? extra.join('<br>') + '<br>' : '') +
     '<span class="actlast">🎬 آخر حاجة استخدمها: <i>جاري التحميل...</i></span><br>' +
