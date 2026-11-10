@@ -2908,7 +2908,7 @@ async function ivCfg(force) {
 }
 // ---------- التثبيتات (لكل بروفايل) ----------
 async function ivPinsLoad() {
-  if (IV.pinsPid === PID && IV.pinsGm === !!IV.gm) return;
+  if (IV.pinsPid === PID && IV.pinsGm === !!IV.gm && (IV.pinDirty || Date.now() - (IV.pinsAt || 0) < 45000)) return;
   const pid = PID, gm = !!IV.gm;
   try {
     const {d} = await api('/iptv/pins?pid=' + encodeURIComponent(pid));
@@ -2918,15 +2918,16 @@ async function ivPinsLoad() {
     IV.pins = gm
       ? {live: IV.g.live.slice(), cats: IV.g.cats.slice(), vod: IV.g.vod.slice(), ser: IV.g.ser.slice(), order: p.order || {}, hidden: p.hidden || {}, names: p.names || {}}
       : {live: p.live || [], cats: p.cats || [], vod: p.vod || [], ser: p.ser || [], order: p.order || {}, hidden: p.hidden || {}, names: p.names || {}};
-    IV.pinsPid = pid; IV.pinsGm = gm;
-  } catch (e) { IV.pins = {live: [], cats: [], vod: [], ser: [], order: {}, hidden: {}}; }
+    IV.pinsPid = pid; IV.pinsGm = gm; IV.pinsAt = Date.now();
+  } catch (e) { if (!IV.pins) IV.pins = {live: [], cats: [], vod: [], ser: [], order: {}, hidden: {}}; }
 }
 function ivPinsSave() {
   clearTimeout(_ivPT);
   const pid = PID, gm = !!IV.gm;
+  IV.pinDirty = 1;
   _ivPT = setTimeout(() => {
     const body = gm ? {global: true, pins: {live: IV.pins.live, cats: IV.pins.cats, vod: IV.pins.vod || [], ser: IV.pins.ser || [], ln: IV.gln || {}}} : {pid: pid, pins: IV.pins};
-    api('/iptv/pins', {method: 'POST', body: JSON.stringify(body)}).catch(() => {});
+    api('/iptv/pins', {method: 'POST', body: JSON.stringify(body)}).then(() => { IV.pinDirty = 0; IV.pinsAt = Date.now(); }).catch(() => { IV.pinDirty = 0; IV.pinsAt = 0; });
     ivHomeLoad(PID);
   }, 700);
 }
@@ -3563,8 +3564,21 @@ async function ivOpen(tab, cat) {
   ivRender();
   ivCfg().then(c => { if (IV.open && c) ivPinsLoad().then(() => { if (IV.open && !IV.sel) ivRender(); }); if (IV.open) ivRender(); });
 }
-document.addEventListener('visibilitychange', () => { if (document.hidden) { try { ivSyncBeacon(); } catch (e) {} } else { try { ivCwRefresh(); ivSyncPull(); } catch (e) {} } });
-window.addEventListener('focus', () => { try { ivSyncPull(); } catch (e) {} });
+function ivPinsRefresh() {
+  try {
+    if (!PID || !TOK || !IV.cfg || IV.pinDirty || Date.now() - (IV.pinsAt || 0) < 45000) return;
+    const before = JSON.stringify(IV.pins || {});
+    IV.pinsPid = null;
+    ivPinsLoad().then(() => {
+      if (JSON.stringify(IV.pins || {}) === before) return;
+      IV.homeFor = null;
+      if (IV.open && !IV.sel) ivRender();
+      try { renderShelvesSoon(); } catch (e) {}
+    });
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) { try { ivSyncBeacon(); } catch (e) {} } else { try { ivCwRefresh(); ivSyncPull(); ivPinsRefresh(); } catch (e) {} } });
+window.addEventListener('focus', () => { try { ivSyncPull(); ivPinsRefresh(); } catch (e) {} });
 window.addEventListener('pagehide', () => { try { ivSyncBeacon(); } catch (e) {} });
 function ivHide() { IV.open = false; IV.sel = null; $('iv').style.display = 'none'; document.body.classList.remove('iv-on'); renderShelvesSoon(); }
 function ivBack() {
