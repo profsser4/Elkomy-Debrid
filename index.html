@@ -2919,6 +2919,7 @@ async function ivPinsLoad() {
       ? {live: IV.g.live.slice(), cats: IV.g.cats.slice(), vod: IV.g.vod.slice(), ser: IV.g.ser.slice(), order: p.order || {}, hidden: p.hidden || {}, names: p.names || {}}
       : {live: p.live || [], cats: p.cats || [], vod: p.vod || [], ser: p.ser || [], order: p.order || {}, hidden: p.hidden || {}, names: p.names || {}};
     IV.pinsPid = pid; IV.pinsGm = gm; IV.pinsAt = Date.now();
+    try { IV.pinsBase = JSON.parse(JSON.stringify(IV.pins)); } catch (e) {}
   } catch (e) { if (!IV.pins) IV.pins = {live: [], cats: [], vod: [], ser: [], order: {}, hidden: {}}; }
 }
 function ivPinsSave() {
@@ -2927,7 +2928,29 @@ function ivPinsSave() {
   IV.pinDirty = 1;
   _ivPT = setTimeout(() => {
     const body = gm ? {global: true, pins: {live: IV.pins.live, cats: IV.pins.cats, vod: IV.pins.vod || [], ser: IV.pins.ser || [], ln: IV.gln || {}}} : {pid: pid, pins: IV.pins};
-    api('/iptv/pins', {method: 'POST', body: JSON.stringify(body)}).then(() => { IV.pinDirty = 0; IV.pinsAt = Date.now(); }).catch(() => { IV.pinDirty = 0; IV.pinsAt = 0; });
+    (async () => {
+      try {
+        if (!gm && IV.pinsBase) {
+          try {
+            const {d} = await api('/iptv/pins?pid=' + encodeURIComponent(pid));
+            const sp = (d && d.pins) || {}, base = IV.pinsBase, mine = IV.pins;
+            ['live', 'vod', 'ser'].forEach(k => {
+              const b = (base[k] || []).map(String), m = (mine[k] || []).map(String);
+              const add = m.filter(x => !b.includes(x)), del = b.filter(x => !m.includes(x));
+              mine[k] = add.concat((sp[k] || []).map(String).filter(x => !del.includes(x) && !add.includes(x)));
+            });
+            const ck = c => c.k + ':' + c.id, bc = (base.cats || []).map(ck), mc = (mine.cats || []).map(ck);
+            const addC = (mine.cats || []).filter(c => !bc.includes(ck(c))), delC = bc.filter(x => !mc.includes(x));
+            mine.cats = addC.concat((sp.cats || []).filter(c => !delC.includes(ck(c)) && !addC.some(a => ck(a) === ck(c))));
+            body.pins = mine;
+          } catch (e) {}
+        }
+        await api('/iptv/pins', {method: 'POST', body: JSON.stringify(body)});
+        try { IV.pinsBase = JSON.parse(JSON.stringify(IV.pins)); } catch (e) {}
+        IV.pinDirty = 0; IV.pinsAt = Date.now();
+        IV.homeFor = null; if (IV.open && !IV.sel) ivRender(); try { renderShelvesSoon(); } catch (e) {}
+      } catch (e) { IV.pinDirty = 0; IV.pinsAt = 0; }
+    })();
     ivHomeLoad(PID);
   }, 700);
 }
@@ -3580,6 +3603,7 @@ function ivPinsRefresh() {
 document.addEventListener('visibilitychange', () => { if (document.hidden) { try { ivSyncBeacon(); } catch (e) {} } else { try { ivCwRefresh(); ivSyncPull(); ivPinsRefresh(); } catch (e) {} } });
 window.addEventListener('focus', () => { try { ivSyncPull(); ivPinsRefresh(); } catch (e) {} });
 window.addEventListener('pagehide', () => { try { ivSyncBeacon(); } catch (e) {} });
+setInterval(() => { if (!document.hidden) { try { ivPinsRefresh(); ivSyncPull(); } catch (e) {} } }, 60000);
 function ivHide() { IV.open = false; IV.sel = null; $('iv').style.display = 'none'; document.body.classList.remove('iv-on'); renderShelvesSoon(); }
 function ivBack() {
   if (IV.sel) { IV.sel = null; ivRender(); return; }
