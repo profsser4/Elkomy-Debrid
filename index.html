@@ -8,6 +8,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v56: إصلاح لوحة اشتراكات IPTV على الموبايل: اسم العضو والهوست كانوا بيتكسّروا حرف حرف، دلوقتي الاسم في سطر والأزرار تحته
   v55: زر ℹ️ على كل حساب IPTV (لوحة الأدمن + المخزن): كام جهاز يشغّله وشغّال عليه كام، الإنشاء/الانتهاء، السيرفر، عدد القنوات/الأفلام/المسلسلات، وقائمة القنوات بأقسامها وبحث (من الجهاز مباشرة، من غير تعديل في السيرفر)
   v54: السيرفر (bot v24) بقى يسجّل IP/المدينة/المتصفح/آخر فتحة/عدد الفتحات/آخر عملية لكل جهاز، والصفحة بتعرضهم. «📊 نشاط المستخدمين» بقى كامل: 🟢 أونلاين دلوقتي + على أنهي جهاز (تلفزيون/تطبيق/متصفح) + آخر فتح بالتاريخ و«من كام» + آخر حاجة شاهدها/سحبها + تفاصيل الأجهزة (متوافق مع bot.py الحالي، ويعرض IP/المتصفح لو السيرفر بعتهم)
   v53: رجوع «🗄️ مخزن الحسابات» في لوحة الأدمن (اشتراكات IPTV): إضافة بالجملة + فحص (شغّال/ميت/مفيش رد) + مسح + تعيين حساب أساسي ⭐ (متوافق مع bot.py الحالي)
@@ -1031,7 +1032,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=55;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=56;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
