@@ -8,6 +8,8 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v52: قايمة الأعضاء بتبيّن تاريخ انتهاء الاشتراك بجانب الأيام المتبقية، وبتنبّه على الأعضاء القدام (من غير مدة) اللي أيامهم مش بتنقص
+  v51: مراجعة أمان وتشغيل: منع javascript:/data: في الروابط، تنضيف رسائل الأخطاء من السيرفر قبل عرضها، منع حقن أسطر في ملفات M3U، حصر أزرار التشخيص على الأدمن، تحديد أصل رسائل يوتيوب، إعادة محاولة تحويل HLS مرة تانية، كشف غياب الصوت في Firefox، وزرار «شغّل في VLC» واضح لما الفيديو يفشل في المتصفح
   v1: إصلاح كارت الحلقة (العنوان كان بيطلع عمودي، الأزرار بقت في صف تحت)
   v50: أسماء الأفلام والمسلسلات في الـIPTV بقت تظهر كاملة (لحد 3 سطور) ومنضّفة من كود اللغة والسنة والتاجات
   v49: الأفلام والمسلسلات والقنوات المثبّتة من الـIPTV بقت تظهر في الرئيسية الجديدة (كانت مش بتظهر خالص)
@@ -1021,7 +1023,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=50;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=52;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -1383,6 +1385,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const EMOJIS = ['😎','🦁','🐼','🦊','👧','👦','👩','👨','🐱','🐯','🎬','🍿','🚀','⭐','👑','🎮'];
 const COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899'];
 
+// يمنع javascript:/data:/vbscript: في أي رابط (الباقي زي intent: و vlc: و https: بيعدّي عادي)
+function safeUrl(u) {
+  const t = String(u == null ? '' : u);
+  return /^(javascript|data|vbscript):/i.test(t.replace(/[\u0000-\u0020\u00a0]/g, '')) ? '#' : t;
+}
+function escUrl(u) { return esc(safeUrl(u)); }
+// سطر M3U: بيشيل أي سطر جديد عشان ما حدّش يحقن #EXTVLCOPT أو روابط تانية جوه الاسم
+function m3uLine(t) { return String(t == null ? '' : t).replace(/[\r\n\u2028\u2029]+/g, ' ').trim(); }
 function esc(s) {
   const m = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
   return String(s ?? '').replace(/[&<>"']/g, c => m[c]);
@@ -1810,13 +1820,24 @@ async function dlM3U1() {
   const sx = AUD.ar ? '' : await subxWarm();
   const v = document.querySelector('#results video');
   const t = Math.floor((v && v.currentTime) || PLAY.resume || 0);
-  const body = '#EXTM3U\n#EXTINF:-1,' + (PLAY.title || PLAY.fname || 'video') + '\n' +
-    (sx ? '#EXTVLCOPT:input-slave=' + sx + '\n' : '') + (t > 5 ? '#EXTVLCOPT:start-time=' + t + '\n' : '') +
-    (PLAY.url || PLAY.hls) + '\n';   // VLC بيشغّل كل الصيغ: الرابط الأصلي (صوت وصورة كاملين) مش البث المحوَّل
+  const body = '#EXTM3U\n#EXTINF:-1,' + m3uLine(PLAY.title || PLAY.fname || 'video') + '\n' +
+    (sx ? '#EXTVLCOPT:input-slave=' + m3uLine(sx) + '\n' : '') + (t > 5 ? '#EXTVLCOPT:start-time=' + t + '\n' : '') +
+    m3uLine(PLAY.url || PLAY.hls) + '\n';   // VLC بيشغّل كل الصيغ: الرابط الأصلي (صوت وصورة كاملين) مش البث المحوَّل
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([body], {type: 'audio/x-mpegurl'}));
   a.download = 'video.m3u';
   a.click();
+}
+// زرار «شغّل في VLC» واضح: بيظهر لما الفيديو يفشل في المتصفح (صورة سودا / صوت بس / صيغة مش مدعومة)
+function vlcQuick() {
+  const u = PLAY && (PLAY.url || PLAY.hls);
+  if (!u) return '';
+  const st = 'display:block;text-align:center;margin-top:8px;padding:10px 14px;border-radius:10px;border:0;background:#f97316;color:#fff;font-weight:700;text-decoration:none;cursor:pointer;width:100%;box-sizing:border-box';
+  const du = ' data-u="' + escUrl(u) + '"';
+  if (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined') return '<button style="' + st + '"' + du + ' onclick="nativeGo(this)">▶ شغّل في المشغّل الداخلي</button>';
+  if (IS_ANDROID) return '<a style="' + st + '" href="' + escUrl(intentUrl(u, 'org.videolan.vlc')) + '"' + du + ' onclick="return vlcGo(this)">▶ شغّل في VLC</a>';
+  if (IS_IOS) return '<a style="' + st + '" href="' + escUrl('vlc-x-callback://x-callback-url/stream?url=' + encodeURIComponent(u)) + '"' + du + ' onclick="return extGo(this,\'vlc\')">▶ شغّل في VLC</a>';
+  return '<button style="' + st + '" onclick="dlM3U1()">▶ شغّل في VLC (ملف M3U)</button>';
 }
 // تسجيل المشاهدة في «كمّل المشاهدة» لما الفتح يكون من برنامج خارجي (VLC وغيره): مفيش عنصر فيديو في الصفحة يسجّل المكان
 function markExternal() {
@@ -1902,7 +1923,7 @@ function fallbackPanel(d, base, err) {
   const play = hl || raw;
   const du = esc(raw), pu = esc(play);
   const ttl = esc((base && (base.title || base.fname)) || d.name || 'الملف جاهز');
-  const a = (label, href, extra) => '<a class="pl" href="' + esc(href) + '"' + (extra || '') + '>' + label + '</a>';
+  const a = (label, href, extra) => '<a class="pl" href="' + escUrl(href) + '"' + (extra || '') + '>' + label + '</a>';
   const btn = (label, js, bg) => '<button class="pl"' + (bg ? ' style="background:' + bg + '"' : '') + ' ' + js + '>' + label + '</button>';
   const W = [], D = [];
   if (!raw) return warn('الرابط مش جاهز: ' + esc(String((err && err.message) || err).slice(0, 120)));
@@ -1910,7 +1931,7 @@ function fallbackPanel(d, base, err) {
   if (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined') W.push(btn('⭐ شغّل في المشغّل الداخلي', 'data-u="' + pu + '" onclick="nativeGo(this)"', '#22c55e'));
   try { W.push(playerMenuLite(play, hl)); } catch (e) {}
   W.push(btn('📋 نسخ رابط المشاهدة', 'data-u="' + pu + '" onclick="copyText(this.dataset.u)"', '#475569'));
-  if (!window.AndroidPlayer) W.push(btn('🌐 فتح في المتصفح', 'data-u="' + pu + '" onclick="window.open(this.dataset.u,\'_blank\')"', '#475569'));
+  if (!window.AndroidPlayer) W.push(btn('🌐 فتح في المتصفح', 'data-u="' + pu + '" onclick="window.open(safeUrl(this.dataset.u),\'_blank\',\'noopener\')"', '#475569'));
   // برامج التحميل
   if (window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined') D.push(btn('⬇️ تحميل ببرنامج التطبيق (سريع)', 'data-u="' + du + '" data-n="' + ttl + '" onclick="dlApp(this)"', '#22c55e'));
   if (!(window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined')) D.push(a('⬇️ تحميل مباشر', raw, ' target="_blank" rel="noopener" download'));
@@ -1930,7 +1951,7 @@ function fallbackPanel(d, base, err) {
     '<button class="btn-vlc" style="background:#334155;margin-top:8px" onclick="retryStream()">🔄 جرّب المشغّل تاني</button></div>';
 }
 function playerMenuLite(u, hls) {
-  const a = (label, href, extra) => '<a class="pl" href="' + esc(href) + '"' + (extra || '') + '>' + label + '</a>';
+  const a = (label, href, extra) => '<a class="pl" href="' + escUrl(href) + '"' + (extra || '') + '>' + label + '</a>';
   const du = ' data-u="' + esc(u) + '"';
   const L = [];
   if (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined') {
@@ -1955,7 +1976,7 @@ function playerMenu(u, hls) {
   const orig = u;
   u = hls || u;   // المشاهدة: الرابط المحوَّل (يشتغل على أي مشغّل) لو موجود، وإلا الأصلي
   const L = [];
-  const a = (label, href, extra) => '<a class="pl" href="' + esc(href) + '"' + (extra || '') + '>' + label + '</a>';
+  const a = (label, href, extra) => '<a class="pl" href="' + escUrl(href) + '"' + (extra || '') + '>' + label + '</a>';
   const du = ' data-u="' + esc(u) + '"';
   if (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined') {
     L.push('<button class="pl" style="background:#22c55e"' + du + ' onclick="nativeGo(this)">⭐ المشغّل الداخلي</button>');
@@ -3367,7 +3388,7 @@ function ivCopy(t) {
 }
 function ivM3U(url, title) {
   if (!isPremiumOK() || noDl()) return;
-  const b = new Blob(['#EXTM3U\n#EXTINF:-1,' + title + '\n' + url + '\n'], {type: 'audio/x-mpegurl'});
+  const b = new Blob(['#EXTM3U\n#EXTINF:-1,' + m3uLine(title) + '\n' + m3uLine(url) + '\n'], {type: 'audio/x-mpegurl'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(b); a.download = ivClean(title) + '.m3u';
   document.body.appendChild(a); a.click(); a.remove();
@@ -3379,7 +3400,7 @@ function ivWebPlay(url, title, o) {
   m = document.createElement('div');
   m.id = 'ivp';
   m.innerHTML = '<div class="ivph"><button class="spback" onclick="ivWebClose()">✖</button><b>' + esc(title) + '</b></div>' +
-    '<video id="ivpv" controls autoplay playsinline></video><div id="ivpe"></div>' +
+    '<video id="ivpv" controls autoplay playsinline webkit-playsinline></video><div id="ivpe"></div>' +
     '<div class="ivpb"><button class="fc" data-u="' + esc(url) + '" onclick="ivCopy(this.dataset.u)">📋 انسخ الرابط</button>' +
     '<button class="fc" data-u="' + esc(url) + '" data-t="' + esc(title) + '" onclick="ivM3U(this.dataset.u,this.dataset.t)">💾 ملف VLC (.m3u)</button></div>';
   document.body.appendChild(m);
@@ -3765,7 +3786,7 @@ function ivAdmRender() {
       (u.set && (u.extra || []).length ? '<button style="background:#8b5cf6;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="ivMapOpen(this.dataset.n)">🔗</button>' : '') +
       (u.set ? '<button style="background:var(--danger);color:#fff" data-n="' + esc(u.name) + '" onclick="ivAdmDel(this.dataset.n)">🗑</button>' : '') + '</div>';
   }).join('') +
-    '<button class="search-btn" style="background:#0ea5e9" onclick="ivChkAll(this)">🔍 فحص كل الحسابات (شغّال / فاصل)</button><button class="search-btn" style="background:#8b5cf6" onclick="ivPoolOpen()">📦 مخزن الحسابات (مئات الحسابات + فحص تلقائي)</button><div id="ivPool"></div><div id="ivChk"></div><div id="ivMap"></div>' +
+    '<button class="search-btn" style="background:#0ea5e9" onclick="ivChkAll(this)">🔍 فحص كل الحسابات (شغّال / فاصل)</button><div id="ivChk"></div><div id="ivMap"></div>' +
     '<select id="ivaN" class="search-input">' + IVADM.map(u => '<option value="' + esc(u.name) + '">' + esc(ivAdmLbl(u.name)) + '</option>').join('') + '</select>' +
     '<input id="ivaH" class="search-input ltr" placeholder="الهوست: http://example.com:8080" autocapitalize="off" autocorrect="off">' +
     '<input id="ivaU" class="search-input ltr" placeholder="اليوزر" autocapitalize="off" autocorrect="off">' +
@@ -3834,228 +3855,6 @@ async function ivChkAll(btn) {
   el.innerHTML = rows.join('') || '<p style="color:var(--mut)">مفيش حسابات متسجلة</p>';
   btn.disabled = false;
 }
-
-// ---------- مخزن الحسابات الكبير (مئات/آلاف): إضافة بالجملة + فحص تلقائي + مسح الواقف + اختيار الأساسي ----------
-const IVP = {n: '__all__', items: [], prim: null, flt: 'all', q: '', sort: 'days', lim: 50, run: false, stop: false, done: 0, total: 0, loaded: false};
-const ivpKey = a => a.host + '|' + a.user;
-const ivpDays = a => a.exp ? Math.ceil((a.exp * 1000 - Date.now()) / 864e5) : null;
-function ivpParse(txt) {
-  const out = [], seen = new Set();
-  let bad = 0;
-  String(txt || '').split(/\r?\n/).forEach(raw => {
-    const l = raw.trim();
-    if (!l) return;
-    let h = '', u = '', p = '';
-    let m = l.match(/^(https?:\/\/[^\s\/?#]+).*?[?&]username=([^&\s]+).*?[?&]password=([^&\s]+)/i);
-    if (m) { h = m[1]; try { u = decodeURIComponent(m[2]); p = decodeURIComponent(m[3]); } catch (e) { u = m[2]; p = m[3]; } }
-    else {
-      const a = l.split(/[\s|,;]+/).filter(Boolean);
-      if (a.length >= 3 && /[.:]/.test(a[0])) { h = a[0]; u = a[1]; p = a.slice(2).join(' '); }
-    }
-    if (!h || !u || !p) { bad++; return; }
-    const k = h.toLowerCase().replace(/\/+$/, '') + '|' + u;
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push({host: h, user: u, pass: p});
-  });
-  return {items: out, bad: bad};
-}
-async function ivPoolOpen() {
-  const el = $('ivPool');
-  if (!el) return;
-  if (el.dataset.open === '1') { el.dataset.open = ''; el.innerHTML = ''; return; }
-  el.dataset.open = '1';
-  await ivpLoad();
-}
-async function ivpLoad() {
-  const el = $('ivPool');
-  if (!el) return;
-  if (!IVP.loaded) el.innerHTML = pend('جاري تحميل المخزن...');
-  try {
-    const {r, d} = await api('/iptv/admin/' + encodeURIComponent(IVP.n) + '/pool');
-    if (!r.ok || !d.items) { el.innerHTML = warn('السيرفر ما بيدعمش المخزن لسه (كود ' + r.status + '). ارفع bot.py الجديد وأعد تشغيل السيرفر.'); return; }
-    IVP.items = d.items; IVP.prim = d.primary; IVP.loaded = true;
-  } catch (e) { el.innerHTML = ERR; return; }
-  ivpRender();
-}
-function ivpStats() {
-  const s = {ok: 0, dead: 0, down: 0, fresh: 0, dev: 0};
-  IVP.items.forEach(a => { if (a.st === 'ok') { s.ok++; s.dev += a.maxc || 0; } else if (a.st === 'dead') s.dead++; else if (a.st === 'down') s.down++; else s.fresh++; });
-  return s;
-}
-function ivpSum() {
-  const s = ivpStats();
-  return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;font-weight:700">' +
-    '<span style="color:var(--success)">✅ شغّال ' + s.ok + '</span><span style="color:#ef4444">❌ واقف ' + s.dead + '</span>' +
-    '<span style="color:#f59e0b">⚠️ مفيش رد ' + s.down + '</span><span style="color:var(--mut)">🆕 ما اتفحصش ' + s.fresh + '</span>' +
-    '<span style="color:var(--mut)">· الإجمالي ' + IVP.items.length + '</span></div>' +
-    (s.ok ? '<p style="color:var(--mut);margin:0 0 6px;font-size:13px">مجموع الأجهزة اللي تقدر تشتغل في نفس الوقت على الحسابات الشغّالة: <b>' + s.dev + '</b></p>' : '');
-}
-function ivpRender() {
-  const el = $('ivPool');
-  if (!el) return;
-  const fl = [['all', 'الكل'], ['ok', '✅ شغّال'], ['dead', '❌ واقف'], ['down', '⚠️ مفيش رد'], ['fresh', '🆕 جديد']];
-  const pr = IVP.prim;
-  el.innerHTML = '<div class="action-box" style="text-align:right">' +
-    '<h3 style="margin-top:0">📦 مخزن الحسابات</h3>' +
-    '<select id="ivpN" class="search-input" onchange="IVP.n=this.value;IVP.loaded=false;IVP.lim=50;ivpLoad()">' +
-    IVADM.map(u => '<option value="' + esc(u.name) + '"' + (u.name === IVP.n ? ' selected' : '') + '>' + esc(ivAdmLbl(u.name)) + '</option>').join('') + '</select>' +
-    (pr ? '<div class="ep" style="border:1px solid var(--success)"><div class="b">⭐ الأساسي الحالي (أفلام/مسلسلات/قوائم)<small class="ltr" style="direction:ltr;text-align:left">' + esc(pr.host) + ' · ' + esc(pr.user) + '</small>' +
-      '<small style="color:var(--mut)">' + esc(pr.stat && pr.stat.t ? (ivDaysTxt(pr.stat) + (pr.stat.maxc ? ' · أجهزة ' + (pr.stat.active || 0) + '/' + pr.stat.maxc : '')) : 'لسه ما اتفحصش') + '</small></div></div>'
-      : '<p style="color:var(--mut)">مفيش حساب أساسي لسه — اختار واحد من المخزن بـ ⭐</p>') +
-    '<div id="ivpSum">' + ivpSum() + '</div>' +
-    '<div id="ivpProg"></div>' +
-    '<div class="row" style="gap:6px;flex-wrap:wrap">' +
-    '<button class="search-btn" id="ivpGo" onclick="ivpCheck(false)">🔍 فحص الكل</button>' +
-    '<button class="search-btn" id="ivpGo2" style="background:#0ea5e9" onclick="ivpCheck(true)">🔍 فحص الجديد + اللي مردش</button>' +
-    '<button class="search-btn" id="ivpStop" style="background:#6b7280;display:none" onclick="IVP.stop=true">⏹ إيقاف</button></div>' +
-    '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">' +
-    '<button style="background:var(--danger);color:#fff" onclick="ivpDelStatus(\'dead\')">🗑 امسح كل الواقف</button>' +
-    '<button style="background:#f59e0b;color:#fff" onclick="ivpDelStatus(\'down\')">🗑 امسح اللي مردش</button></div>' +
-    '<hr style="border-color:#ffffff18;margin:12px 0">' +
-    '<textarea id="ivpAdd" class="search-input ltr" rows="4" style="direction:ltr;text-align:left" placeholder="الصق الحسابات هنا (حتى آلاف) - سطر لكل حساب:&#10;host user pass&#10;أو رابط M3U كامل: http://host/get.php?username=..&password=.." autocapitalize="off" autocorrect="off" oninput="ivpAddHint()"></textarea>' +
-    '<p id="ivpHint" style="color:var(--mut);font-size:12px;margin:2px 0 6px"></p>' +
-    '<button class="search-btn" onclick="ivpAddGo(this)">➕ أضف للمخزن</button>' +
-    '<hr style="border-color:#ffffff18;margin:12px 0">' +
-    '<div class="row" style="gap:6px;flex-wrap:wrap">' + fl.map(f => '<button style="' + (IVP.flt === f[0] ? 'background:#0ea5e9;color:#fff' : '') + '" onclick="IVP.flt=\'' + f[0] + '\';IVP.lim=50;ivpRender()">' + f[1] + '</button>').join('') + '</div>' +
-    '<input class="search-input ltr" style="direction:ltr;text-align:left;margin-top:6px" placeholder="بحث بالهوست أو اليوزر" value="' + esc(IVP.q) + '" oninput="IVP.q=this.value;IVP.lim=50;ivpList()">' +
-    '<select class="search-input" onchange="IVP.sort=this.value;ivpList()"><option value="days"' + (IVP.sort === 'days' ? ' selected' : '') + '>ترتيب: أطول مدة متبقية</option><option value="dev"' + (IVP.sort === 'dev' ? ' selected' : '') + '>ترتيب: أكتر أجهزة</option></select>' +
-    '<div id="ivpList"></div></div>';
-  ivpList();
-}
-function ivpList() {
-  const el = $('ivpList');
-  if (!el) return;
-  const q = IVP.q.trim().toLowerCase();
-  let l = IVP.items.filter(a => {
-    const st = a.st || 'fresh';
-    if (IVP.flt !== 'all' && st !== IVP.flt) return false;
-    return !q || (a.host + ' ' + a.user).toLowerCase().includes(q);
-  });
-  const rank = {ok: 0, fresh: 1, down: 2, dead: 3};
-  l.sort((a, b) => (rank[a.st || 'fresh'] - rank[b.st || 'fresh']) ||
-    (IVP.sort === 'dev' ? (b.maxc || 0) - (a.maxc || 0) : ((ivpDays(b) === null ? 1e9 : ivpDays(b)) - (ivpDays(a) === null ? 1e9 : ivpDays(a)))));
-  const tot = l.length;
-  l = l.slice(0, IVP.lim);
-  el.innerHTML = '<p style="color:var(--mut);font-size:12px">' + tot + ' حساب</p>' + l.map(a => {
-    const st = a.st || 'fresh', d = ivpDays(a);
-    let tx, col;
-    if (st === 'ok') { col = 'var(--success)'; tx = '✅ شغّال · ' + (d === null ? 'غير محدود' : 'باقي ' + d + ' يوم') + ' · ' + (a.maxc ? 'يشغّل ' + a.maxc + ' جهاز مع بعض (شغّال دلوقتي ' + (a.act || 0) + ')' : 'عدد الأجهزة مش معروف'); }
-    else if (st === 'dead') { col = '#ef4444'; tx = '❌ واقف' + (a.why ? ' · ' + a.why : ''); }
-    else if (st === 'down') { col = '#f59e0b'; tx = '⚠️ مفيش رد' + (a.why ? ' · ' + a.why : ''); }
-    else { col = 'var(--mut)'; tx = '🆕 لسه ما اتفحصش'; }
-    return '<div class="ep"><div class="b"><small class="ltr" style="direction:ltr;text-align:left;font-size:13px">' + esc(a.host) + ' · ' + esc(a.user) + '</small>' +
-      '<small style="color:' + col + '">' + esc(tx) + (a.t ? ' · ' + new Date(a.t * 1000).toLocaleDateString('ar-EG') : '') + '</small></div>' +
-      '<button style="background:#f59e0b;color:#fff;margin-inline-end:6px" title="خليه أساسي" data-k="' + esc(ivpKey(a)) + '" onclick="ivpPrimary(this.dataset.k)">⭐</button>' +
-      '<button style="background:var(--danger);color:#fff" data-k="' + esc(ivpKey(a)) + '" onclick="ivpDelOne(this.dataset.k)">🗑</button></div>';
-  }).join('') + (tot > IVP.lim ? '<button class="search-btn" style="background:#6b7280" onclick="IVP.lim+=100;ivpList()">عرض المزيد (' + (tot - IVP.lim) + ')</button>' : '');
-}
-function ivpAddHint() {
-  const p = ivpParse($('ivpAdd').value);
-  $('ivpHint').textContent = p.items.length || p.bad ? ('هيتضاف ' + p.items.length + ' حساب' + (p.bad ? ' · ' + p.bad + ' سطر مش مفهوم' : '')) : '';
-}
-async function ivpAddGo(btn) {
-  const p = ivpParse($('ivpAdd').value);
-  if (!p.items.length) { toast('مفيش حسابات صالحة في النص'); return; }
-  btn.disabled = true;
-  let added = 0, dup = 0, bad = 0;
-  try {
-    for (let i = 0; i < p.items.length; i += 500) {
-      const {r, d} = await api('/iptv/admin/' + encodeURIComponent(IVP.n) + '/pool/add', {method: 'POST', body: JSON.stringify({items: p.items.slice(i, i + 500)})});
-      if (!r.ok || d.error) { alert(d.error || ('السيرفر رد بخطأ ' + r.status)); break; }
-      added += d.added; dup += d.dup; bad += d.bad;
-    }
-    toast('اتضاف ' + added + (dup ? ' · مكرر ' + dup : '') + (bad ? ' · مرفوض ' + bad : ''));
-    $('ivpAdd').value = '';
-  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
-  btn.disabled = false;
-  IVP.loaded = false;
-  ivpLoad();
-}
-// تصنيف رد الفحص: ok = شغّال | dead = واقف نهائي (يوزر/باس غلط، منتهي، موقوف) | down = مفيش رد (ممكن مؤقت)
-async function ivpProbe(a) {
-  try {
-    const d = await ivPing(a), x = d && d.user_info;
-    if (!x) return {st: 'down', why: 'رد غير مفهوم'};
-    if (+x.auth === 0) return {st: 'dead', why: 'اليوزر أو الباس غلط'};
-    const ex = +x.exp_date || 0, o = {exp: ex, maxc: +x.max_connections || 0, act: +x.active_cons || 0};
-    const s = String(x.status || '').toLowerCase();
-    if (s !== 'active') return Object.assign(o, {st: 'dead', why: x.status || 'غير مفعّل'});
-    if (ex && ex * 1000 < Date.now()) return Object.assign(o, {st: 'dead', why: 'منتهي'});
-    return Object.assign(o, {st: 'ok'});
-  } catch (e) { return {st: 'down', why: String(e && e.message || '').slice(0, 40)}; }
-}
-async function ivpCheck(onlyNew) {
-  if (IVP.run) return;
-  const list = IVP.items.filter(a => !onlyNew || !a.st || a.st === 'down');
-  if (!list.length) { toast(onlyNew ? 'مفيش حسابات جديدة أو بدون رد' : 'المخزن فاضي'); return; }
-  IVP.run = true; IVP.stop = false; IVP.done = 0; IVP.total = list.length;
-  $('ivpGo').disabled = $('ivpGo2').disabled = true; $('ivpStop').style.display = '';
-  const owner = IVP.n;
-  let buf = [], q = list.slice(), cnt = {ok: 0, dead: 0, down: 0};
-  const flush = async () => {
-    if (!buf.length) return;
-    const b = buf; buf = [];
-    try { await api('/iptv/admin/' + encodeURIComponent(owner) + '/pool/stat', {method: 'POST', body: JSON.stringify({items: b})}); } catch (e) {}
-  };
-  const prog = () => {
-    const p = $('ivpProg'); if (!p) return;
-    p.innerHTML = '<div style="background:#ffffff14;border-radius:8px;overflow:hidden;height:10px;margin:6px 0"><div style="height:10px;width:' + Math.round(IVP.done / IVP.total * 100) + '%;background:#0ea5e9"></div></div>' +
-      '<p style="margin:0 0 6px;font-size:13px">اتفحص ' + IVP.done + ' من ' + IVP.total + ' · ✅ ' + cnt.ok + ' · ❌ ' + cnt.dead + ' · ⚠️ ' + cnt.down + '</p>';
-    const s = $('ivpSum'); if (s) s.innerHTML = ivpSum();
-  };
-  const worker = async () => {
-    while (q.length && !IVP.stop) {
-      const a = q.shift();
-      const r = await ivpProbe(a);
-      cnt[r.st]++;
-      a.st = r.st; a.why = r.why || ''; a.t = Math.floor(Date.now() / 1000);
-      if (r.st !== 'down') { a.exp = r.exp || 0; a.maxc = r.maxc || 0; a.act = r.act || 0; }
-      buf.push({k: ivpKey(a), st: r.st, why: r.why || '', exp: r.exp || 0, maxc: r.maxc || 0, act: r.act || 0});
-      IVP.done++;
-      if (buf.length >= 25) await flush();
-      if (IVP.done % 3 === 0 || !q.length) prog();
-    }
-  };
-  await Promise.all(Array.from({length: 10}, worker));
-  await flush();
-  IVP.run = false;
-  prog();
-  if ($('ivpGo')) { $('ivpGo').disabled = $('ivpGo2').disabled = false; $('ivpStop').style.display = 'none'; }
-  ivpList();
-  if (IVP.done >= 5 && cnt.down / IVP.done >= 0.9) alert('تقريباً كل الحسابات "مفيش رد". غالباً المشكلة في الشبكة أو الآيبي عندك (الـIPTV عايز آيبي مصري) أو المتصفح بيمنع http. جرّب من تطبيق الأندرويد. متمسحش "اللي مردش" دلوقتي.');
-  else toast(IVP.stop ? 'اتوقف الفحص' : 'خلص الفحص ✅');
-}
-async function ivpDelStatus(st) {
-  const s = ivpStats(), n = s[st];
-  if (!n) { toast('مفيش حسابات في الحالة دي'); return; }
-  if (!confirm(st === 'dead' ? 'مسح ' + n + ' حساب واقف (يوزر/باس غلط أو منتهي أو موقوف)؟' : 'مسح ' + n + ' حساب مردش وقت الفحص؟ ممكن يكون عطل مؤقت، متأكد؟')) return;
-  try {
-    const {r, d} = await api('/iptv/admin/' + encodeURIComponent(IVP.n) + '/pool/del', {method: 'POST', body: JSON.stringify({status: st})});
-    if (!r.ok) alert(d.error || 'السيرفر رد بخطأ ' + r.status); else toast('اتمسح ' + d.deleted);
-  } catch (e) { alert('مش قادر أوصل للسيرفر'); }
-  IVP.loaded = false; ivpLoad();
-}
-async function ivpDelOne(k) {
-  if (!confirm('مسح الحساب ده؟')) return;
-  try { await api('/iptv/admin/' + encodeURIComponent(IVP.n) + '/pool/del', {method: 'POST', body: JSON.stringify({keys: [k]})}); } catch (e) {}
-  IVP.items = IVP.items.filter(a => ivpKey(a) !== k);
-  $('ivpSum').innerHTML = ivpSum(); ivpList();
-}
-async function ivpPrimary(k) {
-  const a = IVP.items.find(x => ivpKey(x) === k);
-  if (!a) return;
-  if (a.st === 'dead' && !confirm('الحساب ده واقف. تخليه أساسي برضو؟')) return;
-  if (!confirm('تخلّي ' + a.user + ' هو الأساسي للأفلام والمسلسلات؟ (الأساسي القديم هيرجع للمخزن)')) return;
-  try {
-    const {r, d} = await api('/iptv/admin/' + encodeURIComponent(IVP.n) + '/pool/primary', {method: 'POST', body: JSON.stringify({k: k})});
-    if (!r.ok || d.error) { alert(d.error || 'السيرفر رد بخطأ ' + r.status); return; }
-    toast('بقى هو الأساسي ⭐');
-    IV.loaded = false; IV.homePid = null; IV.homeFor = null;
-  } catch (e) { alert('مش قادر أوصل للسيرفر'); return; }
-  IVP.loaded = false; await ivpLoad(); ivAdmLoad();
-}
-
 const IVM = {n: '', accs: [], lists: [], cats: [], cmap: [], idx: [], tab: 'one', rows: [], flt: 'all', lim: 40, busy: false};
 const ivAk = a => a.host + '|' + a.user;
 // ---------- مطابقة أسماء القنوات بين السيرفرات ----------
@@ -4880,7 +4679,7 @@ function clibShowDownload(c) {
   window.CLDL = c;
   const d = c.d, raw = d.direct_link, u = esc(raw);
   const L = [];
-  const a = (label, href) => '<a class="pl" href="' + esc(href) + '">' + label + '</a>';
+  const a = (label, href) => '<a class="pl" href="' + escUrl(href) + '">' + label + '</a>';
   if (IS_ANDROID && !window.AndroidPlayer) {
     L.push(a('⬇️ 1DM+', intentUrl(raw, 'idm.internet.download.manager.plus')), a('⬇️ 1DM', intentUrl(raw, 'idm.internet.download.manager')),
       a('⬇️ ADM', intentUrl(raw, 'com.dv.adm')), a('📂 أي برنامج تحميل', intentUrl(raw, '')));
@@ -6308,7 +6107,7 @@ async function wsGo(deep) {
     if ((d.pages || []).length) {
       o += '<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--mut)">الصفحات اللي اتفتحت (' + d.pages.length + ')</summary>' +
         d.pages.map(p => '<div style="font-size:12px;margin:6px 0;direction:ltr;text-align:left">' + esc(p.status) + ' · ' + p.found + ' رابط · ' +
-          '<a href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--primary)">' + esc(p.title || p.url) + '</a></div>').join('') + '</details>';
+          '<a href="' + escUrl(p.url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--primary)">' + esc(p.title || p.url) + '</a></div>').join('') + '</details>';
     }
     box.innerHTML = o;
   } catch (e) { box.innerHTML = ERR; }
@@ -6605,13 +6404,15 @@ async function smapFillSeries(id, force) {
 // بيجيب رابط البث المحوَّل (صوته شغّال) للملفات اللي جاية من /generate (TorBox). التحميل مابيتأثرش.
 async function ensureHls(d, fid, id) {
   if (!d || d.hls || !d.torrent_id || !/^(\d+|x:[^:]+:[^:]+:.+)$/.test(String(d.torrent_id))) return;
-  for (let k = 0; k < 1 && !d.hls; k++) {
+  for (let k = 0; k < 2 && !d.hls; k++) {
     try {
       const {d: r} = await api('/play/hls', {method: 'POST',
         body: JSON.stringify({torrent_id: d.torrent_id, file_id: d.file_id != null ? d.file_id : fid, direct_link: d.direct_link || ''})});
       if (id !== pullId) return;
       if (r && r.hls) d.hls = r.hls; else d.stream_note = (r && (r.note || r.error)) || '';
     } catch (e) {}
+    if (!d.hls && d.stream_note) break;   // السيرفر رد بسبب صريح: مفيش فايدة من إعادة المحاولة
+    if (!d.hls && k === 0) await sleep(1500);
   }
 }
 async function pullSource(src, base, fid) {
@@ -6718,6 +6519,9 @@ function vchk() {
     if (rb) rb.style.display = ok === false ? 'inline-block' : 'none';
     T.style.color = ok === true ? 'var(--success)' : ok === false ? '#f59e0b' : 'var(--mut)';
     T.textContent = (ok === true ? '✅ ' : ok === false ? '⚠️ ' : '⏳ ') + msg + extra;
+    let vb = $('vchkVlc');
+    if (ok === false) { if (!vb) { vb = document.createElement('div'); vb.id = 'vchkVlc'; box.appendChild(vb); } if (!vb.innerHTML) vb.innerHTML = vlcQuick(); }
+    else if (vb) vb.innerHTML = '';
   };
   const tick = () => {
     if (my !== pullId || !T.isConnected) { clearInterval(iv); return; }
@@ -6760,6 +6564,7 @@ async function playDiag() {
   L.push('الصورة: ' + (v.videoWidth ? v.videoWidth + '×' + v.videoHeight : 'مش بتتفك (0×0)') + ' | readyState ' + v.readyState + ' | network ' + v.networkState + (ec ? ' | خطأ المتصفح ' + ec : ''));
   L.push('الوقت: ' + Math.round(v.currentTime) + ' / ' + (isFinite(v.duration) ? Math.round(v.duration) : '?') + ' ث | واقف: ' + v.paused);
   if (typeof v.webkitAudioDecodedByteCount === 'number') L.push('الصوت المتفك: ' + v.webkitAudioDecodedByteCount + ' بايت' + (v.webkitAudioDecodedByteCount === 0 && v.currentTime > 3 ? ' ← صفر: الصوت مش بيتفك' : ''));
+  if (typeof v.mozHasAudio === 'boolean') L.push('الصوت (Firefox): ' + (v.mozHasAudio ? 'موجود' : 'مفيش مسار صوت بيتفك'));
   L.push('مكتوم: ' + v.muted + ' | مستوى الصوت: ' + v.volume);
   try { if (v.audioTracks) L.push('مسارات الصوت: ' + v.audioTracks.length); } catch (e) {}
   if (v._hls) { try { L.push('مسارات HLS: صوت ' + (v._hls.audioTracks || []).length + ' | الحالي ' + v._hls.audioTrack); } catch (e) {} }
@@ -6783,6 +6588,7 @@ function vchkRetry() {
   if (v) { const t = v.currentTime; v.load(); v.addEventListener('loadedmetadata', () => { try { v.currentTime = t; } catch (e) {} v.play().catch(() => {}); }, {once: true}); }
 }
 async function vchkReports() {
+  if (ROLE !== 'admin') return;
   const pre = $('vchkRep');
   if (!pre) return;
   if (pre.style.display === 'block') { pre.style.display = 'none'; return; }
@@ -6886,11 +6692,11 @@ function playData(d, base) {
   try { vchk(); } catch (e) {}
 }
 function linkCard(d, video) {
-  const u = esc(d.direct_link);
+  const u = escUrl(d.direct_link);
   if (video) {
     // تحت الفيديو مفيش غير المشغّل نفسه: الترجمة والصوت جوّه المشغّل (زرار الصوت والترجمة)
     return (PLAY && PLAY.nw ? warn('المصدر ده مش مناسب للمتصفح. شغّله من التطبيق.') : '') +
-      '<div class="nfx" id="nfx"><video controls playsinline tabindex="-1" preload="metadata"' + (PLAY && PLAY.hls ? '' : ' crossorigin="anonymous" data-cors="1" src="' + u + '"') + '></video></div><div id="playErr" style="margin-top:8px"></div><div id="audSel"></div>' +
+      '<div class="nfx" id="nfx"><video controls playsinline webkit-playsinline tabindex="-1" preload="metadata"' + (PLAY && PLAY.hls ? '' : ' crossorigin="anonymous" data-cors="1" src="' + u + '"') + '></video></div><div id="playErr" style="margin-top:8px"></div><div id="audSel"></div>' +
       '<div class="row oldctl" style="margin-top:8px"><button class="fc" onclick="skip(-10)">⏪ 10ث</button>' +
       '<button class="fc" onclick="skip(10)">10ث ⏩</button>' +
       '<select class="fc" onchange="setSpeed(this.value)"><option value="1">1x</option><option value="0.75">0.75x</option>' +
@@ -7090,7 +6896,7 @@ function attachPlayer() {
     if (b) b.dataset.err = 'media';
     if (b) b.innerHTML = warn('المتصفح مش قادر يشغّل الملف ده. دوس «🔬 فحص» تعرف السبب، أو «🔁 غيّر النسخة».') +
       (PLAY && !PLAY.hls && PLAY.note ? '<p style="color:var(--mut);font-size:12px">سبب إن البث المحوَّل ماتعملش: ' + esc(PLAY.note) + '</p>' : '') +
-      (PLAY && PLAY.vh && !PLAY.hls ? '<button class="search-btn" style="margin-top:8px;background:#0ea5e9" onclick="retryStream()">🔄 جرّب البث المحوَّل تاني (نفس النسخة)</button>' : '') + retryBtn();
+      (PLAY && PLAY.vh && !PLAY.hls ? '<button class="search-btn" style="margin-top:8px;background:#0ea5e9" onclick="retryStream()">🔄 جرّب البث المحوَّل تاني (نفس النسخة)</button>' : '') + vlcQuick() + retryBtn();
     const pm = document.querySelector('details.pm');
     if (pm) pm.open = true;
     probeCurrent();
@@ -7358,12 +7164,12 @@ async function packAll() {
         '<div class="ep"><div class="b">' + (x.season != null ? 'S' + p2(x.season) + 'E' + p2(x.episode) + ' · ' : '') +
         esc(x.name) + '</div>' + ((window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined')
           ? '<button class="fc" data-u="' + esc(x.url) + '" data-n="' + esc(x.name) + '" data-s="' + (x.season == null ? '' : x.season) + '" data-e="' + (x.season == null ? '' : x.episode) + '" onclick="dlApp(this)">⬇️</button>'
-          : '<a href="' + esc(x.url) + '" target="_blank" rel="noopener" style="color:var(--primary)">⬇️</a>') + '</div>'
+          : '<a href="' + escUrl(x.url) + '" target="_blank" rel="noopener" style="color:var(--primary)">⬇️</a>') + '</div>'
       ).join('') + '</div>';
   } catch (e) { $('packOut').innerHTML = ERR; }
 }
 function dlM3U() {
-  const body = '#EXTM3U\n' + links.map(x => '#EXTINF:-1,' + x.name + '\n' + x.url).join('\n');
+  const body = '#EXTM3U\n' + links.map(x => '#EXTINF:-1,' + m3uLine(x.name) + '\n' + m3uLine(x.url)).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([body], {type: 'audio/x-mpegurl'}));
   a.download = 'playlist.m3u';
@@ -8372,8 +8178,10 @@ setInterval(() => { renderPlanBar(); }, 3600000);
 setInterval(refreshMe, 300000);
 function usPlanTag(u) {
   const st = u.plan || 'premium';
-  const t = st === 'premium' ? planText({state: 'premium', until: u.until}) : planText({state: st});
-  return '<span class="pl-tag ' + st + '">' + esc(t) + '</span>';
+  let t = st === 'premium' ? planText({state: 'premium', until: u.until}) : planText({state: st}), sty = '';
+  if (st === 'premium' && u.legacy) { t = '💎 مميز · دائم (عضو قديم: الأيام مش بتنقص — حدّد له مدة من 💎 باقة)'; sty = ' style="color:#f59e0b"'; }
+  else if (st === 'premium' && u.until) t += ' · ينتهي ' + new Date(u.until * 1000).toISOString().slice(0, 10);
+  return '<span class="pl-tag ' + st + '"' + sty + '>' + esc(t) + '</span>';
 }
 function usPlan(n) {
   const u = USERS.find(x => x.name === n) || {};
@@ -9302,7 +9110,7 @@ async function dlBoth(el) {
     try { await dlCurSub(nm.replace(/\.[a-z0-9]{2,4}$/i, '')); } catch (e) {}
     return;
   }
-  window.open(el.dataset.u, '_blank');
+  window.open(safeUrl(el.dataset.u), '_blank', 'noopener');
   try { await dlCurSub(); } catch (e) {}
 }
 function ef2File(u) {
@@ -9312,7 +9120,7 @@ function ef2File(u) {
   a.click();
 }
 function showDownload(d) {
-  const u = esc(d.direct);
+  const u = escUrl(d.direct);
   $('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">⬇️ جاهز للتحميل</h3>' +
     (d.size ? '<p style="margin:0 0 6px">💾 ' + fmtSize(d.size) + '</p>' : '') +
     (d.name ? '<p class="fn">' + esc(d.name) + '</p>' : '') +
@@ -9501,7 +9309,7 @@ async function playBest(s, e) {
     if (!firstErr) firstErr = String(LAST_ERR || '').slice(0, 90);
   }
   if (cands.length) {
-    $('results').innerHTML = warn('النسخة دي ماشتغلتش' + (firstErr ? ' (' + firstErr + ')' : '') + '. مش هغيّرها من نفسي.') +
+    $('results').innerHTML = warn('النسخة دي ماشتغلتش' + (firstErr ? ' (' + esc(firstErr) + ')' : '') + '. مش هغيّرها من نفسي.') +
       '<button class="search-btn" style="margin-top:8px" onclick="playOpen(' + (s ? s + ',' + (e || 1) : '') + ')">🔁 غيّر النسخة</button>';
     return null;
   }
@@ -9616,6 +9424,7 @@ async function diagText(hash, name, s, e) {
   return out;
 }
 async function diagVersion(i) {
+  if (ROLE !== 'admin') return;
   const v = VER.list[i];
   if (!v || !v.hash) return alert('النسخة دي مالهاش hash');
   VER.diag = 'جاري الفحص...';
@@ -9625,6 +9434,7 @@ async function diagVersion(i) {
 }
 // فحص البث وقت التشغيل (للأدمن): نفس 🧪 بس من جوه صفحة التشغيل
 async function diagCurrent() {
+  if (ROLE !== 'admin') return;
   const el = $('diagOut');
   if (!el || !PLAY || !PLAY.vh) return;
   el.style.display = 'block';
@@ -9774,8 +9584,8 @@ function setupHls(v) {
     v.load();
     v.play().catch(() => {});
     const b = $('playErr');
-    if (b) b.innerHTML = warn('البث المحوَّل مشتغلش' + (ROLE === 'admin' ? ' (' + why + ')' : '') +
-      '، شغّلت الملف الأصلي. لو الصوت مش شغال افتحه من المشغّلات الخارجية تحت.') + retryBtn();
+    if (b) b.innerHTML = warn('البث المحوَّل مشتغلش' + (ROLE === 'admin' ? ' (' + esc(String(why)) + ')' : '') +
+      '، شغّلت الملف الأصلي. لو الصوت مش شغال افتحه من المشغّلات الخارجية تحت.') + vlcQuick() + retryBtn();
     const pm = document.querySelector('details.pm');
     if (pm) pm.open = true;
   };
@@ -11467,7 +11277,7 @@ async function heroTrailer(){
   let done=false,tm=0;
   const kill=()=>{if(done)return;done=true;clearTimeout(tm);window.removeEventListener('message',onMsg);if(window._hk===kill)window._hk=null;try{f.remove();m.remove();}catch(e){}};
   const onMsg=ev=>{
-    if(done||ev.source!==f.contentWindow)return;
+    if(done||ev.source!==f.contentWindow||ev.origin!=='https://www.youtube.com')return;
     let d=ev.data;if(typeof d==='string'){try{d=JSON.parse(d)}catch(e){return}}
     if(!d||typeof d!=='object')return;
     if(d.event==='onError'){kill();return}
@@ -11476,9 +11286,9 @@ async function heroTrailer(){
   };
   window._hk=kill;window.addEventListener('message',onMsg);
   tm=setTimeout(()=>{if(!f.classList.contains('on'))kill()},12000);   // لو ما اشتغلش في 12 ثانية يتشال
-  f.onload=()=>{try{f.contentWindow.postMessage(JSON.stringify({event:'listening',id:1}),'*')}catch(e){}};
+  f.onload=()=>{try{f.contentWindow.postMessage(JSON.stringify({event:'listening',id:1}),'https://www.youtube.com')}catch(e){}};
   f.src=yt(key);hz.prepend(f);
-  m.onclick=()=>{const mu=m.textContent==='🔇';try{f.contentWindow.postMessage(JSON.stringify({event:'command',func:mu?'unMute':'mute',args:''}),'*')}catch(e){}m.textContent=mu?'🔊':'🔇'};hz.appendChild(m);
+  m.onclick=()=>{const mu=m.textContent==='🔇';try{f.contentWindow.postMessage(JSON.stringify({event:'command',func:mu?'unMute':'mute',args:''}),'https://www.youtube.com')}catch(e){}m.textContent=mu?'🔊':'🔇'};hz.appendChild(m);
   clearInterval(heroT);heroT=setInterval(()=>{if($('hz').style.display!=='none'){heroI++;renderHero()}},35000);
 }
 const _rh=renderHero;renderHero=function(){_rh.apply(this,arguments);heroTrailer()};
@@ -11698,7 +11508,7 @@ body:not(.m-tv) #details .tab.on{background:linear-gradient(135deg,#38bdf8,#2563
       if (Date.now() - (X.chk || 0) < 8000) return;        // ندّي المشغّل 8 ثواني يستقر
       if (v.currentTime - (X.t0 || 0) < 4) return;          // لازم يكون ماشي فعلاً
       const noPic = v.videoWidth === 0;
-      const noSnd = !v.muted && v.volume > 0 && typeof v.webkitAudioDecodedByteCount === 'number' && v.webkitAudioDecodedByteCount === 0;
+      const noSnd = !v.muted && v.volume > 0 && ((typeof v.webkitAudioDecodedByteCount === 'number' && v.webkitAudioDecodedByteCount === 0) || v.mozHasAudio === false);
       if (noPic || noSnd) { X.auto++; X.chk = Date.now(); X.t0 = v.currentTime; tbxNext(null, true); }
     } catch (e) {}
   }, 3000);
