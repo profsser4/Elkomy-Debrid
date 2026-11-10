@@ -8,6 +8,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v55: زر ℹ️ على كل حساب IPTV (لوحة الأدمن + المخزن): كام جهاز يشغّله وشغّال عليه كام، الإنشاء/الانتهاء، السيرفر، عدد القنوات/الأفلام/المسلسلات، وقائمة القنوات بأقسامها وبحث (من الجهاز مباشرة، من غير تعديل في السيرفر)
   v54: السيرفر (bot v24) بقى يسجّل IP/المدينة/المتصفح/آخر فتحة/عدد الفتحات/آخر عملية لكل جهاز، والصفحة بتعرضهم. «📊 نشاط المستخدمين» بقى كامل: 🟢 أونلاين دلوقتي + على أنهي جهاز (تلفزيون/تطبيق/متصفح) + آخر فتح بالتاريخ و«من كام» + آخر حاجة شاهدها/سحبها + تفاصيل الأجهزة (متوافق مع bot.py الحالي، ويعرض IP/المتصفح لو السيرفر بعتهم)
   v53: رجوع «🗄️ مخزن الحسابات» في لوحة الأدمن (اشتراكات IPTV): إضافة بالجملة + فحص (شغّال/ميت/مفيش رد) + مسح + تعيين حساب أساسي ⭐ (متوافق مع bot.py الحالي)
   v52: قايمة الأعضاء بتبيّن تاريخ انتهاء الاشتراك بجانب الأيام المتبقية، وبتنبّه على الأعضاء القدام (من غير مدة) اللي أيامهم مش بتنقص
@@ -1026,7 +1027,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=54;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=55;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -3825,11 +3826,13 @@ function ivAdmRender() {
     return '<div class="ep"><div class="b">👤 ' + esc(ivAdmLbl(u.name)) + (u.set ? '<small class="ltr" style="direction:ltr;text-align:left">' + esc(u.host) + ' · ' + esc(u.user) + '</small>' : '') +
       '<small style="color:' + (!u.set ? 'var(--mut)' : (d !== null && d !== Infinity && d <= 5 ? '#ef4444' : 'var(--success)')) + '">' + esc(tx) +
       (u.set && u.stat && u.stat.t ? ' · آخر تحديث ' + new Date(u.stat.t * 1000).toLocaleDateString('ar-EG') : '') + '</small></div>' +
+      (u.set ? '<button style="background:#16a34a;color:#fff;margin-inline-end:6px" title="تفاصيل الحساب" data-n="' + esc(u.name) + '" onclick="ivInfoAdm(this.dataset.n,0)">ℹ️</button>' : '') +
+      (u.set ? (u.extra || []).map((x, i) => '<button style="background:#16a34a;color:#fff;margin-inline-end:6px;font-size:12px" data-n="' + esc(u.name) + '" onclick="ivInfoAdm(this.dataset.n,' + (i + 1) + ')">ℹ️ ' + (i + 2) + '</button>').join('') : '') +
       '<button style="background:#0ea5e9;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="ivAdmEdit(this.dataset.n)">✏️</button>' +
       (u.set && (u.extra || []).length ? '<button style="background:#8b5cf6;color:#fff;margin-inline-end:6px" data-n="' + esc(u.name) + '" onclick="ivMapOpen(this.dataset.n)">🔗</button>' : '') +
       (u.set ? '<button style="background:var(--danger);color:#fff" data-n="' + esc(u.name) + '" onclick="ivAdmDel(this.dataset.n)">🗑</button>' : '') + '</div>';
   }).join('') +
-    '<button class="search-btn" style="background:#0ea5e9" onclick="ivChkAll(this)">🔍 فحص كل الحسابات (شغّال / فاصل)</button><button class="search-btn" style="background:#8b5cf6" onclick="ivpOpen()">🗄️ مخزن الحسابات (للعضو المختار تحت)</button><div id="ivPool"></div><div id="ivChk"></div><div id="ivMap"></div>' +
+    '<button class="search-btn" style="background:#0ea5e9" onclick="ivChkAll(this)">🔍 فحص كل الحسابات (شغّال / فاصل)</button><button class="search-btn" style="background:#8b5cf6" onclick="ivpOpen()">🗄️ مخزن الحسابات (للعضو المختار تحت)</button><div id="ivInfo"></div><div id="ivPool"></div><div id="ivChk"></div><div id="ivMap"></div>' +
     '<select id="ivaN" class="search-input">' + IVADM.map(u => '<option value="' + esc(u.name) + '">' + esc(ivAdmLbl(u.name)) + '</option>').join('') + '</select>' +
     '<input id="ivaH" class="search-input ltr" placeholder="الهوست: http://example.com:8080" autocapitalize="off" autocorrect="off">' +
     '<input id="ivaU" class="search-input ltr" placeholder="اليوزر" autocapitalize="off" autocorrect="off">' +
@@ -3867,6 +3870,88 @@ async function ivAdmSave(btn) {
   IV.loaded = false; IV.homePid = null; IV.homeFor = null;
 }
 
+// ---------- v55: تفاصيل حساب IPTV (كام جهاز يشغّله + القنوات وكل التفاصيل) ----------
+const INFO = {a: null, label: '', ui: null, si: null, live: [], cats: [], vod: null, ser: null, vcats: [], scats: [], cat: '', q: '', lim: 80, err: '', ld: false};
+const infoBase = a => a.host + '/player_api.php?username=' + encodeURIComponent(a.user) + '&password=' + encodeURIComponent(a.pass);
+const infoDate = t => (+t ? new Date(+t * 1000).toLocaleString('ar-EG', {dateStyle: 'medium', timeStyle: 'short'}) : '—');
+function ivInfoAdm(n, i) {
+  const u = IVADM.find(x => x.name === n);
+  if (!u || !u.set) return;
+  const a = [u].concat(u.extra || [])[i];
+  if (a) ivInfoOpen(a, ivAdmLbl(n) + ' · ' + (i ? 'حساب ' + (i + 1) : 'الأساسي'));
+}
+function ivInfoPool(k) {
+  const a = IVP.items.find(x => ivpK(x) === k);
+  if (a) ivInfoOpen(a, 'مخزن ' + ivAdmLbl(IVP.n));
+}
+async function ivInfoOpen(a, label) {
+  Object.assign(INFO, {a: a, label: label, ui: null, si: null, live: [], cats: [], vod: null, ser: null, vcats: [], scats: [], cat: '', q: '', lim: 80, err: '', ld: false});
+  const el = $('ivInfo');
+  if (!el) return;
+  el.innerHTML = pend('جاري تحميل تفاصيل الحساب...');
+  el.scrollIntoView({behavior: 'smooth', block: 'start'});
+  const b = infoBase(a) + '&action=';
+  try {
+    const d = await ivPing(a);
+    INFO.ui = (d && d.user_info) || null; INFO.si = (d && d.server_info) || null;
+    if (!INFO.ui) INFO.err = 'رد غير مفهوم من السيرفر';
+    else if (+INFO.ui.auth === 0) INFO.err = 'اليوزر أو الباس غلط';
+  } catch (e) { INFO.err = 'فاصل: ' + ((e && e.message) || ''); }
+  ivInfoRender();
+  if (INFO.err) return;
+  const get = (act, keep) => ivFetch(b + act, keep, 0).then(x => Array.isArray(x) ? x : []).catch(() => null);
+  const [live, cats, vod, ser, vc, sc] = await Promise.all([
+    get('get_live_streams', 'stream_id,name,category_id,stream_icon,epg_channel_id,tv_archive,num'),
+    get('get_live_categories', 'category_id,category_name'),
+    get('get_vod_streams', 'stream_id,category_id'), get('get_series', 'series_id,category_id'),
+    get('get_vod_categories', 'category_id,category_name'), get('get_series_categories', 'category_id,category_name')]);
+  Object.assign(INFO, {live: live || [], cats: cats || [], vod: vod, ser: ser, vcats: vc || [], scats: sc || [], ld: true});
+  ivInfoRender();
+}
+function ivInfoRender() {
+  const el = $('ivInfo'), a = INFO.a, x = INFO.ui || {}, s = INFO.si || {};
+  if (!el || !a) return;
+  const row = (k, v) => '<div class="ep"><div class="b" style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--mut)">' + k + '</span><span style="text-align:left;word-break:break-all">' + v + '</span></div></div>';
+  let h = '<div style="border:1px solid #ffffff22;border-radius:12px;padding:10px;margin-top:10px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center"><h3 class="sec" style="margin:0">ℹ️ تفاصيل حساب IPTV</h3><button class="fc" onclick="$(\'ivInfo\').innerHTML=\'\'">✖ إغلاق</button></div>' +
+    '<p style="color:var(--mut);font-size:12px;margin:4px 0">' + esc(INFO.label) + '</p>' +
+    row('🌐 الهوست', '<span class="ltr" style="direction:ltr">' + esc(a.host) + '</span>') +
+    row('👤 اليوزر', '<span class="ltr" style="direction:ltr">' + esc(a.user) + '</span>') +
+    row('🔑 الباس', '<span class="ltr" style="direction:ltr">' + esc(a.pass || '') + '</span>');
+  if (INFO.err) return el.innerHTML = h + '<p style="color:#ef4444;font-weight:700">❌ ' + esc(INFO.err) + '</p></div>';
+  const ex = +x.exp_date, days = ex ? Math.ceil((ex * 1000 - Date.now()) / 86400000) : null;
+  const mx = +x.max_connections || 0, act = +x.active_cons || 0, st = String(x.status || '').toLowerCase();
+  const ok = st === 'active' && (days === null || days > 0);
+  const fmts = Array.isArray(x.allowed_output_formats) ? x.allowed_output_formats.join(' · ') : (x.allowed_output_formats || '—');
+  h += row('📡 الحالة', '<b style="color:' + (ok ? 'var(--success)' : '#ef4444') + '">' + (ok ? '✅ شغّال' : '❌ ' + esc(x.status || 'غير مفعّل') + (days !== null && days <= 0 ? ' (منتهي)' : '')) + '</b>') +
+    row('📱 تقدر تشغّله على', '<b style="font-size:16px">' + (mx || '—') + ' جهاز في نفس الوقت</b>') +
+    row('▶️ شغّال عليه دلوقتي', act + ' جهاز' + (mx ? ' · فاضي ' + Math.max(0, mx - act) : '')) +
+    row('📅 تاريخ الإنشاء', infoDate(x.created_at)) +
+    row('⌛ ينتهي', ex ? infoDate(ex) + ' (' + (days > 0 ? 'باقي ' + days + ' يوم' : 'منتهي') + ')' : 'غير محدود') +
+    row('🧪 تجريبي', +x.is_trial ? 'أيوه' : 'لأ') +
+    row('🎞️ صيغ البث المسموحة', esc(fmts)) +
+    (s.url || s.port ? row('🖥️ السيرفر', '<span class="ltr" style="direction:ltr">' + esc((s.server_protocol || 'http') + '://' + (s.url || '') + ':' + (s.port || '') + (s.https_port ? ' · https ' + s.https_port : '') + (s.rtmp_port ? ' · rtmp ' + s.rtmp_port : '')) + '</span>') : '') +
+    (s.timezone ? row('🕒 توقيت السيرفر', esc(s.timezone) + (s.time_now ? ' · ' + esc(s.time_now) : '')) : '');
+  const cnt = v => v === null ? '⚠️ تعذّر' : v.length;
+  h += '<h3 class="sec" style="margin-top:12px">📊 المحتوى</h3>' +
+    row('📺 قنوات مباشرة', INFO.live.length ? INFO.live.length + ' قناة في ' + INFO.cats.length + ' قسم' : (!INFO.ld ? pend('جاري التحميل...') : '0')) +
+    row('🎬 أفلام', !INFO.ld ? '…' : cnt(INFO.vod) + (INFO.vcats.length ? ' في ' + INFO.vcats.length + ' قسم' : '')) +
+    row('📚 مسلسلات', !INFO.ld ? '…' : cnt(INFO.ser) + (INFO.scats.length ? ' في ' + INFO.scats.length + ' قسم' : ''));
+  if (INFO.live.length) {
+    const byc = {};
+    INFO.live.forEach(c => { byc[c.category_id] = (byc[c.category_id] || 0) + 1; });
+    const cn = {}; INFO.cats.forEach(c => cn[c.category_id] = c.category_name);
+    const view = INFO.live.filter(c => (!INFO.cat || String(c.category_id) === INFO.cat) && (!INFO.q || String(c.name || '').toLowerCase().includes(INFO.q.toLowerCase())));
+    h += '<h3 class="sec" style="margin-top:12px">📺 القنوات (' + view.length + ')</h3>' +
+      '<select class="search-input" onchange="INFO.cat=this.value;INFO.lim=80;ivInfoRender()"><option value="">كل الأقسام (' + INFO.live.length + ')</option>' +
+      INFO.cats.map(c => '<option value="' + esc(c.category_id) + '"' + (INFO.cat === String(c.category_id) ? ' selected' : '') + '>' + esc(c.category_name) + ' (' + (byc[c.category_id] || 0) + ')</option>').join('') + '</select>' +
+      '<input class="search-input" id="infoQ" placeholder="ابحث في القنوات..." value="' + esc(INFO.q) + '" oninput="INFO.q=this.value;INFO.lim=80;clearTimeout(INFO._t);INFO._t=setTimeout(()=>{ivInfoRender();const e=$(\'infoQ\');e.focus();e.setSelectionRange(e.value.length,e.value.length)},300)">' +
+      view.slice(0, INFO.lim).map(c => '<div class="ep"><div class="b">' + (c.stream_icon ? '<img src="' + esc(c.stream_icon) + '" loading="lazy" referrerpolicy="no-referrer" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-left:8px" onerror="this.remove()">' : '') +
+        esc(c.name) + '<small>#' + esc(c.stream_id) + ' · ' + esc(cn[c.category_id] || '—') + (c.epg_channel_id ? ' · EPG: ' + esc(c.epg_channel_id) : '') + (+c.tv_archive ? ' · ⏪ أرشيف' : '') + '</small></div></div>').join('') +
+      (view.length > INFO.lim ? '<button class="search-btn" onclick="INFO.lim+=150;ivInfoRender()">عرض المزيد (' + (view.length - INFO.lim) + ')</button>' : '');
+  }
+  el.innerHTML = h + '</div>';
+}
 // ---------- فحص الحسابات + ربط القنوات بين الحسابات ----------
 function ivPing(a) {
   const u = a.host + '/player_api.php?username=' + encodeURIComponent(a.user) + '&password=' + encodeURIComponent(a.pass);
@@ -4039,6 +4124,7 @@ function ivpRender() {
     const col = a.st === 'ok' ? (d !== null && d <= 5 ? '#f59e0b' : 'var(--success)') : a.st === 'dead' ? '#ef4444' : 'var(--mut)';
     return '<div class="ep"><div class="b"><span class="ltr" style="direction:ltr;text-align:left;word-break:break-all">' + esc(a.host) + ' · ' + esc(a.user) + '</span>' +
       '<small style="color:' + col + '">' + esc(tx) + '</small></div>' +
+      '<button style="background:#16a34a;color:#fff;margin-inline-end:6px" data-k="' + esc(k) + '" onclick="ivInfoPool(this.dataset.k)">ℹ️</button>' +
       '<button style="background:#f59e0b;color:#fff;margin-inline-end:6px" data-k="' + esc(k) + '" onclick="ivpPrimary(this.dataset.k)">⭐</button>' +
       '<button style="background:var(--danger);color:#fff" data-k="' + esc(k) + '" onclick="ivpDel([this.dataset.k])">🗑</button></div>';
   }).join('') || '<p style="color:var(--mut);text-align:center">المخزن فاضي</p>';
