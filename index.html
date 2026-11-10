@@ -8,6 +8,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v54: «📊 نشاط المستخدمين» بقى كامل: 🟢 أونلاين دلوقتي + على أنهي جهاز (تلفزيون/تطبيق/متصفح) + آخر فتح بالتاريخ و«من كام» + آخر حاجة شاهدها/سحبها + تفاصيل الأجهزة (متوافق مع bot.py الحالي، ويعرض IP/المتصفح لو السيرفر بعتهم)
   v53: رجوع «🗄️ مخزن الحسابات» في لوحة الأدمن (اشتراكات IPTV): إضافة بالجملة + فحص (شغّال/ميت/مفيش رد) + مسح + تعيين حساب أساسي ⭐ (متوافق مع bot.py الحالي)
   v52: قايمة الأعضاء بتبيّن تاريخ انتهاء الاشتراك بجانب الأيام المتبقية، وبتنبّه على الأعضاء القدام (من غير مدة) اللي أيامهم مش بتنقص
   v51: مراجعة أمان وتشغيل: منع javascript:/data: في الروابط، تنضيف رسائل الأخطاء من السيرفر قبل عرضها، منع حقن أسطر في ملفات M3U، حصر أزرار التشخيص على الأدمن، تحديد أصل رسائل يوتيوب، إعادة محاولة تحويل HLS مرة تانية، كشف غياب الصوت في Firefox، وزرار «شغّل في VLC» واضح لما الفيديو يفشل في المتصفح
@@ -1025,7 +1026,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=53;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=54;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -8567,29 +8568,109 @@ const fmtDur = s => {
   return h ? h + 'س ' + m + 'د' : m + 'د';
 };
 const KIND = {torrent: 'تورنت', link: 'رابط', zip: 'ZIP', all: 'كل الروابط', stremio: 'Stremio'};
+// ===== v54: نشاط الأعضاء الكامل (أونلاين/آخر فتح/من أنهي جهاز/آخر حاجة استخدمها) =====
+const agoTxt = t => {
+  if (!t) return '—';
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 60) return 'من لحظات';
+  const m = Math.floor(s / 60); if (m < 60) return 'من ' + m + ' دقيقة';
+  const h = Math.floor(m / 60); if (h < 24) return 'من ' + h + ' ساعة';
+  const d = Math.floor(h / 24); if (d < 30) return 'من ' + d + ' يوم';
+  return 'من ' + Math.floor(d / 30) + ' شهر';
+};
+const tsMs = t => { t = +t || 0; return t && t < 1e12 ? t * 1000 : t; };
+const actKey = n => 'actcard-' + btoa(unescape(encodeURIComponent(n))).replace(/[^A-Za-z0-9]/g, '_');
+const DVN = {tv: '📺 تلفزيون', app: '📱 تطبيق أندرويد', web: '🌐 متصفح'};
+function actOnline(u, us) {
+  const on = (us && us.on) || u.on || {};
+  const tot = (on.tv || 0) + (on.app || 0) + (on.web || 0);
+  const last = tsMs(u.last);
+  const recent = last && Date.now() - last < 5 * 60 * 1000;
+  return {on, tot, live: tot > 0 || (u.online === true) || (tot === 0 && !us && recent)};
+}
+function actCard(u, us) {
+  const o = actOnline(u, us), on = o.on;
+  const last = tsMs(u.last);
+  const devs = ['tv', 'app', 'web'].filter(k => on[k]).map(k => DVN[k] + (on[k] > 1 ? ' ×' + on[k] : ''));
+  const badge = o.live
+    ? '<span style="background:#16a34a;color:#fff;border-radius:10px;padding:2px 9px;font-size:12px;margin-right:6px">🟢 أونلاين دلوقتي</span>'
+    : '<span style="background:#475569;color:#fff;border-radius:10px;padding:2px 9px;font-size:12px;margin-right:6px">⚫ أوفلاين</span>';
+  const lastDev = u.ty || u.dev || u.device || u.lastDev;
+  const lastDevTxt = lastDev ? (DVN[lastDev] || esc(String(lastDev))) : '';
+  const extra = [];
+  if (u.ua) extra.push('🧭 المتصفح/الجهاز: ' + esc(String(u.ua).slice(0, 90)));
+  if (u.ip) extra.push('📍 IP: ' + esc(u.ip) + (u.geo ? ' · ' + esc(u.geo) : ''));
+  if (u.ver) extra.push('🏷️ نسخة التطبيق: ' + esc(u.ver));
+  return '<div class="action-box" style="text-align:right;margin-bottom:10px;padding:12px">' +
+    '<b>👤 ' + esc(u.name) + (u.role === 'admin' ? ' (أدمن)' : ' ' + usPlanTag(u)) + '</b>' + badge +
+    '<div style="color:var(--mut);font-size:13px;margin-top:6px;line-height:2">' +
+    (o.live ? '🔌 شغّال على: ' + (devs.join(' · ') || lastDevTxt || 'جهاز غير معروف') + '<br>' : '') +
+    '🕒 آخر فتح/نشاط: <b>' + fmtDate(last) + '</b> (' + agoTxt(last) + ')<br>' +
+    (lastDevTxt && !o.live ? '📲 فتح آخر مرة من: ' + lastDevTxt + '<br>' : '') +
+    (extra.length ? extra.join('<br>') + '<br>' : '') +
+    '<span class="actlast">🎬 آخر حاجة استخدمها: <i>جاري التحميل...</i></span><br>' +
+    '⬇️ سحب: ' + u.count + ' ملف · ' + (u.bytes ? fmtSize(u.bytes) : '0') + '<br>' +
+    '📲 نزّل فعليًا على جهازه: ' + (u.dl ? fmtSize(u.dl) : '0') + '<br>' +
+    '▶ وقت المشاهدة: ' + fmtDur(Math.max(u.tw || 0, u.watch || 0)) + ' · ' + u.titles + ' عنوان<br>' +
+    (u.c ? '📅 انضم: ' + fmtDate(tsMs(u.c)) + '<br>' : '') +
+    (us && us.lim ? '📊 الأجهزة المسموحة: 📺 ' + (on.tv || 0) + '/' + us.lim.tv + ' · 📱 ' + (on.app || 0) + '/' + us.lim.app + ' · 🌐 ' + (on.web || 0) + '/' + us.lim.web + '<br>' : '') +
+    '</div>' +
+    '<button class="fc" style="margin-top:8px" data-n="' + esc(u.name) + '" onclick="actDetail(this)">📋 التفاصيل</button>' +
+    (u.role !== 'admin' ? ' <button class="fc" style="margin-top:8px" data-n="' + esc(u.name) + '" onclick="usPlan(this.dataset.n)">💎 الباقة</button>' : '') +
+    '<div class="actd"></div></div>';
+}
+function actLastUsed(d) {
+  const cand = [];
+  const w = (d.watched || [])[0];
+  if (w) {
+    const ep = (w.s != null && w.e != null) ? ' S' + p2(w.s) + 'E' + p2(w.e) : '';
+    const pct = w.done ? ' (خلّصه)' : (w.dur ? ' (' + Math.round(w.pos / w.dur * 100) + '%)' : '');
+    cand.push({t: tsMs(w.t), x: '▶ شاهد «' + esc(w.title) + '»' + esc(ep) + pct + (w.profile ? ' · بروفايل ' + esc(w.profile) : '')});
+  }
+  const p = (d.pulls || [])[0];
+  if (p) cand.push({t: tsMs(p.t), x: '⬇️ سحب «' + esc(p.n) + '» (' + esc(KIND[p.k] || p.k) + (p.p ? ' · ' + esc(p.p) : '') + ')'});
+  cand.sort((a, b) => b.t - a.t);
+  return cand.length ? cand.map(c => c.x + ' — ' + fmtDate(c.t) + ' (' + agoTxt(c.t) + ')').join('<br>&nbsp;&nbsp;&nbsp;&nbsp;') : 'لسه مفيش';
+}
+async function actFillLast(list) {
+  const q = list.slice();
+  const run = async () => {
+    while (q.length) {
+      const u = q.shift();
+      const el = document.querySelector('.' + actKey(u.name) + ' .actlast');
+      try {
+        const {d} = await api('/activity/' + encodeURIComponent(u.name));
+        if (el) el.innerHTML = '🎬 آخر حاجة استخدمها: ' + actLastUsed(d || {});
+      } catch (e) { if (el) el.innerHTML = '🎬 آخر حاجة استخدمها: —'; }
+    }
+  };
+  await Promise.all([run(), run(), run()]);
+}
 async function loadActivity() {
   const el = $('actBox');
   if (!el) return;
   el.innerHTML = pend('جاري التحميل...');
-  try { const {d} = await api('/activity'); ACT = d.items || []; }
-  catch (e) { el.innerHTML = ERR; return; }
+  let us = [];
+  try {
+    const [a, b] = await Promise.all([api('/activity'), api('/users').catch(() => ({d: {}}))]);
+    ACT = a.d.items || [];
+    us = (b.d && (b.d.items || b.d.users)) || [];
+  } catch (e) { el.innerHTML = ERR; return; }
+  const um = {}; us.forEach(x => um[x.name] = x);
+  ACT.forEach(u => { u._o = actOnline(u, um[u.name]); });
+  ACT.sort((a, b) => (b._o.live - a._o.live) || (tsMs(b.last) - tsMs(a.last)));
   const mem = ACT.filter(u => u.role !== 'admin');
   const cnt = k => mem.filter(u => u.plan === k).length;
+  const live = ACT.filter(u => u._o.live);
   const sum = '<div class="action-box" style="text-align:right;margin-bottom:10px;padding:12px;line-height:2">' +
+    '🟢 أونلاين دلوقتي: <b>' + live.length + '</b>' + (live.length ? ' (' + live.map(u => esc(u.name)).join('، ') + ')' : '') + '<br>' +
     '👥 ' + mem.length + ' عضو · 💎 مميز ' + cnt('premium') + ' · 🆓 مجاني ' + cnt('free') + ' · ⌛ منتهي ' + cnt('expired') + '<br>' +
     '⬇️ إجمالي السحب: ' + fmtSize(ACT.reduce((a, u) => a + (u.bytes || 0), 0)) + ' · 📲 نزّل فعليًا: ' + fmtSize(ACT.reduce((a, u) => a + (u.dl || 0), 0)) + ' · ▶ إجمالي المشاهدة: ' + fmtDur(ACT.reduce((a, u) => a + Math.max(u.tw || 0, u.watch || 0), 0)) + '</div>';
-  el.innerHTML = sum + ACT.map(u =>
-    '<div class="action-box" style="text-align:right;margin-bottom:10px;padding:12px">' +
-    '<b>👤 ' + esc(u.name) + (u.role === 'admin' ? ' (أدمن)' : ' ' + usPlanTag(u)) + '</b>' +
-    '<div style="color:var(--mut);font-size:13px;margin-top:6px;line-height:2">' +
-    '⬇️ سحب: ' + u.count + ' ملف · ' + (u.bytes ? fmtSize(u.bytes) : '0') + '<br>' +
-    '📲 نزّل فعليًا على جهازه: ' + (u.dl ? fmtSize(u.dl) : '0') + '<br>' +
-    '▶ وقت المشاهدة: ' + fmtDur(Math.max(u.tw || 0, u.watch || 0)) + ' · ' + u.titles + ' عنوان<br>' +
-    (u.c ? '📅 انضم: ' + fmtDate(u.c * 1000) + '<br>' : '') +
-    '🕒 آخر نشاط: ' + fmtDate(u.last) + '</div>' +
-    '<button class="fc" style="margin-top:8px" data-n="' + esc(u.name) + '" onclick="actDetail(this)">📋 التفاصيل</button>' +
-    (u.role !== 'admin' ? ' <button class="fc" style="margin-top:8px" data-n="' + esc(u.name) + '" onclick="usPlan(this.dataset.n)">💎 الباقة</button>' : '') +
-    '<div class="actd"></div></div>').join('') || warn('مفيش بيانات.');
+  el.innerHTML = sum + (ACT.map(u => {
+    const h = actCard(u, um[u.name]);
+    return h.replace('<div class="action-box"', '<div class="action-box ' + actKey(u.name) + '"');
+  }).join('') || warn('مفيش بيانات.'));
+  actFillLast(ACT);
 }
 async function actDetail(btn) {
   const box = btn.parentNode.querySelector('.actd');
