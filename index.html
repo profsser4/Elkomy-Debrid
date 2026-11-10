@@ -546,6 +546,10 @@ h3.sec::before{content:"";width:5px;height:22px;border-radius:4px;background:lin
 .ep.ept{flex-wrap:wrap;align-items:flex-start}
 .ep.ept .b{flex:1 1 0;min-width:120px;word-break:normal;overflow-wrap:anywhere;line-height:1.7}
 .ep.ept img{width:96px;flex:none}
+.ep.ivadm{flex-wrap:wrap}
+.ep.ivadm .b{flex:1 1 100%;min-width:100%;word-break:normal;overflow-wrap:anywhere;line-height:1.7}
+.ep.ivadm .b small.ltr{word-break:break-all}
+.ep.ivadm button{flex:0 0 auto}
 .ep .eacts{flex:1 1 100%;display:flex;gap:8px;align-items:stretch}
 .ep .eacts>button{flex:1 1 0;min-width:0;width:auto;height:40px;padding:0;margin:0;border:0;border-radius:12px;font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff}
 .ep .eacts>.btn-st{background:#7c3aed}
@@ -3823,7 +3827,7 @@ function ivAdmRender() {
   if (!el) return;
   el.innerHTML = IVADM.map(u => {
     const d = ivDays(u.stat), tx = u.set ? (ivDaysTxt(u.stat) || 'لسه ما فتحش التطبيق') : 'مفيش اشتراك';
-    return '<div class="ep"><div class="b">👤 ' + esc(ivAdmLbl(u.name)) + (u.set ? '<small class="ltr" style="direction:ltr;text-align:left">' + esc(u.host) + ' · ' + esc(u.user) + '</small>' : '') +
+    return '<div class="ep ivadm"><div class="b">👤 ' + esc(ivAdmLbl(u.name)) + (u.set ? '<small class="ltr" style="direction:ltr;text-align:left">' + esc(u.host) + ' · ' + esc(u.user) + '</small>' : '') +
       '<small style="color:' + (!u.set ? 'var(--mut)' : (d !== null && d !== Infinity && d <= 5 ? '#ef4444' : 'var(--success)')) + '">' + esc(tx) +
       (u.set && u.stat && u.stat.t ? ' · آخر تحديث ' + new Date(u.stat.t * 1000).toLocaleDateString('ar-EG') : '') + '</small></div>' +
       (u.set ? '<button style="background:#16a34a;color:#fff;margin-inline-end:6px" title="تفاصيل الحساب" data-n="' + esc(u.name) + '" onclick="ivInfoAdm(this.dataset.n,0)">ℹ️</button>' : '') +
