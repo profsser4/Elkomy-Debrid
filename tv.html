@@ -432,6 +432,7 @@ body{color:var(--tx)}
 .ftC .cwp i{display:block;height:8px;background:#e50914}
 /* v3.4: أسماء الأفلام/المسلسلات (IPTV) سطرين */
 #listp .card .t{height:80px;padding-top:6px}#listp .card .t b{display:block;white-space:normal;max-height:52px;line-height:26px;overflow:hidden;text-overflow:ellipsis}
+.ep .rimg{flex:none;width:46px;height:62px;border-radius:8px;background:#0b1326 center/cover no-repeat;margin-left:18px}.ep .ric{display:flex;align-items:center;justify-content:center;font-size:30px;background:#1e2a47}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -506,7 +507,7 @@ body{color:var(--tx)}
 /* ===================== إعدادات (عدّل هنا لو احتجت) ===================== */
 var CFG = {
 API: 'https://elkomy-server-neon.vercel.app',   // نفس سيرفر موقعك
-VER: '3.4.0',
+VER: '3.4.1',
 AUTO_USER: '',   // لو كتبت يوزر وباس هنا: التطبيق يدخل لوحده من غير ما تكتب حاجة
 AUTO_PASS: ''
 };
@@ -2452,7 +2453,7 @@ var box = sxHead(title, tabs);
 if (!rows.length) box.innerHTML = '<div class="empty">' + esc(empty || 'مفيش حاجة') + '</div>';
 rows.forEach(function (r) {
 var d = D.createElement('div'); d.className = 'f ep';
-d.innerHTML = '<div class="nm">' + esc(r.txt) + '</div>' + (r.sub ? '<div class="sub">' + esc(r.sub) + '</div>' : '') + (r.mark ? '<div class="pg">' + esc(r.mark) + '</div>' : '');
+d.innerHTML = (r.img ? '<div class="rimg" style="background-image:url(\'' + esc(r.img) + '\')"></div>' : (r.ico ? '<div class="rimg ric">' + r.ico + '</div>' : '')) + '<div class="nm">' + esc(r.txt) + '</div>' + (r.sub ? '<div class="sub">' + esc(r.sub) + '</div>' : '') + (r.mark ? '<div class="pg">' + esc(r.mark) + '</div>' : '');
 d._ok = r.fn; box.appendChild(d);
 });
 cur = null; var f = box.querySelector('.f') || $('sresB').firstChild; if (f) setFocus(f);
@@ -2516,7 +2517,7 @@ var l = items.slice();
 if (SX.torNew) l.sort(function (a, b) { return tDate(b) - tDate(a); });
 sxList(ttl, l.map(function (t) {
 var cached = set && set[String(t.hash || '').toLowerCase()], tg = tTags(t.title), ms = tDate(t);
-return {txt: (cached || t.cached ? '⚡ ' : '') + t.title, sub: '💾 ' + szs(t.size) + '  ·  🌱 ' + (t.seeders || 0) + (tg ? '  ·  ' + tg : '') + (ms ? '  ·  📅 ' + new Date(ms).toISOString().slice(0, 10) + ' · ' + ageTxt(ms) : ''), fn: function () { linkPlay(t.magnet || t.hash, null, t.title); }};
+return {txt: (cached || t.cached ? '⚡ ' : '') + t.title, sub: '💾 ' + szs(t.size) + '  ·  🌱 ' + (t.seeders || 0) + (tg ? '  ·  ' + tg : '') + (ms ? '  ·  📅 ' + new Date(ms).toISOString().slice(0, 10) + ' · ' + ageTxt(ms) : ''), ico: '🧲', fn: function () { linkPlay(t.magnet || t.hash, null, t.title); }};
 }), 'مفيش نتايج', tb);
 }
 draw();
@@ -2918,7 +2919,7 @@ sxLeave();
 var rows = list.slice(0, 40).map(function (v) {
 var lt = langTag(v);
 return {txt: (v.instant ? '⚡ ' : '⏳ ') + (qOf(v) !== 'أخرى' ? qOf(v) : (v.q || '')) + '  ·  ' + szs(v.size) + (v.seeders ? '  ·  👤 ' + v.seeders : '') + (lt ? '  ·  ' + lt : '') + (v._pin ? '  ·  📌' : ''),
-sub: String(v.title || '').slice(0, 60), fn: function () { sitePlay(sxMix(sp, {v: v})); }};
+sub: String(v.title || '').slice(0, 60), img: sp.poster || '', ico: sp.poster ? '' : '🎞', fn: function () { sitePlay(sxMix(sp, {v: v})); }};
 });
 sxList('اختيار النسخة (⚡ = جاهزة فوراً)', rows);
 });
