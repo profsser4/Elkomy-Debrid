@@ -553,6 +553,30 @@ body{color:var(--tx)}
 #sdl #eps{position:relative;flex:1;left:auto;right:auto;top:auto;bottom:auto;overflow:hidden;padding:8px 8px 0}
 #sdl .ep{background:rgba(255,255,255,.08);border:none}
 #sdl .ep.on{background:#fff!important;color:#000}
+
+/* صف المثبّت + سطر تغيير النسخة */
+.ftpw{direction:rtl}
+.ftpw .sxr{padding-bottom:6px}
+.ftpw .card .pinb{top:10px;left:10px}
+.card.more .t small{display:block;font-size:19px;color:var(--ac);font-weight:600}
+#sdinfo .vrow{display:flex;align-items:center;direction:rtl;width:760px;margin:0 0 14px}
+#sdinfo .vrow .btn.vb{width:300px;margin:0 0 0 18px;padding:0 20px;justify-content:center;font-size:27px;flex:none}
+#sdinfo .vrow .vsz{flex:1;padding:10px 22px;border-radius:30px;font-size:26px;font-weight:800;text-align:center;white-space:nowrap;background:rgba(255,255,255,.07);color:#a9b4de;border:1px solid rgba(255,255,255,.12)}
+#sdinfo .vrow .vsz:empty{display:none}
+#sdinfo .vrow .vsz.ok{background:#05301f;color:#86efac;border-color:rgba(22,163,74,.55)}
+#sdinfo .vrow .vsz.bad{background:#2d1d06;color:#fbbf24;border-color:rgba(245,158,11,.45)}
+
+/* أزرار التفاصيل: أصغر وأنضف */
+#sdinfo #dbtns .btn{display:inline-flex;align-items:center;justify-content:center;width:auto;height:58px;padding:0 28px;margin:0 0 12px 12px;font-size:24px;font-weight:600;border-radius:29px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.14)}
+#sdinfo #dbtns .btn.on{background:#fff;color:#000;font-weight:800;transform:scale(1.05);box-shadow:0 0 0 4px rgba(255,255,255,.4)}
+#sdinfo #dbtns .brow{display:flex;direction:rtl;width:auto;margin:0 0 12px}
+#sdinfo #dbtns .brow .btn.pri{flex:none;width:480px;height:70px;margin:0;font-size:29px;border-radius:35px;justify-content:flex-start;padding:0 34px;background:#fff;color:#111;font-weight:800}
+#sdinfo #dbtns .brow .btn.pri.on{background:#fff;color:#000}
+#sdinfo #dbtns .vrow{display:flex;align-items:center;width:auto;margin:0 0 16px}
+#sdinfo #dbtns .vrow .btn.vb{flex:none;width:auto;height:54px;padding:0 24px;margin:0 0 0 14px;font-size:23px}
+#sdinfo #dbtns .vrow .vsz{flex:none;padding:8px 20px;font-size:23px}
+#sdinfo #dbtns .btn .pbx{left:30px;width:120px}
+#sdinfo .plot{margin-bottom:22px}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -1308,13 +1332,20 @@ box.appendChild(o4.w); n++;
 }
 [['pv', 'vod', '⭐ أفلامي المثبّتة'], ['ps', 'series', '⭐ مسلسلاتي المثبّتة']].forEach(function (g) {
 var l = R[g[0]]; if (!l.length) return;
-var o3 = ftRow(l, g[2]);
-l.forEach(function (c, i) {
-var el = D.createElement('div'); el.className = 'ft ftP';
-el.innerHTML = '<div class="bg"' + ftBg(c.img) + '></div><span class="st">⭐</span>' + (c.rating && +c.rating > 0 ? '<span class="rt">' + esc((+c.rating).toFixed(1)) + '</span>' : '') + '<div class="tt">' + esc(ivClean(c.name)) + '</div>';
-ftTile(o3.r, el, g[0] + i, function () { ftOpen(g[1], c); });
+var w3 = D.createElement('div'); w3.className = 'ftpw';
+var h3 = D.createElement('div'); h3.className = 'sxh'; h3.textContent = g[2]; w3.appendChild(h3);
+var r3 = D.createElement('div'); r3.className = 'sxr';
+l.slice(0, 6).forEach(function (c, i) {
+var el = sxCard({title: ivClean(c.name), poster: c.img, rating: c.rating}, function () { ftOpen(g[1], c); });
+el._fk = g[0] + i;
+var sb = D.createElement('div'); sb.className = 'pinb'; sb.textContent = '⭐'; el.appendChild(sb);
+r3.appendChild(el);
 });
-box.appendChild(o3.w); n++;
+var mo = D.createElement('div'); mo.className = 'f card more'; mo._fk = g[0] + 'more';
+mo.innerHTML = '<div class="pic">‹</div><div class="t">المزيد' + (l.length > 6 ? '<small>' + l.length + '</small>' : '') + '</div>';
+mo._ok = function () { sxGrid(g[2], l.map(function (c) { return {title: ivClean(c.name), poster: c.img, rating: c.rating, _c: c}; }), function (t) { ftOpen(g[1], t._c); }); };
+r3.appendChild(mo);
+w3.appendChild(r3); box.appendChild(w3); n++;
 });
 if (curScr === 'site' && cur && !D.body.contains(cur)) {
 var t = null;
@@ -2812,7 +2843,7 @@ if (!isTvT) {
 var pos = (last && !last.done && last.pos > 10) ? Math.floor(last.pos) : 0;
 var r1 = sdRow(b);
 first = addBtn(r1, pos ? '▶  استئناف من ' + fmt(pos) : '▶  تشغيل', function () { if (last && pos) playItem(last.key); else sitePlay(sxMix(base, {resume: 0})); }, 'pri'); sdProg(first, last, pos);
-addBtn(r1, '⚙ تغيير النسخة', function () { sxPickVer(sxMix(base)); }, 'vb');
+sdVerRow(b, function (cb) { cb(sxMix(base)); });
 if (pos) addBtn(b, 'من البداية', function () { sitePlay(sxMix(base, {resume: 0, fresh: 1})); });
 addList(); addRel();
 } else {
@@ -2824,10 +2855,10 @@ var tgt = null, r1 = sdRow(b);
 if (last && last.s != null && !last.done) { tgt = {s: last.s, e: last.e}; first = addBtn(r1, '▶  استئناف موسم ' + last.s + ': حلقة ' + last.e, function () { playItem(last.key); }, 'pri'); sdProg(first, last, last.pos); }
 else if (last && last.done && (last.next || nextEpOf(last))) { var nx = last.next || nextEpOf(last); tgt = {s: nx.s, e: nx.e}; first = addBtn(r1, '⏭  الحلقة التالية — موسم ' + nx.s + ': حلقة ' + nx.e, function () { playItem(last.key); }, 'pri'); }
 else { first = addBtn(r1, '▶  تشغيل الحلقة الأولى', function () { toast('جاري التجهيز...'); firstEp(function (f) { if (!f) return toast('مفيش حلقات متاحة'); sitePlay(sxMix(base, {s: f.s, e: f.e, eps: f.eps, resume: 0, fresh: 1})); }); }, 'pri'); }
-addBtn(r1, '⚙ تغيير النسخة', function () {
-if (tgt) return sxPickVer(sxMix(base, {s: tgt.s, e: tgt.e}));
-firstEp(function (f) { if (!f) return toast('مفيش حلقات متاحة'); sxPickVer(sxMix(base, {s: f.s, e: f.e, eps: f.eps})); });
-}, 'vb');
+sdVerRow(b, function (cb) {
+if (tgt) return cb(sxMix(base, {s: tgt.s, e: tgt.e}));
+firstEp(function (f) { cb(f ? sxMix(base, {s: f.s, e: f.e, eps: f.eps}) : null); });
+});
 if (last) addBtn(b, 'عرض من البداية', function () { firstEp(function (f) { if (f) sitePlay(sxMix(base, {s: f.s, e: f.e, eps: f.eps, resume: 0, fresh: 1})); }); });
 sxMoreBtn(b, dt); addList(); addRel();
 var au = D.createElement('div'); au.className = 'f chk'; sdAutoPaint(au);
@@ -2848,6 +2879,23 @@ sxSmap(d.id, function (m) { var n = 0, k; for (k in (m || {})) n++; var e = $('s
 }
 setFocus(first || b.firstChild);
 });
+}
+function sdVerRow(b, resolve) {
+var r = sdRow(b); r.className = 'brow vrow';
+var btn = addBtn(r, '⚙ تغيير النسخة', function () { resolve(function (sp) { if (!sp) return toast('مفيش حلقات متاحة'); sxPickVer(sp); }); }, 'vb');
+var chip = D.createElement('span'); chip.className = 'vsz'; chip.textContent = '⏳ بحسب حجم النسخة...'; r.appendChild(chip);
+function paint(c) { chip.textContent = c.t; chip.className = 'vsz ' + c.c; }
+resolve(function (sp) {
+if (!sp || !sp.imdb) { chip.textContent = ''; return; }
+var key = 'v:' + sp.type + ':' + sp.id + ':' + (sp.s == null ? '' : sp.s + '-' + sp.e), c = SX.szc[key];
+if (c) return paint(c);
+sxVersions(sp, null, function (err, list) {
+var v = (!err && list) ? sxBest(list) : null;
+var res = v ? {t: '📦 ' + szs(v.size) + ' · ' + (qOf(v) !== 'أخرى' ? qOf(v) : (v.q || '')), c: 'ok'} : {t: '⚠️ مفيش نسخة فورية — دوس ⚙', c: 'bad'};
+SX.szc[key] = res; paint(res);
+});
+});
+return btn;
 }
 function sdRow(b) { var r = D.createElement('div'); r.className = 'brow'; b.appendChild(r); return r; }
 function sdProg(btn, last, pos) {
