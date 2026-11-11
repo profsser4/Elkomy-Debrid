@@ -487,6 +487,60 @@ body{color:var(--tx)}
 .epc .eab.on{background:#ffc83d;box-shadow:0 0 0 4px #fff}
 .epc .eab.on svg{fill:#15172b}
 #sdposter{position:absolute;left:120px;top:130px;width:520px;height:780px;border-radius:30px;background:#0a0e2c center/cover no-repeat;box-shadow:0 14px 50px #000a}
+
+/* ===================== Netflix-style: شاشة البروفايلات + شاشة التفاصيل ===================== */
+#prof{background:radial-gradient(ellipse at 28% 50%,#14142b 0,#07070d 70%)}
+#prof .pbrand{position:absolute;left:0;top:0;width:1100px;height:1080px;display:flex;flex-direction:column;align-items:center;justify-content:center;direction:ltr}
+#prof .pbrand .mark{font-size:380px;line-height:380px;font-weight:900;font-family:Impact,"Arial Black",Arial,sans-serif;color:#e50914;text-shadow:0 0 60px rgba(229,9,20,.45);letter-spacing:-6px}
+#prof .pbrand .wm{font-size:40px;font-weight:800;letter-spacing:8px;color:#fff;margin-top:6px}
+#prof .pbrand .wm b{color:#ffd75e}
+#prof .pbrand p{font-size:30px;color:#cfd3e6;margin-top:46px;direction:rtl}
+#prof .phead{position:absolute;right:90px;top:70px;width:560px;text-align:center}
+#prof .phead .wm2{font-size:54px;font-weight:900;color:#e50914;letter-spacing:3px;font-family:Impact,"Arial Black",Arial,sans-serif}
+#prof .phead .wm2 b{color:#ffd75e}
+#prof .phead div.t{font-size:30px;color:#d9dcec;margin-top:6px}
+#pgrid{position:absolute;right:70px;left:auto;top:230px;bottom:30px;width:760px;display:block;overflow:hidden;padding:0}
+#prof .pc{display:flex;flex-direction:row;align-items:center;width:100%;height:150px;margin:0 0 30px;padding:0 20px 0 0;background:none;border:none;border-radius:0;text-align:right}
+#prof .pc.on{background:none;box-shadow:none;transform:none}
+#prof .pc .av{flex:none;width:136px;height:136px;margin:0 56px 0 0;border-radius:24px;font-size:76px;line-height:136px;text-align:center;position:relative;transition:transform .12s,box-shadow .12s;opacity:.88}
+#prof .pc.on .av{transform:scale(1.28);box-shadow:0 0 0 5px #fff,0 12px 40px rgba(0,0,0,.7);opacity:1}
+#prof .pc .av .lk{position:absolute;right:8px;bottom:6px;font-size:30px;line-height:30px;text-shadow:0 0 6px #000}
+#prof .pc .pn{flex:1;padding:0 0 0 20px;font-size:44px;font-weight:800;color:#fff;opacity:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;margin-right:40px}
+#prof .pc.on .pn{opacity:1}
+/* ---- تفاصيل ---- */
+#detail.sd{background:#05060c}
+#detail.sd .sdbg{opacity:1;background-position:left center;background-size:cover}
+#detail.sd .sdbg:after{content:"";position:absolute;left:0;top:0;right:0;bottom:0;background:linear-gradient(270deg,rgba(5,6,12,.97) 0,rgba(5,6,12,.9) 36%,rgba(5,6,12,.4) 62%,rgba(5,6,12,.05) 100%),linear-gradient(0deg,rgba(5,6,12,.85) 0,rgba(5,6,12,0) 28%)}
+#detail.sd #sdnav .nv{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.14);font-size:26px;height:58px;line-height:56px}
+#detail.sd #sdnav .nv.on{background:#fff;color:#000;box-shadow:none;transform:none}
+#detail.sd #sdposter{display:none}
+#sdinfo{right:60px;top:140px;width:880px;bottom:30px;padding:10px 20px 20px 20px}
+#sdinfo h1{font-size:92px;line-height:1.15;font-weight:900;color:#ffd75e;text-shadow:0 4px 22px #000;margin-bottom:18px}
+#sdinfo .meta{font-size:30px;color:#e3e5f0;margin-bottom:12px}
+#sdinfo .meta b{color:#ffd75e}
+#sdinfo .meta i{background:rgba(255,255,255,.22);color:#fff;border-radius:8px;font-size:24px;padding:2px 14px;margin:0 0 0 14px}
+#sdinfo .gcs{margin-bottom:18px}
+#sdinfo .gc{background:none;border:none;padding:0;margin:0 0 0 22px;font-size:26px;color:#c3c7dc}
+#sdinfo .plot{font-size:29px;line-height:1.75;color:#f0f1f8;max-height:150px;margin-bottom:34px;text-shadow:0 2px 8px #000}
+#sdinfo .sdn{display:none}
+#sdinfo #dbtns{display:block}
+#sdinfo .btn{display:flex;align-items:center;justify-content:flex-start;position:relative;overflow:hidden;width:760px;height:86px;margin:0 0 14px;padding:0 38px;font-size:30px;border-radius:43px;background:rgba(255,255,255,.1);border:none;color:#fff;text-align:right;font-weight:600}
+#sdinfo .btn.pri{background:#fff;color:#111;font-weight:800;font-size:32px}
+#sdinfo .btn.on,#sdinfo .btn.pri.on{background:#fff;color:#000;font-weight:800;transform:scale(1.04);box-shadow:0 0 0 6px rgba(255,255,255,.4)}
+#sdinfo .btn .pbx{position:absolute;left:38px;top:50%;width:170px;height:6px;margin-top:-3px;border-radius:3px;background:rgba(0,0,0,.18)}
+#sdinfo .btn .pbx i{display:block;height:6px;border-radius:3px;background:#e50914}
+#sdinfo .chk{background:none;font-size:25px;color:#c3c7dc;padding:8px 0;margin:4px 0 0}
+#sdinfo .chk.on{background:rgba(255,255,255,.16);color:#fff;box-shadow:none;transform:none;border-radius:30px;padding:8px 22px}
+#detail.sd #sdl{display:none}
+#detail.sd.epsv #sdinfo{display:none}
+#detail.sd.epsv .sdbg:after{background:rgba(5,6,12,.9)}
+#detail.sd.epsv #sdl{display:flex;left:200px;right:200px;width:auto;top:130px}
+#sdl #seas{display:flex;flex-wrap:wrap;margin:0 0 18px;padding:0 8px}
+#sdl .chip{padding:12px 34px;font-size:28px;margin:0 0 0 12px;border-radius:30px;background:rgba(255,255,255,.12);border:none;color:#fff}
+#sdl .chip.sel{background:#fff;color:#000;font-weight:800}
+#sdl .chip.on{background:#e50914;color:#fff;font-weight:800;box-shadow:0 0 0 4px rgba(255,255,255,.5);transform:none}
+.epc{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.1)}
+.epc .th .pb i{background:#e50914}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -541,7 +595,7 @@ body{color:var(--tx)}
     <div class="f btn" id="xSearch">🔍 بحث</div><div class="f btn" id="xList">⭐ قائمتي</div><div class="f btn" id="xLib">📚 مكتبتي</div><div class="f btn" id="xLink">🔗 رابط</div><div class="f btn" id="xMore">⋯ المزيد</div></div>
   <div class="sc" id="sxrows" style="position:absolute;left:40px;right:40px;top:130px;bottom:30px;overflow:hidden"></div>
 </div>
-<div id="prof" class="scr"><div class="top"><div class="logo">Elkomy <b>VIP</b><i></i></div></div><div class="sxh" style="position:absolute;top:200px;left:0;right:0;text-align:center;font-size:48px">مين بيشاهد؟</div><div class="pgrid" id="pgrid"></div></div>
+<div id="prof" class="scr"><div class="pbrand"><div class="mark">E</div><div class="wm">ELKOMY <b>VIP</b></div><p>اختر ملفًا شخصيًا للمتابعة</p></div><div class="phead"><div class="wm2">ELKOMY <b>VIP</b></div><div class="t">اختر ملفًا شخصيًا</div></div><div class="pgrid sc" id="pgrid"></div></div>
 <div id="sres" class="scr">
   <div class="bh"><h2 id="sresT"></h2><div id="sresB"></div></div>
   <div class="sc" id="sgrid" style="position:absolute;left:40px;right:40px;top:130px;bottom:40px;overflow:hidden"></div>
@@ -2161,6 +2215,7 @@ if (curScr === 'login' || curScr === 'splash') return exitApp();
 if (curScr === 'msg') { var f = $('msgB').lastChild; if (f && f._ok) f._ok(); return; }
 if (curScr === 'home' || curScr === 'site') { stack = []; return showMode(); }
 if (curScr === 'mode') return showMsg('الخروج', 'عايز تقفل التطبيق؟', [{t: 'لأ', pri: 1, fn: function () { showMode(); }}, {t: 'قفل', fn: exitApp}]);
+if (curScr === 'detail' && $('detail').className.indexOf('epsv') >= 0) { $('detail').className = 'scr show sd'; if (SX.moreBtn && D.body.contains(SX.moreBtn)) setFocus(SX.moreBtn); return; }
 return back();
 }
 }
@@ -2340,7 +2395,7 @@ function sxProfiles(first) {
 var box = $('pgrid'); box.innerHTML = '';
 profList().forEach(function (p) {
 var d = D.createElement('div'); d.className = 'f pc';
-d.innerHTML = '<div class="av" style="background:' + esc(p.color || '#334155') + '">' + esc(p.emoji || '🙂') + '</div><div class="pn">' + esc(p.name) + (p.pin ? ' 🔒' : '') + '</div>';
+d.innerHTML = '<div class="av" style="background:' + esc(p.color || '#334155') + '">' + esc(p.emoji || '🙂') + (p.pin ? '<span class=\"lk\">🔒</span>' : '') + '</div><div class="pn">' + esc(p.name) + '</div>';
 d._ok = function () {
 if (p.pin) return kbOpen('الرقم السري للبروفايل', '', true, function (v) { if (String(v).trim() === String(p.pin)) sxEnterProfile(p.id); else toast('الرقم غلط'); });
 sxEnterProfile(p.id);
@@ -2717,6 +2772,7 @@ dt.innerHTML = (bg ? '<div class="sdbg" style="background-image:url(\'' + esc(bg
 '<div id="dbtns"></div>' + (isTvT ? '<div class="sdn">لو ضفته لقائمتي بيجيلك إشعار لما ينزل منه حلقة جديدة (فعّل 🔔 من فوق).</div><div id="sdauto"></div><div class="seas" id="seas"></div>' : '') + '</div>' +
 (isTvT ? '<div id="sdl"><div id="sdnote"></div><div id="seps" class="sc"></div></div>' : '<div id="sdposter"' + (d.poster ? ' style="background-image:url(\'' + esc(d.poster) + '\')"' : '') + '></div>');
 sdNavBuild();
+if (isTvT) { var _sl = $('sdl'), _se = $('seas'); if (_sl && _se) _sl.insertBefore(_se, _sl.firstChild); }
 api('/cert?type=' + d.type + '&id=' + d.id, {timeout: 15000}, function (e, s, c) {
 var m = $('sdmeta');
 if (!e && s === 200 && c && c.label && m && SX.cur === d) m.innerHTML = m.innerHTML + '<i>' + esc(c.label) + (c.lvl === 3 ? ' ⚠ للكبار فقط' : '') + '</i>';
@@ -2732,14 +2788,14 @@ function addList() { lb = addBtn(b, listLbl(), function () { var o = getItem(lke
 function addRel() { addBtn(b, '🎞 أعمال مشابهة', function () { sxRelated(d); }); }
 if (!isTvT) {
 var pos = (last && !last.done && last.pos > 10) ? Math.floor(last.pos) : 0;
-first = addBtn(b, pos ? '▶ كمّل من ' + fmt(pos) : '▶ تشغيل', function () { if (last && pos) playItem(last.key); else sitePlay(sxMix(base, {resume: 0})); }, 'pri');
+first = addBtn(b, pos ? '▶  استئناف من ' + fmt(pos) : '▶  تشغيل', function () { if (last && pos) playItem(last.key); else sitePlay(sxMix(base, {resume: 0})); }, 'pri'); sdProg(first, last, pos);
 if (pos) addBtn(b, 'من البداية', function () { sitePlay(sxMix(base, {resume: 0, fresh: 1})); });
 addBtn(b, '⚙ اختيار النسخة', function () { sxPickVer(sxMix(base)); });
 addList(); addRel();
 } else {
-if (last && last.s != null && !last.done) first = addBtn(b, '▶ كمّل S' + p2(last.s) + 'E' + p2(last.e) + ' · ' + fmt(last.pos), function () { playItem(last.key); }, 'pri');
-else if (last && last.done && (last.next || nextEpOf(last))) { var nx = last.next || nextEpOf(last); first = addBtn(b, '⏭ الحلقة التالية S' + p2(nx.s) + 'E' + p2(nx.e), function () { playItem(last.key); }, 'pri'); }
-addList(); addRel();
+if (last && last.s != null && !last.done) { first = addBtn(b, '▶  استئناف موسم ' + last.s + ': حلقة ' + last.e, function () { playItem(last.key); }, 'pri'); sdProg(first, last, last.pos); }
+else if (last && last.done && (last.next || nextEpOf(last))) { var nx = last.next || nextEpOf(last); first = addBtn(b, '⏭  الحلقة التالية — موسم ' + nx.s + ': حلقة ' + nx.e, function () { playItem(last.key); }, 'pri'); }
+sxMoreBtn(b, dt); addList(); addRel();
 var au = D.createElement('div'); au.className = 'f chk'; sdAutoPaint(au);
 au._ok = function () { var p = prof(); if (p) { p.auto = !autoNext(); sdSaveProf(p); } sdAutoPaint(au); };
 $('sdauto').appendChild(au);
@@ -2758,6 +2814,20 @@ sxSmap(d.id, function (m) { var n = 0, k; for (k in (m || {})) n++; var e = $('s
 }
 setFocus(first || b.firstChild);
 });
+}
+function sdProg(btn, last, pos) {
+if (!btn || !last || !pos) return;
+var du = last.dur || last.d || 0; if (!du) return;
+var pc = Math.max(3, Math.min(100, Math.round(pos / du * 100)));
+var s = D.createElement('span'); s.className = 'pbx'; s.innerHTML = '<i style=\"width:' + pc + '%\"></i>'; btn.appendChild(s);
+}
+function sxMoreBtn(b, dt) {
+var mb = addBtn(b, '☰  المزيد من الحلقات', function () {
+dt.className = 'scr show sd epsv';
+var t = ($('seps') && $('seps').querySelector('.f')) || ($('seas') && $('seas').querySelector('.f'));
+if (t) setFocus(t);
+});
+SX.moreBtn = mb;
 }
 function sxRelated(d) {
 toast('جاري تحميل الأعمال المشابهة...');
