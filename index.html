@@ -10,6 +10,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v62: إصلاح كارت الحلقة (الصورة والأزرار كانوا فوق بعض)
   v61: الأندرويد/الموبايل: صفحة التفاصيل بستايل Netflix (صورة فوق + عنوان + شارات + زر عرض أبيض + قائمتي/التريلر/مشاركة + تبويبات بخط أحمر + كروت حلقات بصورة وزر تشغيل دايري وأيقونة تنزيل) ومساحة كل حلقة/فيلم ظاهرة تحت المدة
   v58: AllDebrid: المفتاح بقى في هيدر Authorization (مش في الرابط) مع رجوع تلقائي للطريقة القديمة لو المتصفح منع، رسائل أخطاء واضحة (تأكيد الإيميل / حظر السيرفرات وVPN / 30 تورنت / حد الهوست / بريميوم / 429)، وفحص ⚡ instant بيبطّل لنفسه لو endpoint مش موجود
   v57: بحث داخل مخزن الحسابات، وتفاصيل الحساب بقت بتبويبات (قنوات/أفلام/مسلسلات بأسمائها) وبحث من غير ما الصفحة تتنطط، وتحميل تبويب واحد في المرة. تخفيف كراش WebView على الأندرويد (native crash): إيقاف captureStream/AudioContext، وتحميل قوائم قنوات حسابات IPTV (ربط القنوات) واحدة ورا التانية بدل التوازي، وحد 4 ميجا لملف استيراد الأسماء في «الضبط التلقائي بالصوت» داخل التطبيق + إلغاء الـ blur (backdrop-filter) على الـ WebView. الضبط اليدوي للترجمة شغّال زي ما هو
@@ -1037,7 +1038,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=61;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=62;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2657,7 +2658,7 @@ function nfEp(n, e) {
   const img = e.still ? '<img ' + lzA(e.still) + ' alt="">' : '<div class="noimg">🎬</div>';
   const mins = e.runtime ? (e.runtime >= 60 ? Math.floor(e.runtime / 60) + ' ساعة ' + (e.runtime % 60 ? (e.runtime % 60) + ' دقيقة' : '') : e.runtime + ' د') : '';
   return '<div class="ep ept tve nfep" data-s="' + n + '" data-e="' + e.n + '">' +
-    '<div class="th" onclick="quickPlay(' + n + ',' + e.n + ')">' + img + '<i class="pl">' + NFI.playc + '</i></div>' +
+    '<div class="th" onclick="quickPlay(' + n + ',' + e.n + ')">' + img + '<i class="nfpl">' + NFI.playc + '</i></div>' +
     '<div class="b"><div class="tt"><span>' + e.n + '. ' + esc(e.name || ('حلقة ' + e.n)) + '</span></div>' +
     '<small>' + esc(mins) + (mins && e.date ? ' · ' : '') + esc(e.date || '') + (fut ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') + epMark(cur.id, n, e.n) +
     (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚</span>' : '') + '</small>' +
@@ -12163,16 +12164,16 @@ body:not(.m-tv):not(.m-desktop) #details .tabs .tab{border-radius:6px;background
 body:not(.m-tv):not(.m-desktop) #details .tabs .tab.on{background:#fff;color:#000}
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep{display:grid;grid-template-columns:150px minmax(0,1fr) 46px;grid-template-areas:"th tt act" "th mt act" "th sz act" "od od od";grid-template-rows:auto auto 1fr auto;gap:2px 12px;align-items:start;padding:0;margin:0 0 22px;background:none;border:0;border-radius:0}
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .b{display:contents}
-body:not(.m-tv):not(.m-desktop) #eps .ep.nfep>.th{grid-area:th;grid-row:auto;position:relative;width:auto;aspect-ratio:16/9;border-radius:4px;overflow:hidden;background:#1c1c1c;cursor:pointer}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep>.th{grid-area:th;position:relative;width:auto;aspect-ratio:16/9;border-radius:4px;overflow:hidden;background:#1c1c1c!important;cursor:pointer;min-width:0}
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep>.th img{width:100%;height:100%;object-fit:cover;display:block;border-radius:0}
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .noimg{height:100%;display:flex;align-items:center;justify-content:center;font-size:28px}
-body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .th .pl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
-body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .th .pl svg{width:42px;height:42px}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .th .nfpl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:none;padding:0;border-radius:0;font-style:normal}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .th .nfpl svg{width:42px;height:42px}
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .tt{grid-area:tt;display:block;font-size:16px;font-weight:800;color:#fff;line-height:1.4;padding-top:2px}
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep small{grid-area:mt;font-size:14px;color:#a3a3a3;margin:0}
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .sz{grid-area:sz;justify-self:start;margin:4px 0 0;font-size:12.5px}
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .od{grid-area:od;display:block;-webkit-line-clamp:unset;font-size:14px;line-height:1.75;color:#d4d4d4;margin:10px 0 0}
-body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts{grid-area:act;grid-column:auto;display:flex;flex-direction:column;align-items:center;gap:4px;margin:0}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts{grid-area:act;display:flex;flex-direction:column;align-items:center;gap:4px;margin:0}
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts>button{flex:none;width:42px;height:42px;padding:0;background:none!important;border:0;color:#fff;font-size:20px}
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts .eb.p{display:none}
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts .eb.d svg{width:30px;height:30px}
