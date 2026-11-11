@@ -2182,7 +2182,7 @@ e.innerHTML = '<div class="sh">ضبط توقيت الترجمة</div><div class=
 '<div class="sb"><i style="left:' + pc + '%"></i></div>' +
 '<div class="sk"><span>◀ تقديم</span><span>تأخير ▶</span></div>' +
 '<div class="sn">▲ ▼ = 5 ثواني · الضغط المطوّل أسرع · 0 = رجوع للتلقائي · OK = تم</div>' +
-'<div class="sn" style="color:#fbbf24;margin-top:10px">1 = ' + (P.subOff ? 'تشغيل الترجمة' : 'إيقاف الترجمة') + ' · 2 = ' + (P.sp && nsGet(P.sp) ? 'رجّع الترجمة دايمًا للعمل' : 'إيقاف دايمًا للعمل ده') + '</div>';
+'<div class="sn" style="color:#fbbf24;margin-top:10px">1 أو 🔴 = ' + (P.subOff ? 'تشغيل الترجمة' : 'إيقاف الترجمة') + ' · 2 أو 🔵 = ' + (P.sp && nsGet(P.sp) ? 'رجّع الترجمة دايمًا للعمل' : 'إيقاف دايمًا للعمل ده') + '</div>';
 e.style.display = 'block';
 }
 function syOpen() {
@@ -2207,8 +2207,8 @@ if (k === 37) syApply(v - st);
 else if (k === 39) syApply(v + st);
 else if (k === 38) syApply(v - 5);
 else if (k === 40) syApply(v + 5);
-else if (k === 49) subToggle(false);
-else if (k === 50) subToggle(true);
+else if (k === 49 || k === 403) subToggle(false);
+else if (k === 50 || k === 406) subToggle(true);
 else if (k === 48) { if (XS) { XOFF = 0; fixReset(); } else syApply(0); syPaint(); syTimer(); }
 else syClose();
 return true;
@@ -2300,7 +2300,7 @@ return back();
 }
 }
 D.addEventListener('keydown', onKeyDown, true);
-try { ['MediaPlay', 'MediaPause', 'MediaPlayPause', 'MediaStop', 'MediaRewind', 'MediaFastForward', 'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue', 'ChannelUp', 'ChannelDown'].forEach(function (k) { try { tizen.tvinputdevice.registerKey(k); } catch (e) {} }); } catch (e) {}
+try { ['MediaPlay', 'MediaPause', 'MediaPlayPause', 'MediaStop', 'MediaRewind', 'MediaFastForward', 'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue', 'ChannelUp', 'ChannelDown', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].forEach(function (k) { try { tizen.tvinputdevice.registerKey(k); } catch (e) {} }); } catch (e) {}
 function fit() { var w = window.innerWidth || 1920, h = window.innerHeight || 1080, z = Math.min(w / 1920, h / 1080), b = D.body.style; if (Math.abs(z - 1) < 0.005) { b.transform = ''; b.left = b.top = '0px'; return; } b.transform = 'scale(' + z + ')'; b.left = Math.round((w - 1920 * z) / 2) + 'px'; b.top = Math.round((h - 1080 * z) / 2) + 'px'; }
 window.addEventListener('resize', fit); fit();
 /* ===================== تشغيل ===================== */
