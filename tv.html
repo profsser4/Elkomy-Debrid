@@ -541,6 +541,13 @@ body{color:var(--tx)}
 #sdl .chip.on{background:#e50914;color:#fff;font-weight:800;box-shadow:0 0 0 4px rgba(255,255,255,.5);transform:none}
 .epc{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.1)}
 .epc .th .pb i{background:#e50914}
+
+#sdinfo .brow{display:flex;direction:rtl;width:760px;margin:0 0 14px}
+#sdinfo .brow .btn{margin:0;width:auto}
+#sdinfo .brow .btn.pri{flex:1}
+#sdinfo .brow .btn.vb{width:230px;margin-right:14px;padding:0 20px;justify-content:center;font-size:27px}
+#detail .ivbg{position:absolute;left:0;top:0;right:0;bottom:0;background:center/cover no-repeat;opacity:.22}
+#detail .dpic,#detail .dinfo,#detail .eps{z-index:1}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -1604,13 +1611,13 @@ function applyViewFocus() { applyView(); var f = $('listp').querySelector('.f');
 $('bHome')._ok = function () { stack = []; showHome(); };
 /* ===================== تفاصيل فيلم / مسلسل ===================== */
 function shell(title, meta, plot, img) {
-return '<div class="dpic"' + (img ? ' style="background-image:url(\'' + esc(img) + '\')"' : '') + '></div><div class="dinfo"><h1>' + esc(title) + '</h1><div class="meta">' + esc(meta) + '</div><div class="plot">' + esc(plot) + '</div><div id="dbtns"></div></div>';
+return (img ? '<div class="ivbg" style="background-image:url(\'' + esc(img) + '\')"></div>' : '') + '<div class="dpic"' + (img ? ' style="background-image:url(\'' + esc(img) + '\')"' : '') + '></div><div class="dinfo"><h1>' + esc(title) + '</h1><div class="meta">' + esc(meta) + '</div><div class="plot">' + esc(plot) + '</div><div id="dbtns"></div></div>';
 }
 function addBtn(box, txt, fn, cls) {
 var d = D.createElement('div'); d.className = 'f btn dbtn' + (cls ? ' ' + cls : ''); d.textContent = txt; d._ok = fn; box.appendChild(d); return d;
 }
 function metaLine(i) { return [i.releasedate || i.releaseDate, i.genre, i.duration, (i.rating && +i.rating > 0) ? '★ ' + i.rating : ''].filter(Boolean).join('  ·  '); }
-function loadingDetail(np) { $('detail').innerHTML = '<div class="center"><div class="spin"></div><p>جاري التحميل...</p></div>'; go('detail', np); }
+function loadingDetail(np) { $('detail').className = 'scr'; $('detail').innerHTML = '<div class="center"><div class="spin"></div><p>جاري التحميل...</p></div>'; go('detail', np); }
 function detailFail(err) {
 $('detail').innerHTML = '<div class="center"><h2>تعذّر التحميل</h2><p>' + esc(err) + '</p><div id="dbtns"></div></div>';
 addBtn($('dbtns'), 'رجوع', back, 'pri'); focusFirst();
@@ -2788,13 +2795,25 @@ function addList() { lb = addBtn(b, listLbl(), function () { var o = getItem(lke
 function addRel() { addBtn(b, '🎞 أعمال مشابهة', function () { sxRelated(d); }); }
 if (!isTvT) {
 var pos = (last && !last.done && last.pos > 10) ? Math.floor(last.pos) : 0;
-first = addBtn(b, pos ? '▶  استئناف من ' + fmt(pos) : '▶  تشغيل', function () { if (last && pos) playItem(last.key); else sitePlay(sxMix(base, {resume: 0})); }, 'pri'); sdProg(first, last, pos);
+var r1 = sdRow(b);
+first = addBtn(r1, pos ? '▶  استئناف من ' + fmt(pos) : '▶  تشغيل', function () { if (last && pos) playItem(last.key); else sitePlay(sxMix(base, {resume: 0})); }, 'pri'); sdProg(first, last, pos);
+addBtn(r1, '⚙ تغيير النسخة', function () { sxPickVer(sxMix(base)); }, 'vb');
 if (pos) addBtn(b, 'من البداية', function () { sitePlay(sxMix(base, {resume: 0, fresh: 1})); });
-addBtn(b, '⚙ اختيار النسخة', function () { sxPickVer(sxMix(base)); });
 addList(); addRel();
 } else {
-if (last && last.s != null && !last.done) { first = addBtn(b, '▶  استئناف موسم ' + last.s + ': حلقة ' + last.e, function () { playItem(last.key); }, 'pri'); sdProg(first, last, last.pos); }
-else if (last && last.done && (last.next || nextEpOf(last))) { var nx = last.next || nextEpOf(last); first = addBtn(b, '⏭  الحلقة التالية — موسم ' + nx.s + ': حلقة ' + nx.e, function () { playItem(last.key); }, 'pri'); }
+function firstEp(cb) {
+var s0 = (d.seasons || [])[0]; if (!s0) return cb(null);
+sxEps(d.id, s0.n, function (l) { var f = null; (l || []).forEach(function (x) { if (!f && !sxFuture(x)) f = x; }); cb(f ? {s: s0.n, e: f.n, eps: (l || []).length} : null); });
+}
+var tgt = null, r1 = sdRow(b);
+if (last && last.s != null && !last.done) { tgt = {s: last.s, e: last.e}; first = addBtn(r1, '▶  استئناف موسم ' + last.s + ': حلقة ' + last.e, function () { playItem(last.key); }, 'pri'); sdProg(first, last, last.pos); }
+else if (last && last.done && (last.next || nextEpOf(last))) { var nx = last.next || nextEpOf(last); tgt = {s: nx.s, e: nx.e}; first = addBtn(r1, '⏭  الحلقة التالية — موسم ' + nx.s + ': حلقة ' + nx.e, function () { playItem(last.key); }, 'pri'); }
+else { first = addBtn(r1, '▶  تشغيل الحلقة الأولى', function () { toast('جاري التجهيز...'); firstEp(function (f) { if (!f) return toast('مفيش حلقات متاحة'); sitePlay(sxMix(base, {s: f.s, e: f.e, eps: f.eps, resume: 0, fresh: 1})); }); }, 'pri'); }
+addBtn(r1, '⚙ تغيير النسخة', function () {
+if (tgt) return sxPickVer(sxMix(base, {s: tgt.s, e: tgt.e}));
+firstEp(function (f) { if (!f) return toast('مفيش حلقات متاحة'); sxPickVer(sxMix(base, {s: f.s, e: f.e, eps: f.eps})); });
+}, 'vb');
+if (last) addBtn(b, 'عرض من البداية', function () { firstEp(function (f) { if (f) sitePlay(sxMix(base, {s: f.s, e: f.e, eps: f.eps, resume: 0, fresh: 1})); }); });
 sxMoreBtn(b, dt); addList(); addRel();
 var au = D.createElement('div'); au.className = 'f chk'; sdAutoPaint(au);
 au._ok = function () { var p = prof(); if (p) { p.auto = !autoNext(); sdSaveProf(p); } sdAutoPaint(au); };
@@ -2815,6 +2834,7 @@ sxSmap(d.id, function (m) { var n = 0, k; for (k in (m || {})) n++; var e = $('s
 setFocus(first || b.firstChild);
 });
 }
+function sdRow(b) { var r = D.createElement('div'); r.className = 'brow'; b.appendChild(r); return r; }
 function sdProg(btn, last, pos) {
 if (!btn || !last || !pos) return;
 var du = last.dur || last.d || 0; if (!du) return;
