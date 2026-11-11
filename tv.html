@@ -548,6 +548,11 @@ body{color:var(--tx)}
 #sdinfo .brow .btn.vb{width:230px;margin-right:14px;padding:0 20px;justify-content:center;font-size:27px}
 #detail .ivbg{position:absolute;left:0;top:0;right:0;bottom:0;background:center/cover no-repeat;opacity:.22}
 #detail .dpic,#detail .dinfo,#detail .eps{z-index:1}
+
+/* ===== IPTV details: نفس ستايل الموقع (Netflix) ===== */
+#sdl #eps{position:relative;flex:1;left:auto;right:auto;top:auto;bottom:auto;overflow:hidden;padding:8px 8px 0}
+#sdl .ep{background:rgba(255,255,255,.08);border:none}
+#sdl .ep.on{background:#fff!important;color:#000}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -1610,8 +1615,16 @@ B.cat = '__search'; markCat(); B.items = a; B.q = v; applyViewFocus();
 function applyViewFocus() { applyView(); var f = $('listp').querySelector('.f'); if (f) setFocus(f); }
 $('bHome')._ok = function () { stack = []; showHome(); };
 /* ===================== تفاصيل فيلم / مسلسل ===================== */
-function shell(title, meta, plot, img) {
-return (img ? '<div class="ivbg" style="background-image:url(\'' + esc(img) + '\')"></div>' : '') + '<div class="dpic"' + (img ? ' style="background-image:url(\'' + esc(img) + '\')"' : '') + '></div><div class="dinfo"><h1>' + esc(title) + '</h1><div class="meta">' + esc(meta) + '</div><div class="plot">' + esc(plot) + '</div><div id="dbtns"></div></div>';
+function shell(title, meta, plot, img, ser, genre) {
+var gens = String(genre || '').split(/[,،\/|]/).map(function (g) { return g.trim(); }).filter(Boolean).slice(0, 4);
+$('detail').className = 'scr show sd';
+return (img ? '<div class="sdbg" style="background-image:url(\'' + esc(img) + '\')"></div>' : '') +
+'<div id="sdinfo" class="sc"><h1>' + esc(title) + '</h1><div class="meta">' + meta + '</div><div class="plot">' + esc(plot) + '</div><div class="gcs">' + gens.map(function (g) { return '<span class="gc">' + esc(g) + '</span>'; }).join('') + '</div><div id="dbtns"></div></div>' +
+(ser ? '<div id="sdl"><div class="seas" id="seas"></div><div class="eps sc" id="eps"></div></div>' : '');
+}
+function ivMeta(i, extra) {
+var r = (i.rating && +i.rating > 0) ? '<b>★ ' + esc(i.rating) + '</b>  ·  ' : '';
+return r + [i.releasedate || i.releaseDate, i.duration, extra].filter(Boolean).map(esc).join('  ·  ') + '<i>HD</i>';
 }
 function addBtn(box, txt, fn, cls) {
 var d = D.createElement('div'); d.className = 'f btn dbtn' + (cls ? ' ' + cls : ''); d.textContent = txt; d._ok = fn; box.appendChild(d); return d;
@@ -1619,6 +1632,7 @@ var d = D.createElement('div'); d.className = 'f btn dbtn' + (cls ? ' ' + cls : 
 function metaLine(i) { return [i.releasedate || i.releaseDate, i.genre, i.duration, (i.rating && +i.rating > 0) ? '★ ' + i.rating : ''].filter(Boolean).join('  ·  '); }
 function loadingDetail(np) { $('detail').className = 'scr'; $('detail').innerHTML = '<div class="center"><div class="spin"></div><p>جاري التحميل...</p></div>'; go('detail', np); }
 function detailFail(err) {
+$('detail').className = 'scr show';
 $('detail').innerHTML = '<div class="center"><h2>تعذّر التحميل</h2><p>' + esc(err) + '</p><div id="dbtns"></div></div>';
 addBtn($('dbtns'), 'رجوع', back, 'pri'); focusFirst();
 }
@@ -1629,10 +1643,11 @@ if (curScr !== 'detail') return;
 if (err) return detailFail(err);
 var i = v.info || {}, md = v.movie_data || {}, ext = md.container_extension || it.ext || 'mp4', nm = md.name || i.name || it.name;
 var item = {id: it.id, name: nm, img: i.movie_image || it.img, ext: ext, rating: it.rating};
-$('detail').innerHTML = shell(nm, metaLine(i), i.plot || i.description || '', item.img);
+$('detail').innerHTML = shell(nm, ivMeta(i), i.plot || i.description || '', (i.backdrop_path && i.backdrop_path[0]) || item.img, 0, i.genre);
 var b = $('dbtns'), pr = UD.prog['m:' + it.id], pos = (pr && !pr.done && pr.pos > 10) ? Math.floor(pr.pos) : 0;
-var first = addBtn(b, pos ? '▶ كمّل من ' + fmt(pos) : '▶ تشغيل', function () { playVod(item, pos); }, 'pri');
-if (pos) addBtn(b, 'من البداية', function () { playVod(item, 0); });
+var first = addBtn(b, pos ? '▶  استئناف من ' + fmt(pos) : '▶  تشغيل', function () { playVod(item, pos); }, 'pri');
+if (pos) sdProg(first, {dur: pr.dur}, pos);
+if (pos) addBtn(b, 'عرض من البداية', function () { playVod(item, 0); });
 var fv = addBtn(b, isFav('vod', it.id) ? '★ في المفضلة (إزالة)' : '☆ أضف للمفضلة', function () { var on = toggleFav('vod', item); fv.textContent = on ? '★ في المفضلة (إزالة)' : '☆ أضف للمفضلة'; });
 var pb = addBtn(b, isPinned('vod', it.id) ? '⭐ مثبّت (إلغاء)' : '📌 ثبّت في الرئيسية', function () { var on = togglePin('vod', item); if (on !== null) pb.textContent = on ? '⭐ مثبّت (إلغاء)' : '📌 ثبّت في الرئيسية'; });
 addBtn(b, 'رجوع', back);
@@ -1662,15 +1677,15 @@ if (err) return detailFail(err);
 var i = v.info || {}, nm = i.name || it.name, all = parseEps(v);
 SE = {id: it.id, name: nm, img: i.cover || it.img, eps: all, season: 0, item: {id: it.id, name: nm, img: i.cover || it.img, rating: it.rating}};
 var seasons = uniqSeasons(); SE.season = seasons.length ? seasons[0] : 0;
-$('detail').innerHTML = shell(nm, metaLine(i), i.plot || '', SE.img) + '<div class="eps sc" id="eps"></div>';
+$('detail').innerHTML = shell(nm, ivMeta(i, uniqSeasons().length > 1 ? uniqSeasons().length + ' مواسم' : (all.length ? all.length + ' حلقة' : '')), i.plot || '', (i.backdrop_path && i.backdrop_path[0]) || SE.img, 1, i.genre);
 var b = $('dbtns'), self = [];
 var rs = resumeTarget();
 var first = null;
-if (rs) { first = addBtn(b, rs.label, function () { playEp(rs.ix); }, 'pri'); SE.season = all[rs.ix].s; }
+if (rs) { first = addBtn(b, rs.label, function () { playEp(rs.ix); }, 'pri'); if (rs.pos) sdProg(first, {dur: rs.dur}, rs.pos); SE.season = all[rs.ix].s; addBtn(b, 'عرض من البداية', function () { playEp(0, 1); }); }
+else if (all.length) { first = addBtn(b, '▶  تشغيل الحلقة الأولى', function () { playEp(0, 1); }, 'pri'); }
+SX.moreBtn = addBtn(b, '☰  المزيد من الحلقات', function () { $('detail').className = 'scr show sd epsv'; var t = $('seas').querySelector('.f.sel') || $('eps').querySelector('.f') || $('seas').querySelector('.f'); if (t) setFocus(t); });
 var fv = addBtn(b, isFav('series', it.id) ? '★ في المفضلة' : '☆ أضف للمفضلة', function () { var on = toggleFav('series', SE.item); fv.textContent = on ? '★ في المفضلة' : '☆ أضف للمفضلة'; });
 var pbs = addBtn(b, isPinned('series', it.id) ? '⭐ مثبّت (إلغاء)' : '📌 ثبّت في الرئيسية', function () { var on = togglePin('series', SE.item); if (on !== null) pbs.textContent = on ? '⭐ مثبّت (إلغاء)' : '📌 ثبّت في الرئيسية'; });
-var sb = D.createElement('div'); sb.className = 'seas'; sb.id = 'seas'; b.parentNode.appendChild(sb);
-$('dbtns').style.display = 'block';
 renderSeasons(); renderEps();
 if (autoEp) { var ax = -1; all.forEach(function (x, ix) { if (String(x.id) === String(autoEp)) ax = ix; }); if (ax >= 0) { SE.season = all[ax].s; renderSeasons(); renderEps(); return playEp(ax); } }
 var tgt = first || (rs ? null : $('eps').querySelector('.f'));
@@ -1682,9 +1697,9 @@ function resumeTarget() {
 var best = null, bix = -1;
 SE.eps.forEach(function (x, ix) { var o = UD.prog['s:' + SE.id + ':' + x.id]; if (o && (!best || o.t > best.t)) { best = o; bix = ix; } });
 if (!best) return null;
-if (best.done) { if (!SE.eps[bix + 1]) return null; var n = SE.eps[bix + 1]; return {ix: bix + 1, label: 'الحلقة التالية  S' + p2(n.s) + 'E' + p2(n.e)}; }
+if (best.done) { if (!SE.eps[bix + 1]) return null; var n = SE.eps[bix + 1]; return {ix: bix + 1, label: '⏭  الحلقة التالية — موسم ' + n.s + ': حلقة ' + n.e}; }
 var x = SE.eps[bix];
-return {ix: bix, label: '▶ كمّل  S' + p2(x.s) + 'E' + p2(x.e) + ' من ' + fmt(best.pos)};
+return {ix: bix, label: '▶  استئناف موسم ' + x.s + ': حلقة ' + x.e, pos: best.pos, dur: best.dur};
 }
 function renderSeasons() {
 var b = $('seas'); if (!b) return; b.innerHTML = '';
@@ -1706,9 +1721,9 @@ d._ok = function () { playEp(ix); };
 box.appendChild(d);
 });
 }
-function playEp(ix) {
+function playEp(ix, fresh) {
 var x = SE.eps[ix], c = S.cfg; if (!x) return;
-var o = UD.prog['s:' + SE.id + ':' + x.id], pos = (o && !o.done && o.pos > 10) ? Math.floor(o.pos) : 0;
+var o = UD.prog['s:' + SE.id + ':' + x.id], pos = (!fresh && o && !o.done && o.pos > 10) ? Math.floor(o.pos) : 0;
 startPlay({kind: 'ep', url: c.host + '/series/' + enc(c.user) + '/' + enc(c.pass) + '/' + x.id + '.' + x.ext, title: SE.name + '  —  S' + p2(x.s) + 'E' + p2(x.e) + (x.t ? '  ' + x.t : ''),
 key: 's:' + SE.id + ':' + x.id, meta: {k: 'series', id: SE.id, n: SE.name, sn: SE.name, img: SE.img, ext: x.ext, ep: {id: x.id, ext: x.ext, s: x.s, e: x.e}, nx: SE.eps[ix + 1] ? {id: SE.eps[ix + 1].id, ext: SE.eps[ix + 1].ext, s: SE.eps[ix + 1].s, e: SE.eps[ix + 1].e} : null}, resume: pos, epIx: ix});
 }
