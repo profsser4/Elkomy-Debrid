@@ -10,6 +10,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v61: الأندرويد/الموبايل: صفحة التفاصيل بستايل Netflix (صورة فوق + عنوان + شارات + زر عرض أبيض + قائمتي/التريلر/مشاركة + تبويبات بخط أحمر + كروت حلقات بصورة وزر تشغيل دايري وأيقونة تنزيل) ومساحة كل حلقة/فيلم ظاهرة تحت المدة
   v58: AllDebrid: المفتاح بقى في هيدر Authorization (مش في الرابط) مع رجوع تلقائي للطريقة القديمة لو المتصفح منع، رسائل أخطاء واضحة (تأكيد الإيميل / حظر السيرفرات وVPN / 30 تورنت / حد الهوست / بريميوم / 429)، وفحص ⚡ instant بيبطّل لنفسه لو endpoint مش موجود
   v57: بحث داخل مخزن الحسابات، وتفاصيل الحساب بقت بتبويبات (قنوات/أفلام/مسلسلات بأسمائها) وبحث من غير ما الصفحة تتنطط، وتحميل تبويب واحد في المرة. تخفيف كراش WebView على الأندرويد (native crash): إيقاف captureStream/AudioContext، وتحميل قوائم قنوات حسابات IPTV (ربط القنوات) واحدة ورا التانية بدل التوازي، وحد 4 ميجا لملف استيراد الأسماء في «الضبط التلقائي بالصوت» داخل التطبيق + إلغاء الـ blur (backdrop-filter) على الـ WebView. الضبط اليدوي للترجمة شغّال زي ما هو
   v56: إصلاح لوحة اشتراكات IPTV على الموبايل: اسم العضو والهوست كانوا بيتكسّروا حرف حرف، دلوقتي الاسم في سطر والأزرار تحته
@@ -2633,11 +2634,43 @@ function listLabel() {
   const o = getItem('l:' + cur.type + ':' + cur.id);
   return (o && !o.del) ? '✔️ في قائمتي' + (cur.type === 'tv' ? ' 🔔' : '') : '➕ أضف لقائمتي';
 }
+
+const isPh = () => !isTv() && realMode() !== 'desktop';
+const NFI = {
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>',
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg>',
+  film: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M10 9l5 3-5 3z" fill="currentColor"/></svg>',
+  playc: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" fill="#0009" stroke="#fff" stroke-width="2.5"/><path d="M19 15v18l15-9z" fill="#fff"/></svg>'
+};
+function nfListHTML() {
+  const o = getItem('l:' + cur.type + ':' + cur.id), on = !!(o && !o.del);
+  return (on ? NFI.check : NFI.plus) + '<span>قائمتي</span>';
+}
+function nfShare() {
+  const t = (cur && (cur.title || cur.name)) || '', u = location.href.split('#')[0];
+  try { if (navigator.share) return navigator.share({title: t, text: t, url: u}).catch(() => {}); } catch (e) {}
+  try { navigator.clipboard.writeText(t + ' ' + u); toast('📋 اتنسخ'); } catch (e) { toast(t); }
+}
+function nfEp(n, e) {
+  const fut = e.date && e.date > new Date().toISOString().slice(0, 10);
+  const img = e.still ? '<img ' + lzA(e.still) + ' alt="">' : '<div class="noimg">🎬</div>';
+  const mins = e.runtime ? (e.runtime >= 60 ? Math.floor(e.runtime / 60) + ' ساعة ' + (e.runtime % 60 ? (e.runtime % 60) + ' دقيقة' : '') : e.runtime + ' د') : '';
+  return '<div class="ep ept tve nfep" data-s="' + n + '" data-e="' + e.n + '">' +
+    '<div class="th" onclick="quickPlay(' + n + ',' + e.n + ')">' + img + '<i class="pl">' + NFI.playc + '</i></div>' +
+    '<div class="b"><div class="tt"><span>' + e.n + '. ' + esc(e.name || ('حلقة ' + e.n)) + '</span></div>' +
+    '<small>' + esc(mins) + (mins && e.date ? ' · ' : '') + esc(e.date || '') + (fut ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') + epMark(cur.id, n, e.n) +
+    (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚</span>' : '') + '</small>' +
+    (cur && cur.imdb && !fut ? '<div class="sz wait">⏳ في الانتظار...</div>' : '') +
+    (e.overview ? '<div class="od">' + esc(e.overview) + '</div>' : '') + '</div>' +
+    '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
+    (ADV() || !cur.imdb ? '<button class="mg" aria-label="تورنت" onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div></div>';
+}
 function toggleList() {
   const key = 'l:' + cur.type + ':' + cur.id, o = getItem(key);
   if (o && !o.del) setItem({key: key, del: true});
   else setItem({key: key, type: cur.type, tmdb: cur.id, title: cur.title, poster: cur.poster, year: cur.year});
-  $('listBtn').textContent = listLabel();
+  { const lb = $('listBtn'); if (lb && lb.classList.contains('nfa')) lb.innerHTML = nfListHTML(); else if (lb) lb.textContent = listLabel(); }
   renderShelves();
 }
 function epMark(tmdb, s, e) {
@@ -2732,7 +2765,19 @@ async function openDetails(type, id) {
       ((last && last.done && last.type === 'tv' && (last.next || nextEpOf(last)))
         ? (() => { const nx = last.next || nextEpOf(last); return '<button class="search-btn" style="margin-bottom:10px" data-k="' + esc(last.key) + '" onclick="playItem(this.dataset.k)">⏭ شغّل الحلقة التالية' +
             (nx.s != null ? ' · S' + p2(nx.s) + 'E' + p2(nx.e) : '') + '</button>'; })() : '');
-    let h = (isTv() ? '<div class="tvbg" style="background-image:url(\'' + bg + '\')"></div>' : '') + '<div class="hero" style="background-image:linear-gradient(transparent 30%,#0f172a),url(\'' + bg + '\')">' +
+    const PH = isPh();
+    const castTxt = (d.cast || []).slice(0, 4).map(esc).join('، ') + ((d.cast || []).length > 4 ? '… وآخرون' : '');
+    const seaTxt = (d.type === 'tv' && d.seasons && d.seasons.length) ? d.seasons.length + ' مواسم' : (d.runtime ? d.runtime + ' د' : '');
+    let h = PH
+      ? '<div class="hero nfhero" style="background-image:url(\'' + bg + '\')"><button class="back" onclick="goBack()">➡️</button></div>' +
+        '<h2 class="nfh">' + esc(d.title) + '</h2>' +
+        '<div class="meta nfmeta"><span>' + esc(d.year) + '</span><span id="certB"></span><span class="nfhd">HD</span><span>' + seaTxt + '</span><span class="nfrt">⭐ ' + d.rating + '</span></div>'
+      : null;
+    if (PH) {
+      h += cb;
+    }
+    if (!PH) {
+    h = (isTv() ? '<div class="tvbg" style="background-image:url(\'' + bg + '\')"></div>' : '') + '<div class="hero" style="background-image:linear-gradient(transparent 30%,#0f172a),url(\'' + bg + '\')">' +
       '<button class="back" onclick="goBack()">➡️</button><h2>' + esc(d.title) + '</h2></div>' +
       '<div class="meta">⭐ ' + d.rating + ' · ' + esc(d.year) +
       (d.runtime ? ' · ' + d.runtime + ' د' : '') + '<span id="certB"></span></div>' +
@@ -2742,7 +2787,41 @@ async function openDetails(type, id) {
       '<button class="search-btn" id="listBtn" style="background:#475569;margin-bottom:10px" onclick="toggleList()">' + listLabel() + '</button>' +
       (ROLE === 'admin' ? '<button class="search-btn" style="background:#0f766e;margin-bottom:10px" onclick="libAddFromCur()">📚 ' + (libFor(d) ? 'عدّل رابط المكتبة' : 'ضيف رابط في المكتبة') + '</button>' : '') +
       (d.type === 'tv' ? '<p style="color:var(--mut);font-size:12px;margin:-4px 0 10px">لو ضفته لقائمتي بيجيلك إشعار لما ينزل منه حلقة جديدة (فعّل 🔔 من فوق).</p>' + autoToggleHTML() : '');
-    if (d.type === 'movie') {
+    }
+    let playBlock = '';
+    if (PH) {
+      const s0 = (d.seasons && d.seasons.length) ? d.seasons[0].n : 1;
+      if (d.type === 'movie') {
+        const lib0 = libFor(d);
+        if (d.imdb || lib0) {
+          playBlock = '<button class="search-btn nfw" onclick="quickPlay()">▶ عرض</button>' +
+            '<button class="search-btn nfg" onclick="quickDownload()">⬇ تنزيل</button>' +
+            (d.imdb ? '<div class="sz wait msz nfsz" id="tvMsz"></div>' : '') +
+            '<button class="search-btn nfg" style="margin-top:8px" onclick="playOpen()">⚙ اختيار الجودة</button>' +
+            (lib0 ? '<div class="libhit">📚 متوفر في مكتبتك</div>' : '');
+        }
+        if (stOK() && (ADV() || !d.imdb)) playBlock += '<button class="search-btn nfg" style="margin-top:8px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
+        if (ADV() || !d.imdb) playBlock += '<button class="search-btn nfg" style="margin-top:8px" onclick="go()">🧲 نسخ التورنت</button>';
+      } else if (!(cb)) {
+        playBlock = '<button class="search-btn nfw" onclick="quickPlay(' + s0 + ',1)">▶ عرض الحلقة 1</button>';
+      }
+    }
+    if (PH) {
+      h += playBlock + '<p class="ov nfov">' + esc(d.overview) + '</p>' +
+        (castTxt ? '<p class="nfcast"><b>بطولة:</b> ' + castTxt + '</p>' : '') +
+        ((d.genres || []).length ? '<p class="nfcast"><b>التصنيف:</b> ' + (d.genres || []).slice(0, 4).map(esc).join('، ') + '</p>' : '') +
+        '<div class="nfact">' +
+        '<button class="nfa" id="listBtn" onclick="toggleList()">' + nfListHTML() + '</button>' +
+        '<button class="nfa" onclick="openTrailer(\'' + d.type + '\',' + d.id + ')">' + NFI.film + '<span>التريلر</span></button>' +
+        '<button class="nfa" onclick="nfShare()">' + NFI.share + '<span>مشاركة</span></button></div>' +
+        (ROLE === 'admin' ? '<button class="search-btn" style="background:#0f766e;margin-bottom:10px" onclick="libAddFromCur()">📚 ' + (libFor(d) ? 'عدّل رابط المكتبة' : 'ضيف رابط في المكتبة') + '</button>' : '') +
+        (d.type === 'tv' ? autoToggleHTML() : '') +
+        '<div class="nftabs">' + (d.type === 'tv' ? '<button class="on">الحلقات</button>' : '') + '<button onclick="var r=document.getElementById(\'relBox\');if(r)r.scrollIntoView({behavior:\'smooth\'})">المزيد من العناوين المشابهة</button></div>';
+    }
+    if (PH) {
+      // الأزرار اتبنت فوق بستايل Netflix
+      h += (d.type === 'tv' ? '<div class="tabs">' + d.seasons.map(s => '<button class="tab" id="tab' + s.n + '" onclick="loadSeason(' + s.n + ')">الموسم ' + s.n + '</button>').join('') + '</div><div id="eps"></div>' : '');
+    } else if (d.type === 'movie') {
       const lib0 = libFor(d);
       if (lib0) h += '<div class="libhit">📚 متوفر في مكتبتك — التشغيل والتحميل بيستخدموا رابط المكتبة الأول، ولو وقع بيحوّل على التورنت تلقائي.</div>';
       if (d.imdb || lib0 || isTv()) h += '<div class="row" style="margin-bottom:10px"><button class="search-btn" onclick="quickPlay()">▶ تشغيل</button>' + (isTv() ? '<span class="tvsz" id="tvMsz"></span>' : '<button class="search-btn" style="background:#0ea5e9" onclick="quickDownload()">⬇ تحميل</button>') + '</div>' + (!isTv() && d.imdb ? '<div class="sz wait msz" id="tvMsz" style="margin:-2px 0 10px"></div>' : '') + '<button class="search-btn" style="background:#334155;margin-bottom:10px" onclick="playOpen()">⚙ اختيار الجودة</button>';
@@ -2784,7 +2863,7 @@ async function loadRelated(type, id) {
     if (d.collection && d.collection.length > 1)
       h += '<div class="lbl" style="margin-top:14px">🎞 ' + esc(d.collection_name || 'أجزاء السلسلة') + ' (' + d.collection.length + ' أجزاء)</div>' + row(d.collection);
     if (d.similar && d.similar.length)
-      h += '<div class="lbl" style="margin-top:14px">✨ ممكن تعجبك كمان</div>' + row(d.similar);
+      h += '<div class="lbl" style="margin-top:14px">المزيد من العناوين المشابهة</div>' + row(d.similar);
     box.innerHTML = h;
   } catch (e) {}
 }
@@ -5284,7 +5363,7 @@ async function loadSeason(n) {
     if (my !== sReq) return;
     b.innerHTML = (!cur.imdb ? '<p style="margin:0 0 10px;color:#f59e0b;font-size:13px">ℹ️ المسلسل ده مالوش رقم IMDb، فالتشغيل المباشر مش متاح. دوس «🧲 بحث تورنت» عند الحلقة أو «📦 الموسم كامل».</p>' : '') + (smapKeys(SMAP[cur.id]).length ? '<p style="margin:0 0 10px;color:#38bdf8;font-size:13px">📌 المسلسل متضاف للكل: ' + smapKeys(SMAP[cur.id]).length + ' حلقة بتشتغل ورا بعض</p>' : '') + (!isTv() && (ADV() || !cur.imdb) ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
       (!isTv() && ROLE === 'admin' && cur.imdb ? '<button class="search-btn" style="margin-bottom:10px;background:#0ea5e9" onclick="playOpen(' + n + ',1)">📌 ضيف الموسم ' + n + ' كله (اختار نسخة)</button>' : '') +
-      d.episodes.map(e => isTv() ? tvEp(n, e) : '<div class="ep ept tve" data-s="' + n + '" data-e="' + e.n + '">' +
+      d.episodes.map(e => isTv() ? tvEp(n, e) : isPh() ? nfEp(n, e) : '<div class="ep ept tve" data-s="' + n + '" data-e="' + e.n + '">' +
         (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '') +
         '<div class="b"><div class="tt"><span><i class="en">' + e.n + '</i>' + esc(e.name || ('حلقة ' + e.n)) + '</span>' + (e.runtime ? '<em>' + e.runtime + ' د</em>' : '') + '</div><small>' + esc(e.date) + (e.date && e.date > new Date().toISOString().slice(0, 10) ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') +
         epMark(cur.id, n, e.n) + (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌 مضافة</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚 مكتبتي</span>' : '') + '</small>' +
@@ -12046,6 +12125,63 @@ body:not(.m-tv):not(.m-desktop) #details .search-btn .pbx{position:absolute;left
 body:not(.m-tv):not(.m-desktop) #details .search-btn .pbx b{display:block;height:5px;background:#e50914}
 body:not(.m-tv):not(.m-desktop) #details .tab{background:#ffffff1c;color:#fff}
 body:not(.m-tv):not(.m-desktop) #details .tab.on{background:#fff;color:#000}
+</style>
+
+<style id="ph-nf2">
+/* v61: الأندرويد/الموبايل — صفحة التفاصيل + الحلقات بنفس شكل تطبيق Netflix (RTL) مع المساحة */
+body:not(.m-tv):not(.m-desktop):has(#details .nfhero){background:#000!important}
+body:not(.m-tv):not(.m-desktop) #details .nfhero{height:auto!important;aspect-ratio:16/9;border-radius:0!important;margin:-4px -12px 0!important;padding:0!important;box-shadow:none!important;background-size:cover!important;background-position:center!important;display:block}
+body:not(.m-tv):not(.m-desktop) #details .nfhero::after{background:linear-gradient(to top,#000 0,#0000 35%)!important}
+body:not(.m-tv):not(.m-desktop) #details .nfhero .back{top:8px;right:10px;width:46px;height:46px;background:none;font-size:0}
+body:not(.m-tv):not(.m-desktop) #details .nfhero .back::before{content:"\2192";font-size:30px;color:#fff;line-height:46px}
+body:not(.m-tv):not(.m-desktop) #details .nfh{font-size:30px;font-weight:900;line-height:1.25;color:#fff;margin:14px 0 8px;text-shadow:none}
+body:not(.m-tv):not(.m-desktop) #details .nfmeta{display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:15px;color:#a3a3a3;margin:0 0 14px}
+body:not(.m-tv):not(.m-desktop) #details .nfmeta>:first-child{color:#a3a3a3;font-weight:400}
+body:not(.m-tv):not(.m-desktop) #details #certB{font-size:0}
+body:not(.m-tv):not(.m-desktop) #details #certB .agb{font-size:13px;border-radius:4px;padding:2px 8px;background:#333!important;color:#e5e5e5!important;border:0}
+body:not(.m-tv):not(.m-desktop) #details #certB small{font-size:11px;margin-inline-start:6px}
+body:not(.m-tv):not(.m-desktop) #details .nfhd{border:1px solid #a3a3a3;border-radius:3px;padding:0 5px;font-size:11px;font-weight:800;line-height:16px}
+body:not(.m-tv):not(.m-desktop) #details .nfrt{color:#fbbf24}
+body:not(.m-tv):not(.m-desktop) #details .search-btn.nfw,body:not(.m-tv):not(.m-desktop) #details .search-btn.nfg{display:flex!important;align-items:center;justify-content:center;gap:8px;width:100%;height:50px;margin:0 0 10px;padding:0 16px;border-radius:6px!important;font-size:17px;font-weight:800;border:0}
+body:not(.m-tv):not(.m-desktop) #details .search-btn.nfw{background:#fff!important;color:#000!important}
+body:not(.m-tv):not(.m-desktop) #details .search-btn.nfg{background:#262626!important;color:#fff!important;font-weight:700}
+body:not(.m-tv):not(.m-desktop) #details #tvMsz{display:flex;justify-content:center;align-items:center;gap:6px;margin:0 0 10px;padding:10px 12px;border-radius:6px;background:#141414;border:1px solid #ffffff22;font-size:14px;font-weight:800;color:#a3a3a3}
+body:not(.m-tv):not(.m-desktop) #details #tvMsz:empty{display:none}
+body:not(.m-tv):not(.m-desktop) #details #tvMsz.ok{background:#052e1a;color:#86efac;border-color:#16a34a88}
+body:not(.m-tv):not(.m-desktop) #details #tvMsz.bad{background:#2a1a05;color:#fbbf24;border-color:#f59e0b66}
+body:not(.m-tv):not(.m-desktop) #details .nfov{font-size:15px;line-height:1.8;color:#e5e5e5;margin:12px 0 8px}
+body:not(.m-tv):not(.m-desktop) #details .nfcast{font-size:13px;line-height:1.7;color:#a3a3a3;margin:2px 0}
+body:not(.m-tv):not(.m-desktop) #details .nfcast b{color:#bdbdbd}
+body:not(.m-tv):not(.m-desktop) #details .nfact{display:flex;justify-content:space-around;margin:18px 0 6px;padding:0 0 12px}
+body:not(.m-tv):not(.m-desktop) #details .nfa{background:none;border:0;color:#a3a3a3;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:84px;font-size:13px;font-family:inherit;cursor:pointer}
+body:not(.m-tv):not(.m-desktop) #details .nfa svg{width:30px;height:30px;color:#fff}
+body:not(.m-tv):not(.m-desktop) #details .nftabs{display:flex;gap:26px;margin:4px -12px 10px;padding:0 16px;border-top:1px solid #2f2f2f;overflow-x:auto;scrollbar-width:none}
+body:not(.m-tv):not(.m-desktop) #details .nftabs button{position:relative;background:none;border:0;padding:14px 0;color:#a3a3a3;font-size:17px;font-weight:800;font-family:inherit;white-space:nowrap}
+body:not(.m-tv):not(.m-desktop) #details .nftabs button.on,body:not(.m-tv):not(.m-desktop) #details .nftabs button:only-child{color:#fff}
+body:not(.m-tv):not(.m-desktop) #details .nftabs button.on::before,body:not(.m-tv):not(.m-desktop) #details .nftabs button:only-child::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;background:#e50914}
+body:not(.m-tv):not(.m-desktop) #details .tabs .tab{border-radius:6px;background:#262626;border:0;color:#fff}
+body:not(.m-tv):not(.m-desktop) #details .tabs .tab.on{background:#fff;color:#000}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep{display:grid;grid-template-columns:150px minmax(0,1fr) 46px;grid-template-areas:"th tt act" "th mt act" "th sz act" "od od od";grid-template-rows:auto auto 1fr auto;gap:2px 12px;align-items:start;padding:0;margin:0 0 22px;background:none;border:0;border-radius:0}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .b{display:contents}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep>.th{grid-area:th;grid-row:auto;position:relative;width:auto;aspect-ratio:16/9;border-radius:4px;overflow:hidden;background:#1c1c1c;cursor:pointer}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep>.th img{width:100%;height:100%;object-fit:cover;display:block;border-radius:0}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .noimg{height:100%;display:flex;align-items:center;justify-content:center;font-size:28px}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .th .pl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .th .pl svg{width:42px;height:42px}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .tt{grid-area:tt;display:block;font-size:16px;font-weight:800;color:#fff;line-height:1.4;padding-top:2px}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep small{grid-area:mt;font-size:14px;color:#a3a3a3;margin:0}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .sz{grid-area:sz;justify-self:start;margin:4px 0 0;font-size:12.5px}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .od{grid-area:od;display:block;-webkit-line-clamp:unset;font-size:14px;line-height:1.75;color:#d4d4d4;margin:10px 0 0}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts{grid-area:act;grid-column:auto;display:flex;flex-direction:column;align-items:center;gap:4px;margin:0}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts>button{flex:none;width:42px;height:42px;padding:0;background:none!important;border:0;color:#fff;font-size:20px}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts .eb.p{display:none}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts .eb.d svg{width:30px;height:30px}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts .eb.g{color:#8a8a8a}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts .eb.g svg{width:24px;height:24px}
+@media(max-width:380px){body:not(.m-tv):not(.m-desktop) #eps .ep.nfep{grid-template-columns:124px minmax(0,1fr) 42px}}
+body:not(.m-tv):not(.m-desktop) #relBox .lbl{color:#fff;font-size:18px;font-weight:800;margin:14px 0 10px}
+body:not(.m-tv):not(.m-desktop) #relBox .hrow{display:grid!important;grid-template-columns:repeat(3,1fr);gap:8px!important;overflow:visible!important;padding:0 0 8px!important}
+body:not(.m-tv):not(.m-desktop) #relBox .hrow>.poster{flex:none!important;width:100%!important;max-width:none!important;border-radius:6px!important}
 </style>
 </body>
 </html>
