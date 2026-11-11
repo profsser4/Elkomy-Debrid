@@ -10,6 +10,8 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v64: قايمة الحلقة فيها نسخ Stremio ونسخ التورنت لكل الأعضاء (من غير ما تتوقف على وضع «متقدم»)
+  v63: كارت الحلقة: زر واحد (تحميل) بيفتح قايمة: تشغيل / تحميل / تغيير النسخة، وشيل زرار التورنت
   v62: إصلاح كارت الحلقة (الصورة والأزرار كانوا فوق بعض)
   v61: الأندرويد/الموبايل: صفحة التفاصيل بستايل Netflix (صورة فوق + عنوان + شارات + زر عرض أبيض + قائمتي/التريلر/مشاركة + تبويبات بخط أحمر + كروت حلقات بصورة وزر تشغيل دايري وأيقونة تنزيل) ومساحة كل حلقة/فيلم ظاهرة تحت المدة
   v58: AllDebrid: المفتاح بقى في هيدر Authorization (مش في الرابط) مع رجوع تلقائي للطريقة القديمة لو المتصفح منع، رسائل أخطاء واضحة (تأكيد الإيميل / حظر السيرفرات وVPN / 30 تورنت / حد الهوست / بريميوم / 429)، وفحص ⚡ instant بيبطّل لنفسه لو endpoint مش موجود
@@ -1038,7 +1040,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=62;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=64;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2664,8 +2666,25 @@ function nfEp(n, e) {
     (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚</span>' : '') + '</small>' +
     (cur && cur.imdb && !fut ? '<div class="sz wait">⏳ في الانتظار...</div>' : '') +
     (e.overview ? '<div class="od">' + esc(e.overview) + '</div>' : '') + '</div>' +
-    '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
-    (ADV() || !cur.imdb ? '<button class="mg" aria-label="تورنت" onclick="go(' + n + ',' + e.n + ')">🧲</button>' : '') + '</div></div>';
+    '<div class="eacts"><button class="nfmore" aria-label="تشغيل / تحميل / تغيير النسخة" onclick="nfEpMenu(' + n + ',' + e.n + ')">' + IC('dl') + '</button></div></div>';
+}
+function nfSheetClose() { const s = document.getElementById('nfsheet'); if (s) s.remove(); }
+function nfEpMenu(s, e) {
+  nfSheetClose();
+  const row = document.querySelector('#eps .ep[data-s="' + s + '"][data-e="' + e + '"]');
+  const ttl = row && row.querySelector('.tt') ? row.querySelector('.tt').textContent : '';
+  const sz = row && row.querySelector('.sz') && /\d/.test(row.querySelector('.sz').textContent) ? row.querySelector('.sz').textContent : '';
+  const src = !!(cur.imdb || libFor(cur, s, e));
+  const it = (ic, tx, fn) => '<button onclick="nfSheetClose();' + fn + '">' + ic + '<span>' + tx + '</span></button>';
+  let h = '<div class="nfs-t">' + esc(ttl) + (sz ? '<small>' + esc(sz) + '</small>' : '') + '</div>' +
+    it(IC('play'), 'تشغيل', 'quickPlay(' + s + ',' + e + ')');
+  if (src) h += it(IC('dl'), 'تحميل', 'quickDownload(' + s + ',' + e + ')') + it(IC('opts'), 'تغيير النسخة', 'playOpen(' + s + ',' + e + ')');
+  if (stOK()) h += it('🧩', 'نسخ Stremio', 'stGo(' + s + ',' + e + ')');
+  h += it('🧲', 'نسخ التورنت', 'go(' + s + ',' + e + ')');
+  const d = document.createElement('div');
+  d.id = 'nfsheet';
+  d.innerHTML = '<div class="nfs-bg" onclick="nfSheetClose()"></div><div class="nfs-box">' + h + '</div>';
+  document.body.appendChild(d);
 }
 function toggleList() {
   const key = 'l:' + cur.type + ':' + cur.id, o = getItem(key);
@@ -12183,6 +12202,16 @@ body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts .eb.g svg{width:24px;height
 body:not(.m-tv):not(.m-desktop) #relBox .lbl{color:#fff;font-size:18px;font-weight:800;margin:14px 0 10px}
 body:not(.m-tv):not(.m-desktop) #relBox .hrow{display:grid!important;grid-template-columns:repeat(3,1fr);gap:8px!important;overflow:visible!important;padding:0 0 8px!important}
 body:not(.m-tv):not(.m-desktop) #relBox .hrow>.poster{flex:none!important;width:100%!important;max-width:none!important;border-radius:6px!important}
+#nfsheet{position:fixed;inset:0;z-index:99998;display:flex;align-items:flex-end}
+#nfsheet .nfs-bg{position:absolute;inset:0;background:#000a}
+#nfsheet .nfs-box{position:relative;width:100%;background:#1f1f1f;border-radius:16px 16px 0 0;padding:10px 0 calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px #000}
+#nfsheet .nfs-t{padding:10px 20px 14px;color:#fff;font-weight:800;font-size:16px;border-bottom:1px solid #333}
+#nfsheet .nfs-t small{display:block;margin-top:6px;color:#86efac;font-size:13px;font-weight:700;direction:ltr;text-align:right}
+#nfsheet button{display:flex;align-items:center;gap:16px;width:100%;padding:16px 20px;background:none;border:0;color:#fff;font-size:17px;font-weight:700;font-family:inherit;text-align:right}
+#nfsheet button svg{width:26px;height:26px;flex:none}
+#nfsheet button:active{background:#2c2c2c}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .sz{direction:ltr}
+body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts .nfmore svg{width:30px;height:30px}
 </style>
 </body>
 </html>
