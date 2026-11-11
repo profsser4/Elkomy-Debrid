@@ -10,6 +10,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v58: AllDebrid: المفتاح بقى في هيدر Authorization (مش في الرابط) مع رجوع تلقائي للطريقة القديمة لو المتصفح منع، رسائل أخطاء واضحة (تأكيد الإيميل / حظر السيرفرات وVPN / 30 تورنت / حد الهوست / بريميوم / 429)، وفحص ⚡ instant بيبطّل لنفسه لو endpoint مش موجود
   v57: بحث داخل مخزن الحسابات، وتفاصيل الحساب بقت بتبويبات (قنوات/أفلام/مسلسلات بأسمائها) وبحث من غير ما الصفحة تتنطط، وتحميل تبويب واحد في المرة. تخفيف كراش WebView على الأندرويد (native crash): إيقاف captureStream/AudioContext، وتحميل قوائم قنوات حسابات IPTV (ربط القنوات) واحدة ورا التانية بدل التوازي، وحد 4 ميجا لملف استيراد الأسماء في «الضبط التلقائي بالصوت» داخل التطبيق + إلغاء الـ blur (backdrop-filter) على الـ WebView. الضبط اليدوي للترجمة شغّال زي ما هو
   v56: إصلاح لوحة اشتراكات IPTV على الموبايل: اسم العضو والهوست كانوا بيتكسّروا حرف حرف، دلوقتي الاسم في سطر والأزرار تحته
   v55: زر ℹ️ على كل حساب IPTV (لوحة الأدمن + المخزن): كام جهاز يشغّله وشغّال عليه كام، الإنشاء/الانتهاء، السيرفر، عدد القنوات/الأفلام/المسلسلات، وقائمة القنوات بأقسامها وبحث (من الجهاز مباشرة، من غير تعديل في السيرفر)
@@ -1035,7 +1036,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=57;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=58;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -8919,40 +8920,79 @@ function dbpPick(files, spec) {
 const dbpMagnet = h => 'magnet:?xt=urn:btih:' + h;
 
 // ---------- AllDebrid ----------
+var adNoHdr = false, adInstDead = false;
+const AD_ERR = {
+  AUTH_BLOCKED: 'AllDebrid طلب تأكيد الدخول من مكان جديد: افتح إيميل حساب AllDebrid ودوس «تأكيد» وبعدين جرّب تاني',
+  AUTH_BAD_APIKEY: 'مفتاح AllDebrid غلط أو اتلغى: حط مفتاح جديد من alldebrid.com/apikeys',
+  AUTH_MISSING_APIKEY: 'مفيش مفتاح AllDebrid: حطه في إعدادات المزوّدين',
+  AUTH_USER_BANNED: 'حساب AllDebrid ده محظور',
+  NO_SERVER: 'AllDebrid بيمنع السيرفرات وVPN: شغّل من الموبايل أو من المتصفح عادي من غير VPN',
+  MAGNET_NO_SERVER: 'AllDebrid بيمنع السيرفرات وVPN: شغّل من الموبايل أو من المتصفح عادي من غير VPN',
+  MAGNET_TOO_MANY_ACTIVE: 'عندك 30 تورنت شغّالين على AllDebrid (الحد الأقصى): امسح شوية من صفحة magnets عندهم وجرّب تاني',
+  MAGNET_MUST_BE_PREMIUM: 'حساب AllDebrid مش بريميوم أو الاشتراك خلص',
+  MUST_BE_PREMIUM: 'حساب AllDebrid مش بريميوم أو الاشتراك خلص',
+  LINK_HOST_LIMIT_REACHED: 'وصلت حد التحميل اليومي لهوست ده على AllDebrid',
+  LINK_TOO_MANY_DOWNLOADS: 'AllDebrid: تحميلات كتير في نفس الوقت، استنى شوية',
+  LINK_HOST_FULL: 'سيرفرات AllDebrid لهوست ده زحمة، جرّب بعد شوية',
+  LINK_DOWN: 'الملف اتمسح من الهوست الأصلي'
+};
 async function adApi(path, params, o) {
   o = o || {};
-  const u = (o.base || 'https://api.alldebrid.com/v4') + path + '?' +
-    new URLSearchParams(Object.assign({agent: 'Elkomy', apikey: DBP.cfg().ad}, params || {}));
+  const key = DBP.cfg().ad;
+  const base = o.base || 'https://api.alldebrid.com/v4';
+  const qs = new URLSearchParams(params || {}).toString();
   const ctl = new AbortController();
   const tm = setTimeout(() => ctl.abort(), o.timeout || 15000);
-  let r, j;
+  /* المفتاح في هيدر Authorization (المطلوب في الدوكيومنت الحالي)؛ لو المتصفح منع الطلب (CORS) نرجع للطريقة القديمة ونفتكرها */
+  const go = async hdr => {
+    const u = base + path + (qs || !hdr ? '?' : '') + qs + (hdr ? '' : (qs ? '&' : '') + 'apikey=' + encodeURIComponent(key));
+    const init = {signal: ctl.signal};
+    if (o.body) { init.method = 'POST'; init.body = o.body; }
+    if (hdr) init.headers = {Authorization: 'Bearer ' + key};
+    const r = await fetch(u, init);
+    return {r: r, j: await r.json()};
+  };
+  let x;
   try {
-    r = await fetch(u, o.body ? {method: 'POST', body: o.body, signal: ctl.signal} : {signal: ctl.signal});
-    j = await r.json();
+    try { x = await go(!adNoHdr); }
+    catch (e) { if ((e && e.name === 'AbortError') || adNoHdr) throw e; adNoHdr = true; x = await go(false); }
   } catch (e) {
     throw new Error(e && e.name === 'AbortError' ? 'AllDebrid اتأخر في الرد (' + path + ')' : ((e && e.message) || 'فشل الاتصال'));
   } finally { clearTimeout(tm); }
-  if (!j || j.status !== 'success') throw new Error((j && j.error && (j.error.message || j.error.code)) || ('HTTP ' + r.status));
+  const j = x.j, r = x.r;
+  if (!j || j.status !== 'success') {
+    const er = j && j.error, code = er && er.code;
+    if (r.status === 429 || code === '429') throw new Error('AllDebrid: طلبات كتير في وقت قصير (الحد 12 في الثانية)، استنى لحظة وجرّب');
+    throw new Error((code && AD_ERR[code]) || (er && (er.message || er.code)) || ('HTTP ' + r.status));
+  }
   return j.data;
 }
 async function adInstant(hashes) {
   const out = new Set();
   const key = DBP.cfg().ad;
-  if (!key || !hashes.length) return out;
-  try {
-    const q = new URLSearchParams([['agent', 'Elkomy'], ['apikey', key]].concat(hashes.slice(0, 100).map(x => ['magnets[]', x])));
+  if (!key || !hashes.length || adInstDead) return out;   /* endpoint مش موجود في دوكيومنت AllDebrid الحالي: لو رد 404 مرة بنبطّل نسأله */
+  const q = new URLSearchParams(hashes.slice(0, 100).map(x => ['magnets[]', x]));
+  const once = async hdr => {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 7000);
-    const r = await fetch('https://api.alldebrid.com/v4/magnet/instant?' + q, {signal: ctl.signal});
-    clearTimeout(t);
-    const j = await r.json();
+    try {
+      const u = 'https://api.alldebrid.com/v4/magnet/instant?' + q + (hdr ? '' : '&apikey=' + encodeURIComponent(key));
+      const r = await fetch(u, hdr ? {signal: ctl.signal, headers: {Authorization: 'Bearer ' + key}} : {signal: ctl.signal});
+      return {r: r, j: await r.json()};
+    } finally { clearTimeout(t); }
+  };
+  try {
+    let x;
+    try { x = await once(!adNoHdr); }
+    catch (e) { if ((e && e.name === 'AbortError') || adNoHdr) throw e; adNoHdr = true; x = await once(false); }
+    const j = x.j;
     if (j && j.status === 'success' && j.data && Array.isArray(j.data.magnets)) {
       j.data.magnets.forEach(m => {
         if (m && m.instant) {
-          [m.hash, m.magnet].forEach(x => { const s = String(x || '').toLowerCase(); const mm = /[a-f0-9]{40}/.exec(s); if (mm) out.add(mm[0]); });
+          [m.hash, m.magnet].forEach(v => { const s = String(v || '').toLowerCase(); const mm = /[a-f0-9]{40}/.exec(s); if (mm) out.add(mm[0]); });
         }
       });
-    }
+    } else if (x.r.status === 404 || (j && j.error && String(j.error.code) === '404')) adInstDead = true;
   } catch (e) { console.warn('adInstant', e); }
   return out;
 }
