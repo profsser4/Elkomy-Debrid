@@ -777,7 +777,7 @@ if (Date.now() - (S.meT || 0) < 300000) return;
 S.meT = Date.now();
 api('/me', {noauth: 1, timeout: 15000}, function (e, st, d) {
 if (e || st !== 200 || !d || d.error) return;
-S.plan = d.plan || S.plan; S.lock = +d.lock || 0; S.lockMsg = d.lock_msg || '';
+S.plan = d.plan || S.plan; S.lock = +d.lock || 0; S.lockMsg = d.lock_msg || ''; S.ad = !!d.ad;
 try { homeRefresh(); } catch (x) {}
 if (meBlocked(S.plan, S.lock)) planBlock(S.lockMsg || 'اشتراكك منتهي أو غير مفعّل. كلّم الأدمن.');
 });
@@ -1062,7 +1062,7 @@ function afterAuth() {
 splash('جاري تحميل بيانات حسابك...');
 api('/me', {noauth: 1}, function (err, st, d) {
 if (err || st !== 200) return showMsg('تعذّر تحميل الحساب', err ? 'مفيش اتصال بالسيرفر' : 'كود ' + st, [{t: 'إعادة المحاولة', pri: 1, fn: afterAuth}, {t: 'تسجيل خروج', fn: logout}]);
-S.user = d.user || ls('last_user') || ''; S.role = d.role || 'user';
+S.user = d.user || ls('last_user') || ''; S.role = d.role || 'user'; S.ad = !!d.ad;
 var plan = d.plan || {state: S.role === 'admin' ? 'admin' : 'premium'};
 var ok = S.role === 'admin' || !plan.state || plan.state === 'premium';
 S.plan = plan; S.lock = +d.lock || 0; S.lockMsg = d.lock_msg || ''; S.meT = Date.now();
@@ -3379,18 +3379,49 @@ next: nx, hlsFrom: {hls: d.hls, torrent_id: d.torrent_id, file_id: d.file_id, di
 $('xLink')._ok = function () {
 kbOpen('الصق الرابط أو الماجنت', '', false, function (v) { v = v.trim(); if (v) linkPlay(v, null); });
 };
+/* AllDebrid من التلفزيون نفسه (للأدمن ولأي عضو الأدمن فعّله له): لو السيرفر فشل في سحب الرابط */
+function tvAdUnlock(url, cb) {
+var go = function (key) {
+xhr('GET', 'https://api.alldebrid.com/v4/link/unlock?agent=Elkomy&apikey=' + enc(key) + '&link=' + enc(url), null, {}, function (err, st, tx) {
+var r = jparse(tx) || {};
+if (err) return cb('مفيش اتصال (' + err + ')');
+if (r.status === 'success' && r.data && r.data.link) return cb(null, {direct_link: r.data.link, name: r.data.filename || '', size: r.data.filesize || 0});
+cb((r.error && r.error.message) || r.error && r.error.code || ('كود ' + st));
+}, 30000);
+};
+if (S.adKey) return go(S.adKey);
+api('/ad/key', {timeout: 15000}, function (e, st, d) {
+if (e || st !== 200 || !d || !d.key) return cb('مفيش مفتاح AllDebrid مسموح');
+S.adKey = d.key; go(d.key);
+});
+}
 function linkPlay(q, resume, title) {
 if (/^\s*(javascript|data|vbscript|file|blob):/i.test(String(q || ''))) { toast('الرابط ده مش مدعوم'); return; }
 var tok = ++SX.pid, key = 'u:' + shash(q);
 sxBusy('جاري سحب الرابط...', q.length > 70 ? q.slice(0, 70) + '…' : q);
-sxPoll('/generate', {query: q}, tok, function (err, d) {
-if (err || !d || !d.direct_link) return sxFail(err || (d && d.error) || 'الرابط ماشتغلش', function () { linkPlay(q, resume, title); }, null);
+var retry = function () { linkPlay(q, resume, title); };
+var ok = function (d) {
 if (d.pack && d.files && d.files.length > 1) return packPick(d, q, title);
 var pr = getItem(key), rs = resume != null ? resume : ((pr && !pr.del && !pr.done && pr.pos > 10) ? Math.floor(pr.pos) : 0);
 var nm = d.name || title || 'رابط مباشر';
 sxStartPlay({kind: 'site', url: d.direct_link, title: nm, key: key, resume: rs,
 sp: {src: q, title: nm, type: null, poster: '', vname: d.name || ''}, next: null,
 hlsFrom: {hls: d.hls, torrent_id: d.torrent_id, file_id: d.file_id, direct: d.direct_link}});
+};
+sxPoll('/generate', {query: q}, tok, function (err, d) {
+if (err || !d || !d.direct_link) {
+var why = err || (d && d.error) || 'الرابط ماشتغلش';
+if (S.ad && /^https?:/i.test(q) && !/^(magnet:)/i.test(q)) {
+sxBusy('السيرفر فشل، بجرّب AllDebrid من التلفزيون...', q.length > 70 ? q.slice(0, 70) + '…' : q);
+return tvAdUnlock(q, function (e2, dd) {
+if (!sxAlive(tok)) return;
+if (e2 || !dd) return sxFail(why + '\nAllDebrid: ' + e2, retry, null);
+ok(dd);
+});
+}
+return sxFail(why, retry, null);
+}
+ok(d);
 }, null, 0);
 }
 /* ---- حفظ التقدّم بنفس شكل الموقع (يتزامن مع الأندرويد والمتصفح) ---- */

@@ -10,6 +10,8 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v69: مفتاح AllDebrid يتسحب من السيرفر للأدمن ولأي عضو الأدمن يفعّله له (في صلاحيات العضو)، والسحب بيتم من موبايله
+  v68: لما سحب الرابط يفشل: شرح السبب + زرار «حط مفتاح AllDebrid» (السحب من الموبايل نفسه) + إعادة المحاولة + فتح الرابط الأصلي
   v67: المكتبة: بعد اختيار مشاهدة/تحميل ملفات الباك بتتنفّذ على طول من غير سؤال تاني، وزرار «شغّله بدل كده» في شاشة التحميل
   v66: بعد سحب أي ملف بيسألك «تشغيل ولا تحميل؟» قبل ما يشتغل، وزرار «تحميل» جوّه المشغّل (المتصفح ومشغّل الأندرويد)
   v65: «الترجمة: شغالة/مقفولة» لكل عمل (زرار في صفحة التفاصيل + «إيقاف دايمًا» في لوحة المشغّل): بتمنع إرسال ترجمة المشغّل الداخلي للعمل كله ويتحفظ على الجهاز
@@ -1043,7 +1045,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=67;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=69;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2420,6 +2422,7 @@ async function showMain() {
     ROLE = d.role || 'user';
     LOCK = d.lock || 0; LOCK_MSG = d.lock_msg || '';
     PLAN = d.plan || {state: ROLE === 'admin' ? 'admin' : 'premium', until: 0, left: null};
+    adSync(d.ad);
   } catch (e) { return alert('مش قادر أوصل للسيرفر'); }
   loadLocal();
   applyRole();
@@ -6921,6 +6924,39 @@ async function ensureHls(d, fid, id) {
     if (!d.hls && k === 0) await sleep(1500);
   }
 }
+// مفتاح AllDebrid من السيرفر: للأدمن ولأي عضو الأدمن فعّله له. بيتحفظ على الجهاز والسحب بيتم من الموبايل نفسه
+async function adSync(allowed) {
+  try {
+    if (allowed) {
+      if (DBP.cfg().ad && localStorage.getItem('adsrv') !== '1') return;   // مفتاح اتحط يدويًا: منلمسوش
+      const {d} = await api('/ad/key');
+      if (d && d.key) { DBP.set('ad', d.key); localStorage.setItem('adsrv', '1'); }
+    } else if (localStorage.getItem('adsrv') === '1') {
+      DBP.set('ad', ''); localStorage.removeItem('adsrv');
+    }
+  } catch (e) {}
+}
+// لما السحب يفشل: شرح السبب + حلول (مفتاح AllDebrid على الجهاز، إعادة المحاولة، فتح الرابط الأصلي)
+function pullFailTip(src, d, adTried) {
+  const hasAd = !!DBP.cfg().ad, http = /^https?:/i.test(src);
+  let h = '<div class="warn" style="border-color:#38bdf8;color:#e2e8f0;margin-top:8px;line-height:1.9">💡 الموقع شغّال عندك لأنك بتفتحه من جهازك. لكن السحب بيتم من سيرفرات TorBox وAllDebrid، ' +
+    'وكتير من المواقع بتحجب السيرفرات دي أو المزوّد بيقفل الموقع مؤقتًا (زي رسالة TorBox فوق). ده مش عطل في الموقع بتاعك.<br>' +
+    (hasAd ? 'جرّبنا AllDebrid من جهازك برضه وما نفعش. جرّب بعد شوية أو افتح الرابط الأصلي.'
+           : 'الحل الأقوى: حط مفتاح AllDebrid على الجهاز ده، وساعتها السحب بيتم من موبايلك نفسه (آيبي مصري) ومعظم المواقع بتشتغل.') + '</div>';
+  if (!hasAd && http) h += '<button class="search-btn" style="margin-top:8px;background:#0ea5e9" onclick="pfailKey()">🔑 حط مفتاح AllDebrid وجرّب تاني</button>';
+  h += '<button class="search-btn" style="margin-top:8px" onclick="pfailRetry()">↻ حاول تاني</button>';
+  if (http) h += '<button class="search-btn" style="margin-top:8px;background:#475569" onclick="pfailOpen()">🌐 افتح الرابط الأصلي</button>';
+  return h;
+}
+function pfailRetry() { const f = window.PFAIL; if (f) pullSource(f.src, f.base, f.fid); }
+function pfailOpen() { const f = window.PFAIL; if (f && /^https?:/i.test(f.src)) window.open(f.src, '_blank', 'noopener'); }
+function pfailKey() {
+  const k = (prompt('الصق مفتاح AllDebrid (من alldebrid.com/apikeys):') || '').trim();
+  if (!k) return;
+  DBP.set('ad', k);
+  toast('✅ اتحفظ المفتاح على الجهاز ده');
+  pfailRetry();
+}
 async function pullSource(src, base, fid) {
   window.PCH_FORCE = null;
   if (noWatch()) return;
@@ -6959,7 +6995,8 @@ async function pullSource(src, base, fid) {
         return;
       } catch (e) { adTried.push('AllDebrid (من المتصفح): ' + ((e && e.message) || 'فشل')); }
     }
-    $('results').innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(adTried.concat(d.tried || []));
+    window.PFAIL = {src: src, base: base, fid: fid};
+    $('results').innerHTML = warn(d.error || 'حصل خطأ') + triedHTML(adTried.concat(d.tried || [])) + pullFailTip(src, d, adTried);
     return;
   }
   base.src = src;
@@ -8637,7 +8674,9 @@ async function usPerm(n) {
   if (wp === null) return;
   const dp = pickProv('مزوّد التحميل لـ ' + n + ':', u.dp, 'زي الإعداد العام', 'same');
   if (dp === null) return;
-  const {d} = await api('/users/' + encodeURIComponent(n) + '/perms', {method: 'POST', body: JSON.stringify({lock: lock, msg: msg, wp: wp, dp: dp})});
+  const adv = prompt('AllDebrid من موبايل ' + n + ' (لو الرابط فشل على السيرفر)؟\n1 = مسموح (زي IPTV لعضو معيّن)\n0 = لا', u.ad ? '1' : '0');
+  if (adv === null) return;
+  const {d} = await api('/users/' + encodeURIComponent(n) + '/perms', {method: 'POST', body: JSON.stringify({lock: lock, msg: msg, wp: wp, dp: dp, ad: adv.trim() === '1'})});
   if (d.error) alert(d.error);
   loadUsers();
 }
@@ -8692,6 +8731,7 @@ async function refreshMe() {
     ROLE = d.role || ROLE;
     LOCK = d.lock || 0; LOCK_MSG = d.lock_msg || '';
     PLAN = d.plan || PLAN;
+    adSync(d.ad);
     renderPlanBar();
     if (!isPremiumOK()) { IV.cfg = null; IV.loaded = true; }
   } catch (e) {}
