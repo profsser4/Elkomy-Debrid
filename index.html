@@ -10,6 +10,8 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v67: المكتبة: بعد اختيار مشاهدة/تحميل ملفات الباك بتتنفّذ على طول من غير سؤال تاني، وزرار «شغّله بدل كده» في شاشة التحميل
+  v66: بعد سحب أي ملف بيسألك «تشغيل ولا تحميل؟» قبل ما يشتغل، وزرار «تحميل» جوّه المشغّل (المتصفح ومشغّل الأندرويد)
   v65: «الترجمة: شغالة/مقفولة» لكل عمل (زرار في صفحة التفاصيل + «إيقاف دايمًا» في لوحة المشغّل): بتمنع إرسال ترجمة المشغّل الداخلي للعمل كله ويتحفظ على الجهاز
   v64: قايمة الحلقة فيها نسخ Stremio ونسخ التورنت لكل الأعضاء (من غير ما تتوقف على وضع «متقدم»)
   v63: كارت الحلقة: زر واحد (تحميل) بيفتح قايمة: تشغيل / تحميل / تغيير النسخة، وشيل زرار التورنت
@@ -1041,7 +1043,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=65;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=67;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2076,6 +2078,62 @@ function dlApp(el) {
     else window.AndroidPlayer.download(el.dataset.u, nm);
     toast('⬇️ بدأ التحميل — تابعه من زرار التحميلات الأخضر', false);
   } catch (e) { toast('❌ مقدرتش أبدأ التحميل', true); }
+}
+// ===== تحميل الفيديو الحالي من أي مكان (زرار المشغّل في المتصفح + زرار مشغّل الأندرويد) =====
+function dlCurInfo() {
+  const np = window.IV_NP;
+  const ext = u => { const m = /\.([a-z0-9]{2,4})(?:[?#]|$)/i.exec(String(u).split('?')[0] + '?'); return m ? m[1] : 'mp4'; };
+  const fix = (n, u) => { n = String(n || 'video').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'video'; return /\.[a-z0-9]{2,4}$/i.test(n) ? n : n + '.' + ext(u); };
+  if (np && np.url) return {u: np.url, n: fix(np.name, np.url), iv: 1};
+  const c = (typeof PLAY !== 'undefined' && PLAY && PLAY.url) ? PLAY : (window.NP_CUR && window.NP_CUR.url ? window.NP_CUR : null);
+  const u = (c && c.url) || window.NP_URL || '';
+  if (!/^https?:/i.test(u)) return null;
+  return {u: u, n: fix(c && (c.fname || c.title), u), s: c ? c.s : null, e: c ? c.e : null};
+}
+function dlCur() {
+  if (noDl()) return false;
+  const i = dlCurInfo();
+  if (!i) { toast('❌ مفيش رابط تحميل للفيديو ده', true); return false; }
+  if (i.iv && /\.m3u8(\?|$)|\/live\//i.test(i.u)) { toast('التحميل مش متاح للبث المباشر', true); return false; }
+  if (window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined') { dlApp({dataset: {u: i.u, n: i.n, s: i.s, e: i.e}}); return true; }
+  const a = document.createElement('a');
+  a.href = i.u; a.download = i.n; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast('⬇️ اتبعت للمتصفح. لو ما بدأش انسخ الرابط وحمّله من IDM / VLC');
+  return true;
+}
+window.nativeDownload = function () { try { return dlCur(); } catch (e) { return false; } };   // زرار «تحميل» في مشغّل الأندرويد بينادي عليها
+// بعد سحب أي ملف: نسأل «تشغيل ولا تحميل؟» قبل ما يشتغل (مش في الحلقة التالية التلقائية ولا التلفزيون)
+function pullAsk(d, base) {
+  const F = window.PCH_FORCE;   // المكتبة: المستخدم اختار مشاهدة/تحميل قبل كده، فمنسألوش تاني على ملف الباك
+  if (F && Date.now() - F.t < 600000 && d && d.direct_link) {
+    if (F.k === 'dl') { window.PCH = {d: d, base: base || {}}; return pchGo('dl'); }
+    return playData(d, base);
+  }
+  if (!d || !d.direct_link || isTv() || window.NN_AUTO || (typeof PLAY !== 'undefined' && PLAY && PLAY._nnGo) || Date.now() - (window.PCH_SKIP || 0) < 60000)
+    return playData(d, base);
+  window.PCH = {d: d, base: base || {}};
+  const b = base || {}, nm = d.name || b.fname || b.title || 'الملف';
+  const ep = (b.s != null && b.e != null) ? ' · S' + p2(b.s) + 'E' + p2(b.e) : '';
+  scrollToResults();
+  $('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 8px;color:var(--success)">✅ الملف جاهز' + esc(ep) + '</h3>' +
+    '<p class="fn" style="margin:0 0 6px">' + esc(nm) + '</p>' +
+    (d.size ? '<p style="margin:0 0 6px;color:var(--mut)">💾 ' + fmtSize(d.size) + '</p>' : '') +
+    '<p style="margin:0 0 12px;color:var(--mut)">عايز تشغّله ولا تحمّله؟</p>' +
+    '<button class="search-btn" onclick="pchGo(\'play\')">▶ تشغيل</button>' +
+    '<button class="search-btn" style="margin-top:8px;background:#16a34a" onclick="pchGo(\'dl\')">⬇️ تحميل</button></div>';
+}
+function pchGo(kind) {
+  const A = window.PCH;
+  if (!A) return;
+  if (kind === 'play') { if (noWatch()) return; return playData(A.d, A.base); }
+  if (noDl()) return;
+  const d = A.d, b = A.base || {};
+  const nm = d.name || b.fname || b.title || 'video.mkv';
+  if (window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined') dlApp({dataset: {u: d.direct_link, n: nm, s: b.s, e: b.e}});
+  else { const a = document.createElement('a'); a.href = d.direct_link; a.download = nm; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); }
+  $('results').innerHTML = '<div class="result-card"><h3 style="margin:0 0 10px;color:var(--success)">⬇️ جاهز للتحميل</h3>' + linkCard(d, false) +
+    '<button class="search-btn" style="margin-top:8px" onclick="pchGo(\'play\')">▶ شغّله بدل كده</button></div>';
 }
 async function copyText(t) {
   try { await navigator.clipboard.writeText(t); alert('تم النسخ!'); }
@@ -3509,7 +3567,7 @@ function ivPlay(url, title, o) {
   if (!isPremiumOK() || noWatch()) return;
   o = o || {};
   if (ivApp() || (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined')) {
-    window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid, meta: o.meta}; window.NP_PLAYED = Date.now();
+    window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid, meta: o.meta, url: url, name: title}; window.NP_PLAYED = Date.now();
     AndroidPlayer.play(url, title, o.key ? ivPosGet(o.key) : 0);
     return;
   }
@@ -5020,6 +5078,7 @@ async function clibPlayResolved(c, fid) {
 }
 // ---------- سؤال: مشاهدة ولا تحميل؟ (زي باقي الموقع) ----------
 function clibAsk(id, s, e) {
+  window.PCH_FORCE = null;
   if (isTv()) return clibPlay(id, s, e);
   const it = clibFind(id);
   if (!it) return;
@@ -5038,13 +5097,13 @@ async function clibAskGo(kind) {
     if (noDl()) return;
     const c = await clibResolve(A.id, A.s, A.e, [], 'download');
     if (!c) return;
-    if (c.d.pack && c.d.files && c.base.type !== 'movie') { packBase = c.base; pack = c.d; return showPack(c.d); }
+    if (c.d.pack && c.d.files && c.base.type !== 'movie') { window.PCH_FORCE = {k: 'dl', t: Date.now()}; packBase = c.base; pack = c.d; return showPack(c.d); }
     return clibShowDownload(c);
   }
   if (noWatch()) return;
   const c = await clibResolve(A.id, A.s, A.e, [], 'watch');
   if (!c) return;
-  if (c.d.pack && c.d.files && c.base.type !== 'movie') return clibStart(c);   // باك: قايمة الملفات
+  if (c.d.pack && c.d.files && c.base.type !== 'movie') { window.PCH_FORCE = {k: 'watch', t: Date.now()}; return clibStart(c); }   // باك: قايمة الملفات
   window.CLCTX = c;
   // بنجهّز PLAY عشان VLC ياخد الاسم ومكان الاستكمال
   setPlay(Object.assign({}, c.base, {fname: c.d.name || '', url: c.d.direct_link, hls: '', sub: null, subx: '', subOff: false}));
@@ -5113,6 +5172,7 @@ function clibShowDownload(c) {
     '<div class="lbl" style="margin:12px 0 6px">' + (IS_ANDROID || IS_IOS ? 'أو افتحه في برنامج التحميل:' : 'أو حمّله بمدير التحميل:') + '</div>' +
     '<div class="pgrid2">' + L.join('') + '</div>' +
     '<button class="btn-vlc" data-u="' + u + '" onclick="copyText(this.dataset.u)">📋 نسخ الرابط (للصقه في أي مدير تحميل)</button>' +
+    (window.CLASK ? '<button class="search-btn" style="margin-top:8px" onclick="clibAskGo(\'watch\')">▶ شغّله بدل كده</button>' : '') +
     '<button class="btn-vlc" style="background:#475569" onclick="clibAltDl()">🔁 الرابط مش شغال؟ جرّب اللي بعده (وآخرها التورنت)</button></div>';
   scrollToResults();
 }
@@ -6862,6 +6922,7 @@ async function ensureHls(d, fid, id) {
   }
 }
 async function pullSource(src, base, fid) {
+  window.PCH_FORCE = null;
   if (noWatch()) return;
   curSrc = src;
   clearCd();
@@ -6875,7 +6936,7 @@ async function pullSource(src, base, fid) {
       if (id !== pullId) return;
       base.src = src;
       packBase = base;
-      playData(dd, base);
+      pullAsk(dd, base);
       return;
     } catch (e) { adTried.push('AllDebrid (من المتصفح): ' + ((e && e.message) || 'فشل')); }
     $('results').innerHTML = pend('جاري سحب الرابط...');
@@ -6894,7 +6955,7 @@ async function pullSource(src, base, fid) {
         if (id !== pullId) return;
         base.src = src;
         packBase = base;
-        playData(dd, base);
+        pullAsk(dd, base);
         return;
       } catch (e) { adTried.push('AllDebrid (من المتصفح): ' + ((e && e.message) || 'فشل')); }
     }
@@ -6913,7 +6974,7 @@ async function pullSource(src, base, fid) {
   }
   await ensureHls(d, fid, id);
   if (id !== pullId) return;
-  playData(d, base);
+  pullAsk(d, base);
 }
 function nfNoSubKey(o) { return o && o.tmdb ? (o.type || '') + ':' + o.tmdb : 't:' + ((o && o.title) || ''); }
 function nfNoSubMap() { try { return JSON.parse(localStorage.getItem('nosub') || '{}') || {}; } catch (e) { return {}; } }
@@ -7211,6 +7272,7 @@ async function nativePlay(u) {
   try { p = Math.floor(((PLAY && getItem(PLAY.key)) || {}).pos || 0); } catch (e) {}
   let sx = '';
   try { sx = (typeof AUD !== 'undefined' && AUD && AUD.ar) ? '' : ((PLAY && PLAY.subx) || await subxWarm()); } catch (e) {}
+  window.NP_URL = u;
   window.AndroidPlayer.play(u, ((PLAY && PLAY.title) || '') + (sx ? '\n@@SUB@@' + sx : ''), p);
 }
 // تشغيل أي مسار في المشغّل الداخلي (التطبيق) بدل المتصفح
@@ -7485,6 +7547,7 @@ async function nextSameSource(prev, s, e) {
   return !!d || pullId !== LAST_PULL;     // true = اشتغلت (أو اتلغت)، false = كمّل بالبحث العادي
 }
 async function playNext() {
+  window.PCH_SKIP = Date.now();
   if (noWatch()) return;
   clearCd();
   const n = nextTarget();
@@ -7590,7 +7653,7 @@ async function playPackFile(f) {
   if (!base.src) base.src = curSrc;
   await ensureHls(d, f.id, id);
   if (id !== pullId) return;
-  playData(d, base);
+  pullAsk(d, base);
   scrollToResults();
 }
 async function packCall(body, label) {
@@ -10810,6 +10873,7 @@ const NI = {
   cc: '<svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z"/></svg>',
   spd: '<svg viewBox="0 0 24 24"><path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44zm-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/></svg>',
   pip: '<svg viewBox="0 0 24 24"><path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 1.98 2 1.98h18c1.1 0 2-.88 2-1.98V5c0-1.1-.9-2-2-2zm0 16.01H3V4.98h18v14.03z"/></svg>',
+  dl: '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>',
   eps: '<svg viewBox="0 0 24 24"><path d="M4 14h4v-4H4v4zm0 5h4v-4H4v4zM4 9h4V5H4v4zm5 5h12v-4H9v4zm0 5h12v-4H9v4zM9 5v4h12V5H9z"/></svg>',
   back: '<svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>',
   rep: '<svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>'
@@ -10934,7 +10998,7 @@ function nfxInit(v) {
             ib('more', 'المزيد', 'المزيد: تقديم وتأخير وتكبير', ' style="width:auto;padding:0 12px;font-size:14px;font-weight:700"') +
             (hasNext ? ib('next', NI.next, 'الحلقة التالية') : '') +
             (hasEps ? ib('eps', NI.eps, 'الحلقات') : '') +
-            ib('as', NI.cc, 'الصوت والترجمة') + ib('spd', NI.spd, 'السرعة') +
+            ib('as', NI.cc, 'الصوت والترجمة') + ib('spd', NI.spd, 'السرعة') + (isTv() ? '' : ib('dl', NI.dl, 'تحميل')) +
             (pipOk ? ib('pip', NI.pip, 'نافذة عائمة') : '') + ib('fs', NI.fs, 'ملء الشاشة', ' data-r="fs"') +
           '</div></div></div></div>' +
     '<div class="nfx-panel"></div>' +
@@ -11174,6 +11238,7 @@ function nfxInit(v) {
       case 'f10': seekBy(10); break;
       case 'mute': v.muted = !v.muted; if (!v.muted && v.volume === 0) v.volume = 0.5; break;
       case 'next': if (typeof playNext === 'function') playNext(); break;
+      case 'dl': dlCur(); break;
       case 'fs': nfxFs(); break;
       case 'zoom': {
         // مراحل: عادي ← تكبير خفيف جداً ← أكبر شوية ← ملء الشاشة (cover)
@@ -11221,7 +11286,7 @@ function nfxInit(v) {
       case 'cue': cueSet(b.dataset.k, b.dataset.v); renderPanel(); break;
       case 'ep': {
         const f = pack && pack.files && pack.files[+b.dataset.i];
-        if (f && typeof playPackFile === 'function') { closePanel(); playPackFile(f); }
+        if (f && typeof playPackFile === 'function') { closePanel(); window.PCH_SKIP = Date.now(); playPackFile(f); }
         break;
       }
       default: break;
