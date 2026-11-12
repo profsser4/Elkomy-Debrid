@@ -10,6 +10,8 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v71: كل مشاهدة من TorBox (مشغّل الأندرويد/المكتبة/الخارجي-الداخلي) بتاخد رابط التحويل HLS، وAllDebrid بيفضل على الرابط العادي
+  v70: مشغّل الأندرويد: المشاهدة بتاخد رابط التحويل (HLS) من TorBox لو متاح (عشان الصوت)، والتحميل على الرابط الأصلي
   v69: مفتاح AllDebrid يتسحب من السيرفر للأدمن ولأي عضو الأدمن يفعّله له (في صلاحيات العضو)، والسحب بيتم من موبايله
   v68: لما سحب الرابط يفشل: شرح السبب + زرار «حط مفتاح AllDebrid» (السحب من الموبايل نفسه) + إعادة المحاولة + فتح الرابط الأصلي
   v67: المكتبة: بعد اختيار مشاهدة/تحميل ملفات الباك بتتنفّذ على طول من غير سؤال تاني، وزرار «شغّله بدل كده» في شاشة التحميل
@@ -1045,7 +1047,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=69;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=71;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -5073,7 +5075,8 @@ async function clibPlayResolved(c, fid) {
   if (window.AndroidPlayer && !(c.d.pack && c.d.files && c.base.type !== 'movie')) {
     window.CLCTX = c;
     setPlay(Object.assign({}, c.base, {fname: c.d.name || '', url: c.d.direct_link, hls: '', sub: null, subx: '', subOff: false}));
-    await nativePlay(c.d.direct_link);
+    try { await ensureHls(c.d, c.d.file_id, c.my); } catch (x) {}
+    await nativePlay(watchUrl(c.d));
     try { pgBack(); } catch (x) {}
     return;
   }
@@ -5134,7 +5137,7 @@ async function clibPickGo(kind) {
   else if (kind === 'mx') location.href = intentUrl(u, 'com.mxtech.videoplayer.ad');
   else if (kind === 'just') location.href = intentUrl(u, 'com.brouken.player');
   else if (kind === 'mpv') location.href = intentUrl(u, 'is.xyz.mpv');
-  else if (kind === 'native') { await nativePlay(u); try { pgBack(); } catch (er) {} return; }
+  else if (kind === 'native') { try { await ensureHls(c.d, c.d.file_id, c.my); } catch (x) {} await nativePlay(watchUrl(c.d)); try { pgBack(); } catch (er) {} return; }
   else if (kind === 'next') location.href = intentUrl(u, 'dev.anilbeesetti.nextplayer');
   else if (kind === 'any') location.href = intentUrl(u, '');
   else if (kind === 'infuse') extGo(el, 'infuse');
@@ -7196,12 +7199,12 @@ async function nativePlayData(d, base) {
   }, 2500);
   window.NP_NEXT = my0;   // الصفحة بتمسح PLAY بعد فتح المشغّل (pgBack)، فنحتفظ بنسخة للتقدّم والحلقة التالية
   // شاشة سودا على الأندرويد = الصورة بصيغة مش بيفكها الموبايل (HEVC / 10-bit / 4K / HDR / Dolby Vision / REMUX): نشغّل البث المحوَّل (H.264) لو متاح
+  // المشاهدة: رابط التحويل (HLS) من TorBox لو متاح (الصوت والصورة بيشتغلوا على أي موبايل). التحميل بيفضل على الرابط الأصلي (PLAY.url)
   let playUrl = d.direct_link;
   try {
-    const nm = String(d.name || base.fname || '') + ' ' + String(base.title || '') + ' ' + String(d.direct_link || '').split('/').pop();
-    const bad = risky(nm) || /2160p|\b4k\b|\buhd\b|\bdv\b|dolby[ .\-]?vision|\bhdr|remux|hi10p?|\bav1\b|vc-?1|\.(mkv|avi|wmv|ts|m2ts)\b/i.test(nm);
-    if (bad && !d.hls) await ensureHls(d, d.file_id, pullId);
-    if (bad && d.hls) { playUrl = d.hls; PLAY.hls = d.hls; toast('🎞 الملف بصيغة تقيلة، بشغّل النسخة المحوَّلة عشان الصورة تظهر'); }
+    if (!d.hls) await ensureHls(d, d.file_id, pullId);
+    playUrl = watchUrl(d);
+    if (playUrl === d.hls) PLAY.hls = d.hls;
   } catch (e) {}
   try { await nativePlay(playUrl); }
   catch (e) {
@@ -7299,6 +7302,12 @@ function saveProgress(v, ended) {
       : (n && n.kind === 'clib') ? {s: n.s, e: n.e} : null
   });
 }
+// رابط المشاهدة في المشغّل الداخلي: TorBox (وأي مزوّد غير AllDebrid) = رابط التحويل HLS لو متاح (الصوت)، AllDebrid = الرابط العادي
+function watchUrl(d) {
+  if (!d) return '';
+  const raw = d.direct_link || d.direct || '';
+  return (d.hls && !/all-?debrid/i.test(String(d.provider || ''))) ? d.hls : raw;
+}
 async function nativePlay(u) {
   window.IV_NP = null;
   // كل مسارات التشغيل (كمّل مشاهدة / تشغيل سريع / مكتبة / رابط): نحتفظ ببيانات الحلقة لأن الصفحة بتمسحها بعد فتح المشغّل
@@ -7318,7 +7327,7 @@ async function nativeWrap(fn) {
   window.EXT_ONLY = true;
   let d = null;
   try { d = await fn(); } finally { window.EXT_ONLY = false; }
-  if (d && d.direct) { await nativePlay(d.direct); try { pgBack(); } catch (x) {} }
+  if (d && d.direct) { await nativePlay(watchUrl(d)); try { pgBack(); } catch (x) {} }
   return d;
 }
 function nnAuto() {   // المشغّل الداخلي يعرف هل يستنى الحلقة التالية ولا يقفل (حسب إعداد التشغيل التلقائي)
@@ -9751,7 +9760,7 @@ async function pickGo(kind) {
   else if (kind === 'mx') location.href = intentUrl(u, 'com.mxtech.videoplayer.ad');
   else if (kind === 'just') location.href = intentUrl(u, 'com.brouken.player');
   else if (kind === 'mpv') location.href = intentUrl(u, 'is.xyz.mpv');
-  else if (kind === 'native') { await nativePlay(u); try { pgBack(); } catch (e) {} return; }
+  else if (kind === 'native') { await nativePlay(watchUrl(d)); try { pgBack(); } catch (e) {} return; }
   else if (kind === 'next') location.href = intentUrl(u, 'dev.anilbeesetti.nextplayer');
   else if (kind === 'any') location.href = intentUrl(u, '');
   else if (kind === 'infuse') extGo(el, 'infuse');

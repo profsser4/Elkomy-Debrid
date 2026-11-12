@@ -2142,7 +2142,7 @@ tmClose(); return true;
 tmClose(); return true;
 }
 function nudgeStep(rep) { return rep > 14 ? 5 : rep > 6 ? 2 : rep > 2 ? 1 : 0.5; }
-function fixBody(f, x) { return {u: x.it.u, src: P.url, s: f.sp.s, e: f.sp.e, key: f.key, fkey: f.key}; }
+function fixBody(f, x) { return {u: x.it.u, src: P.rawUrl || P.url, s: f.sp.s, e: f.sp.e, key: f.key, fkey: f.key}; }
 function fixSaveSoon() { clearTimeout(FIXT); FIXT = setTimeout(fixSave, 1500); }
 function fixSave() {
 var x = XS, f = XFIX; if (!x || !f || !x.it) return;
@@ -3173,17 +3173,22 @@ hlsFrom: {hls: d.hls, torrent_id: d.torrent_id, file_id: d.file_id, direct: d.di
 }
 function sxStartPlay(o) {
 var d = o.hlsFrom; delete o.hlsFrom;
-if (d && d.hls) o.altUrl = d.hls;
+/* المشاهدة من TorBox = رابط التحويل (HLS) عشان الصوت والصورة؛ الرابط الأصلي احتياطي لو البث فشل. AllDebrid وغيره: الرابط العادي */
 var go2 = function () {
+if (d && d.hls) { o.rawUrl = o.url; o.altUrl = o.url; o.url = d.hls; }
 sxLeave();
-startPlay(o); subLoad(o, P.sid);
-if (d && !d.hls && d.torrent_id && /^\d+$/.test(String(d.torrent_id))) {
-var u0 = o.url;
-api('/play/hls', {method: 'POST', body: {torrent_id: d.torrent_id, file_id: d.file_id, direct_link: d.direct || ''}, timeout: 30000}, function (e, s, r) {
-if (r && r.hls && P.on && P.url === u0 && !P.altUrl) P.altUrl = r.hls;
-});
-}
+startPlay(o); P.rawUrl = o.rawUrl || ''; subLoad(o, P.sid);
 };
+if (d && !d.hls && d.torrent_id && /^\d+$/.test(String(d.torrent_id))) {
+var pid = SX.pid;
+sxBusy('جاري تجهيز البث...', '');
+api('/play/hls', {method: 'POST', body: {torrent_id: d.torrent_id, file_id: d.file_id, direct_link: d.direct || ''}, timeout: 30000}, function (e, st, r) {
+if (!sxAlive(pid)) return;
+if (r && r.hls) d.hls = r.hls;
+go2();
+});
+return;
+}
 go2();
 }
 
@@ -3197,7 +3202,7 @@ var x = srtParse(tx); if (x.c.length) { x.sh = +shift || 0; x.sc = scale || 1; x
 }
 function subKey(sp) { return sp.vh ? 'h:' + sp.vh : (sp.vname || P.vtitle) ? 'n:' + (sp.vname || P.vtitle) : String(P.url || '').split('?')[0]; }
 function autoSync(it, ai, sp, sid, ck, c) {
-var src = P.url || ''; if (!/^https?:\/\//i.test(src)) return;
+var src = P.rawUrl || P.url || ''; if (!/^https?:\/\//i.test(src)) return;
 var key = subKey(sp), n = 0;
 function live() { return sid === P.sid && P.on; }
 function fin(d) {
