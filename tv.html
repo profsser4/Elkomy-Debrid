@@ -2055,7 +2055,29 @@ function mnAudioLabel(t, i) {
 var lg = mnLang(mnPick(t, ['language', 'lang', 'language_code', 'track_lang'])), nm = mnPick(t, ['title', 'name', 'label']), ch = mnPick(t, ['channels']), cd = mnPick(t, ['codec', 'codec_name']);
 var l = 'صوت ' + (i + 1) + (lg ? '  ·  ' + lg : '') + (nm && String(nm).toLowerCase() !== String(lg).toLowerCase() ? '  ·  ' + nm : '');
 if (cd) l += '  ·  ' + String(cd).toUpperCase(); if (ch) l += ' ' + ch + (/^\d+$/.test(String(ch)) ? 'ch' : '');
+if (!lg && !nm) { var ex = []; Object.keys(t || {}).forEach(function (k) { var v = t[k]; if (k !== 'index' && (typeof v === 'string' || typeof v === 'number') && String(v).length < 30 && ex.length < 4) ex.push(v); }); if (ex.length) l += '  ·  ' + ex.join(' · '); }
 return l;
+}
+
+function mnAudioItems(info) {
+var list = mnList(info, /^audio/i), a = [];
+list.forEach(function (t, i) { t = t || {}; var ix = (t.index != null) ? +t.index : i; a.push({idx: ix, label: mnAudioLabel(t, i), lg: String(mnPick(t, ['language', 'lang', 'language_code', 'track_lang']) + ' ' + mnPick(t, ['title', 'name', 'label'])).toLowerCase()}); });
+return a;
+}
+function mnAudKey() { return P.sp ? 'aud:' + subKey(P.sp) : ''; }
+/* اختيار الصوت لوحده: اللي اخترته قبل كده للفيلم، وإلا عربي، وإلا إنجليزي (بدل أول مسار اللي ممكن يبقى هندي) */
+function mnAutoAudio(sid) {
+if (!P.hlsFrom) return;
+var f = P.hlsFrom, k = mnAudKey(), saved = k ? lj(k, null) : null;
+api('/tb/stream', {method: 'POST', timeout: 40000, body: {torrent_id: f.tid, file_id: f.fid, info: true}}, function (e, st, r) {
+if (sid !== P.sid || !P.on) return;
+var a = mnAudioItems(r && r.info); P.audInfo = a; if (a.length < 2) return;
+var pick = null, i;
+if (saved != null && saved.i != null) for (i = 0; i < a.length; i++) if (a[i].idx === saved.i) pick = a[i];
+if (!pick) { var ar = null, en = null; a.forEach(function (t) { if (!ar && /(^|[^a-z])(ar|ara|arb)([^a-z]|$)|arab|عرب/.test(t.lg)) ar = t; if (!en && /(^|[^a-z])(en|eng)([^a-z]|$)|english/.test(t.lg)) en = t; });
+pick = ar || en; if (pick && pick === a[0]) pick = null; }
+if (pick && pick.idx !== 0 || (pick && saved)) mnAudio(pick, true);
+});
 }
 function mnBuild() {
 var it = [], A = null; try { A = webapis.avplay; } catch (e) {}
@@ -2106,8 +2128,7 @@ if (P.hlsFrom) {
 MN.loadingAudio = true;
 api('/tb/stream', {method: 'POST', timeout: 40000, body: {torrent_id: P.hlsFrom.tid, file_id: P.hlsFrom.fid, info: true, audio: P.audIdx >= 0 ? P.audIdx : undefined}}, function (e, st, r) {
 if (sid !== P.sid || !MN) return; MN.loadingAudio = false;
-var info = r && r.info, list = mnList(info, /^audio/i), a = [];
-list.forEach(function (t, i) { var ix = (t && t.index != null) ? +t.index : i; a.push({idx: ix, label: mnAudioLabel(t || {}, i)}); });
+var a = mnAudioItems(r && r.info);
 if (!a.length) { for (var j = 0; j < 4; j++) a.push({idx: j, label: 'مسار صوت ' + (j + 1)}); }
 MN.audio = a; mnBuild(); mnPaint();
 });
@@ -2126,15 +2147,15 @@ MN.en = subRank(l, c.o.vtitle || '').slice(0, 4); if (MN.en.length) { mnBuild();
 }
 mnBuild(); mnPaint(); ovShow(true);
 }
-function mnAudio(a) {
+function mnAudio(a, silent) {
 var sid = P.sid;
 if (a.av) { try { webapis.avplay.setSelectTrack('AUDIO', a.idx); P.audIdx = a.idx; toast('🔊 ' + a.label); } catch (e) { toast('مقدرتش أغيّر الصوت'); } return mnClose(); }
 if (!P.hlsFrom) return mnClose();
-toast('⏳ بغيّر الصوت...'); var pos = P.pos + (P.acc || 0); mnClose();
+if (!silent) toast('⏳ بغيّر الصوت...'); var pos = P.pos + (P.acc || 0); if (!silent) mnClose();
 api('/tb/stream', {method: 'POST', timeout: 40000, body: {torrent_id: P.hlsFrom.tid, file_id: P.hlsFrom.fid, audio: a.idx}}, function (e, st, r) {
 if (sid !== P.sid || !P.on) return;
 if (!r || !r.hls) return toast('❌ ' + ((r && (r.note || r.error)) || 'TorBox ماردّش'));
-P.audIdx = a.idx; P.url = r.hls; P.err = false; P.vf = 0; buf(true); engineStart(pos); toast('🔊 ' + a.label);
+P.audIdx = a.idx; P.url = r.hls; P.err = false; P.vf = 0; buf(true); engineStart(pos); var kk = mnAudKey(); if (kk) sj(kk, {i: a.idx}); toast('🔊 ' + a.label);
 });
 }
 function mnSub(i) {
@@ -3323,7 +3344,7 @@ var d = o.hlsFrom; delete o.hlsFrom;
 var go2 = function () {
 if (d && d.hls) { o.rawUrl = o.url; o.altUrl = o.url; o.url = d.hls; }
 sxLeave();
-startPlay(o); P.rawUrl = o.rawUrl || ''; P.hlsFrom = (d && d.torrent_id != null && d.file_id != null) ? {tid: d.torrent_id, fid: d.file_id} : null; subLoad(o, P.sid);
+startPlay(o); P.rawUrl = o.rawUrl || ''; P.hlsFrom = (d && d.torrent_id != null && d.file_id != null) ? {tid: d.torrent_id, fid: d.file_id} : null; subLoad(o, P.sid); mnAutoAudio(P.sid);
 };
 if (d && !d.hls && d.torrent_id && /^\d+$/.test(String(d.torrent_id))) {
 var pid = SX.pid;
