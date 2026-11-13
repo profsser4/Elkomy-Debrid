@@ -3291,6 +3291,15 @@ if (/hevc|x\.?265|h\.?265|10[\s._-]?bit|hdr|dolby[\s._-]?vision|\bdv\b/i.test(t)
 if (/dts|truehd|atmos|dd\+|ddp|e-?ac-?3/i.test(t)) bad += 1;
 return bad;
 }
+/* لغات الصوت من اسم النسخة، عشان تعرفها قبل التشغيل */
+var AUDL = [['🇬🇧 إنجليزي', /(^|[^a-z])(english|eng|en)([^a-z]|$)/i], ['🇰🇷 كوري', /(korean|[^a-z]kor[^a-z]|[^a-z]kr[^a-z])/i], ['🇮🇳 هندي', /(hindi|[^a-z]hin[^a-z])/i], ['🇮🇳 تاميل/تيلوجو', /(tamil|telugu|malayalam|kannada)/i], ['🇸🇦 عربي', /(arabic|[^a-z]ara[^a-z]|عرب)/i], ['🇯🇵 ياباني', /(japanese|[^a-z]jpn[^a-z]|[^a-z]jap[^a-z])/i], ['🇫🇷 فرنسي', /(french|[^a-z]fre[^a-z]|[^a-z]fra[^a-z]|truefrench|vff)/i], ['🇪🇸 إسباني', /(spanish|latino|[^a-z]spa[^a-z]|castellano)/i], ['🇹🇷 تركي', /(turkish|[^a-z]tur[^a-z])/i], ['🇷🇺 روسي', /(russian|[^a-z]rus[^a-z])/i], ['🇩🇪 ألماني', /(german|[^a-z]ger[^a-z]|[^a-z]deu[^a-z])/i], ['🇮🇹 إيطالي', /(italian|[^a-z]ita[^a-z])/i], ['🇨🇳 صيني', /(chinese|mandarin|cantonese|[^a-z]chi[^a-z])/i]];
+function verAudio(v) {
+var t = ' ' + String((v && (v.title || v.name)) || '').replace(/[._\-\[\]()]+/g, ' ') + ' ', out = [];
+AUDL.forEach(function (a) { if (a[1].test(t)) out.push(a[0]); });
+var multi = /(dual[\s]?audio|multi|\bmulti\b|dual)/i.test(t);
+if (!out.length && !multi) return '';
+return '🔊 ' + (multi ? 'أكتر من صوت' + (out.length ? ': ' : '') : '') + out.slice(0, 4).join(' + ');
+}
 function verSort(list) {
 var df = dubFirst();
 function sc(x) { return x.score != null ? x.score : (x.risky ? 0 : 1); }
@@ -3559,7 +3568,7 @@ if (err || !list.length) return sxFail(err || 'مفيش نسخ متاحة', func
 sxLeave();
 var rows = list.slice(0, 40).map(function (v) {
 var lt = langTag(v);
-return {txt: (v.instant ? '⚡ ' : '⏳ ') + (qOf(v) !== 'أخرى' ? qOf(v) : (v.q || '')) + '  ·  ' + szs(v.size) + (v.seeders ? '  ·  👤 ' + v.seeders : '') + (lt ? '  ·  ' + lt : '') + (v._pin ? '  ·  📌' : '') + (tvPlay(v) ? '  ·  ⚠ ممكن مايشتغلش على التلفزيون' : ''),
+return {txt: (v.instant ? '⚡ ' : '⏳ ') + (qOf(v) !== 'أخرى' ? qOf(v) : (v.q || '')) + '  ·  ' + szs(v.size) + (v.seeders ? '  ·  👤 ' + v.seeders : '') + (lt ? '  ·  ' + lt : '') + (verAudio(v) ? '  ·  ' + verAudio(v) : '') + (v._pin ? '  ·  📌' : '') + (tvPlay(v) ? '  ·  ⚠ ممكن مايشتغلش على التلفزيون' : ''),
 sub: String(v.title || '').slice(0, 60), img: sp.poster || '', ico: sp.poster ? '' : '🎞', fn: function () { sitePlay(sxMix(sp, {v: v})); }};
 });
 sxList('اختيار النسخة (⚡ = جاهزة فوراً)', rows);
