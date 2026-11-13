@@ -10,6 +10,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v73: TorBox: فحص التخزين قبل السحب + trackers + اختيار ملف الحلقة بالترتيب + تحويل تلقائي لـAllDebrid لو فشل (والعكس)
   v72: المشغّل الداخلي (LibVLC) بيشغّل الرابط الأصلي بدل HLS بتاع TorBox لأن HLS كان بيفشل فيه (التحميل زي ما هو)
   v71: كل مشاهدة من TorBox (مشغّل الأندرويد/المكتبة/الخارجي-الداخلي) بتاخد رابط التحويل HLS، وAllDebrid بيفضل على الرابط العادي
   v70: مشغّل الأندرويد: المشاهدة بتاخد رابط التحويل (HLS) من TorBox لو متاح (عشان الصوت)، والتحميل على الرابط الأصلي
@@ -6119,7 +6120,7 @@ const SOURCES = [
      return (d.results || []).slice(0, 12);
    },
    title: t => t.title, thumb: t => t.poster || '',
-   meta: t => (t.type === 'tv' ? '📺 مسلسل' : '🎬 فيلم') + (t.year ? ' · ' + t.year : ''),
+   meta: t => (t.type === 'tv' ? '📺 مسلسل' : '🎬 فيلم') + (t.year ? ' · ' + t.year : '') + (t.title_ar ? ' · ' + t.title_ar : ''),
    open: t => {
      if (t.imdb) return openImdb(t.imdb, t.type);
      if (t.lk) return openLookup({dataset: {q: t.title, t: t.type, y: t.year || ''}});
@@ -9330,8 +9331,14 @@ async function adLinkResolve(url) {
 // ---------- TorBox (تحميل) ----------
 async function tbResolve(spec, mode, my, ui) {
   const B = 'https://api.torbox.app/v1/api', key = DBP.cfg().tb, H = {Authorization: 'Bearer ' + key};
+  // v73: نتأكد الأول إن النسخة متخزّنة على TorBox؛ لو لأ نرمي خطأ واضح عشان نكمّل على المزوّد التاني بدل ما نستنى 3 دقايق
+  try {
+    const cc = await (await fetch(B + '/torrents/checkcached?format=list&hash=' + encodeURIComponent(String(spec.hash).toLowerCase()), {headers: H, signal: tmo(12000)})).json();
+    const hit = cc && cc.success && Array.isArray(cc.data) ? cc.data.length > 0 : (cc && cc.data && Object.keys(cc.data).length > 0);
+    if (cc && cc.success && !hit) { const er = new Error('النسخة دي مش متخزّنة على TorBox (هتتحمّل من الصفر)'); er.nocache = true; throw er; }
+  } catch (e) { if (e && e.nocache) throw e; }
   const fd = new FormData();
-  fd.append('magnet', dbpMagnet(spec.hash));
+  fd.append('magnet', dbpMagnet(spec.hash) + '&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969%2Fannounce');
   fd.append('seed', '1');
   fd.append('allow_zip', 'false');
   const c = await (await fetch(B + '/torrents/createtorrent', {method: 'POST', headers: H, body: fd, signal: tmo(20000)})).json();
@@ -9349,7 +9356,12 @@ async function tbResolve(spec, mode, my, ui) {
     if (my !== pullId) return null;
   }
   if (!t || !(t.files || []).length) throw new Error('التورنت لسه بيتسحب على TorBox');
-  const pick = dbpPick(t.files.map(x => ({n: x.name || x.short_name, s: x.size, id: x.id})), spec);
+  const tfl = t.files.map(x => ({n: x.name || x.short_name, s: x.size, id: x.id}));
+  let pick = dbpPick(tfl, spec);
+  if (!pick) {   // v73: اسم الحلقة مش مطابق: نختار بالترتيب (رقم الحلقة) أو أكبر فيديو بدل ما نفشل
+    const vv = tfl.filter(f => DB_VID.test(String(f.n || '')) && !/sample/i.test(f.n)).sort((a, b) => String(a.n).localeCompare(String(b.n), undefined, {numeric: true}));
+    pick = (spec.e != null && vv[spec.e - 1]) || vv.slice().sort((a, b) => (b.s || 0) - (a.s || 0))[0] || null;
+  }
   if (!pick) throw new Error('مالقيتش الملف المطلوب');
   const r = await (await fetch(B + '/torrents/requestdl?token=' + encodeURIComponent(key) + '&torrent_id=' + id + '&file_id=' + pick.id, {headers: H, signal: tmo(15000)})).json();
   if (!r || !r.success || !r.data) throw new Error((r && r.detail) || 'فشل توليد الرابط');
@@ -9859,13 +9871,18 @@ async function startPlay(spec, mode, baseOver) {
   window.LAST_SP = {spec: spec, mode: mode, base: baseOver};
   const chosen = DBP.cfg()[mode === 'download' ? 'dl' : 'play'];
   // لو مفيش مفتاح على الجهاز ده، DBP.prov بيرجّع 'server' والسيرفر هو اللي يشتغل بمفتاح الأدمن
-  const pv = spec._ad ? 'ad' : DBP.prov(mode);
+  const pv = spec._ad ? 'ad' : spec._tb ? 'tb' : DBP.prov(mode);
   if (pv !== 'server' && spec.hash) {
     d = await dbpStart(spec, mode, pv, my);
     if (my !== pullId) return null;
     if (!d && DBP_NET) {
       // الموبايل مش قادر يوصل لـ TorBox مباشرة (شبكة/CORS): نكمّل عن طريق السيرفر بنفس المزوّد بدل ما نقف
       $('results').innerHTML = pend('الموبايل مش واصل لـ TorBox مباشرة، بكمّل عن طريق السيرفر...');
+    } else if (!d && !spec._fb && !(window.SP && SP.settings && SP.settings.strict) && (pv === 'tb' ? DBP.cfg().ad : DBP.cfg().tb)) {
+      // v73: المزوّد المختار فشل: نكمّل تلقائي على المزوّد التاني (AllDebrid <-> TorBox) بدل ما نقف
+      const was = DBP_ERR;
+      $('results').innerHTML = pend((was || 'المزوّد فشل') + ' — بكمّل على ' + (pv === 'tb' ? 'AllDebrid' : 'TorBox') + '...');
+      return startPlay(Object.assign({}, spec, pv === 'tb' ? {_ad: 1} : {_tb: 1}, {_fb: 1}), mode, baseOver);
     } else if (!d) {
       LAST_ERR = DBP_ERR || 'المزوّد ماردّش';
       $('results').innerHTML = warn(LAST_ERR + ' — مش هغيّر المزوّد من نفسي.') + failBtns();
