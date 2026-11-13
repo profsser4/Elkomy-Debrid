@@ -8281,10 +8281,8 @@ async function srvAutoSync(force) {
     if (d.reason === 'split') ASY.msg = 'الترجمة دي من نسخة مختلفة عن الفيديو (التوقيت بيتغيّر في النص). جرّب ترجمة تانية من القايمة.';
     else if (d.reason === 'low') ASY.msg = 'مش متأكد من الضبط بالصوت للترجمة دي. جرّب ترجمة تانية أو اضبط يدوي.';
     if (d.reason === 'split' || d.reason === 'low') {
-      PLAY._tried = PLAY._tried || {}; PLAY._tried[it.u] = 1;
-      const nx = (subs || []).slice(0, 5).find(x => x && x.u && !PLAY._tried[x.u] && !x.ai);
-      if (nx) { asToast('🔄 الترجمة دي مش مطابقة، بجرّب ترجمة تانية...'); setTimeout(() => applySubItem(nx, 0, true), 300); return; }
-      asToast(ASY.msg + ' (تقدر تظبطها بـ ±0.5 من قايمة الترجمة)');
+      // ما بنبدّلش الترجمة لوحدنا: الترجمة الحالية تفضل زي ما هي، وانت اللي تغيّرها من القايمة لو عاوز
+      asToast(ASY.msg + ' (تقدر تغيّرها أو تظبطها بـ ±0.5 من قايمة الترجمة)');
     }
   } catch (e) {
   } finally { SRVAS.busy = false; }
