@@ -2067,9 +2067,9 @@ bl.forEach(function (b) {
 var ln = b.split(/\r?\n/), k = -1, i;
 for (i = 0; i < ln.length; i++) if (ln[i].indexOf('-->') > 0) { k = i; break; }
 if (k < 0) return;
-var m = /(\d+):(\d+):(\d+)[,.](\d+)\s*-->\s*(\d+):(\d+):(\d+)[,.](\d+)/.exec(ln[k]);
+var m = /(?:(\d+):)?(\d{1,2}):(\d{2})[,.](\d{1,3})\s*-->\s*(?:(\d+):)?(\d{1,2}):(\d{2})[,.](\d{1,3})/.exec(ln[k]);
 if (!m) return;
-var a = +m[1] * 3600 + +m[2] * 60 + +m[3] + +m[4] / 1000, e = +m[5] * 3600 + +m[6] * 60 + +m[7] + +m[8] / 1000;
+var a = (+m[1] || 0) * 3600 + +m[2] * 60 + +m[3] + +('0.' + m[4]), e = (+m[5] || 0) * 3600 + +m[6] * 60 + +m[7] + +('0.' + m[8]);
 var t = ln.slice(k + 1).join('\n').replace(/<[^>]+>/g, '').replace(/\{[^}]*\}/g, '').trim();
 if (t) out.push({s: a, e: e, t: t});
 });
@@ -2080,7 +2080,9 @@ function xsTick(t) {
 t -= XOFF;
 var c = XS.c, lo = 0, hi = c.length - 1, f = -1;
 while (lo <= hi) { var mid = (lo + hi) >> 1; if (c[mid].s <= t) { f = mid; lo = mid + 1; } else hi = mid - 1; }
-if (f >= 0 && t > c[f].e) f = -1;
+var hit = -1, k = f;
+while (k >= 0 && k > f - 4) { if (t <= c[k].e) { hit = k; break; } k--; }
+f = hit;
 if (f !== XS.i) { XS.i = f; if (f >= 0) subShow(c[f].t, 0, 1); else subShow('', 0, 1); }
 }
 
@@ -2175,7 +2177,7 @@ var b = fixBody(f, x); b.clear = true;
 api('/sub/fix', {method: 'POST', timeout: 15000, body: b}, function () {});
 toast('↩︎ رجّعت الضبط التلقائي...');
 var sid = P.sid;
-subFetch(x.it, f.ai, 0, 1, f.sp, sid, function (y) { if (y && sid === P.sid && P.on) { XS = y; subShow(''); autoSync(x.it, f.ai, f.sp, sid, f.ck, null); } });
+subFetch(x.it, f.ai, 0, 1, f.sp, sid, function (y) { if (y && sid === P.sid && P.on) { XS = y; XOFF = 0; subShow(''); if (autoOn()) autoSync(x.it, f.ai, f.sp, sid, f.ck, null); } });
 }
 function nudge(d) {
 if (XS) {
@@ -3248,6 +3250,20 @@ setTimeout(function () { api('/sub/auto?job=' + enc(d.job), {timeout: 30000}, fu
 }
 api('/sub/auto', {method: 'POST', timeout: 30000, body: {u: it.u, src: src, s: sp.s, e: sp.e, lang: it.lang || (ai ? 'EN' : 'AR'), key: key, fkey: key, force: false, dur: P.dur || 0}}, function (e, s2, d) { poll(d); });
 }
+/* زي الأندرويد: الترجمة بتتعرض زي ما هي من غير ضبط تلقائي بالصوت. الضبط التلقائي اختياري: localStorage.setItem('autosync','1') */
+function autoOn() { try { return localStorage.getItem('autosync') === '1'; } catch (e) { return false; } }
+function savedFix(it, ai, sp, sid, ck) {
+var src = P.rawUrl || P.url || '', key = subKey(sp);
+function live() { return sid === P.sid && P.on; }
+api('/sub/auto', {method: 'POST', timeout: 30000, body: {u: it.u, src: src, s: sp.s, e: sp.e, lang: it.lang || (ai ? 'EN' : 'AR'), key: key, fkey: key, fixonly: true, dur: P.dur || 0}}, function (e, s2, d) {
+if (!live() || P.subFixed || e || !d || !d.ok || !d.manual) return;
+var sh = +d.shift, sc = +d.scale || 1;
+if (!isFinite(sh) || !isFinite(sc) || (Math.abs(sh) < 0.05 && Math.abs(sc - 1) < 1e-4)) return;
+subFetch(it, ai, sh, sc, sp, sid, function (x) {
+if (x && live() && !P.subFixed) { XS = x; XOFF = 0; XFIX = {ck: ck, sp: sp, key: key, it: it, ai: ai}; subShow(''); sj(ck, {sh: sh, sc: sc, n: 2}); toast('✅ ترجمة متظبطة (ضبط محفوظ)'); }
+});
+});
+}
 function subLoad(o, sid) {
 var sp = o.sp; if (!sp || isDub({title: o.vtitle || ''})) return; if (nsGet(sp)) return;
 var base = (sp.id && sp.type) ? 'type=' + sp.type + '&id=' + sp.id : (sp.title ? 'q=' + enc(sp.title) + (sp.s != null ? '&type=tv' : '') : '');
@@ -3256,7 +3272,7 @@ var se = sp.s != null ? '&s=' + sp.s + '&e=' + sp.e : '';
 function ok() { return sid === P.sid && P.on && !P.subDone; }
 function apply(it, ai) {
 if (!ok()) return;
-var ck = 'sc:' + shash([it.u, sp.s, sp.e, o.vtitle || sp.vname || ''].join('|')), c = lj(ck, null);
+var ck = 'sm:' + shash([it.u, sp.s, sp.e, o.vtitle || sp.vname || ''].join('|')), c = lj(ck, null);
 if (c && (c.sh || c.sc !== 1) && !(isFinite(c.sh) && isFinite(c.sc))) c = null;
 subFetch(it, ai, c ? c.sh : 0, c ? c.sc : 1, sp, sid, function (x) {
 if (!x && c) { sj(ck, null); c = null; return subFetch(it, ai, 0, 1, sp, sid, function (x2) { go(x2); }); }
@@ -3266,7 +3282,8 @@ function go(x) {
 if (!x || !ok()) return;
 XS = x; XOFF = 0; XFIX = {ck: ck, sp: sp, key: subKey(sp), it: it, ai: ai}; P.subDone = true; subShow('');
 toast(c ? '✅ ترجمة متظبطة (محفوظة)' : (ai ? '🤖 ترجمة عربي بالذكاء الاصطناعي' : '💬 ترجمة عربي'));
-if (!c || c.n < 2) autoSync(it, ai, sp, sid, ck, c);
+if (autoOn()) { if (!c || c.n < 2) autoSync(it, ai, sp, sid, ck, c); }
+else if (!c) savedFix(it, ai, sp, sid, ck);
 }
 }
 api('/subs?lang=AR&' + base + se, {timeout: 30000}, function (e, s, r) {
