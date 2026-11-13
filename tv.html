@@ -1828,7 +1828,7 @@ nxTick();
 }
 function startPlay(o) {
 P.sid++; P.on = true; P.kind = o.kind; P.url = o.url; P.title = o.title; P.key = o.key || ''; P.meta = o.meta || null;
-P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.vf = 0; P.noav = false; P.u0 = ''; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; XS = null; P.subManual = false; SUBC = {list: [], i: 0, apply: null}; XOFF = 0; XFIX = null; P.subFixed = false; P.avOff = 0; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subOff = !!(o.sp && nsGet(o.sp)); P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; XS = null; P.subDone = false; P.nxOn = false; MN = null; P.audIdx = -1; P.hlsFrom = null; P.sctx = null; P.ch = ''; $('plnext').style.display = 'none'; syClose(); $('plmenu').style.display = 'none'; subShow('');
+P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.vf = 0; P.noav = false; P.u0 = ''; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; XS = null; P.subManual = false; SUBC = {list: [], i: 0, apply: null}; XOFF = 0; XFIX = null; P.subFixed = false; P.avOff = 0; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subOff = !!(o.sp && nsGet(o.sp)); P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; XS = null; P.subDone = false; P.nxOn = false; MN = null; P.audIdx = -1; P.hlsFrom = null; P.sctx = null; P.rawMode = false; P.hlsUrl = ''; P.flips = 0; P.ch = ''; $('plnext').style.display = 'none'; syClose(); $('plmenu').style.display = 'none'; subShow('');
 D.documentElement.className = 'playing';
 plmsg(''); buf(true); ovPaint(); ovShow();
 if (o.kind === 'live') epg();
@@ -1838,7 +1838,7 @@ var sid1 = P.sid; tvSlot(P.liveId, function (u) { if (sid1 !== P.sid) return; P.
 } else engineStart(o.resume || 0);
 }
 function engineStart(resume) {
-var sid = P.sid, url = P.url;
+var sid = P.sid, url = P.url; P.est = Date.now(); P.estPos = resume || 0;
 if (hasAV() && !P.noav) {
 P.av = true; $('vid').style.display = 'none';
 var A = webapis.avplay;
@@ -1971,6 +1971,7 @@ P.alt = true;
 var m = /\.(m3u8|ts)$/.exec(P.url);
 if (m) { P.url = P.url.replace(/\.(m3u8|ts)$/, m[1] === 'ts' ? '.m3u8' : '.ts'); P.sid++; engineStop(); return engineStart(0); }
 }
+if (P.kind === 'site' && P.rawUrl && P.hlsUrl && (P.flips || 0) < 2) { mnSource(true); return; }
 if (P.kind === 'site' && P.altUrl) { var u2 = P.altUrl; P.altUrl = ''; toast('بجرّب البث البديل...'); P.url = u2; P.sid++; engineStop(); return engineStart(P.pos); }
 if (P.kind === 'live' && P.liveId && S.cfg && S.cfg.n > 1 && !P.rot) {
 P.rot = true; var s0 = P.sid;
@@ -1983,9 +1984,10 @@ playFail(e);
 playFail(e);
 }
 function playFail(e) {
+if (P.kind === 'site' && SX.lastSp && (SX.autoN || 0) < 3) { return mnNextVer(true); }
 P.err = true; buf(false);
 try { P.errText = String(e && (e.message || e.name || e)); } catch (x) { P.errText = ''; }
-plmsg('تعذّر تشغيل المحتوى' + (P.errText ? '\n(' + P.errText.slice(0, 70) + ')' : '') + '\nاضغط OK لإعادة المحاولة أو رجوع للخروج');
+plmsg('تعذّر تشغيل المحتوى' + (P.errText ? '\n(' + P.errText.slice(0, 70) + ')' : '') + '\nاضغط OK لإعادة المحاولة' + (P.kind === 'site' ? ' · ↑ لتجربة نسخة تانية' : '') + ' · رجوع للخروج');
 }
 function stopPlay() {
 if (!P.on) return;
@@ -2079,12 +2081,62 @@ pick = ar || en; if (pick && pick === a[0]) pick = null; }
 if (pick && pick.idx !== 0 || (pick && saved)) mnAudio(pick, true);
 });
 }
+
+function mnAvAuto(sid) {
+setTimeout(function () {
+if (sid !== P.sid || !P.on || !P.av) return;
+var A = null; try { A = webapis.avplay; } catch (e) { return; }
+var tr = []; try { tr = A.getTotalTrackInfo() || []; } catch (e) {}
+var au = tr.filter(function (t) { return t.type === 'AUDIO'; }), ar = null, en = null;
+au.forEach(function (t) { var l = ''; try { var x = JSON.parse(t.extra_info || '{}'); l = String(x.language || x.track_lang || '').toLowerCase(); } catch (e) {} if (!ar && /^(ar|ara|arb)/.test(l)) ar = t; if (!en && /^(en|eng)/.test(l)) en = t; });
+var pick = ar || en; if (pick && au[0] && pick.index !== au[0].index) { try { A.setSelectTrack('AUDIO', pick.index); P.audIdx = pick.index; toast('🔊 اتختار الصوت ' + (ar ? 'العربي' : 'الإنجليزي')); } catch (e) {} }
+}, 2200);
+}
+function mnSource(auto) {
+var sid = P.sid, pos = P.pos + (P.acc || 0);
+if (auto) P.flips = (P.flips || 0) + 1;
+P.rawMode = !P.rawMode;
+if (P.key && !auto) sj('src:' + P.key, P.rawMode ? 'raw' : 'hls');
+P.url = P.rawMode ? P.rawUrl : P.hlsUrl; P.err = false; P.vf = 0; P.noav = false;
+XOFF = 0; if (XS) XS.i = -2; P.audIdx = -1;
+mnClose(); buf(true); engineStart(pos);
+toast((auto ? '🔁 مفيش تشغيل، بجرّب ' : '') + (P.rawMode ? '🎞 الملف الأصلي' : '🔁 البث المحوَّل'));
+plmsg('');
+if (P.rawMode) mnAvAuto(sid);
+}
+
+/* نسخة تانية: يدوي (قايمة النسخ) أو تلقائي (أحسن نسخة تانية مش فاشلة) */
+function mnNextVer(auto) {
+var sp = SX.lastSp, cur = SX.lastV;
+if (!sp) { toast('مفيش بيانات للنسخة'); return; }
+var pos = Math.floor(P.pos + (P.acc || 0)); if (pos < 5) pos = 0;
+var sp2 = sxMix(sp, {resume: pos, v: null, fresh: false});
+if (!auto) { if (P.on) stopPlay(); return sxPickVer(sp2); }
+SX.autoN = (SX.autoN || 0) + 1;
+if (cur) SX.failed[cur.hash || cur.ref] = 1;
+toast('🔄 النسخة دي مش بتشتغل، بدوّر على نسخة تانية...');
+sxVersions(sp, null, function (err, list) {
+var v = !err && sxBest(list || []);
+if (P.on) stopPlay();
+if (!v) return sxPickVer(sp2);
+sitePlay(sxMix(sp2, {v: v}));
+});
+}
+setInterval(function () {
+if (!P.on || P.kind !== 'site' || P.paused || P.err || !P.est) return;
+var adv = P.pos - (P.estPos || 0), el = Date.now() - P.est;
+if (adv > 30) SX.autoN = 0;
+if (adv < 1 && el > 30000 && P.rawUrl && P.hlsUrl && (P.flips || 0) < 2) return mnSource(true);
+if (adv < 1 && el > 60000 && (SX.autoN || 0) < 3) { P.est = Date.now(); mnNextVer(true); }
+}, 3000);
 function mnBuild() {
 var it = [], A = null; try { A = webapis.avplay; } catch (e) {}
 it.push({h: 'الصوت'});
 var au = MN.audio || [];
 if (au.length) au.forEach(function (a, i) { it.push({label: a.label, on: (P.audIdx === a.idx) || (P.audIdx < 0 && i === 0 && !a.cur), fn: function () { mnAudio(a); }}); });
 else it.push({label: MN.loadingAudio ? '... بحمّل مسارات الصوت' : 'مفيش مسارات صوت تانية', dim: 1});
+if (P.rawUrl && P.hlsUrl) it.push({label: P.rawMode ? '🔁 رجوع للبث المحوَّل (TorBox)' : '🎞 تشغيل الملف الأصلي (توقيت الترجمة زي الأندرويد + كل الأصوات)', fn: function () { mnSource(); }});
+if (P.kind === 'site' && SX.lastSp) it.push({label: '🔄 جرّب نسخة تانية (جودة أو صوت مختلف)', fn: function () { mnClose(); mnNextVer(false); }});
 it.push({h: 'الترجمة'});
 var tv = syCur(), tt = tv > 0 ? 'تأخير ' + tv.toFixed(1) + ' ث' : tv < 0 ? 'تقديم ' + (-tv).toFixed(1) + ' ث' : 'بدون تعديل';
 it.push({label: '⏱  توقيت الترجمة:   ◀  ' + tt + '  ▶    (OK = رجوع للأصلي)', timing: 1, fn: function () { mnTimeReset(); }});
@@ -2134,7 +2186,7 @@ function mnOpen() {
 if (P.kind === 'live') return;
 MN = {items: [], sel: null, audio: [], en: [], loadingAudio: false};
 var sid = P.sid, A = null; try { A = webapis.avplay; } catch (e) {}
-if (P.hlsFrom) {
+if (P.hlsFrom && !P.rawMode) {
 MN.loadingAudio = true;
 api('/tb/stream', {method: 'POST', timeout: 40000, body: {torrent_id: P.hlsFrom.tid, file_id: P.hlsFrom.fid, info: true, audio: P.audIdx >= 0 ? P.audIdx : undefined}}, function (e, st, r) {
 if (sid !== P.sid || !MN) return; MN.loadingAudio = false;
@@ -2165,7 +2217,7 @@ if (!silent) toast('⏳ بغيّر الصوت...'); var pos = P.pos + (P.acc || 
 api('/tb/stream', {method: 'POST', timeout: 40000, body: {torrent_id: P.hlsFrom.tid, file_id: P.hlsFrom.fid, audio: a.idx}}, function (e, st, r) {
 if (sid !== P.sid || !P.on) return;
 if (!r || !r.hls) return toast('❌ ' + ((r && (r.note || r.error)) || 'TorBox ماردّش'));
-P.audIdx = a.idx; P.url = r.hls; P.err = false; P.vf = 0; buf(true); engineStart(pos); var kk = mnAudKey(); if (kk) sj(kk, {i: a.idx}); toast('🔊 ' + a.label);
+P.audIdx = a.idx; P.url = r.hls; P.hlsUrl = r.hls; P.err = false; P.vf = 0; buf(true); engineStart(pos); var kk = mnAudKey(); if (kk) sj(kk, {i: a.idx}); toast('🔊 ' + a.label);
 });
 }
 function mnSub(i) {
@@ -2320,7 +2372,7 @@ function nudgeStep(rep) { return rep > 14 ? 5 : rep > 6 ? 2 : rep > 2 ? 1 : 0.5;
 function fixBody(f, x) { return {u: x.it.u, src: P.rawUrl || P.url, s: f.sp.s, e: f.sp.e, key: f.key, fkey: f.key}; }
 function fixSaveSoon() { clearTimeout(FIXT); FIXT = setTimeout(fixSave, 1500); }
 function fixSave() {
-var x = XS, f = XFIX; if (!x || !f || !x.it) return;
+var x = XS, f = XFIX; if (!x || !f || !x.it || P.rawMode) return;
 var sh = Math.round(((x.sh || 0) + XOFF) * 100) / 100, sc = x.sc || 1, b = fixBody(f, x);
 b.shift = sh; b.scale = sc;
 sj(f.ck, {sh: sh, sc: sc, n: 2});
@@ -2401,6 +2453,7 @@ return playerKey2(e);
 function playerKey2(e) {
 var k = e.keyCode, rep = e.repeat ? (playerKey.r = (playerKey.r || 0) + 1) : (playerKey.r = 0);
 if (k === 10009 || k === 8 || k === 27 || k === 413) { stopPlay(); return true; }
+if (P.err && P.kind === 'site' && (k === 38 || k === 404)) { mnNextVer(false); return true; }
 if (P.err && k === 13) { P.err = false; P.vf = 0; P.noav = false; if (P.u0) { P.url = P.u0; P.u0 = ''; } plmsg(''); buf(true); engineStart(P.pos); return true; }
 if ((k === 427 || k === 405) && nxHas()) { nxNow(); return true; }
 if (k === 13 && P.nxOn && !P.paused) { nxNow(); return true; }
@@ -3231,12 +3284,19 @@ if (p.m === 'high') return 5 - l;
 if (p.m === 'low') return l;
 var t = QLVL[p.t] || 3; return Math.abs(l - t) * 10 + (5 - l);
 }
+/* نسخ التلفزيون مايقدرش يشغّلها كويس: HEVC/x265/HDR/10bit (صورة) و DTS/TrueHD/Atmos/DDP (صوت) */
+function tvPlay(x) {
+var t = String((x && (x.title || x.name)) || '') + ' ' + String((x && x.q) || ''), bad = 0;
+if (/hevc|x\.?265|h\.?265|10[\s._-]?bit|hdr|dolby[\s._-]?vision|\bdv\b/i.test(t)) bad += 2;
+if (/dts|truehd|atmos|dd\+|ddp|e-?ac-?3/i.test(t)) bad += 1;
+return bad;
+}
 function verSort(list) {
 var df = dubFirst();
 function sc(x) { return x.score != null ? x.score : (x.risky ? 0 : 1); }
 function rk(x) { return (!x.hash && !isDub(x) && (x.risky || /2160|4K/i.test(x.q))) ? 1 : 0; }
 return list.slice().sort(function (a, b) {
-return (rk(a) - rk(b)) || (df ? verLang(b).r - verLang(a).r : 0) || ((b._pin ? 1 : 0) - (a._pin ? 1 : 0)) || (!!b.hash - !!a.hash) || ((b.instant ? 1 : 0) - (a.instant ? 1 : 0)) ||
+return (rk(a) - rk(b)) || (df ? verLang(b).r - verLang(a).r : 0) || ((b._pin ? 1 : 0) - (a._pin ? 1 : 0)) || (!!b.hash - !!a.hash) || ((b.instant ? 1 : 0) - (a.instant ? 1 : 0)) || (tvPlay(a) - tvPlay(b)) ||
 (qPrefRank(a) - qPrefRank(b)) || (sc(b) - sc(a)) || (qRank(a.q) - qRank(b.q)) || ((b.seeders || 0) - (a.seeders || 0));
 });
 }
@@ -3330,7 +3390,7 @@ auto();
 auto();
 }
 function sxStartVer(sp, v, tok, retry) {
-var vk = v.hash || v.ref || '';
+var vk = v.hash || v.ref || ''; SX.lastSp = sp; SX.lastV = v;
 sxBusy('جاري تجهيز النسخة...', ((v.q || '') + ' ' + szs(v.size)).replace(/^\s+|\s+$/g, ''));
 sxPoll('/play/start', {hash: v.hash || '', ref: v.hash ? '' : (v.ref || ''), name: v.title, size: v.size,
 s: sp.s != null ? sp.s : null, e: sp.s != null ? sp.e : null, slow: !v.instant, mode: 'watch'}, tok, function (err, d) {
@@ -3353,9 +3413,11 @@ function sxStartPlay(o) {
 var d = o.hlsFrom; delete o.hlsFrom;
 /* المشاهدة من TorBox = رابط التحويل (HLS) عشان الصوت والصورة؛ الرابط الأصلي احتياطي لو البث فشل. AllDebrid وغيره: الرابط العادي */
 var go2 = function () {
-if (d && d.hls) { o.rawUrl = o.url; o.altUrl = o.url; o.url = d.hls; }
+var useRaw = !!(d && d.hls && o.key && lj('src:' + o.key, null) === 'raw');
+if (d && d.hls) { o.rawUrl = o.url; o.altUrl = o.url; if (!useRaw) o.url = d.hls; }
 sxLeave();
-startPlay(o); P.rawUrl = o.rawUrl || ''; P.hlsFrom = (d && d.torrent_id != null && d.file_id != null) ? {tid: d.torrent_id, fid: d.file_id} : null; subLoad(o, P.sid); mnAutoAudio(P.sid);
+startPlay(o); P.rawUrl = o.rawUrl || ''; P.hlsUrl = (d && d.hls) || ''; P.rawMode = useRaw; P.hlsFrom = (d && d.torrent_id != null && d.file_id != null) ? {tid: d.torrent_id, fid: d.file_id} : null; subLoad(o, P.sid);
+if (P.rawMode) mnAvAuto(P.sid); else mnAutoAudio(P.sid);
 };
 if (d && !d.hls && d.torrent_id && /^\d+$/.test(String(d.torrent_id))) {
 var pid = SX.pid;
@@ -3412,6 +3474,7 @@ api('/sub/auto', {method: 'POST', timeout: 30000, body: {u: it.u, src: src, s: s
 /* زي الأندرويد: الترجمة بتتعرض زي ما هي من غير ضبط تلقائي بالصوت. الضبط التلقائي اختياري: localStorage.setItem('autosync','1') */
 function autoOn() { try { return localStorage.getItem('autosync') === '1'; } catch (e) { return false; } }
 function savedFix(it, ai, sp, sid, ck) {
+if (P.rawMode) return;
 var src = P.rawUrl || P.url || '', key = subKey(sp);
 function live() { return sid === P.sid && P.on; }
 api('/sub/auto', {method: 'POST', timeout: 30000, body: {u: it.u, src: src, s: sp.s, e: sp.e, lang: it.lang || (ai ? 'EN' : 'AR'), key: key, fkey: key, fixonly: true, dur: P.dur || 0}}, function (e, s2, d) {
@@ -3431,7 +3494,7 @@ var se = sp.s != null ? '&s=' + sp.s + '&e=' + sp.e : '';
 function ok() { return sid === P.sid && P.on && !P.subDone; }
 function apply(it, ai) {
 if (!ok()) return;
-var ck = 'sm:' + shash([it.u, sp.s, sp.e, o.vtitle || sp.vname || ''].join('|')), c = lj(ck, null);
+var ck = 'sm:' + shash([it.u, sp.s, sp.e, o.vtitle || sp.vname || ''].join('|')), c = P.rawMode ? null : lj(ck, null);
 if (c && (c.sh || c.sc !== 1) && !(isFinite(c.sh) && isFinite(c.sc))) c = null;
 subFetch(it, ai, c ? c.sh : 0, c ? c.sc : 1, sp, sid, function (x) {
 if (!x && c) { sj(ck, null); c = null; return subFetch(it, ai, 0, 1, sp, sid, function (x2) { go(x2); }); }
@@ -3496,7 +3559,7 @@ if (err || !list.length) return sxFail(err || 'مفيش نسخ متاحة', func
 sxLeave();
 var rows = list.slice(0, 40).map(function (v) {
 var lt = langTag(v);
-return {txt: (v.instant ? '⚡ ' : '⏳ ') + (qOf(v) !== 'أخرى' ? qOf(v) : (v.q || '')) + '  ·  ' + szs(v.size) + (v.seeders ? '  ·  👤 ' + v.seeders : '') + (lt ? '  ·  ' + lt : '') + (v._pin ? '  ·  📌' : ''),
+return {txt: (v.instant ? '⚡ ' : '⏳ ') + (qOf(v) !== 'أخرى' ? qOf(v) : (v.q || '')) + '  ·  ' + szs(v.size) + (v.seeders ? '  ·  👤 ' + v.seeders : '') + (lt ? '  ·  ' + lt : '') + (v._pin ? '  ·  📌' : '') + (tvPlay(v) ? '  ·  ⚠ ممكن مايشتغلش على التلفزيون' : ''),
 sub: String(v.title || '').slice(0, 60), img: sp.poster || '', ico: sp.poster ? '' : '🎞', fn: function () { sitePlay(sxMix(sp, {v: v})); }};
 });
 sxList('اختيار النسخة (⚡ = جاهزة فوراً)', rows);
