@@ -1828,7 +1828,7 @@ nxTick();
 }
 function startPlay(o) {
 P.sid++; P.on = true; P.kind = o.kind; P.url = o.url; P.title = o.title; P.key = o.key || ''; P.meta = o.meta || null;
-P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.vf = 0; P.noav = false; P.u0 = ''; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; XS = null; P.subManual = false; SUBC = {list: [], i: 0, apply: null}; XOFF = 0; XFIX = null; P.subFixed = false; P.avOff = 0; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subOff = !!(o.sp && nsGet(o.sp)); P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; XS = null; P.subDone = false; P.nxOn = false; MN = null; P.audIdx = -1; P.hlsFrom = null; P.sctx = null; P.rawMode = false; P.hlsUrl = ''; P.flips = 0; P.ch = ''; $('plnext').style.display = 'none'; syClose(); $('plmenu').style.display = 'none'; subShow('');
+P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.vf = 0; P.noav = false; P.u0 = ''; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; XS = null; P.subManual = false; SUBC = {list: [], i: 0, apply: null}; XOFF = 0; XFIX = null; P.subFixed = false; P.avOff = 0; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subOff = !!(o.sp && nsGet(o.sp)); P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; XS = null; P.subDone = false; P.nxOn = false; MN = null; P.audIdx = -1; P.arAud = false; P.hlsFrom = null; P.sctx = null; P.rawMode = false; P.hlsUrl = ''; P.flips = 0; P.ch = ''; $('plnext').style.display = 'none'; syClose(); $('plmenu').style.display = 'none'; subShow('');
 D.documentElement.className = 'playing';
 plmsg(''); buf(true); ovPaint(); ovShow();
 if (o.kind === 'live') epg();
@@ -2077,7 +2077,7 @@ var a = mnAudioItems(r && r.info); P.audInfo = a; if (a.length < 2) return;
 var pick = null, i;
 if (saved != null && saved.i != null) for (i = 0; i < a.length; i++) if (a[i].idx === saved.i) pick = a[i];
 if (!pick) { var ar = null, en = null; a.forEach(function (t) { if (!ar && /(^|[^a-z])(ar|ara|arb)([^a-z]|$)|arab|عرب/.test(t.lg)) ar = t; if (!en && /(^|[^a-z])(en|eng)([^a-z]|$)|english/.test(t.lg)) en = t; });
-pick = ar || en; if (pick && pick === a[0]) pick = null; }
+if (ar) arDubSet(true); pick = ar || en; if (pick && pick === a[0]) pick = null; }
 if (pick && pick.idx !== 0 || (pick && saved)) mnAudio(pick, true);
 });
 }
@@ -2089,7 +2089,7 @@ var A = null; try { A = webapis.avplay; } catch (e) { return; }
 var tr = []; try { tr = A.getTotalTrackInfo() || []; } catch (e) {}
 var au = tr.filter(function (t) { return t.type === 'AUDIO'; }), ar = null, en = null;
 au.forEach(function (t) { var l = ''; try { var x = JSON.parse(t.extra_info || '{}'); l = String(x.language || x.track_lang || '').toLowerCase(); } catch (e) {} if (!ar && /^(ar|ara|arb)/.test(l)) ar = t; if (!en && /^(en|eng)/.test(l)) en = t; });
-var pick = ar || en; if (pick && au[0] && pick.index !== au[0].index) { try { A.setSelectTrack('AUDIO', pick.index); P.audIdx = pick.index; toast('🔊 اتختار الصوت ' + (ar ? 'العربي' : 'الإنجليزي')); } catch (e) {} }
+if (ar) arDubSet(true); var pick = ar || en; if (pick && au[0] && pick.index !== au[0].index) { try { A.setSelectTrack('AUDIO', pick.index); P.audIdx = pick.index; toast('🔊 اتختار الصوت ' + (ar ? 'العربي' : 'الإنجليزي')); } catch (e) {} }
 }, 2200);
 }
 function mnSource(auto) {
@@ -2209,8 +2209,15 @@ MN.en = subRank(l, c.o.vtitle || '').slice(0, 4); if (MN.en.length) { mnBuild();
 }
 mnBuild(); mnPaint(); ovShow(true);
 }
+/* صوت عربي مدبلج = الترجمة تتقفل لوحدها (زي المتصفح)، ولو رجعت لصوت تاني الترجمة ترجع */
+function arDubSet(on) {
+on = !!on; if (!!P.arAud === on) return; P.arAud = on;
+if (on) { XS = null; subShow(''); try { webapis.avplay.setSilentSubtitle(true); } catch (e) {} return; }
+if (P.sctx && !P.subOff) { P.subDone = false; P.subFixed = false; XS = null; subLoad(P.sctx.o, P.sctx.sid); }
+}
+function isArLg(t) { return /(^|[^a-z])(ar|ara|arb)([^a-z]|$)|arab|عرب|مصر/.test(String(t || '').toLowerCase()); }
 function mnAudio(a, silent) {
-var sid = P.sid;
+var sid = P.sid; arDubSet(isArLg((a.lg || '') + ' ' + (a.label || '')));
 if (a.av) { try { webapis.avplay.setSelectTrack('AUDIO', a.idx); P.audIdx = a.idx; toast('🔊 ' + a.label); } catch (e) { toast('مقدرتش أغيّر الصوت'); } return mnClose(); }
 if (!P.hlsFrom) return mnClose();
 if (!silent) toast('⏳ بغيّر الصوت...'); var pos = P.pos + (P.acc || 0); if (!silent) mnClose();
@@ -2256,7 +2263,7 @@ var XS = null;
 function isAr(l) { l = String(l || '').toLowerCase(); return /^(ar|ara|arb)([-_]|$)|arab|عرب/.test(l); }
 function trLang(t) { try { var x = JSON.parse(t.extra_info || '{}'); return String(x.language || x.track_lang || x.lang || ''); } catch (e) { return ''; } }
 function autoSubAV() {
-if (P.subOff) { try { webapis.avplay.setSilentSubtitle(true); } catch (e) {} return; }
+if (P.subOff || P.arAud) { try { webapis.avplay.setSilentSubtitle(true); } catch (e) {} return; }
 if (P.subDone || XS) return;
 var A = webapis.avplay, tr = [], pick = -1;
 try { tr = A.getTotalTrackInfo() || []; } catch (e) {}
@@ -2311,7 +2318,7 @@ if (s.style.right !== r) s.style.right = r;
 setInterval(subLayout, 200);
 function subShow(t, dur, own) {
 var e = $('plsubt'); clearTimeout(subT);
-if (P.subOff) t = '';
+if (P.subOff || P.arAud) t = '';
 if (!t) { e.style.display = 'none'; e.textContent = ''; return; }
 e.textContent = String(t).replace(/<[^>]+>/g, '').replace(/\s*\n\s*/g, '\n'); e.style.display = 'block';
 if (!own) subT = setTimeout(function () { e.style.display = 'none'; }, (+dur > 0 ? +dur : 4000) + 100);
@@ -3480,8 +3487,8 @@ setTimeout(function () { api('/sub/auto?job=' + enc(d.job), {timeout: 30000}, fu
 }
 api('/sub/auto', {method: 'POST', timeout: 30000, body: {u: it.u, src: src, s: sp.s, e: sp.e, lang: it.lang || (ai ? 'EN' : 'AR'), key: key, fkey: key, force: false, dur: P.dur || 0}}, function (e, s2, d) { poll(d); });
 }
-/* زي الأندرويد: الترجمة بتتعرض زي ما هي من غير ضبط تلقائي بالصوت. الضبط التلقائي اختياري: localStorage.setItem('autosync','1') */
-function autoOn() { try { return localStorage.getItem('autosync') === '1'; } catch (e) { return false; } }
+/* الضبط التلقائي بالصوت شغّال دايمًا زي المتصفح (وبيجرّب الترجمة اللي بعدها لو الأولى مش مطابقة). لإيقافه: localStorage.setItem('autosync','0') */
+function autoOn() { try { return localStorage.getItem('autosync') !== '0'; } catch (e) { return true; } }
 function savedFix(it, ai, sp, sid, ck) {
 if (P.rawMode) return;
 var src = P.rawUrl || P.url || '', key = subKey(sp);

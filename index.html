@@ -7325,7 +7325,28 @@ async function nativePlay(u) {
   let sx = '';
   try { sx = (typeof AUD !== 'undefined' && AUD && AUD.ar) ? '' : ((PLAY && PLAY.subx) || await subxWarm()); } catch (e) {}
   window.NP_URL = u;
-  window.AndroidPlayer.play(u, ((PLAY && PLAY.title) || '') + (sx ? '\n@@SUB@@' + sx : ''), p);
+  let pk = '';
+  try { pk = await subPackStr(u, sx); } catch (e) {}
+  window.AndroidPlayer.play(u, ((PLAY && PLAY.title) || '') + (sx || pk ? '\n@@SUB@@' + sx : '') + pk, p);
+}
+// تذكرة موقّعة للمشغّل الداخلي: تخليه يجيب الترجمات العربي الأقرب ويظبطها بالصوت زي المتصفح من غير تسجيل دخول
+let SUBT = {tk: '', base: '', t: 0};
+async function subTicket() {
+  if (SUBT.tk && Date.now() - SUBT.t < 10 * 3600 * 1000) return SUBT;
+  try { const {d} = await api('/sub/ticket'); if (d && d.tk) SUBT = {tk: d.tk, base: d.base || '', t: Date.now()}; } catch (e) {}
+  return SUBT;
+}
+async function subPackStr(u, sx) {
+  const c = PLAY;
+  if (!c || c.subOff || (typeof AUD !== 'undefined' && AUD && AUD.ar)) return '';
+  const q = subQ('AR', true);
+  if (!q) return '';
+  const t = await subTicket();
+  if (!t.tk || !t.base) return '';
+  const key = String(u || '').split('?')[0], fn = c.fname || c.title || '';
+  const o = {b: t.base, tk: t.tk, q: q, fn: fn, k: key, fk: fn ? 'n:' + fn : key, s: c.s, e: c.e,
+    su: (c.sub && c.sub.u) || '', sh: (c.sub && c.sub.shift) || 0, sc: (c.sub && c.sub.scale) || 1};
+  return '\n@@PACK@@' + JSON.stringify(o);
 }
 // تشغيل أي مسار في المشغّل الداخلي (التطبيق) بدل المتصفح
 async function nativeWrap(fn) {
