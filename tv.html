@@ -1815,7 +1815,7 @@ else {
 h = '<span class="ci">' + (P.paused ? IC.play : IC.pause) + '</span><span class="ci">' + IC.b10 + '</span><span class="ci">' + IC.f10 + '</span>';
 h += '<span class="ttl">' + esc(P.title) + '</span>';
 if (nxHas()) h += '<span class="ci lbl">' + IC.next + '<em>الحلقة التالية</em></span>';
-h += '<span class="ci lbl">' + IC.sub + '<em>' + (P.subOff ? 'الترجمة مقفولة · 1 تشغيل' : 'ضبط الترجمة ↓ · 1 إيقاف') + '</em></span>';
+h += '<span class="ci lbl">' + IC.sub + '<em>' + (P.subOff ? 'الترجمة مقفولة · 1 تشغيل' : 'الصوت والترجمة ↑ · ضبط التوقيت ↓') + '</em></span>';
 }
 if (h !== P.ch) { P.ch = h; $('plctl').innerHTML = h; }
 if (!live) {
@@ -1828,7 +1828,7 @@ nxTick();
 }
 function startPlay(o) {
 P.sid++; P.on = true; P.kind = o.kind; P.url = o.url; P.title = o.title; P.key = o.key || ''; P.meta = o.meta || null;
-P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.vf = 0; P.noav = false; P.u0 = ''; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; XS = null; P.subManual = false; SUBC = {list: [], i: 0, apply: null}; XOFF = 0; XFIX = null; P.subFixed = false; P.avOff = 0; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subOff = !!(o.sp && nsGet(o.sp)); P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; XS = null; P.subDone = false; P.nxOn = false; P.ch = ''; $('plnext').style.display = 'none'; syClose(); $('plmenu').style.display = 'none'; subShow('');
+P.list = o.list || null; P.idx = o.idx || 0; P.alt = false; P.vf = 0; P.noav = false; P.u0 = ''; P.pos = o.resume || 0; P.dur = 0; P.paused = false; P.acc = 0; P.epIx = o.epIx != null ? o.epIx : -1; P.err = false; P.lastSave = 0; P.next = o.next || null; XS = null; P.subManual = false; SUBC = {list: [], i: 0, apply: null}; XOFF = 0; XFIX = null; P.subFixed = false; P.avOff = 0; P.altUrl = o.altUrl || ''; P.sp = o.sp || null; P.subOff = !!(o.sp && nsGet(o.sp)); P.subUrl = o.subUrl || ''; P.vtitle = o.vtitle || ''; TM = null; XS = null; P.subDone = false; P.nxOn = false; MN = null; P.audIdx = -1; P.hlsFrom = null; P.sctx = null; P.ch = ''; $('plnext').style.display = 'none'; syClose(); $('plmenu').style.display = 'none'; subShow('');
 D.documentElement.className = 'playing';
 plmsg(''); buf(true); ovPaint(); ovShow();
 if (o.kind === 'live') epg();
@@ -1989,7 +1989,7 @@ plmsg('تعذّر تشغيل المحتوى' + (P.errText ? '\n(' + P.errText.sl
 }
 function stopPlay() {
 if (!P.on) return;
-saveP(false); if (P.kind === 'site') sdFlush(); ivsFlush(); P.on = false; P.sid++; clearTimeout(P.ovT); clearTimeout(P.seekT); TM = null; nxHide(); syClose(); $('plmenu').style.display = 'none'; subShow('');
+saveP(false); if (P.kind === 'site') sdFlush(); ivsFlush(); P.on = false; P.sid++; clearTimeout(P.ovT); clearTimeout(P.seekT); TM = null; MN = null; nxHide(); syClose(); $('plmenu').style.display = 'none'; subShow('');
 engineStop(); plmsg(''); buf(false); $('plbar').className = ''; $('plnum').style.display = 'none';
 D.documentElement.className = '';
 if (P.kind === 'site') sxAfterPlay();
@@ -2042,6 +2042,131 @@ P.pos = t; ovPaint(); ovShow();
 }, 600);
 }
 /* ===== ترجمة وصوت المشغّل (للموقع فقط) ===== */
+/* ===== قايمة الصوت والترجمة (زي الأندرويد): أصوات متعددة + ترجمات متعددة + ترجمة ذكاء اصطناعي ===== */
+var MN = null;
+function mnLang(x) { x = String(x || '').toLowerCase(); return LNG[x] || (x && x !== 'und' ? x : ''); }
+function mnPick(o, keys) { for (var i = 0; i < keys.length; i++) if (o && o[keys[i]] != null && o[keys[i]] !== '') return o[keys[i]]; return ''; }
+function mnList(info, re) {
+var out = []; if (!info || typeof info !== 'object') return out;
+Object.keys(info).forEach(function (k) { if (!out.length && re.test(k) && Object.prototype.toString.call(info[k]) === '[object Array]') out = info[k]; });
+return out;
+}
+function mnAudioLabel(t, i) {
+var lg = mnLang(mnPick(t, ['language', 'lang', 'language_code', 'track_lang'])), nm = mnPick(t, ['title', 'name', 'label']), ch = mnPick(t, ['channels']), cd = mnPick(t, ['codec', 'codec_name']);
+var l = 'صوت ' + (i + 1) + (lg ? '  ·  ' + lg : '') + (nm && String(nm).toLowerCase() !== String(lg).toLowerCase() ? '  ·  ' + nm : '');
+if (cd) l += '  ·  ' + String(cd).toUpperCase(); if (ch) l += ' ' + ch + (/^\d+$/.test(String(ch)) ? 'ch' : '');
+return l;
+}
+function mnBuild() {
+var it = [], A = null; try { A = webapis.avplay; } catch (e) {}
+it.push({h: 'الصوت'});
+var au = MN.audio || [];
+if (au.length) au.forEach(function (a, i) { it.push({label: a.label, on: (P.audIdx === a.idx) || (P.audIdx < 0 && i === 0 && !a.cur), fn: function () { mnAudio(a); }}); });
+else it.push({label: MN.loadingAudio ? '... بحمّل مسارات الصوت' : 'مفيش مسارات صوت تانية', dim: 1});
+it.push({h: 'الترجمة'});
+it.push({label: 'بدون ترجمة', on: !!P.subOff, fn: function () { mnSub(-1); }});
+(SUBC.list || []).forEach(function (s, i) {
+it.push({label: 'ترجمة عربي ' + (i + 1) + '  ·  ' + String(s.name || s.u || '').replace(/\.[a-z0-9]{2,4}$/i, '').slice(0, 46), on: !P.subOff && !!XS && !P.emb && SUBC.i === i && !(XS && XS.ai), fn: function () { mnSub(i); }});
+});
+(MN.en || []).forEach(function (s, i) {
+it.push({label: 'English ' + (i + 1) + '  ·  ' + String(s.name || s.u || '').replace(/\.[a-z0-9]{2,4}$/i, '').slice(0, 42), on: !P.subOff && !!XS && XS.it === s, fn: function () { mnSubEn(s); }});
+});
+it.push({label: '🤖 ترجمة عربي بالذكاء الاصطناعي (من الإنجليزي)', fn: function () { mnAi(); }});
+var tr = []; try { tr = A ? (A.getTotalTrackInfo() || []) : []; } catch (e) {}
+var n = 0;
+tr.forEach(function (t) { if (t.type !== 'TEXT') return; var lang = ''; try { var x = JSON.parse(t.extra_info || '{}'); lang = String(x.language || x.track_lang || '').toLowerCase(); } catch (e) {} n++;
+it.push({label: 'ترجمة داخل الملف ' + n + (mnLang(lang) ? '  ·  ' + mnLang(lang) : ''), fn: function () { mnEmb(t.index); }}); });
+MN.items = it;
+if (MN.sel == null || !MN.items[MN.sel] || !MN.items[MN.sel].fn) { MN.sel = -1; mnStep(1); }
+}
+function mnStep(d) { var n = MN.items.length, i = MN.sel, g = 0; do { i = (i + d + n) % n; g++; } while ((!MN.items[i].fn) && g <= n); MN.sel = i; }
+function mnPaint() {
+var m = $('plmenu'); m.innerHTML = ''; m.style.maxHeight = '700px'; m.style.overflow = 'hidden'; var selEl = null;
+MN.items.forEach(function (x, i) {
+var d = D.createElement('div');
+if (x.h) { d.style.cssText = 'color:#7dd3fc;margin:10px 0 4px;font-size:28px'; d.textContent = x.h; }
+else { d.className = 'mi' + (i === MN.sel ? ' on' : ''); if (x.dim) d.style.opacity = '.55'; d.textContent = (x.on ? '✓  ' : '') + x.label; d.style.fontSize = '27px'; }
+m.appendChild(d); if (i === MN.sel) selEl = d;
+});
+m.style.display = 'block';
+if (selEl) { var top = selEl.offsetTop; m.scrollTop = Math.max(0, top - 300); m.style.overflowY = 'hidden'; }
+}
+function mnClose() { MN = null; var m = $('plmenu'); m.style.display = 'none'; m.style.maxHeight = ''; m.style.overflow = ''; ovShow(); }
+function mnKey(k) {
+if (k === 38) { mnStep(-1); mnPaint(); return true; }
+if (k === 40) { mnStep(1); mnPaint(); return true; }
+if (k === 13) { var x = MN.items[MN.sel]; if (x && x.fn) x.fn(); return true; }
+mnClose(); return true;
+}
+function mnOpen() {
+if (P.kind === 'live') return;
+MN = {items: [], sel: null, audio: [], en: [], loadingAudio: false};
+var sid = P.sid, A = null; try { A = webapis.avplay; } catch (e) {}
+if (P.hlsFrom) {
+MN.loadingAudio = true;
+api('/tb/stream', {method: 'POST', timeout: 40000, body: {torrent_id: P.hlsFrom.tid, file_id: P.hlsFrom.fid, info: true, audio: P.audIdx >= 0 ? P.audIdx : undefined}}, function (e, st, r) {
+if (sid !== P.sid || !MN) return; MN.loadingAudio = false;
+var info = r && r.info, list = mnList(info, /^audio/i), a = [];
+list.forEach(function (t, i) { var ix = (t && t.index != null) ? +t.index : i; a.push({idx: ix, label: mnAudioLabel(t || {}, i)}); });
+if (!a.length) { for (var j = 0; j < 4; j++) a.push({idx: j, label: 'مسار صوت ' + (j + 1)}); }
+MN.audio = a; mnBuild(); mnPaint();
+});
+} else {
+var tr = []; try { tr = A ? (A.getTotalTrackInfo() || []) : []; } catch (e) {}
+var n = 0; tr.forEach(function (t) { if (t.type !== 'AUDIO') return; var lang = ''; try { var x = JSON.parse(t.extra_info || '{}'); lang = String(x.language || x.track_lang || '').toLowerCase(); } catch (e) {} n++; MN.audio.push({idx: t.index, av: true, label: 'صوت ' + n + (mnLang(lang) ? '  ·  ' + mnLang(lang) : '')}); });
+}
+var c = P.sctx;
+if (c && c.sp) {
+var base = (c.sp.id && c.sp.type) ? 'type=' + c.sp.type + '&id=' + c.sp.id : (c.sp.title ? 'q=' + enc(c.sp.title) + (c.sp.s != null ? '&type=tv' : '') : '');
+var se = c.sp.s != null ? '&s=' + c.sp.s + '&e=' + c.sp.e : '';
+if (base) api('/subs?lang=EN&' + base + se, {timeout: 30000}, function (e, st, r) {
+if (sid !== P.sid || !MN) return; var l = (!e && st === 200 && r && r.items) || [];
+MN.en = subRank(l, c.o.vtitle || '').slice(0, 4); if (MN.en.length) { mnBuild(); mnPaint(); }
+});
+}
+mnBuild(); mnPaint(); ovShow(true);
+}
+function mnAudio(a) {
+var sid = P.sid;
+if (a.av) { try { webapis.avplay.setSelectTrack('AUDIO', a.idx); P.audIdx = a.idx; toast('🔊 ' + a.label); } catch (e) { toast('مقدرتش أغيّر الصوت'); } return mnClose(); }
+if (!P.hlsFrom) return mnClose();
+toast('⏳ بغيّر الصوت...'); var pos = P.pos + (P.acc || 0); mnClose();
+api('/tb/stream', {method: 'POST', timeout: 40000, body: {torrent_id: P.hlsFrom.tid, file_id: P.hlsFrom.fid, audio: a.idx}}, function (e, st, r) {
+if (sid !== P.sid || !P.on) return;
+if (!r || !r.hls) return toast('❌ ' + ((r && (r.note || r.error)) || 'TorBox ماردّش'));
+P.audIdx = a.idx; P.url = r.hls; P.err = false; P.vf = 0; buf(true); engineStart(pos); toast('🔊 ' + a.label);
+});
+}
+function mnSub(i) {
+var sid = P.sid; clearTimeout(subT);
+if (i < 0) { P.subOff = true; try { webapis.avplay.setSilentSubtitle(true); } catch (e) {} subShow(''); toast('🚫 الترجمة مقفولة'); ovPaint(); return mnClose(); }
+var it = SUBC.list[i]; if (!it || !SUBC.apply) return mnClose();
+P.subOff = false; P.emb = false; P.subDone = false; P.subFixed = false; XS = null; SUBC.i = i; subShow(''); toast('⏳ بحمّل الترجمة...');
+try { webapis.avplay.setSilentSubtitle(true); } catch (e) {}
+SUBC.apply(it, ''); ovPaint(); mnClose();
+}
+function mnSubEn(it) {
+P.subOff = false; P.emb = false; P.subDone = false; P.subFixed = false; XS = null; subShow(''); toast('⏳ بحمّل الترجمة...');
+try { webapis.avplay.setSilentSubtitle(true); } catch (e) {}
+if (SUBC.apply) SUBC.apply(it, ''); ovPaint(); mnClose();
+}
+function mnAi() {
+var c = P.sctx, sid = P.sid; if (!c || !c.sp) { toast('مفيش بيانات للعمل ده'); return mnClose(); }
+var it = (MN && MN.en && MN.en[0]); mnClose();
+if (!it) return toast('مفيش ترجمة إنجليزي أترجمها');
+toast('🤖 بترجم الإنجليزي (ممكن ياخد دقيقة)...');
+aiTr(it, c.sp, c.o, sid, function (ai) {
+if (!ai || sid !== P.sid || !P.on) return toast('❌ فشلت الترجمة الذكية');
+P.subOff = false; P.subDone = false; P.subFixed = false; XS = null; subShow('');
+if (SUBC.apply) SUBC.apply(it, ai);
+});
+}
+function mnEmb(idx) {
+P.subOff = false; P.emb = true; XS = null; P.subDone = true; subShow('');
+try { webapis.avplay.setSilentSubtitle(false); webapis.avplay.setSelectTrack('TEXT', idx); toast('💬 ترجمة داخل الملف'); } catch (e) { toast('مقدرتش أشغّلها'); }
+ovPaint(); mnClose();
+}
+
 var TM = null, subT = null;
 
 var XS = null;
@@ -2235,8 +2360,10 @@ return true;
 function playerKey(e) {
 var k = e.keyCode;
 if (SY) return syKey(e);
+if (MN) return mnKey(k);
 if (TM) return tmKey(k);
-if (P.kind === 'site' && P.av && (k === 403 || k === 406)) { trackMenu(k === 403 ? 'AUDIO' : 'TEXT'); return true; }
+if (P.kind !== 'live' && (k === 403 || k === 406) && !P.sctx) { trackMenu(k === 403 ? 'AUDIO' : 'TEXT'); return true; }
+if (P.kind === 'site' && (k === 403 || k === 406 || k === 53)) { mnOpen(); return true; }
 return playerKey2(e);
 }
 function playerKey2(e) {
@@ -2252,7 +2379,7 @@ if (k === 10252) { pauseToggle(); return true; }
 if (k === 39 || k === 417) { seekBy(1, rep); return true; }
 if (k === 37 || k === 412) { seekBy(-1, rep); return true; }
 if (k === 404) { syOpen(); return true; }
-if (k === 38 || k === 428) { if (P.kind === 'live') zap(-1); else syOpen(); return true; }
+if (k === 38 || k === 428) { if (P.kind === 'live') zap(-1); else mnOpen(); return true; }
 if (k === 40 || k === 427) { if (P.kind === 'live') zap(1); else syOpen(); return true; }
 if (k === 49 && P.kind !== 'live') { subToggle(false); return true; }
 if (k === 50 && P.kind !== 'live') { subToggle(true); return true; }
@@ -3196,7 +3323,7 @@ var d = o.hlsFrom; delete o.hlsFrom;
 var go2 = function () {
 if (d && d.hls) { o.rawUrl = o.url; o.altUrl = o.url; o.url = d.hls; }
 sxLeave();
-startPlay(o); P.rawUrl = o.rawUrl || ''; subLoad(o, P.sid);
+startPlay(o); P.rawUrl = o.rawUrl || ''; P.hlsFrom = (d && d.torrent_id != null && d.file_id != null) ? {tid: d.torrent_id, fid: d.file_id} : null; subLoad(o, P.sid);
 };
 if (d && !d.hls && d.torrent_id && /^\d+$/.test(String(d.torrent_id))) {
 var pid = SX.pid;
@@ -3265,7 +3392,7 @@ if (x && live() && !P.subFixed) { XS = x; XOFF = 0; XFIX = {ck: ck, sp: sp, key:
 });
 }
 function subLoad(o, sid) {
-var sp = o.sp; if (!sp || isDub({title: o.vtitle || ''})) return; if (nsGet(sp)) return;
+var sp = o.sp; P.sctx = {o: o, sp: sp, sid: sid}; if (!sp || isDub({title: o.vtitle || ''})) return; if (nsGet(sp)) return;
 var base = (sp.id && sp.type) ? 'type=' + sp.type + '&id=' + sp.id : (sp.title ? 'q=' + enc(sp.title) + (sp.s != null ? '&type=tv' : '') : '');
 if (!base) return;
 var se = sp.s != null ? '&s=' + sp.s + '&e=' + sp.e : '';
@@ -3286,10 +3413,11 @@ if (autoOn()) { if (!c || c.n < 2) autoSync(it, ai, sp, sid, ck, c); }
 else if (!c) savedFix(it, ai, sp, sid, ck);
 }
 }
+SUBC.apply = apply;
 api('/subs?lang=AR&' + base + se, {timeout: 30000}, function (e, s, r) {
 if (!ok()) return;
 var l = (!e && s === 200 && r && r.items) || [];
-if (l.length) { SUBC.list = subRank(l, o.vtitle || '').slice(0, 4); SUBC.i = 0; SUBC.apply = apply; return apply(SUBC.list[0], ''); }
+if (l.length) { SUBC.list = subRank(l, o.vtitle || '').slice(0, 8); SUBC.i = 0; SUBC.apply = apply; return apply(SUBC.list[0], ''); }
 api('/subs?lang=EN&' + base + se, {timeout: 30000}, function (e2, s2, r2) {
 var l2 = (!e2 && s2 === 200 && r2 && r2.items) || [];
 if (!ok() || !l2.length) return;
