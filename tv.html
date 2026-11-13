@@ -1815,7 +1815,7 @@ else {
 h = '<span class="ci">' + (P.paused ? IC.play : IC.pause) + '</span><span class="ci">' + IC.b10 + '</span><span class="ci">' + IC.f10 + '</span>';
 h += '<span class="ttl">' + esc(P.title) + '</span>';
 if (nxHas()) h += '<span class="ci lbl">' + IC.next + '<em>الحلقة التالية</em></span>';
-h += '<span class="ci lbl">' + IC.sub + '<em>' + (P.subOff ? 'الترجمة مقفولة · 1 تشغيل' : 'الصوت والترجمة ↑ · ضبط التوقيت ↓') + '</em></span>';
+h += '<span class="ci lbl">' + IC.sub + '<em>' + (P.subOff ? 'الترجمة مقفولة · 1 تشغيل' : 'الصوت والترجمة والتوقيت ↑ ↓') + '</em></span>';
 }
 if (h !== P.ch) { P.ch = h; $('plctl').innerHTML = h; }
 if (!live) {
@@ -2086,6 +2086,8 @@ var au = MN.audio || [];
 if (au.length) au.forEach(function (a, i) { it.push({label: a.label, on: (P.audIdx === a.idx) || (P.audIdx < 0 && i === 0 && !a.cur), fn: function () { mnAudio(a); }}); });
 else it.push({label: MN.loadingAudio ? '... بحمّل مسارات الصوت' : 'مفيش مسارات صوت تانية', dim: 1});
 it.push({h: 'الترجمة'});
+var tv = syCur(), tt = tv > 0 ? 'تأخير ' + tv.toFixed(1) + ' ث' : tv < 0 ? 'تقديم ' + (-tv).toFixed(1) + ' ث' : 'بدون تعديل';
+it.push({label: '⏱  توقيت الترجمة:   ◀  ' + tt + '  ▶    (OK = رجوع للأصلي)', timing: 1, fn: function () { mnTimeReset(); }});
 it.push({label: 'بدون ترجمة', on: !!P.subOff, fn: function () { mnSub(-1); }});
 (SUBC.list || []).forEach(function (s, i) {
 it.push({label: 'ترجمة عربي ' + (i + 1) + '  ·  ' + String(s.name || s.u || '').replace(/\.[a-z0-9]{2,4}$/i, '').slice(0, 46), on: !P.subOff && !!XS && !P.emb && SUBC.i === i && !(XS && XS.ai), fn: function () { mnSub(i); }});
@@ -2114,7 +2116,15 @@ m.style.display = 'block';
 if (selEl) { var top = selEl.offsetTop; m.scrollTop = Math.max(0, top - 300); m.style.overflowY = 'hidden'; }
 }
 function mnClose() { MN = null; var m = $('plmenu'); m.style.display = 'none'; m.style.maxHeight = ''; m.style.overflow = ''; ovShow(); }
-function mnKey(k) {
+function mnTimeReset() { if (XS) { XOFF = 0; XS.i = -2; P.subFixed = true; fixReset(); } else { P.avOff = 0; try { webapis.avplay.setSubtitlePosition(0); } catch (e) {} } toast('↩︎ التوقيت رجع للأصلي'); mnBuild(); mnPaint(); }
+function mnKey(k, e) {
+var cur = MN.items[MN.sel];
+if (cur && cur.timing && (k === 37 || k === 39)) {
+MN.rep = (e && e.repeat) ? (MN.rep || 0) + 1 : 0;
+var st = MN.rep > 14 ? 5 : MN.rep > 6 ? 2 : MN.rep > 2 ? 1 : 0.5;
+nudge(k === 39 ? st : -st); mnBuild(); mnPaint(); return true;
+}
+if (k === 48) { mnTimeReset(); return true; }
 if (k === 38) { mnStep(-1); mnPaint(); return true; }
 if (k === 40) { mnStep(1); mnPaint(); return true; }
 if (k === 13) { var x = MN.items[MN.sel]; if (x && x.fn) x.fn(); return true; }
@@ -2350,7 +2360,8 @@ e.innerHTML = '<div class="sh">ضبط توقيت الترجمة</div><div class=
 '<div class="sn" style="color:#fbbf24;margin-top:10px">1 أو 🔴 = ' + (P.subOff ? 'تشغيل الترجمة' : 'إيقاف الترجمة') + ' · 2 أو 🔵 = ' + (P.sp && nsGet(P.sp) ? 'رجّع الترجمة دايمًا للعمل' : 'إيقاف دايمًا للعمل ده') + '</div>';
 e.style.display = 'block';
 }
-function syOpen() {
+function syOpen() { return mnOpen(); }
+function syOpenOld() {
 if (P.kind === 'live') return;
 if (!XS && !P.av && !P.subOff) { ovShow(); return toast('مفيش ترجمة شغّالة دلوقتي'); }
 SY = {r: 0}; $('plbar').className = ''; clearTimeout(P.ovT); syPaint(); syTimer();
@@ -2381,7 +2392,7 @@ return true;
 function playerKey(e) {
 var k = e.keyCode;
 if (SY) return syKey(e);
-if (MN) return mnKey(k);
+if (MN) return mnKey(k, e);
 if (TM) return tmKey(k);
 if (P.kind !== 'live' && (k === 403 || k === 406) && !P.sctx) { trackMenu(k === 403 ? 'AUDIO' : 'TEXT'); return true; }
 if (P.kind === 'site' && (k === 403 || k === 406 || k === 53)) { mnOpen(); return true; }
