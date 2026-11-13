@@ -10,6 +10,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v75: حد تحميلات SubDL (50/يوم): الترجمة بتتحفظ على السيرفر فمتتحمّلش تاني + التجربة التلقائية لحد 3 بس
   v74: الترجمة: لو ترجمة عربي باظت (404 / أرشيف فاضي) بنجرّب اللي بعدها تلقائي (لحد 8 حسب الأقرب لاسم الملف) + السيرفر بيقبل أرشيفات وملفات ترجمة أكتر
   v73: TorBox: فحص التخزين قبل السحب + trackers + اختيار ملف الحلقة بالترتيب + تحويل تلقائي لـAllDebrid لو فشل (والعكس)
   v72: المشغّل الداخلي (LibVLC) بيشغّل الرابط الأصلي بدل HLS بتاع TorBox لأن HLS كان بيفشل فيه (التحميل زي ما هو)
@@ -1050,7 +1051,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=74;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=75;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -8428,7 +8429,7 @@ async function autoSub() {
       subs = list;
       // بنجرّب الترجمات بالترتيب (الأقرب للملف الأول) لحد ما واحدة تشتغل
       let got = false;
-      for (const it of list.slice(0, 8)) {
+      for (const it of list.slice(0, 3)) {
         if (PLAY && PLAY.subOff) return;
         if (await applySubItem(it, 0, true)) { got = true; break; }
       }

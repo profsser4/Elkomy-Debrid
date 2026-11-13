@@ -3517,7 +3517,7 @@ if (!x && c) { sj(ck, null); c = null; return subFetch(it, ai, 0, 1, sp, sid, fu
 go(x);
 });
 function go(x) {
-if (!x && ok()) { var nx = SUBC.list.length ? SUBC.list.indexOf(it) + 1 : 0; if (!ai && nx > 0 && nx < SUBC.list.length) { SUBC.i = nx; return apply(SUBC.list[nx], ''); } return; }
+if (!x && ok()) { var nx = SUBC.list.length ? SUBC.list.indexOf(it) + 1 : 0; if (!ai && nx > 0 && nx < Math.min(3, SUBC.list.length)) { SUBC.i = nx; return apply(SUBC.list[nx], ''); } return; }
 if (!x || !ok()) return;
 XS = x; XOFF = 0; XFIX = {ck: ck, sp: sp, key: subKey(sp), it: it, ai: ai}; P.subDone = true; subShow('');
 toast(c ? '✅ ترجمة متظبطة (محفوظة)' : (ai ? '🤖 ترجمة عربي بالذكاء الاصطناعي' : '💬 ترجمة عربي'));
