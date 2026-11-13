@@ -11236,6 +11236,10 @@ function nfxInit(v) {
     if (v._hls && v._hls.audioTracks && v._hls.audioTracks.length > 1) {
       return v._hls.audioTracks.map((t, i) => ({i: i, n: audLabel(t, i), on: i === v._hls.audioTrack, h: 1}));
     }
+    const tba = window.__TBA;
+    if (tba && tba.list && tba.list.length > 1 && window.__TBX && tba.tid === window.__TBX.tid && tba.fid === window.__TBX.fid) {
+      return tba.list.map(a => ({i: a.idx, n: a.label, on: a.idx === tba.cur, tb: 1}));
+    }
     const at = v.audioTracks;
     if (at && at.length > 1) {
       const o = [];
@@ -11252,9 +11256,10 @@ function nfxInit(v) {
     let h = '';
     if (k === 'as') {
       const au = audioList();
+      if (!au.length && window.__TBX && typeof tbAudLoad === 'function') tbAudLoad(renderPanel);
       h += '<div class="nfx-cols"><div class="nfx-col"><h4>الصوت</h4>';
-      h += au.length ? au.map(a => '<button class="nfx-it' + (a.on ? ' on' : '') + '" data-a="aud" data-i="' + a.i + '" data-h="' + (a.h || 0) + '">' + esc(a.n) + '</button>').join('')
-        : '<div class="nfx-sm">مسار صوت واحد</div>';
+      h += au.length ? au.map(a => '<button class="nfx-it' + (a.on ? ' on' : '') + '" data-a="aud" data-i="' + a.i + '" data-h="' + (a.h || 0) + '" data-tb="' + (a.tb || 0) + '">' + esc(a.n) + '</button>').join('')
+        : '<div class="nfx-sm">' + (window.__TBX && window.__TBA && window.__TBA.busy ? '⏳ بجيب مسارات الصوت...' : 'مسار صوت واحد') + '</div>';
       h += '</div><div class="nfx-col"><h4>الترجمة</h4><button class="nfx-it' + (subSel ? '' : ' on') + '" data-a="suboff">إيقاف</button><button class="nfx-it" data-a="subnever">🚫 إيقاف دايمًا للعمل ده</button>';
       if (subSel && subSel.it) h += '<button class="nfx-it on" data-a="noop">' + esc(subSel.it.name || 'ترجمة') + '</button>';
       h += '<div class="nfx-sm">اللغة</div><div class="nfx-chips">' + LANGS.map(l => '<button class="nfx-chip' + (subLang() === l[0] ? ' on' : '') + '" data-a="sublang" data-l="' + l[0] + '">' + l[1] + '</button>').join('') + '</div>';
@@ -11346,6 +11351,7 @@ function nfxInit(v) {
         break;
       case 'as': case 'spd': case 'eps': openPanel(a); break;
       case 'aud':
+        if (b.dataset.tb === '1' && typeof tbAudPick === 'function') { tbAudPick(+b.dataset.i, renderPanel); break; }
         if (b.dataset.h === '1' && v._hls) v._hls.audioTrack = +b.dataset.i;
         else if (typeof setAudio === 'function') setAudio(+b.dataset.i);
         audPicked(+b.dataset.i, b.dataset.h === '1');
@@ -12203,6 +12209,62 @@ body:not(.m-tv) #details .tab{padding:9px 18px;border-radius:99px;background:#18
 body:not(.m-tv) #details .tab.on{background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;border-color:transparent}
 </style>
 
+<script>
+/* ===== قايمة أصوات TorBox الحقيقية (البث المحوَّل بيطلع مسار صوت واحد بس، فبنجيب القايمة من السيرفر ونبدّل المسار) ===== */
+(function () {
+  const L = {ar: 'عربي', ara: 'عربي', en: 'English', eng: 'English', fr: 'Français', fre: 'Français', fra: 'Français', es: 'Español', spa: 'Español',
+    de: 'Deutsch', ger: 'Deutsch', deu: 'Deutsch', it: 'Italiano', ita: 'Italiano', ru: 'Русский', rus: 'Русский', tr: 'Türkçe', tur: 'Türkçe',
+    ja: '日本語', jpn: '日本語', ko: '한국어', kor: '한국어', hi: 'हिन्दी', hin: 'हिन्दी', pt: 'Português', por: 'Português'};
+  const pick = (o, ks) => { for (const k of ks) if (o && o[k] != null && o[k] !== '') return o[k]; return ''; };
+  const list = info => {
+    let out = [];
+    if (info && typeof info === 'object') Object.keys(info).forEach(k => { if (!out.length && /^audio/i.test(k) && Array.isArray(info[k])) out = info[k]; });
+    return out;
+  };
+  window.tbAudLoad = async function (done) {
+    const X = window.__TBX; if (!X) return;
+    const A = window.__TBA;
+    if (A && A.tid === X.tid && A.fid === X.fid && (A.busy || A.tried)) return;
+    const me = window.__TBA = {tid: X.tid, fid: X.fid, list: [], cur: 0, busy: true, tried: false};
+    try {
+      const {d} = await api('/tb/stream', {method: 'POST', body: JSON.stringify({torrent_id: X.tid, file_id: X.fid, info: true}), timeout: 40000});
+      list(d && d.info).forEach((t, i) => {
+        t = t || {};
+        const ix = t.index != null ? +t.index : i;
+        const lg = String(pick(t, ['language', 'lang', 'language_code', 'track_lang'])).toLowerCase();
+        const nm = pick(t, ['title', 'name', 'label']);
+        const ar = /(^|[^a-z])(ar|ara|arb|arz)([^a-z]|$)|arab|عرب|مصر/.test(lg + ' ' + String(nm).toLowerCase());
+        me.list.push({idx: ix, ar: ar, label: (ar ? '🇪🇬 ' : '') + 'صوت ' + (i + 1) + (L[lg] || lg ? '  ·  ' + (L[lg] || lg) : '') +
+          (nm && String(nm).toLowerCase() !== lg ? '  ·  ' + nm : '')});
+      });
+    } catch (e) {}
+    me.busy = false; me.tried = true;
+    if (typeof done === 'function') done();
+  };
+  window.tbAudPick = async function (idx, done) {
+    const X = window.__TBX, A = window.__TBA, v = document.querySelector('#results video') || document.querySelector('video');
+    if (!X || !A || !v || X.busy) return;
+    X.busy = true;
+    try { toast('⏳ بغيّر الصوت...'); } catch (e) {}
+    try {
+      const {d} = await api('/tb/stream', {method: 'POST', body: JSON.stringify({torrent_id: X.tid, file_id: X.fid, audio: idx}), timeout: 40000});
+      if (!d || !d.hls) { toast('❌ ' + ((d && (d.note || d.error)) || 'TorBox ماردّش'), true); return; }
+      const t = v.currentTime || 0;
+      try { if (v._hls) v._hls.destroy(); } catch (e) {}
+      if (window.Hls && Hls.isSupported()) {
+        const h = new Hls(); v._hls = h; h.loadSource(d.hls); h.attachMedia(v);
+        h.on(Hls.Events.MANIFEST_PARSED, () => { try { v.currentTime = t; } catch (e) {} v.play().catch(() => {}); });
+      } else { v.src = d.hls; v.load(); v.addEventListener('loadedmetadata', () => { try { v.currentTime = t; } catch (e) {} v.play().catch(() => {}); }, {once: true}); }
+      try { if (window.PLAY) PLAY.hls = d.hls; } catch (e) {}
+      A.cur = idx;
+      const it = A.list.find(x => x.idx === idx);
+      try { if (typeof audDecide === 'function') audDecide(!!(it && it.ar)); } catch (e) {}
+      toast('🔊 ' + (it ? it.label : 'اتغيّر الصوت'));
+    } catch (e) { try { toast('❌ ' + String((e && e.message) || e).slice(0, 80), true); } catch (x) {} }
+    finally { X.busy = false; if (typeof done === 'function') done(); }
+  };
+})();
+</script>
 <script>
 /* ===== إضافة: بث TorBox ذكي (مشاهدة = بث محوَّل، تحميل/VLC = الرابط الأصلي) =====
    - بيراقب الفيديو: لو حصل error أو الصورة سودا أو مفيش صوت، بيجرّب لوحده مسار صوت/جودة تانية (لحد 3 محاولات)
