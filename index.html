@@ -10,6 +10,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v72: المشغّل الداخلي (LibVLC) بيشغّل الرابط الأصلي بدل HLS بتاع TorBox لأن HLS كان بيفشل فيه (التحميل زي ما هو)
   v71: كل مشاهدة من TorBox (مشغّل الأندرويد/المكتبة/الخارجي-الداخلي) بتاخد رابط التحويل HLS، وAllDebrid بيفضل على الرابط العادي
   v70: مشغّل الأندرويد: المشاهدة بتاخد رابط التحويل (HLS) من TorBox لو متاح (عشان الصوت)، والتحميل على الرابط الأصلي
   v69: مفتاح AllDebrid يتسحب من السيرفر للأدمن ولأي عضو الأدمن يفعّله له (في صلاحيات العضو)، والسحب بيتم من موبايله
@@ -1047,7 +1048,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=71;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=72;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -7306,7 +7307,11 @@ function saveProgress(v, ended) {
 function watchUrl(d) {
   if (!d) return '';
   const raw = d.direct_link || d.direct || '';
-  return (d.hls && !/all-?debrid/i.test(String(d.provider || ''))) ? d.hls : raw;
+  // v72: LibVLC بيشغّل الرابط الأصلي بكل الأصوات، ورابط HLS بتاع TorBox كان بيفشل فيه («تعذر تشغيل الفيديو»).
+  // فالمشغّل الداخلي بياخد الرابط الأصلي. لو عايز تجرّب HLS: localStorage.setItem('nativeHls','1')
+  let useHls = false;
+  try { useHls = localStorage.getItem('nativeHls') === '1'; } catch (e) {}
+  return (useHls && d.hls && !/all-?debrid/i.test(String(d.provider || ''))) ? d.hls : (raw || d.hls || '');
 }
 async function nativePlay(u) {
   window.IV_NP = null;
