@@ -395,6 +395,7 @@ body{color:var(--tx)}
 #plnext{box-shadow:none}
 #plsubt{text-shadow:0 0 4px #000,2px 2px 3px #000,-2px -2px 3px #000}
 
+#plsubt{transition:bottom .25s ease,left .25s ease,right .25s ease}
 #plsync{position:absolute;left:50%;top:70px;margin-left:-380px;width:760px;display:none;direction:rtl;text-align:center;background:rgba(20,20,20,.96);border:1px solid #555;border-radius:14px;padding:24px 40px 22px}
 #plsync .sh{font-size:28px;color:#b3b3b3;font-weight:600}
 #plsync .sv{font-size:72px;font-weight:800;color:#fff;margin:6px 0 16px;line-height:1.1}
@@ -2082,6 +2083,22 @@ while (lo <= hi) { var mid = (lo + hi) >> 1; if (c[mid].s <= t) { f = mid; lo = 
 if (f >= 0 && t > c[f].e) f = -1;
 if (f !== XS.i) { XS.i = f; if (f >= 0) subShow(c[f].t, 0, 1); else subShow('', 0, 1); }
 }
+
+/* الترجمة تطلع/تنزل/تضيق تلقائي عشان ماتختفيش ورا شريط التحكم أو قايمة الصوت والترجمة أو كارت الحلقة التالية (زي المتصفح) */
+function subLayout() {
+var s = $('plsubt'); if (!s) return;
+var bar = $('plbar'), menu = $('plmenu'), nx = $('plnext');
+var barOn = bar && bar.className === 'show';
+var menuOn = menu && menu.style.display === 'block';
+var nxOn = nx && nx.style.display === 'block';
+var bottom = barOn ? 290 : 100, right = 160;
+if (nxOn) bottom = Math.max(bottom, 120 + (nx.offsetHeight || 150) + 30);
+if (menuOn) { right = 1920 - menu.offsetLeft + 30; bottom = Math.max(bottom, 290); }
+var b = bottom + 'px', r = right + 'px';
+if (s.style.bottom !== b) s.style.bottom = b;
+if (s.style.right !== r) s.style.right = r;
+}
+setInterval(subLayout, 200);
 function subShow(t, dur, own) {
 var e = $('plsubt'); clearTimeout(subT);
 if (P.subOff) t = '';
