@@ -1523,12 +1523,19 @@ if (x.type === 'tv' && x.s != null) {
 if (doneTv) { var n = x.next || nextEpOf(x); lbl = (n && n.s != null) ? '⏭ S' + p2(n.s) + 'E' + p2(n.e) : '⏭ التالي'; }
 else lbl = 'S' + p2(x.s) + 'E' + p2(x.e) + ' · ' + fmt(x.pos);
 } else if (doneTv) lbl = '⏭ التالي'; else lbl = fmt(x.pos);
-return {title: x.title, img: x.poster, pct: pct, lbl: lbl, tag: '', fn: function () { playItem(x.key); }};
+return {title: x.title, img: x.poster, pct: pct, lbl: lbl, tag: '', fn: function () { cwTvAsk(x.key); }};
 }
 function ivOpenCw(it) {
 if (!S.cfg) return toast('اشتراك الـIPTV مش متاح');
 var m = it.cw.meta || {};
-if (m.k === 'vod') return playVod({id: it.id, name: it.name, img: it.img, ext: it.ext}, Math.floor(it.cw.pos || 0));
+if (m.k === 'vod') {
+var it0 = {id: it.id, name: it.name, img: it.img, ext: it.ext}, p0 = Math.floor(it.cw.pos || 0);
+if (p0 <= 10) return playVod(it0, p0);
+return sxList(ivClean(it.name), [
+{ico: '▶', txt: 'استكمال من ' + fmt(p0), fn: function () { playVod(it0, p0); }},
+{ico: '⏮', txt: 'من الأول', fn: function () { playVod(it0, 0); }}
+]);
+}
 openSeries({id: it.id, name: it.name, img: it.img}, it.nx ? it.nx.id : (m.ep && m.ep.id));
 }
 function cwCardAny(e) {
@@ -2794,7 +2801,7 @@ if (x.type === 'tv' && x.s != null) {
 if (doneTv) { var n = x.next || nextEpOf(x); lbl = (n && n.s != null) ? '⏭ S' + p2(n.s) + 'E' + p2(n.e) : '⏭ التالي'; }
 else lbl = 'S' + p2(x.s) + 'E' + p2(x.e) + ' · ' + fmt(x.pos);
 } else if (doneTv) lbl = '⏭ التالي'; else lbl = fmt(x.pos);
-var c = sxCard({title: x.title, poster: x.poster, sub: lbl, pct: pct}, function () { playItem(x.key); });
+var c = sxCard({title: x.title, poster: x.poster, sub: lbl, pct: pct}, function () { cwTvAsk(x.key); });
 return c;
 }
 function latestOf(tmdb) {
@@ -2803,15 +2810,25 @@ for (k in its) { var x = its[k]; if (!x || x.del || x.hide || !x.key || x.key.ch
 return best;
 }
 /* ---------- تشغيل عنصر محفوظ (نفس منطق الموقع: نفس النسخة اللي كنت بتشاهدها) ---------- */
-function playItem(key) {
+/* كارت كمّل المشاهدة: استكمال ولا من الأول (التحميل مش متاح على التلفزيون) */
+function cwTvAsk(key) {
 var it = getItem(key); if (!it || it.del) return;
-if (it.cl) return clibResume(it);
+if ((it.done && it.type === 'tv') || !(it.pos > 10)) return playItem(key);
+var ep = (it.type === 'tv' && it.s != null && it.e != null) ? '  S' + p2(it.s) + 'E' + p2(it.e) : '';
+sxList(it.title + ep, [
+{ico: '▶', txt: 'استكمال من ' + fmt(it.pos), fn: function () { playItem(key); }},
+{ico: '⏮', txt: 'من الأول', fn: function () { playItem(key, true); }}
+]);
+}
+function playItem(key, fresh) {
+var it = getItem(key); if (!it || it.del) return;
+if (it.cl) return clibResume(it, fresh);
 if (it.done && it.type === 'tv') return playAfter(it);
 var hs = it.vh || ((/btih:([a-fA-F0-9]{40})/.exec(it.src || '') || [])[1] || '').toLowerCase();
-var base = {type: it.type, id: it.tmdb, imdb: it.imdb || '', title: it.title, poster: it.poster || '', year: it.year || '', q: it.qn || it.title, s: it.s, e: it.e, eps: it.eps, ms: it.ms, resume: Math.floor(it.pos || 0)};
+var base = {type: it.type, id: it.tmdb, imdb: it.imdb || '', title: it.title, poster: it.poster || '', year: it.year || '', q: it.qn || it.title, s: it.s, e: it.e, eps: it.eps, ms: it.ms, resume: fresh ? 0 : Math.floor(it.pos || 0), fresh: fresh ? 1 : 0};
 if (it.tmdb && it.imdb && (hs || it.ref)) return sitePlay(sxMix(base, {v: {hash: hs, ref: hs ? '' : it.ref, title: it.fname || it.title, size: 0, instant: false}}));
 if (it.tmdb && it.imdb) return sitePlay(base);
-if (it.src) return linkPlay(it.src, Math.floor(it.pos || 0), it.title);
+if (it.src) return linkPlay(it.src, fresh ? 0 : Math.floor(it.pos || 0), it.title);
 if (it.tmdb) return siteDetails(it.type === 'tv' ? 'tv' : 'movie', it.tmdb);
 toast('مفيش مصدر محفوظ للعنصر ده');
 }
@@ -3611,13 +3628,14 @@ return sxList(it.title, rows);
 }
 libPlay(it, null, null, null);
 }
-function clibResume(it) {
+function clibResume(it, fresh) {
 function go3() {
 var x = null; (SX.lib || []).forEach(function (y) { if (String(y.id) === String(it.cl)) x = y; });
 if (!x) return toast('العنصر ده اتحذف من المكتبة');
+var p0 = fresh ? 0 : Math.floor(it.pos || 0);
 if (it.cle && it.done && it.next) return libPlay(x, it.next.s, it.next.e, null);
-if (it.cle) return libPlay(x, it.s, it.e, Math.floor(it.pos || 0));
-libPlay(x, null, null, Math.floor(it.pos || 0));
+if (it.cle) return libPlay(x, it.s, it.e, p0);
+libPlay(x, null, null, p0);
 }
 if (SX.lib) return go3();
 toast('جاري تحميل المكتبة...');

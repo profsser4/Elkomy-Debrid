@@ -2113,6 +2113,7 @@ function dlCur() {
 window.nativeDownload = function () { try { return dlCur(); } catch (e) { return false; } };   // زرار «تحميل» في مشغّل الأندرويد بينادي عليها
 // بعد سحب أي ملف: نسأل «تشغيل ولا تحميل؟» قبل ما يشتغل (مش في الحلقة التالية التلقائية ولا التلفزيون)
 function pullAsk(d, base) {
+  if (window.CW_DL && Date.now() - window.CW_DL < 300000 && d && d.direct_link) { window.CW_DL = 0; window.PCH = {d: d, base: base || {}}; return pchGo('dl'); }
   const F = window.PCH_FORCE;   // المكتبة: المستخدم اختار مشاهدة/تحميل قبل كده، فمنسألوش تاني على ملف الباك
   if (F && Date.now() - F.t < 600000 && d && d.direct_link) {
     if (F.k === 'dl') { window.PCH = {d: d, base: base || {}}; return pchGo('dl'); }
@@ -2596,7 +2597,7 @@ function cwHTML(x) {
     } else lbl = 'S' + p2(x.s) + 'E' + p2(x.e) + ' · ' + fmtTime(x.pos);
   } else if (doneTv) lbl = '⏭ التالي';
   else lbl = fmtTime(x.pos);
-  return '<div class="cw" data-k="' + esc(x.key) + '" onclick="playItem(this.dataset.k)">' +
+  return '<div class="cw" data-k="' + esc(x.key) + '" onclick="cwAsk(this.dataset.k)">' +
     '<button class="cwx" onclick="event.stopPropagation();hideCw(this.parentNode.dataset.k)">✕</button>' +
     (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">🎬</div>') +
     '<div class="cwb"><i style="width:' + pct.toFixed(0) + '%"></i></div>' +
@@ -3469,7 +3470,7 @@ function ivCwItems(only) {
   return out.slice(0, 20);
 }
 function ivCwCard(x) {
-  return '<div class="cw" tabindex="0" role="button" data-key="' + esc(x.key) + '" onclick="ivCwTap(this.dataset.key)">' +
+  return '<div class="cw" tabindex="0" role="button" data-key="' + esc(x.key) + '" onclick="ivCwAsk(this.dataset.key)">' +
     '<button class="cwx" tabindex="-1" onclick="event.stopPropagation();ivCwHide(this.parentNode.dataset.key)">✕</button><span class="cwtag">IPTV</span>' +
     (x.img ? '<img ' + lzA(x.img) + ' alt="">' : '<div class="noimg">🎬</div>') +
     '<div class="cwb"><i style="width:' + x.pct.toFixed(0) + '%"></i></div>' +
@@ -3493,7 +3494,7 @@ function cwMerged(only, lim, inIv) {
       if (only === 'vod' && x.type === 'tv') return;
       if (only === 'series' && x.type !== 'tv') return;
       let h = cwHTML(x);
-      if (inIv) h = h.replace('onclick="playItem(this.dataset.k)"', 'onclick="ivHide();playItem(this.dataset.k)"');
+      if (inIv) h = h.replace('onclick="cwAsk(this.dataset.k)"', 'onclick="ivHide();cwAsk(this.dataset.k)"');
       out.push({t: x.t || 0, h: h});
     });
   } catch (e) {}
@@ -3521,14 +3522,14 @@ function ivCwHide(key) {
   ivCwRefresh();
   renderShelvesSoon();
 }
-async function ivCwTap(key) {
+async function ivCwTap(key, fresh) {
   const o = ivProgAll()[key], m = o && o.m;
   if (!m) return;
   if (!isPremiumOK()) { alert((typeof LOCK_MSG === 'string' && LOCK_MSG) || 'قسم الـIPTV للأعضاء المميزين بس.'); return; }
   if (!IV.cfg) await ivCfg();
   if (!IV.cfg) return;
   if (m.k === 'vod') {
-    return ivPlay(ivMovieUrl(m.id, m.ext), m.n, {key: key, meta: m});
+    return ivPlay(ivMovieUrl(m.id, m.ext), m.n, {key: key, meta: m, fresh: !!fresh});
   }
   const ep = o.done ? m.nx : m.ep;
   if (!ep) return;
@@ -3577,7 +3578,7 @@ function ivPlay(url, title, o) {
   o = o || {};
   if (ivApp() || (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined')) {
     window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid, meta: o.meta, url: url, name: title}; window.NP_PLAYED = Date.now();
-    AndroidPlayer.play(url, title, o.key ? ivPosGet(o.key) : 0);
+    AndroidPlayer.play(url, title + (o.fresh ? '\n@@FRESH@@' : ''), (o.key && !o.fresh) ? ivPosGet(o.key) : 0);
     return;
   }
   ivWebPlay(url, title, o);
@@ -3624,7 +3625,7 @@ function ivWebPlay(url, title, o) {
   };
   v.onerror = async () => { if (await retry()) return; err('المتصفح مش قادر يشغّل الصيغة دي (غالباً mkv أو http). افتح الرابط في VLC، أو استخدم التطبيق.'); };
   if (o && o.key) {
-    const p = ivPosGet(o.key);
+    const p = o.fresh ? 0 : ivPosGet(o.key);
     if (p) v.addEventListener('loadedmetadata', () => { try { v.currentTime = p; } catch (e) {} }, {once: true});
     let ls = 0;
     const sv = ended => { const d = isFinite(v.duration) ? v.duration : 0; if (ended || v.currentTime > 1) ivSave(o.key, v.currentTime, d, ended, o.meta); };
@@ -7037,8 +7038,10 @@ function setPlay(o) {
     eps: null, ms: null, src: '', fid: null, fname: '', qn: '', resume: 0, sub: null, dr: false, imdb: '', nw: false}, o);
   PLAY.key = keyOf(PLAY);
   const old = getItem(PLAY.key);
+  const fr = !!(window.FRESH_T && Date.now() - window.FRESH_T < 180000);   // «من الأول» اتطلب من كارت كمّل المشاهدة
+  if (fr) { window.FRESH_T = 0; PLAY.fresh = true; PLAY.resume = 0; }
   if (old && !old.del) {
-    if (!old.done && old.pos > 10) PLAY.resume = old.pos;
+    if (!old.done && old.pos > 10 && !fr) PLAY.resume = old.pos;
     if (old.sub && !PLAY.sub) PLAY.sub = old.sub;
   }
   if (nfNoSub(PLAY)) { PLAY.subOff = true; PLAY.sub = null; PLAY.subx = ''; }
@@ -7223,6 +7226,7 @@ async function nativeGo(el) {
   try { await nativePlay(el.dataset.u); } catch (e) { toast('❌ المشغّل الداخلي ما اشتغلش', true); }
 }
 function playData(d, base) {
+  if (window.CW_DL && Date.now() - window.CW_DL < 300000 && d && d.direct_link) { window.CW_DL = 0; window.PCH = {d: d, base: base || {}}; pchGo('dl'); return; }   // اختيار «تحميل» من كمّل المشاهدة
   if (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined' && d && d.direct_link) { nativePlayData(d, base); return; }
   const ov = document.querySelector('#results video');
   if (ov && ov._hls) { try { ov._hls.destroy(); } catch (e) {} }
@@ -7322,14 +7326,16 @@ async function nativePlay(u) {
   USG.last = null;
   window.NP_CUR = window.NP_NEXT || PLAY || null; window.NP_NEXT = null; window.NP_PLAYED = Date.now();
   try { const c0 = window.NP_CUR; if (c0 && c0.type === 'tv' && c0.tmdb) smapLoad(c0.tmdb).catch(() => {}); } catch (e) {}
+  const fresh = !!(PLAY && PLAY.fresh);   // «من الأول» من كارت كمّل المشاهدة
   let p = 0;
-  try { p = Math.floor(((PLAY && getItem(PLAY.key)) || {}).pos || 0); } catch (e) {}
+  if (!fresh) { try { p = Math.floor(((PLAY && getItem(PLAY.key)) || {}).pos || 0); } catch (e) {} }
+  // المشغّل الداخلي بيقفل الترجمة بنفسه لو الصوت عربي؛ فمنعتمدش على حالة صوت المتصفح (AUD) اللي ممكن تبقى قديمة وتمنع الترجمة
   let sx = '';
-  try { sx = (typeof AUD !== 'undefined' && AUD && AUD.ar) ? '' : ((PLAY && PLAY.subx) || await subxWarm()); } catch (e) {}
+  try { sx = (PLAY && PLAY.arDub) ? '' : ((PLAY && PLAY.subx) || await subxWarm()); } catch (e) {}
   window.NP_URL = u;
   let pk = '';
   try { pk = await subPackStr(u, sx); } catch (e) {}
-  window.AndroidPlayer.play(u, ((PLAY && PLAY.title) || '') + (sx || pk ? '\n@@SUB@@' + sx : '') + pk, p);
+  window.AndroidPlayer.play(u, ((PLAY && PLAY.title) || '') + (sx || pk ? '\n@@SUB@@' + sx : '') + pk + (fresh ? '\n@@FRESH@@' : ''), p);
 }
 // تذكرة موقّعة للمشغّل الداخلي: تخليه يجيب الترجمات العربي الأقرب ويظبطها بالصوت زي المتصفح من غير تسجيل دخول
 let SUBT = {tk: '', base: '', t: 0};
@@ -7340,7 +7346,7 @@ async function subTicket() {
 }
 async function subPackStr(u, sx) {
   const c = PLAY;
-  if (!c || c.subOff || (typeof AUD !== 'undefined' && AUD && AUD.ar)) return '';
+  if (!c || c.subOff || c.arDub) return '';
   const q = subQ('AR', true);
   if (!q) return '';
   const t = await subTicket();
@@ -7635,6 +7641,103 @@ async function playNext() {
   if (!cur || cur.id !== PLAY.tmdb) return alert('مش قادر أجيب بيانات المسلسل');
   want = {s: n.s, e: n.e};
   go(n.s, n.e, true);
+}
+// ================= كمّل المشاهدة: اختيار (استكمال / من الأول / تحميل) =================
+function cwSheet(title, sub, btns) {
+  const old = document.getElementById('cwAsk'); if (old) old.remove();
+  const m = document.createElement('div');
+  m.id = 'cwAsk';
+  m.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;direction:rtl';
+  const card = document.createElement('div');
+  card.style.cssText = 'width:100%;max-width:460px;background:#0f172a;border:1px solid #243044;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.5)';
+  card.innerHTML = '<div style="font-weight:800;font-size:16px;margin-bottom:4px"></div><div style="color:#94a3b8;font-size:13px;margin-bottom:14px"></div>';
+  card.children[0].textContent = title;
+  card.children[1].textContent = sub || '';
+  btns.forEach(b => {
+    const x = document.createElement('button');
+    x.className = 'search-btn';
+    x.style.cssText = 'display:block;width:100%;margin:8px 0 0;' + (b.bg ? 'background:' + b.bg + ';' : '');
+    x.textContent = b.t;
+    x.onclick = () => { m.remove(); b.fn(); };
+    card.appendChild(x);
+  });
+  const c = document.createElement('button');
+  c.className = 'fc';
+  c.style.cssText = 'display:block;width:100%;margin:12px 0 0;background:#1e293b;color:#cbd5e1';
+  c.textContent = 'إلغاء';
+  c.onclick = () => m.remove();
+  card.appendChild(c);
+  m.appendChild(card);
+  m.addEventListener('click', ev => { if (ev.target === m) m.remove(); });
+  document.body.appendChild(m);
+}
+function cwAsk(key) {
+  const it = getItem(key);
+  if (!it || it.del) return;
+  window.FRESH_T = 0; window.CW_DL = 0;
+  // مسلسل الحلقة خلصت: بيفتح الحلقة التالية على طول
+  if (it.done && it.type === 'tv') return playItem(key);
+  const pos = Math.floor(it.pos || 0);
+  const ep = (it.type === 'tv' && it.s != null && it.e != null) ? 'S' + p2(it.s) + 'E' + p2(it.e) : '';
+  const btns = [];
+  btns.push({t: pos > 10 ? '▶ استكمال من ' + fmtTime(pos) : '▶ تشغيل', fn: () => playItem(key)});
+  if (pos > 10) btns.push({t: '⏮ من الأول', bg: '#475569', fn: () => { window.FRESH_T = Date.now(); playItem(key); }});
+  btns.push({t: '⬇️ تحميل', bg: '#16a34a', fn: () => cwDownload(key)});
+  cwSheet(it.title || 'العمل', ep, btns);
+}
+async function cwDownload(key) {
+  if (noDl()) return;
+  const it = getItem(key);
+  if (!it) return;
+  window.FRESH_T = 0;
+  scrollToResults();
+  try {
+    if (it.cl) {      // مكتبتي
+      let s = null, e = null;
+      if (it.cle) { const n = it.done ? it.next : it; if (n) { s = n.s; e = n.e; } }
+      window.CLASK = {id: it.cl, s: s, e: e};
+      return clibAskGo('dl');
+    }
+    const h0 = it.vh || ((/btih:([a-fA-F0-9]{40})/.exec(it.src || '') || [])[1] || '').toLowerCase();
+    const sE = it.s != null ? it.s : null, eE = it.e != null ? it.e : null;
+    const spec = h0 ? {hash: h0, name: it.fname || it.title, slow: true, s: sE, e: eE}
+      : (it.ref ? {ref: it.ref, name: it.fname || it.title, s: sE, e: eE} : null);
+    if (spec) {
+      const d = await startPlay(spec, 'download', baseOf(it));
+      if (d) {
+        PLAY = Object.assign({title: '', poster: '', year: '', type: null, tmdb: null, s: null, e: null}, baseOf(it),
+          {fname: d.name || '', url: d.direct, hls: '', resume: 0, sub: null, subx: '', subOff: false});
+        await dlAuto(d, spec);
+      }
+      return;
+    }
+    if (it.dr && it.src && !/^r:/.test(it.src) && /^https?:/i.test(it.src)) {
+      PLAY = Object.assign({title: '', poster: '', year: '', type: null, tmdb: null, s: null, e: null}, baseOf(it),
+        {fname: it.fname || '', url: it.src, hls: '', resume: 0, sub: null, subx: '', subOff: false});
+      if (window.AndroidPlayer && typeof AndroidPlayer.download !== 'undefined') {
+        dlApp({dataset: {u: it.src, n: it.fname || it.title, s: sE, e: eE}});
+        try { await subxWarm(); if (PLAY && PLAY.sub) await dlCurSub(); } catch (x) {}
+      } else window.open(safeUrl(it.src), '_blank', 'noopener');
+      return;
+    }
+    if (it.src) { window.CW_DL = Date.now(); return pullSource(it.src, baseOf(it), it.fid != null ? it.fid : null); }
+    alert('مفيش مصدر محفوظ للعنصر ده');
+  } catch (e) { toast('❌ مقدرتش أبدأ التحميل', true); }
+}
+function ivCwAsk(key) {
+  const o = ivProgAll()[key], m = o && o.m;
+  if (!m) return;
+  if (m.k !== 'vod') return ivCwTap(key);
+  const pos = ivPosGet(key);
+  const btns = [{t: pos > 10 ? '▶ استكمال من ' + fmtTime(pos) : '▶ تشغيل', fn: () => ivCwTap(key)}];
+  if (pos > 10) btns.push({t: '⏮ من الأول', bg: '#475569', fn: () => ivCwTap(key, true)});
+  btns.push({t: '⬇️ تحميل', bg: '#16a34a', fn: async () => {
+    if (!isPremiumOK()) { alert((typeof LOCK_MSG === 'string' && LOCK_MSG) || 'قسم الـIPTV للأعضاء المميزين بس.'); return; }
+    if (!IV.cfg) await ivCfg();
+    if (!IV.cfg) return;
+    ivDownload(ivMovieUrl(m.id, m.ext), ivClean(m.n || 'movie') + '.' + (m.ext || 'mp4'));
+  }});
+  cwSheet(m.n || 'فيلم', 'IPTV', btns);
 }
 async function playItem(key) {
   if (noWatch()) return;
