@@ -10,6 +10,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v74: الترجمة: لو ترجمة عربي باظت (404 / أرشيف فاضي) بنجرّب اللي بعدها تلقائي (لحد 8 حسب الأقرب لاسم الملف) + السيرفر بيقبل أرشيفات وملفات ترجمة أكتر
   v73: TorBox: فحص التخزين قبل السحب + trackers + اختيار ملف الحلقة بالترتيب + تحويل تلقائي لـAllDebrid لو فشل (والعكس)
   v72: المشغّل الداخلي (LibVLC) بيشغّل الرابط الأصلي بدل HLS بتاع TorBox لأن HLS كان بيفشل فيه (التحميل زي ما هو)
   v71: كل مشاهدة من TorBox (مشغّل الأندرويد/المكتبة/الخارجي-الداخلي) بتاخد رابط التحويل HLS، وAllDebrid بيفضل على الرابط العادي
@@ -7800,7 +7801,7 @@ function subHide() {
 function subsStart() {
   if (!PLAY || AUD.ar || PLAY.subOff) return;
   if (subSel) { asArm(); return; }
-  const go = PLAY.sub ? applySubItem(PLAY.sub, PLAY.sub.shift || 0, true, PLAY.sub.scale || 1) : autoSub();
+  const go = PLAY.sub ? applySubItem(PLAY.sub, PLAY.sub.shift || 0, true, PLAY.sub.scale || 1).then(ok => ok === false ? autoSub() : ok) : autoSub();
   Promise.resolve(go).then(asArm, () => {});
 }
 function audDecide(isAr) {
@@ -8284,7 +8285,7 @@ async function applySubItem(it, shift, quiet, scale, keepAs) {
   const st = $('subState');
   if (st && !quiet) st.innerHTML = pend('جاري تحميل الترجمة...');
   const r = await fetchText('/sub?' + subFetchQS(it, 'vtt', shift, scale));
-  if (r.error) { if (st && !quiet) st.innerHTML = warn(r.error); return; }
+  if (r.error) { if (st && !quiet) st.innerHTML = warn(r.error); return false; }
   v.querySelectorAll('track').forEach(x => { try { URL.revokeObjectURL(x.src); } catch (e) {} x.remove(); });
   const tr = document.createElement('track');
   tr.kind = 'subtitles';
@@ -8317,6 +8318,7 @@ async function applySubItem(it, shift, quiet, scale, keepAs) {
       '<p style="font-size:12px;color:var(--mut)">لو الترجمة بتسبق الصوت اضغط +، ولو متأخرة عنه اضغط -. ضبطك بيتحفظ على حسابك لنفس الفيلم.</p>' +
       '<button class="search-btn" style="background:#475569" onclick="subFixReset()">↩︎ رجّع الضبط التلقائي</button>';
   }
+  return true;
 }
 function applySub(i) {
   const it = subs[i];
@@ -8422,8 +8424,16 @@ async function autoSub() {
   try {
     const {d} = await api('/subs?' + q);
     const list = rankSubs(d.items || []);
-    if (list[0]) { subs = list; await applySubItem(list[0], 0, true); }
-    else await autoAiSub();
+    if (list.length) {
+      subs = list;
+      // بنجرّب الترجمات بالترتيب (الأقرب للملف الأول) لحد ما واحدة تشتغل
+      let got = false;
+      for (const it of list.slice(0, 8)) {
+        if (PLAY && PLAY.subOff) return;
+        if (await applySubItem(it, 0, true)) { got = true; break; }
+      }
+      if (!got) await autoAiSub();
+    } else await autoAiSub();
   } catch (e) {}
 }
 // ترجمة بالذكاء الاصطناعي: لما مفيش ترجمة عربي بنترجم أحسن ترجمة إنجليزي (سطر مقابل سطر وبنفس التوقيت)
