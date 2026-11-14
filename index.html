@@ -9219,7 +9219,7 @@ async function loadProviders() {
       '<div class="ep"><div class="b">' + esc(p.name) + '<small>' + esc(p.type) + (p.type === '1fichier' ? (p.cdn ? ' (ترافيك CDN)' : ' (بريميم)') : '') + ' · ' +
       esc(domTxt(p.domains)) + ' · ' + esc(p.key) + '</small></div>' +
       '<button style="background:var(--danger);color:#fff" onclick="delProv(\'' + p.id + '\')">🗑</button>' +
-      '<button style="margin-right:6px" onclick="testProv(\'' + p.id + '\',this)">اختبار</button></div>'
+      '<button style="margin-right:6px" onclick="testProv(\'' + p.id + '\',this,\'' + p.type + '\')">اختبار</button>' + (p.type === '1fichier' ? '<button style="margin-right:6px" onclick="setProvMode(\'' + p.id + '\',' + (p.cdn ? 'false' : 'true') + ')">' + (p.cdn ? '→ بريميم' : '→ ترافيك') + '</button>' : '') + '</div>'
     ).join('') || warn('مفيش مزوّدين. ضيف أول واحد (TorBox مطلوب للتورنت).');
     saveBackup();
     loadSettings();
@@ -9242,16 +9242,24 @@ async function addProv() {
   ['provName', 'provDomains', 'provKey'].forEach(i => $(i).value = '');
   loadProviders();
 }
+async function setProvMode(id, cdn) {
+  await api('/providers/' + id + '/mode', {method: 'POST', body: JSON.stringify({cdn: cdn})});
+  await saveBackup();
+  loadProviders();
+}
 async function delProv(id) {
   if (!confirm('حذف المزوّد؟')) return;
   await api('/providers/' + id, {method: 'DELETE'});
   await saveBackup();
   loadProviders();
 }
-async function testProv(id, btn) {
+async function testProv(id, btn, type) {
+  let url = '';
+  if (type === '1fichier') url = (prompt('الصق رابط 1fichier عشان نجرّبه فعليًا (سيبه فاضي لو عاوز تختبر المفتاح بس)') || '').trim();
   btn.textContent = '...';
-  const {d} = await api('/providers/' + id + '/test', {method: 'POST'});
+  const {d} = await api('/providers/' + id + '/test', {method: 'POST', body: JSON.stringify({url: url})});
   btn.textContent = d.ok ? '✅ شغال' : '❌ فشل';
+  if (d.msg) alert(d.msg);
   if (!d.ok && d.error) alert(d.error);
 }
 
