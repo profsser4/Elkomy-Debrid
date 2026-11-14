@@ -1280,7 +1280,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <div class="setcard"><label class="setchk"><input type="checkbox" class="sv" id="advChk"> إظهار الأزرار القديمة (بحث التورنت وStremio القديم)</label><div class="savebar"><span class="savest"></span><button class="setsave" disabled onclick="secSave(this)">✔ محفوظ</button></div></div>
 <div id="provList" style="margin:14px 0"></div>
 <select id="provType" class="search-input" onchange="provAccToggle()"></select>
-<select id="provAcc" class="search-input" style="display:none"><option value="0">💎 حساب بريميم</option><option value="1">📶 حساب ترافيك (رصيد CDN)</option></select>
+<select id="provAcc" class="search-input" style="display:none" onchange="provAccToggle()"><option value="0">💎 حساب بريميم</option><option value="1">📶 حساب ترافيك (رصيد CDN)</option><option value="2">👤 يوزر وباسورد (بياخد من رصيد CDN)</option></select>
 <input id="provName" class="search-input" placeholder="الاسم (اختياري)">
 <input id="provDomains" class="search-input ltr" placeholder="الدومينات (اختياري): rapidgator.net, mega.nz">
 <input id="provKey" class="search-input ltr" placeholder="API Key (1Fichier: ممكن كذا مفتاح بمسافة بينهم)">
@@ -9216,10 +9216,10 @@ async function loadProviders() {
       '<option value="' + k + '">' + esc(v) + '</option>').join('');
     provAccToggle();
     $('provList').innerHTML = (d.items || []).map(p =>
-      '<div class="ep"><div class="b">' + esc(p.name) + '<small>' + esc(p.type) + (p.type === '1fichier' ? (p.cdn ? ' (ترافيك CDN)' : ' (بريميم)') : '') + ' · ' +
+      '<div class="ep"><div class="b">' + esc(p.name) + '<small>' + esc(p.type) + (p.type === '1fichier' ? (p.login ? ' (يوزر/باسورد)' : (p.cdn ? ' (ترافيك CDN)' : ' (بريميم)')) : '') + ' · ' +
       esc(domTxt(p.domains)) + ' · ' + esc(p.key) + '</small></div>' +
       '<button style="background:var(--danger);color:#fff" onclick="delProv(\'' + p.id + '\')">🗑</button>' +
-      '<button style="margin-right:6px" onclick="testProv(\'' + p.id + '\',this,\'' + p.type + '\')">اختبار</button>' + (p.type === '1fichier' ? '<button style="margin-right:6px" onclick="setProvMode(\'' + p.id + '\',' + (p.cdn ? 'false' : 'true') + ')">' + (p.cdn ? '→ بريميم' : '→ ترافيك') + '</button>' : '') + '</div>'
+      '<button style="margin-right:6px" onclick="testProv(\'' + p.id + '\',this,\'' + p.type + '\')">اختبار</button>' + (p.type === '1fichier' && !p.login ? '<button style="margin-right:6px" onclick="setProvMode(\'' + p.id + '\',' + (p.cdn ? 'false' : 'true') + ')">' + (p.cdn ? '→ بريميم' : '→ ترافيك') + '</button>' : '') + '</div>'
     ).join('') || warn('مفيش مزوّدين. ضيف أول واحد (TorBox مطلوب للتورنت).');
     saveBackup();
     loadSettings();
@@ -9230,13 +9230,17 @@ async function saveBackup() {
   if ((ex.d.items || []).length) localStorage.setItem('provBackup', JSON.stringify({items: ex.d.items}));
   else localStorage.removeItem('provBackup');
 }
-function provAccToggle() { const a = $('provAcc'); if (a) a.style.display = $('provType').value === '1fichier' ? '' : 'none'; }
+function provAccToggle() {
+  const a = $('provAcc'); if (!a) return;
+  const f = $('provType').value === '1fichier'; a.style.display = f ? '' : 'none';
+  const k = $('provKey'); if (k) k.placeholder = (f && a.value === '2') ? 'email:password  (كذا حساب بمسافة بينهم)' : 'API Key (1Fichier: ممكن كذا مفتاح بمسافة بينهم)';
+}
 async function addProv() {
   const body = {
     type: $('provType').value, name: $('provName').value,
     domains: $('provDomains').value, key: $('provKey').value
   };
-  if (body.type === '1fichier') body.cdn = $('provAcc').value === '1';
+  if (body.type === '1fichier') { body.cdn = $('provAcc').value === '1'; body.login = $('provAcc').value === '2'; }
   const {d} = await api('/providers', {method: 'POST', body: JSON.stringify(body)});
   if (d.error) return alert(d.error);
   ['provName', 'provDomains', 'provKey'].forEach(i => $(i).value = '');
