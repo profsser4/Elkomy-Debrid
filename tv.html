@@ -392,6 +392,24 @@ body{color:var(--tx)}
 #plctl .ttl,#pldur{text-shadow:none}
 #plcur{box-shadow:none;border:1px solid #444}
 #plmenu{box-shadow:none;border:1px solid #444}
+/* قايمة الصوت والترجمة: عمودين زي الأندرويد (الترجمة يمين / الصوت شمال) */
+#plmenu.mn2{flex-direction:row;direction:rtl;left:210px;right:210px;top:70px;bottom:auto;min-width:0;padding:34px 44px;background:rgba(24,24,24,.98);border:0;border-radius:22px;box-shadow:0 20px 70px #000;align-items:stretch}
+#plmenu.mn2.st{left:520px;right:520px}
+#plmenu.mn2 .mc{flex:1;min-width:0;display:flex;flex-direction:column;max-height:700px;padding:0 30px}
+#plmenu.mn2 .mc+.mc{border-right:2px solid #3a3a3a}
+#plmenu.mn2 .mt{font-size:38px;font-weight:700;color:#fff;margin-bottom:22px;text-align:right}
+#plmenu.mn2 .mb{position:relative;overflow:hidden;flex:1}
+#plmenu.mn2 .cap{font-size:25px;color:#aaa;margin:10px 4px;text-align:right}
+#plmenu.mn2 .cr{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 18px}
+#plmenu.mn2 .cr.l{direction:ltr}
+#plmenu.mn2 .ch{background:#4a4a4a;color:#eee;border-radius:12px;padding:12px 28px;font-size:28px;min-width:84px;text-align:center;border:4px solid transparent}
+#plmenu.mn2 .ch.on{background:#e50914;color:#fff}
+#plmenu.mn2 .ch.f{background:#fff;color:#000;border-color:#fff}
+#plmenu.mn2 .ch.on.f{background:#e50914;color:#fff}
+#plmenu.mn2 .op{font-size:28px;color:#ddd;padding:14px 20px;border-radius:10px;margin:2px 0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#plmenu.mn2 .op.sel{color:#fff;font-weight:700}
+#plmenu.mn2 .op.f{background:#fff;color:#000;font-weight:700}
+#plmenu.mn2 .op.dim{opacity:.55}
 #plnext{box-shadow:none}
 #plsubt{text-shadow:0 0 4px #000,2px 2px 3px #000,-2px -2px 3px #000}
 
@@ -2136,69 +2154,124 @@ if (adv > 30) SX.autoN = 0;
 if (adv < 1 && el > 30000 && P.rawUrl && P.hlsUrl && (P.flips || 0) < 2) return mnSource(true);
 if (adv < 1 && el > 60000 && (SX.autoN || 0) < 3) { P.est = Date.now(); mnNextVer(true); }
 }, 3000);
+function mnLbl(t, n) { return String(t || '').replace(/\.[a-z0-9]{2,4}$/i, '').slice(0, n); }
+function mnFoc(r) { return !!r && ((r.t === 'opt' && !!r.fn) || r.t === 'chips'); }
 function mnBuild() {
-var it = [], A = null; try { A = webapis.avplay; } catch (e) {}
-it.push({h: 'الصوت'});
-var au = MN.audio || [];
-if (au.length) au.forEach(function (a, i) { it.push({label: a.label, on: (P.audIdx === a.idx) || (P.audIdx < 0 && i === 0 && !a.cur), fn: function () { mnAudio(a); }}); });
-else it.push({label: MN.loadingAudio ? '... بحمّل مسارات الصوت' : 'مفيش مسارات صوت تانية', dim: 1});
-if (P.rawUrl && P.hlsUrl) it.push({label: P.rawMode ? '🔁 رجوع للبث المحوَّل (TorBox)' : '🎞 تشغيل الملف الأصلي (توقيت الترجمة زي الأندرويد + كل الأصوات)', fn: function () { mnSource(); }});
-if (P.kind === 'site' && SX.lastSp) it.push({label: '🔄 جرّب نسخة تانية (جودة أو صوت مختلف)', fn: function () { mnClose(); mnNextVer(false); }});
-it.push({h: 'الترجمة'});
-var tv = syCur(), tt = tv > 0 ? 'تأخير ' + tv.toFixed(1) + ' ث' : tv < 0 ? 'تقديم ' + (-tv).toFixed(1) + ' ث' : 'بدون تعديل';
-it.push({label: '⏱  توقيت الترجمة:   ◀  ' + tt + '  ▶    (OK = رجوع للأصلي)', timing: 1, fn: function () { mnTimeReset(); }});
-it.push({label: '🎯  ضبط تلقائي بالصوت:  ' + (autoOn() ? 'شغّال ✓' : 'مقفول'), fn: function () { mnAutoToggle(); }});
-if (P.prevX) it.push({label: '↩︎  تراجع عن الضبط التلقائي', fn: function () { mnUndoSync(); }});
-['sz', 'bg', 'col'].forEach(function (k) {
-it.push({label: (k === 'sz' ? '🔠  حجم الترجمة' : k === 'bg' ? '🔲  خلفية الترجمة' : '🎨  لون الترجمة') + ':   ◀  ' + cueName(k) + '  ▶', step: function (d) { cueStep(k, d); }, fn: function () { cueStep(k, 1); mnBuild(); mnPaint(); }});
+var A = null; try { A = webapis.avplay; } catch (e) {}
+MN.cols = [];
+if (MN.view === 'style') {
+var o = cueGet(), rows = [];
+[['sz', 'الحجم', CUE_SZ], ['bg', 'الخلفية', CUE_BG], ['col', 'اللون', CUE_COL]].forEach(function (g) {
+rows.push({t: 'cap', label: g[1]});
+rows.push({t: 'chips', chips: g[2].map(function (x) { return {label: x[1], on: String(x[0]) === String(o[g[0]]), plain: 1, fn: function () { cueSet(g[0], x[0]); }}; })});
 });
-it.push({label: '↺  الشكل الافتراضي للترجمة', fn: function () { cueReset(); }});
-it.push({label: 'بدون ترجمة', on: !!P.subOff, fn: function () { mnSub(-1); }});
-(SUBC.list || []).forEach(function (s, i) {
-it.push({label: 'ترجمة عربي ' + (i + 1) + '  ·  ' + String(s.name || s.u || '').replace(/\.[a-z0-9]{2,4}$/i, '').slice(0, 46), on: !P.subOff && !!XS && !P.emb && SUBC.i === i && !(XS && XS.ai), fn: function () { mnSub(i); }});
+rows.push({t: 'opt', label: '↺  الشكل الافتراضي', fn: function () { cueReset(); }});
+MN.cols.push({title: 'شكل الترجمة', rows: rows});
+mnFix(); return;
+}
+/* ---- عمود الترجمة (يمين) ---- */
+var sr = [], tv = syCur(), tt = (tv > 0 ? '+' : '') + tv.toFixed(1);
+sr.push({t: 'cap', label: 'ضبط التوقيت (' + tt + ' ث)'});
+sr.push({t: 'chips', ltr: 1, chips: [-1, -0.5, 0.5, 1].map(function (d) { return {label: (d > 0 ? '+' : '−') + Math.abs(d), plain: 1, fn: function () { nudge(d); }}; }).concat([{label: '↺', plain: 1, fn: function () { mnTimeReset(); }}])});
+var ac = [{label: '🎯 ضبط تلقائي بالصوت', on: autoOn(), fn: function () { mnAutoToggle(); }}];
+if (P.prevX) ac.push({label: '↩︎ تراجع', fn: function () { mnUndoSync(); }});
+sr.push({t: 'chips', chips: ac});
+sr.push({t: 'opt', label: '🎨  شكل الترجمة (الحجم / الخلفية / اللون)', fn: function () { MN.view = 'style'; MN.c = 0; MN.r = -1; MN.k = 0; cuePreview(); mnBuild(); mnPaint(); }});
+sr.push({t: 'opt', label: 'إيقاف', on: !!P.subOff, fn: function () { mnSub(-1); }});
+if (P.sp && nsKey(P.sp)) sr.push({t: 'opt', label: '🚫  إيقاف دايمًا للعمل ده', on: nsGet(P.sp), fn: function () { subToggle(true); }});
+(SUBC.list || []).forEach(function (x, i) {
+sr.push({t: 'opt', label: 'ترجمة عربي ' + (i + 1) + '  ·  ' + mnLbl(x.name || x.u, 46), on: !P.subOff && !!XS && !P.emb && SUBC.i === i && !(XS && XS.ai), fn: function () { mnSub(i); }});
 });
-(MN.en || []).forEach(function (s, i) {
-it.push({label: 'English ' + (i + 1) + '  ·  ' + String(s.name || s.u || '').replace(/\.[a-z0-9]{2,4}$/i, '').slice(0, 42), on: !P.subOff && !!XS && XS.it === s, fn: function () { mnSubEn(s); }});
+(MN.en || []).forEach(function (x, i) {
+sr.push({t: 'opt', label: 'English ' + (i + 1) + '  ·  ' + mnLbl(x.name || x.u, 42), on: !P.subOff && !!XS && XS.it === x, fn: function () { mnSubEn(x); }});
 });
-it.push({label: '🤖 ترجمة عربي بالذكاء الاصطناعي (من الإنجليزي)', fn: function () { mnAi(); }});
+sr.push({t: 'opt', label: '🤖  ترجمة ذكية (من الإنجليزي)', fn: function () { mnAi(); }});
 var tr = []; try { tr = A ? (A.getTotalTrackInfo() || []) : []; } catch (e) {}
 var n = 0;
 tr.forEach(function (t) { if (t.type !== 'TEXT') return; var lang = ''; try { var x = JSON.parse(t.extra_info || '{}'); lang = String(x.language || x.track_lang || '').toLowerCase(); } catch (e) {} n++;
-it.push({label: 'ترجمة داخل الملف ' + n + (mnLang(lang) ? '  ·  ' + mnLang(lang) : ''), fn: function () { mnEmb(t.index); }}); });
-MN.items = it;
-if (MN.sel == null || !MN.items[MN.sel] || !MN.items[MN.sel].fn) { MN.sel = -1; mnStep(1); }
+sr.push({t: 'opt', label: 'ترجمة داخل الملف ' + n + (mnLang(lang) ? '  ·  ' + mnLang(lang) : ''), fn: function () { mnEmb(t.index); }}); });
+MN.cols.push({title: 'الترجمة', rows: sr});
+/* ---- عمود الصوت (شمال) ---- */
+var ar = [], au = MN.audio || [];
+if (au.length) au.forEach(function (a, i) { ar.push({t: 'opt', label: a.label, on: (P.audIdx === a.idx) || (P.audIdx < 0 && i === 0 && !a.cur), fn: function () { mnAudio(a); }}); });
+else ar.push({t: 'opt', label: MN.loadingAudio ? '... بحمّل مسارات الصوت' : 'مفيش مسارات صوت تانية', dim: 1});
+if (P.rawUrl && P.hlsUrl) ar.push({t: 'opt', label: P.rawMode ? '🔁  رجوع للبث المحوَّل' : '🎞  تشغيل الملف الأصلي (كل الأصوات)', fn: function () { mnSource(); }});
+if (P.kind === 'site' && SX.lastSp) ar.push({t: 'opt', label: '🔄  جرّب نسخة تانية', fn: function () { mnClose(); mnNextVer(false); }});
+MN.cols.push({title: 'الصوت', rows: ar});
+mnFix();
 }
-function mnStep(d) { var n = MN.items.length, i = MN.sel, g = 0; do { i = (i + d + n) % n; g++; } while ((!MN.items[i].fn) && g <= n); MN.sel = i; }
+function mnFix() {
+if (!MN.cols[MN.c]) MN.c = 0;
+var rows = MN.cols[MN.c].rows;
+if (!mnFoc(rows[MN.r])) { MN.r = -1; mnRow(1); }
+var r = rows[MN.r];
+if (r && r.t === 'chips') MN.k = Math.max(0, Math.min(MN.k || 0, r.chips.length - 1));
+}
+function mnRow(d) {
+var rows = MN.cols[MN.c].rows, i = MN.r + d;
+while (i >= 0 && i < rows.length && !mnFoc(rows[i])) i += d;
+if (i >= 0 && i < rows.length) MN.r = i;
+}
+function mnCol(c2) {
+var cc = MN.cols[c2]; if (!cc) return;
+var rows = cc.rows, any = false; rows.forEach(function (r) { if (mnFoc(r)) any = true; }); if (!any) return;
+var i = Math.min(MN.r, rows.length - 1);
+while (i >= 0 && !mnFoc(rows[i])) i--;
+if (i < 0) { i = Math.min(MN.r, rows.length - 1); while (i < rows.length && !mnFoc(rows[i])) i++; }
+MN.c = c2; MN.r = i;
+}
 function mnPaint() {
-var m = $('plmenu'); m.innerHTML = ''; m.style.maxHeight = '700px'; m.style.overflow = 'hidden'; var selEl = null;
-MN.items.forEach(function (x, i) {
-var d = D.createElement('div');
-if (x.h) { d.style.cssText = 'color:#7dd3fc;margin:10px 0 4px;font-size:28px'; d.textContent = x.h; }
-else { d.className = 'mi' + (i === MN.sel ? ' on' : ''); if (x.dim) d.style.opacity = '.55'; d.textContent = (x.on ? '✓  ' : '') + x.label; d.style.fontSize = '27px'; }
-m.appendChild(d); if (i === MN.sel) selEl = d;
+var m = $('plmenu'); mnFix();
+m.className = 'mn2' + (MN.view === 'style' ? ' st' : ''); m.innerHTML = ''; m.style.maxHeight = ''; m.style.overflow = '';
+var fe = null, fb = null;
+MN.cols.forEach(function (cc, ci) {
+var col = D.createElement('div'); col.className = 'mc';
+var t = D.createElement('div'); t.className = 'mt'; t.textContent = cc.title; col.appendChild(t);
+var body = D.createElement('div'); body.className = 'mb'; col.appendChild(body);
+cc.rows.forEach(function (r, ri) {
+var foc = ci === MN.c && ri === MN.r, d = D.createElement('div');
+if (r.t === 'cap') { d.className = 'cap'; d.textContent = r.label; }
+else if (r.t === 'chips') {
+d.className = 'cr' + (r.ltr ? ' l' : '');
+r.chips.forEach(function (ch, k) { var c = D.createElement('div'); c.className = 'ch' + (ch.on ? ' on' : '') + (foc && k === MN.k ? ' f' : ''); c.textContent = (ch.on && ch.plain ? '✓  ' : '') + ch.label; d.appendChild(c); if (foc && k === MN.k) fe = c; });
+} else { d.className = 'op' + (r.on ? ' sel' : '') + (foc ? ' f' : '') + (r.dim ? ' dim' : ''); d.textContent = (r.on ? '✓  ' : '') + r.label; if (foc) fe = d; }
+body.appendChild(d); if (foc && !fb) fb = body;
 });
-m.style.display = 'block';
-if (selEl) { var top = selEl.offsetTop; m.scrollTop = Math.max(0, top - 300); m.style.overflowY = 'hidden'; }
+m.appendChild(col);
+});
+m.style.display = 'flex';
+if (fe && fb) { var top = fe.parentNode === fb ? fe.offsetTop : fe.parentNode.offsetTop; fb.scrollTop = Math.max(0, top - 240); }
 }
-function mnClose() { MN = null; if (CUEPV) { CUEPV = false; if (XS) XS.i = -2; else subShow(''); } var m = $('plmenu'); m.style.display = 'none'; m.style.maxHeight = ''; m.style.overflow = ''; ovShow(); }
+function mnClose() { MN = null; if (CUEPV) { CUEPV = false; if (XS) XS.i = -2; else subShow(''); } var m = $('plmenu'); m.style.display = 'none'; m.className = ''; m.style.maxHeight = ''; m.style.overflow = ''; ovShow(); }
 function mnTimeReset() { if (XS) { XOFF = 0; XS.i = -2; P.subFixed = true; fixReset(); } else { P.avOff = 0; try { webapis.avplay.setSubtitlePosition(0); } catch (e) {} } toast('↩︎ التوقيت رجع للأصلي'); mnBuild(); mnPaint(); }
 function mnKey(k, e) {
-var cur = MN.items[MN.sel];
-if (cur && cur.timing && (k === 37 || k === 39)) {
-MN.rep = (e && e.repeat) ? (MN.rep || 0) + 1 : 0;
-var st = MN.rep > 14 ? 5 : MN.rep > 6 ? 2 : MN.rep > 2 ? 1 : 0.5;
-nudge(k === 39 ? st : -st); mnBuild(); mnPaint(); return true;
+mnFix();
+var row = MN.cols[MN.c].rows[MN.r];
+if (k === 38) { mnRow(-1); mnPaint(); return true; }
+if (k === 40) { mnRow(1); mnPaint(); return true; }
+if (k === 37 || k === 39) {
+if (row && row.t === 'chips') {
+var dir = row.ltr ? (k === 39 ? 1 : -1) : (k === 39 ? -1 : 1), nk = (MN.k || 0) + dir;
+if (nk >= 0 && nk < row.chips.length) MN.k = nk;
+else if (k === 37 && MN.c === 0) mnCol(1);
+else if (k === 39 && MN.c === 1) mnCol(0);
+} else if (k === 37 && MN.c === 0) mnCol(1);
+else if (k === 39 && MN.c === 1) mnCol(0);
+mnPaint(); return true;
 }
-if (cur && cur.step && (k === 37 || k === 39)) { cur.step(k === 39 ? 1 : -1); mnBuild(); mnPaint(); return true; }
-if (k === 48) { mnTimeReset(); return true; }
-if (k === 38) { mnStep(-1); mnPaint(); return true; }
-if (k === 40) { mnStep(1); mnPaint(); return true; }
-if (k === 13) { var x = MN.items[MN.sel]; if (x && x.fn) x.fn(); return true; }
+if (k === 48 && MN.view !== 'style') { mnTimeReset(); return true; }
+if (k === 13) {
+var fn = row && (row.t === 'chips' ? (row.chips[MN.k] || {}).fn : row.fn);
+if (fn) fn();
+if (MN) { mnBuild(); mnPaint(); }
+return true;
+}
+if (MN.view === 'style') { MN.view = 'main'; MN.c = 0; MN.r = -1; MN.k = 0; mnBuild(); mnPaint(); return true; }
 mnClose(); return true;
 }
 function mnOpen() {
 if (P.kind === 'live') return;
-MN = {items: [], sel: null, audio: [], en: [], loadingAudio: false};
+MN = {cols: [], c: 0, r: -1, k: 0, view: 'main', audio: [], en: [], loadingAudio: false};
 var sid = P.sid, A = null; try { A = webapis.avplay; } catch (e) {}
 if (P.hlsFrom && !P.rawMode) {
 MN.loadingAudio = true;
@@ -2324,7 +2397,7 @@ var menuOn = menu && menu.style.display === 'block';
 var nxOn = nx && nx.style.display === 'block';
 var bottom = barOn ? 290 : 100, right = 160;
 if (nxOn) bottom = Math.max(bottom, 120 + (nx.offsetHeight || 150) + 30);
-if (menuOn) { right = 1920 - menu.offsetLeft + 30; bottom = Math.max(bottom, 290); }
+if (menuOn && menu.className.indexOf('mn2') < 0) { right = 1920 - menu.offsetLeft + 30; bottom = Math.max(bottom, 290); }
 var b = bottom + 'px', r = right + 'px';
 if (s.style.bottom !== b) s.style.bottom = b;
 if (s.style.right !== r) s.style.right = r;
@@ -2355,6 +2428,7 @@ function cueStep(k, d) {
 var o = cueGet(), arr = k === 'sz' ? CUE_SZ : k === 'bg' ? CUE_BG : CUE_COL, i = cueIdx(arr, o[k]);
 i = (i + d + arr.length) % arr.length; o[k] = arr[i][0]; sj('cue', o); cuePreview();
 }
+function cueSet(k, v) { var o = cueGet(); o[k] = v; sj('cue', o); cuePreview(); }
 function cueReset() { sj('cue', CUE_DEF); cuePreview(); toast('↺ رجع الشكل الافتراضي للترجمة'); }
 function cuePreview() {
 CUEPV = true;
@@ -2408,7 +2482,7 @@ if (!items.length || (type === 'AUDIO' && items.length < 2)) { ovShow(); return 
 TM = {type: type, items: items, sel: 0}; tmPaint(); ovShow(true);
 }
 function tmPaint() {
-var m = $('plmenu'); m.innerHTML = '<div style="color:#7dd3fc;margin-bottom:8px">' + (TM.type === 'TEXT' ? 'الترجمة' : 'الصوت') + '</div>';
+var m = $('plmenu'); m.className = ''; m.innerHTML = '<div style="color:#7dd3fc;margin-bottom:8px">' + (TM.type === 'TEXT' ? 'الترجمة' : 'الصوت') + '</div>';
 TM.items.forEach(function (it, i) { var d = D.createElement('div'); d.className = 'mi' + (i === TM.sel ? ' on' : ''); d.textContent = it.label; m.appendChild(d); });
 m.style.display = 'block';
 }
