@@ -10,6 +10,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v77: القواعد المشتركة (الذوق/تبويبات القنوات/أنماط الأقسام/اقتراحات ⚙) اتفصلت في elk_shared.js ومتزامنة مع شاشة الـTV (sync_shared.py)
   v76: الرئيسية بتتعلّم من اللي بتشوفه (مدبلج/هندي/كرتون…) + أقسام IPTV كاملة (رمضان وغيره) من الأقسام المثبّتة + قسم قنوات مباشرة بتبويبات و«آخر ما شاهدت» + إدارة الأقسام ⚙ + صفحة تفاصيل الأفلام والمسلسلات في الـIPTV بستايل Netflix (محتاج bot_5.py لتعلّم لغة الموقع)
   v75: حد تحميلات SubDL (50/يوم): الترجمة بتتحفظ على السيرفر فمتتحمّلش تاني + التجربة التلقائية لحد 3 بس
   v74: الترجمة: لو ترجمة عربي باظت (404 / أرشيف فاضي) بنجرّب اللي بعدها تلقائي (لحد 8 حسب الأقرب لاسم الملف) + السيرفر بيقبل أرشيفات وملفات ترجمة أكتر
@@ -1052,7 +1053,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=76;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=77;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -12675,6 +12676,92 @@ body.m-tv .lvc{flex-basis:190px;width:190px}
 </style>
 <script>
 /* ================= v76: ذوقك التلقائي + أقسام IPTV + قنوات مباشرة + تفاصيل IPTV بستايل Netflix ================= */
+/*ELK_SHARED_BEGIN sha=39f3e31a*/
+/* ELK shared core — مصدر الحقيقة الوحيد للقواعد المشتركة بين الموقع/الأندرويد (index) وشاشة التليفزيون (tv).
+   ES5 فقط (لازم يشتغل على متصفحات Tizen القديمة). من غير DOM ومن غير تخزين: دوال نقية بس.
+   لا تعدّل النسخة المحقونة جوه الـHTML — عدّل هنا وشغّل: python3 sync_shared.py index_XX.html tv_XX.html */
+var ELK = (function () {
+var VER = 1;
+/* اهتمامات الذوق: k مفتاح ثابت (بيتخزن في بروفايل المستخدم — ماتغيّرهوش)، gen = اهتمام عام وزنه أقل */
+var TZ_INT = [
+{k: 'dub', n: 'مدبلج', ic: '🎙️', rx: /(مدبلج|دبلج|dubbed|dubbing|\bdub\b)/i},
+{k: 'hindi', n: 'هندي', ic: '🇮🇳', rx: /(هند[يى]|الهند|hindi|bollywood|بوليوود|\bIN\s*\||india|tamil|telugu|malayalam|تامل)/i},
+{k: 'toon', n: 'كرتون وأطفال', ic: '🧸', rx: /(كرتون|cartoon|أطفال|اطفال|kids|children|animation|animated|رسوم متحركة|انيميشن|أنيميشن|disney|ديزني|pixar|بيكسار|nickelodeon|spacetoon|سبيستون)/i},
+{k: 'anime', n: 'أنمي', ic: '🎌', rx: /(anime|انمي|أنمي)/i},
+{k: 'tr', n: 'تركي', ic: '🇹🇷', rx: /(تركي|turk|تركيا)/i},
+{k: 'kr', n: 'كوري', ic: '🇰🇷', rx: /(كوري|korea|kdrama|k-drama)/i},
+{k: 'ram', n: 'رمضان', ic: '🌙', rx: /(رمضان|ramadan)/i},
+{k: 'sport', n: 'رياضة', ic: '⚽', rx: /(sport|رياض|bein|كورة|مباراة|مباريات|football|soccer)/i},
+{k: 'news', n: 'أخبار', ic: '📰', rx: /(news|اخبار|أخبار)/i},
+{k: 'horror', n: 'رعب', ic: '👻', rx: /(رعب|horror)/i},
+{k: 'action', n: 'أكشن', ic: '💥', rx: /(اكشن|أكشن|action)/i},
+{k: 'comedy', n: 'كوميدي', ic: '😂', rx: /(كوميدي|كوميديا|comedy)/i},
+{k: 'doc', n: 'وثائقي', ic: '🎞️', rx: /(وثائقي|documentary)/i},
+{k: 'ar', n: 'عربي', ic: '🇪🇬', gen: 1, rx: /(عربي|عربى|مصري|مصرى|egypt|arabic|خليج|سعودي|سوري|لبناني)/i},
+{k: 'en', n: 'أجنبي', ic: '🇺🇸', gen: 1, rx: /(english|إنجليزي|انجليزي|اجنبي|أجنبي|hollywood|هوليوود|\bEN\s*\||\bUS\s*\|)/i}
+];
+var TZ_HALF = 21 * 86400000;
+/* تبويبات القنوات التلقائية بالترتيب الافتراضي (المفتاح التاني = اهتمام الذوق اللي بيرفع التبويب) */
+var IVH_AUTO = [[/(sport|رياض|bein|كورة|مباراة|مباريات|ssc)/i, 'sport'], [/(news|اخبار|أخبار)/i, 'news'], [/(kids|اطفال|أطفال|cartoon|كرتون|toon)/i, 'toon'],
+[/(egypt|مصر|مصري)/i, 'ar'], [/(ramadan|رمضان)/i, 'ram'], [/(movies|افلام|أفلام|cinema|سينما)/i, ''], [/(music|اغاني|أغاني)/i, '']];
+/* اقتراحات ⚙ إدارة الأقسام */
+var IVM_SUG = [/(رمضان|ramadan)/i, /(2026|2027|new|جديد|latest)/i, /(مدبلج|dubbed)/i, /(هند|hindi)/i, /(كرتون|cartoon|kids|أطفال|اطفال)/i, /(انمي|أنمي|anime)/i, /(تركي|turk)/i, /(كوري|korea)/i, /(رياض|sport|bein)/i, /(اخبار|أخبار|news)/i, /(وثائق|documentary)/i];
+/* أنماط الأقسام المثبّتة: [regex, أيقونة, كلاس] */
+var IVX_ST = [[/(رمضان|ramadan)/i, '🌙', 'ram'], [/(مدبلج|dubbed)/i, '🎙️', 'dub'], [/(هند|hindi)/i, '🇮🇳', 'hin'], [/(كرتون|cartoon|أطفال|اطفال|kids|anime|انمي|أنمي)/i, '🧸', 'toon'],
+[/(تركي|turk)/i, '🇹🇷', 'trk'], [/(كوري|korea)/i, '🇰🇷', 'kor'], [/(رياض|sport)/i, '⚽', 'spt'], [/(2026|2027|new|جديد|latest)/i, '🆕', 'new']];
+
+function tzVal(o, k, now) {
+var e = o && o.w && o.w[k];
+return e ? e.v * Math.pow(0.5, ((now == null ? Date.now() : now) - e.t) / TZ_HALF) : 0;
+}
+/* بيضيف وزن wt لكل اهتمام النص بيطابقه. بيعدّل o مكانه ويرجّع true لو في تطابق */
+function tzAdd(o, text, wt, now) {
+text = String(text || ''); if (!text.replace(/\s/g, '') || !o || o.off) return false;
+now = now == null ? Date.now() : now; o.w = o.w || {};
+var hit = false, i, it;
+for (i = 0; i < TZ_INT.length; i++) {
+it = TZ_INT[i];
+if (it.rx.test(text)) { o.w[it.k] = {v: Math.min(60, tzVal(o, it.k, now) + wt * (it.gen ? 0.4 : 1)), t: now}; hit = true; }
+}
+return hit;
+}
+/* أعلى n اهتمامات: لازم قيمتها >= 2.5 وقريبة (>=25%) من الأعلى */
+function tzTop(o, n, now) {
+if (!o || o.off) return [];
+var arr = [], i, top;
+for (i = 0; i < TZ_INT.length; i++) { var v = tzVal(o, TZ_INT[i].k, now); if (v >= 2.5) arr.push({it: TZ_INT[i], v: v, ix: i}); }
+if (!arr.length) return [];
+arr.sort(function (a, b) { return (b.v - a.v) || (a.ix - b.ix); });
+top = arr[0].v;
+return arr.filter(function (x) { return x.v >= top * 0.25; }).slice(0, n).map(function (x) { return x.it; });
+}
+function secStyle(name) {
+for (var i = 0; i < IVX_ST.length; i++) if (IVX_ST[i][0].test(name)) return {ic: IVX_ST[i][1], cls: IVX_ST[i][2]};
+return {ic: '⭐', cls: ''};
+}
+/* تبويبات القنوات: base = تبويبات ثابتة (المثبّتة…)، lc = [{id, name}] أقسام القنوات، clean = دالة تنضيف الاسم.
+   بترتّب التبويبات التلقائية حسب الذوق وبتاخد أول 2 من كل نوع، لحد 14 تبويب */
+function hubChips(o, lc, base, clean, now) {
+var chips = (base || []).slice(), used = {}, i;
+clean = clean || function (s) { return s; };
+for (i = 0; i < chips.length; i++) used[String(chips[i].id)] = 1;
+IVH_AUTO.map(function (a, ix) { return {a: a, ix: ix, v: a[1] ? tzVal(o, a[1], now) : 0}; })
+.sort(function (x, y) { return (y.v - x.v) || (x.ix - y.ix); })
+.forEach(function (z) {
+var n = 0;
+for (var j = 0; j < lc.length; j++) {
+var c = lc[j], id = String(c.id);
+if (n >= 2) break;
+if (z.a[0].test(c.name || '') && !used[id]) { n++; if (chips.length >= 14) continue; used[id] = 1; chips.push({id: id, n: clean(c.name)}); }
+}
+});
+if (!chips.length) for (i = 0; i < lc.length && i < 6; i++) chips.push({id: String(lc[i].id), n: clean(lc[i].name)});
+return chips;
+}
+return {VER: VER, TZ_INT: TZ_INT, TZ_HALF: TZ_HALF, IVH_AUTO: IVH_AUTO, IVM_SUG: IVM_SUG, IVX_ST: IVX_ST,
+tzVal: tzVal, tzAdd: tzAdd, tzTop: tzTop, secStyle: secStyle, hubChips: hubChips};
+})();
+/*ELK_SHARED_END*/
 const IVX = {};
 function ivReg(kind, x) {
   const id = kind === 'series' ? x.series_id : x.stream_id;
@@ -12683,24 +12770,7 @@ function ivReg(kind, x) {
 const ivCn = (kind, cid) => ((IV.cn || {})[kind] || {})[String(cid)] || '';
 
 // ---------- ذوقك: تعلّم تلقائي من اللي بتشوفه ----------
-const TZ_INT = [
-  {k: 'dub', n: 'مدبلج', ic: '🎙️', rx: /(مدبلج|دبلج|dubbed|dubbing|\bdub\b)/i},
-  {k: 'hindi', n: 'هندي', ic: '🇮🇳', rx: /(هند[يى]|الهند|hindi|bollywood|بوليوود|\bIN\s*\||india|tamil|telugu|malayalam|تامل)/i},
-  {k: 'toon', n: 'كرتون وأطفال', ic: '🧸', rx: /(كرتون|cartoon|أطفال|اطفال|kids|children|animation|animated|رسوم متحركة|انيميشن|أنيميشن|disney|ديزني|pixar|بيكسار|nickelodeon|spacetoon|سبيستون)/i},
-  {k: 'anime', n: 'أنمي', ic: '🎌', rx: /(anime|انمي|أنمي)/i},
-  {k: 'tr', n: 'تركي', ic: '🇹🇷', rx: /(تركي|turk|تركيا)/i},
-  {k: 'kr', n: 'كوري', ic: '🇰🇷', rx: /(كوري|korea|kdrama|k-drama)/i},
-  {k: 'ram', n: 'رمضان', ic: '🌙', rx: /(رمضان|ramadan)/i},
-  {k: 'sport', n: 'رياضة', ic: '⚽', rx: /(sport|رياض|bein|كورة|مباراة|مباريات|football|soccer)/i},
-  {k: 'news', n: 'أخبار', ic: '📰', rx: /(news|اخبار|أخبار)/i},
-  {k: 'horror', n: 'رعب', ic: '👻', rx: /(رعب|horror)/i},
-  {k: 'action', n: 'أكشن', ic: '💥', rx: /(اكشن|أكشن|action)/i},
-  {k: 'comedy', n: 'كوميدي', ic: '😂', rx: /(كوميدي|كوميديا|comedy)/i},
-  {k: 'doc', n: 'وثائقي', ic: '🎞️', rx: /(وثائقي|documentary)/i},
-  {k: 'ar', n: 'عربي', ic: '🇪🇬', gen: 1, rx: /(عربي|عربى|مصري|مصرى|egypt|arabic|خليج|سعودي|سوري|لبناني)/i},
-  {k: 'en', n: 'أجنبي', ic: '🇺🇸', gen: 1, rx: /(english|إنجليزي|انجليزي|اجنبي|أجنبي|hollywood|هوليوود|\bEN\s*\||\bUS\s*\|)/i}
-];
-const TZ_HALF = 21 * 86400000;
+const TZ_INT = ELK.TZ_INT, TZ_HALF = ELK.TZ_HALF;   // القواعد دلوقتي في elk_shared.js
 const tzKey = () => 'tz_' + (UNAME || '') + '_' + (PID || '');
 function tzLoad() {
   let a = null, b = null;
@@ -12716,20 +12786,13 @@ function tzSave(o) {
   clearTimeout(_tzSv);
   _tzSv = setTimeout(() => { try { const p = prof(); if (p) { p.tz = o; saveProfileObj(p); } } catch (e) {} }, 20000);
 }
-const tzVal = (o, k) => { const e = o.w && o.w[k]; return e ? e.v * Math.pow(0.5, (Date.now() - e.t) / TZ_HALF) : 0; };
+const tzVal = (o, k) => ELK.tzVal(o, k);
 function tzFeed(text, wt) {
   text = String(text || ''); if (!text.trim()) return;
   const o = tzLoad(); if (o.off) return;
-  o.w = o.w || {}; let hit = false;
-  TZ_INT.forEach(it => { if (it.rx.test(text)) { o.w[it.k] = {v: Math.min(60, tzVal(o, it.k) + wt * (it.gen ? 0.4 : 1)), t: Date.now()}; hit = true; } });
-  if (hit) tzSave(o);
+  if (ELK.tzAdd(o, text, wt)) tzSave(o);
 }
-function tzTop(n) {
-  const o = tzLoad(); if (o.off) return [];
-  const arr = TZ_INT.map(it => ({it: it, v: tzVal(o, it.k)})).filter(x => x.v >= 2.5).sort((a, b) => b.v - a.v);
-  if (!arr.length) return [];
-  return arr.filter(x => x.v >= arr[0].v * 0.25).slice(0, n).map(x => x.it);
-}
+function tzTop(n) { return ELK.tzTop(tzLoad(), n); }
 const _tzSeen = {};
 function tzOnce(k, ms) { const t = Date.now(); if (_tzSeen[k] && t - _tzSeen[k] < ms) return false; _tzSeen[k] = t; return true; }
 function tzTap(k, id) {
@@ -12818,9 +12881,8 @@ function tzReset() {
 }
 
 // ---------- أقسام IPTV كاملة في الرئيسية (من الأقسام المثبّتة) ----------
-const IVX_ST = [[/(رمضان|ramadan)/i, '🌙', 'ram'], [/(مدبلج|dubbed)/i, '🎙️', 'dub'], [/(هند|hindi)/i, '🇮🇳', 'hin'], [/(كرتون|cartoon|أطفال|اطفال|kids|anime|انمي|أنمي)/i, '🧸', 'toon'],
-  [/(تركي|turk)/i, '🇹🇷', 'trk'], [/(كوري|korea)/i, '🇰🇷', 'kor'], [/(رياض|sport)/i, '⚽', 'spt'], [/(2026|2027|new|جديد|latest)/i, '🆕', 'new']];
-function ivSecStyle(n) { for (const s of IVX_ST) if (s[0].test(n)) return {ic: s[1], cls: s[2]}; return {ic: '⭐', cls: ''}; }
+const IVX_ST = ELK.IVX_ST;
+function ivSecStyle(n) { return ELK.secStyle(n); }
 const ivCatLabel = c => ivCleanName(String(c.n || '').replace(/^⭐\s*/, ''));
 async function ivSecBuild(pcs) {
   const N = isTv() ? TV_ROW_N : 24;
@@ -12847,24 +12909,16 @@ function ivRecentAdd(id, n, i) {
   const a = ivRecentGet().filter(x => String(x.id) !== String(id)); a.unshift({id: String(id), n: String(n || ''), i: i || ''});
   try { localStorage.setItem(ivRecentKey(), JSON.stringify(a.slice(0, 14))); } catch (e) {}
 }
-const IVH_AUTO = [[/(sport|رياض|bein|كورة|مباراة|مباريات|ssc)/i, 'sport'], [/(news|اخبار|أخبار)/i, 'news'], [/(kids|اطفال|أطفال|cartoon|كرتون|toon)/i, 'toon'],
-  [/(egypt|مصر|مصري)/i, 'ar'], [/(ramadan|رمضان)/i, 'ram'], [/(movies|افلام|أفلام|cinema|سينما)/i, ''], [/(music|اغاني|أغاني)/i, '']];
+const IVH_AUTO = ELK.IVH_AUTO;
 async function ivHubFetch(id) {
   if (id === '__pin') return ftPinLive(await ivList('get_live_streams'));
   return (await ivList('get_live_streams', id)).slice(0, 60);
 }
 async function ivHubBuild(pcs, pid) {
-  const P = IV.tzPool || {}, lc = P.lc || [], chips = [], used = new Set();
-  if (IV.pins.live.length) chips.push({id: '__pin', n: '⭐ المثبّتة'});
-  pcs.filter(c => c.k === 'live').forEach(c => { if (!used.has(String(c.id))) { used.add(String(c.id)); chips.push({id: String(c.id), n: ivCatLabel(c)}); } });
-  const o = tzLoad();
-  IVH_AUTO.map((a, ix) => ({a: a, ix: ix, v: a[1] ? tzVal(o, a[1]) : 0})).sort((x, y) => (y.v - x.v) || (x.ix - y.ix)).forEach(z => {
-    lc.filter(c => z.a[0].test(c.category_name || '') && !used.has(String(c.category_id))).slice(0, 2).forEach(c => {
-      if (chips.length >= 14) return;
-      used.add(String(c.category_id)); chips.push({id: String(c.category_id), n: ivCleanName(c.category_name)});
-    });
-  });
-  if (!chips.length) lc.slice(0, 6).forEach(c => chips.push({id: String(c.category_id), n: ivCleanName(c.category_name)}));
+  const P = IV.tzPool || {}, lc = P.lc || [], base = [], used = new Set();
+  if (IV.pins.live.length) base.push({id: '__pin', n: '⭐ المثبّتة'});
+  pcs.filter(c => c.k === 'live').forEach(c => { if (!used.has(String(c.id))) { used.add(String(c.id)); base.push({id: String(c.id), n: ivCatLabel(c)}); } });
+  const chips = ELK.hubChips(tzLoad(), lc.map(c => ({id: String(c.category_id), name: c.category_name})), base, ivCleanName);
   const old = IV.hub && IV.hub.pid === pid ? IV.hub : null;
   const H = {pid: pid, chips: chips, cache: old ? old.cache : {}, sel: (old && chips.some(c => c.id === old.sel)) ? old.sel : (chips[0] && chips[0].id), busy: null};
   IV.hub = H;
@@ -12908,7 +12962,7 @@ async function ivHubSel(id) {
 }
 
 // ---------- إدارة أقسام الرئيسية (تثبيت أي قسم + اقتراحات) ----------
-const IVM_SUG = [/(رمضان|ramadan)/i, /(2026|2027|new|جديد|latest)/i, /(مدبلج|dubbed)/i, /(هند|hindi)/i, /(كرتون|cartoon|kids|أطفال|اطفال)/i, /(انمي|أنمي|anime)/i, /(تركي|turk)/i, /(كوري|korea)/i, /(رياض|sport|bein)/i, /(اخبار|أخبار|news)/i, /(وثائق|documentary)/i];
+const IVM_SUG = ELK.IVM_SUG;
 const IVM_KL = {vod: '🎬 أفلام', series: '📺 مسلسلات', live: '📡 قنوات'};
 function ivMgrAll() {
   const P = IV.tzPool || {}, out = [];
