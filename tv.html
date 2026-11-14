@@ -2501,7 +2501,7 @@ tmClose(); return true;
 tmClose(); return true;
 }
 function nudgeStep(rep) { return rep > 14 ? 5 : rep > 6 ? 2 : rep > 2 ? 1 : 0.5; }
-function fixBody(f, x) { return {u: x.it.u, src: P.rawUrl || P.url, s: f.sp.s, e: f.sp.e, key: f.key, fkey: f.key}; }
+function fixBody(f, x) { return {u: x.it.u, src: P.rawUrl || P.url, s: f.sp.s, e: f.sp.e, key: subSrvKey(f.sp), fkey: subFKey(f.sp)}; }
 function fixSaveSoon() { clearTimeout(FIXT); FIXT = setTimeout(fixSave, 1500); }
 function fixSave() {
 var x = XS, f = XFIX; if (!x || !f || !x.it || P.rawMode) return;
@@ -3554,7 +3554,7 @@ var sub = sp.s != null ? '  S' + p2(sp.s) + 'E' + p2(sp.e) : '';
 var cd = SX.cur && String(SX.cur.id) === String(sp.id) ? SX.cur : null;
 if (cd && sp.eps == null && sp.type === 'tv') { var sn = (cd.seasons || []).filter(function (z) { return z.n === sp.s; })[0]; if (sn && sn.eps) sp.eps = sn.eps; }
 var spx = {type: sp.type, id: sp.id, imdb: sp.imdb, title: sp.title, poster: sp.poster || '', year: sp.year || '', q: sp.q || '', s: sp.s != null ? sp.s : null, e: sp.s != null ? sp.e : null,
-eps: sp.eps || null, ms: sp.ms || null, vh: v.hash || '', ref: v.hash ? '' : (v.ref || ''), vname: v.title || '', next: null};
+eps: sp.eps || null, ms: sp.ms || null, vh: v.hash || '', ref: v.hash ? '' : (v.ref || ''), vname: v.title || '', sub: (pr && pr.sub) || null, next: null};
 sxStartPlay({kind: 'site', url: d.direct, title: sp.title + sub, key: sp.key, resume: rs, sp: spx, vtitle: v.title,
 next: sp.type === 'tv' ? function () { sxNextAfter(sp); } : null,
 hlsFrom: {hls: d.hls, torrent_id: d.torrent_id, file_id: d.file_id, direct: d.direct}});
@@ -3591,6 +3591,9 @@ if (sid !== P.sid || !P.on || err || st !== 200 || !tx) return done(null);
 var x = srtParse(tx); if (x.c.length) { x.sh = +shift || 0; x.sc = scale || 1; x.it = it; } done(x.c.length ? x : null);
 });
 }
+/* مفاتيح السيرفر (نفس المتصفح والأندرويد): key = رابط الفيديو من غير الكويري، fkey = n:اسم الملف. بيها الضبط المحفوظ بيتشارك بين الأجهزة */
+function subSrvKey(sp) { var o = P.sctx && P.sctx.o; return String((o && (o.rawUrl || o.url)) || P.rawUrl || P.url || '').split('?')[0]; }
+function subFKey(sp) { var fn = (sp && sp.vname) || P.vtitle || ''; return fn ? 'n:' + fn : subSrvKey(sp); }
 function subKey(sp) { return sp.vh ? 'h:' + sp.vh : (sp.vname || P.vtitle) ? 'n:' + (sp.vname || P.vtitle) : String(P.url || '').split('?')[0]; }
 function autoSync(it, ai, sp, sid, ck, c) {
 var src = P.rawUrl || P.url || ''; if (!/^https?:\/\//i.test(src)) return;
@@ -3618,7 +3621,7 @@ if (d.done) return fin(d);
 if (!d.job || ++n > 80) return;
 setTimeout(function () { api('/sub/auto?job=' + enc(d.job), {timeout: 30000}, function (e, s2, d2) { poll(d2); }); }, 2500);
 }
-api('/sub/auto', {method: 'POST', timeout: 30000, body: {u: it.u, src: src, s: sp.s, e: sp.e, lang: it.lang || (ai ? 'EN' : 'AR'), key: key, fkey: key, force: false, dur: P.dur || 0}}, function (e, s2, d) { poll(d); });
+api('/sub/auto', {method: 'POST', timeout: 30000, body: {u: it.u, src: src, s: sp.s, e: sp.e, lang: it.lang || (ai ? 'EN' : 'AR'), key: subSrvKey(sp), fkey: subFKey(sp), force: false, dur: P.dur || 0}}, function (e, s2, d) { poll(d); });
 }
 /* الضبط التلقائي بالصوت شغّال دايمًا زي المتصفح (وبيجرّب الترجمة اللي بعدها لو الأولى مش مطابقة). لإيقافه: localStorage.setItem('autosync','0') */
 function autoOn() { try { return localStorage.getItem('autosync') !== '0'; } catch (e) { return true; } }
@@ -3626,7 +3629,7 @@ function savedFix(it, ai, sp, sid, ck) {
 if (P.rawMode) return;
 var src = P.rawUrl || P.url || '', key = subKey(sp);
 function live() { return sid === P.sid && P.on; }
-api('/sub/auto', {method: 'POST', timeout: 30000, body: {u: it.u, src: src, s: sp.s, e: sp.e, lang: it.lang || (ai ? 'EN' : 'AR'), key: key, fkey: key, fixonly: true, dur: P.dur || 0}}, function (e, s2, d) {
+api('/sub/auto', {method: 'POST', timeout: 30000, body: {u: it.u, src: src, s: sp.s, e: sp.e, lang: it.lang || (ai ? 'EN' : 'AR'), key: subSrvKey(sp), fkey: subFKey(sp), fixonly: true, dur: P.dur || 0}}, function (e, s2, d) {
 if (!live() || P.subFixed || e || !d || !d.ok || !d.manual) return;
 var sh = +d.shift, sc = +d.scale || 1;
 if (!isFinite(sh) || !isFinite(sc) || (Math.abs(sh) < 0.05 && Math.abs(sc - 1) < 1e-4)) return;
@@ -3644,6 +3647,7 @@ function ok() { return sid === P.sid && P.on && !P.subDone; }
 function apply(it, ai) {
 if (!ok()) return;
 var ck = 'sm:' + shash([it.u, sp.s, sp.e, o.vtitle || sp.vname || ''].join('|')), c = P.rawMode ? null : lj(ck, null);
+if (!c && sp.sub && sp.sub.u && sp.sub.u === it.u && !ai) c = {sh: +sp.sub.shift || 0, sc: +sp.sub.scale || 1, n: 2};
 if (c && (c.sh || c.sc !== 1) && !(isFinite(c.sh) && isFinite(c.sc))) c = null;
 subFetch(it, ai, c ? c.sh : 0, c ? c.sc : 1, sp, sid, function (x) {
 if (!x && c) { sj(ck, null); c = null; return subFetch(it, ai, 0, 1, sp, sid, function (x2) { go(x2); }); }
@@ -3662,7 +3666,16 @@ SUBC.apply = apply;
 api('/subs?lang=AR&' + base + se, {timeout: 30000}, function (e, s, r) {
 if (!ok()) return;
 var l = (!e && s === 200 && r && r.items) || [];
-if (l.length) { SUBC.list = subRank(l, o.vtitle || '').slice(0, 8); SUBC.i = 0; SUBC.apply = apply; return apply(SUBC.list[0], ''); }
+if (l.length) {
+SUBC.list = subRank(l, o.vtitle || '').slice(0, 8); SUBC.i = 0; SUBC.apply = apply;
+var sv = sp.sub && sp.sub.u && !sp.sub.ai ? sp.sub : null;
+if (sv) {
+var ix = -1; SUBC.list.forEach(function (z, i) { if (z.u === sv.u) ix = i; });
+if (ix < 0 && /^(ar|$)/i.test(String(sv.lang || ''))) { SUBC.list.unshift({u: sv.u, lang: sv.lang || 'AR', name: sv.name || ''}); ix = 0; }
+if (ix >= 0) { SUBC.i = ix; return apply(SUBC.list[ix], ''); }
+}
+return apply(SUBC.list[0], '');
+}
 api('/subs?lang=EN&' + base + se, {timeout: 30000}, function (e2, s2, r2) {
 var l2 = (!e2 && s2 === 200 && r2 && r2.items) || [];
 if (!ok() || !l2.length) return;
@@ -3848,9 +3861,11 @@ var pos = done ? dur : P.pos;
 if (!done && !(pos >= 5)) return;
 if (!done && !P.dur && pos < 30) return;
 var dn = !!done || (dur > 0 && pos / dur >= 0.92);
+var sbv = old.sub || null;
+if (XS && XS.it && XFIX && !P.subOff) sbv = {u: XS.it.u, lang: XS.it.lang || (XFIX.ai ? 'EN' : 'AR'), name: XS.it.name || '', ai: XFIX.ai || '', shift: Math.round(((XS.sh || 0) + XOFF) * 100) / 100, scale: XS.sc || 1};
 setItem(sxMix(old, {key: P.key, title: sp.title, poster: sp.poster || old.poster || '', year: sp.year || '', type: sp.type || null, tmdb: sp.id || null, s: sp.s != null ? sp.s : null, e: sp.e != null ? sp.e : null,
 eps: sp.eps || old.eps || null, ms: sp.ms || old.ms || null, src: sp.src || old.src || '', cl: sp.cl || '', cle: sp.cle || 0, fid: old.fid != null ? old.fid : null, fname: sp.vname || old.fname || '',
-qn: sp.q || old.qn || '', pos: Math.floor(pos), dur: Math.floor(dur), done: dn, sub: old.sub || null, dr: false, imdb: sp.imdb || '', vh: sp.vh || '', ref: sp.ref || '', hide: false, next: sp.next || null}));
+qn: sp.q || old.qn || '', pos: Math.floor(pos), dur: Math.floor(dur), done: dn, sub: sbv, dr: false, imdb: sp.imdb || '', vh: sp.vh || '', ref: sp.ref || '', hide: false, next: sp.next || null}));
 }
 /* ---- القائمة ---- */
 $('xList')._ok = function () {
