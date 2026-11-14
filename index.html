@@ -10,6 +10,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v76: الرئيسية بتتعلّم من اللي بتشوفه (مدبلج/هندي/كرتون…) + أقسام IPTV كاملة (رمضان وغيره) من الأقسام المثبّتة + قسم قنوات مباشرة بتبويبات و«آخر ما شاهدت» + إدارة الأقسام ⚙ + صفحة تفاصيل الأفلام والمسلسلات في الـIPTV بستايل Netflix (محتاج bot_5.py لتعلّم لغة الموقع)
   v75: حد تحميلات SubDL (50/يوم): الترجمة بتتحفظ على السيرفر فمتتحمّلش تاني + التجربة التلقائية لحد 3 بس
   v74: الترجمة: لو ترجمة عربي باظت (404 / أرشيف فاضي) بنجرّب اللي بعدها تلقائي (لحد 8 حسب الأقرب لاسم الملف) + السيرفر بيقبل أرشيفات وملفات ترجمة أكتر
   v73: TorBox: فحص التخزين قبل السحب + trackers + اختيار ملف الحلقة بالترتيب + تحويل تلقائي لـAllDebrid لو فشل (والعكس)
@@ -1051,7 +1052,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=75;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=76;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2848,6 +2849,7 @@ async function openDetails(type, id) {
     // مسلسلات TMDB مش مربوطة فيها برقم IMDb: بنكمّله من جدول يدوي عشان التشغيل وقايمة النسخ يشتغلوا
     try { if (!d.imdb) await Promise.race([resolveImdb(d), sleep(6000)]); } catch (x) {}
     cur = d;
+    tzSite(d);
     selected = {title: d.title, year: d.year, type: d.type, poster: d.poster};
     const bg = esc(d.backdrop || d.poster || '');
     const cb = (last && !last.done)
@@ -3577,6 +3579,7 @@ function ivProgress(pos, dur, ended) {
 function ivPlay(url, title, o) {
   if (!isPremiumOK() || noWatch()) return;
   o = o || {};
+  try { tzPlay(title, o); } catch (e) {}
   if (ivApp() || (window.AndroidPlayer && typeof AndroidPlayer.play !== 'undefined')) {
     window.IV_NP = {key: o.key || '', next: o.next, sid: o.sid, meta: o.meta, url: url, name: title}; window.NP_PLAYED = Date.now();
     AndroidPlayer.play(url, title + (o.fresh ? '\n@@FRESH@@' : ''), (o.key && !o.fresh) ? ivPosGet(o.key) : 0);
@@ -3680,6 +3683,7 @@ function ivCleanName(n) {
   return t || o;
 }
 function ivTile(kind, x) {
+  try { ivReg(kind, x); } catch (e) {}
   const live = kind === 'live', id = kind === 'series' ? x.series_id : x.stream_id, img = kind === 'series' ? x.cover : x.stream_icon;
   const isnew = !live && ((+x.added || +x.last_modified || 0) > Date.now() / 1000 - 7 * 86400);
   const mk = live ? {done: 0, bar: ''} : ivTileMark(kind, id);
@@ -3708,7 +3712,7 @@ async function ivHomeLoad(pid) {
   const bad = e => { err = err || (e && e.message) || 'خطأ'; return []; };
   const [vod, ser] = await Promise.all([ivList('get_vod_streams').catch(bad), ivList('get_series').catch(bad)]);
   const pcs = await ftCatsFor();
-  const pc = k => pcs.filter(c => c.k === k).map(ivCatTile).join('');
+  const pc = k => '';   // v76: الأقسام المثبّتة بقت أقسام كاملة (ivSecBuild) مش كروت
   let h = '', pinH = '', pv = [], ps = [], livePinH = '';
   const st = ivDaysTxt(cfg.stat);
   const d = ivDays(cfg.stat);
@@ -3744,7 +3748,18 @@ async function ivHomeLoad(pid) {
   }
   h += pinH;   // الأفلام والمسلسلات المثبّتة تحت القنوات المثبّتة
   const pr = (t, k, arr, tab) => (arr.length || pc(k)) ? '<h3 class="sec">' + t + '</h3><div class="hrow">' + pc(k) + arr.map(x => ivTile(k === 'vod' ? 'vod' : 'series', x)).join('') + ivMore(tab) + '</div>' : '';
-  IV.pinHTML = livePinH + pr('⭐ الأفلام المثبّتة', 'vod', pv, 'vod') + pr('⭐ المسلسلات المثبّتة', 'series', ps, 'series');
+  IV.pinHTML = pr('⭐ الأفلام المثبّتة', 'vod', pv, 'vod') + pr('⭐ المسلسلات المثبّتة', 'series', ps, 'series');
+  try {
+    const sf = p => p.catch(() => []);
+    const [vc, sc, lc] = await Promise.all([sf(ivCats('vod')), sf(ivCats('series')), sf(ivCats('live'))]);
+    IV.cn = {vod: {}, series: {}, live: {}};
+    vc.forEach(c => { IV.cn.vod[String(c.category_id)] = c.category_name; });
+    sc.forEach(c => { IV.cn.series[String(c.category_id)] = c.category_name; });
+    lc.forEach(c => { IV.cn.live[String(c.category_id)] = c.category_name; });
+    IV.tzPool = {vod: vod, ser: ser, vc: vc, sc: sc, lc: lc}; IV.tzC = {};
+    IV.secHTML = await ivSecBuild(pcs); IV.secPid = pid;
+    await ivHubBuild(pcs, pid);
+  } catch (e) {}
   if (IV.homeFor !== pid) return;
   IV.homePid = pid;
   IV.homeHTML = h;
@@ -3814,6 +3829,7 @@ async function ivRender() {
   if (!IV.open) return;
   const tok = ++IV.rt;
   ivHead();
+  try { $('iv').classList.toggle('ivnf', !!IV.sel && !isTv() && (IV.sel.k === 'vod' || IV.sel.k === 'series')); } catch (e) {}
   const box = $('ivBody');
   $('ivQ').style.display = (IV.tab === 'me' || IV.sel) ? 'none' : '';
   if (!IV.loaded) { box.innerHTML = pend('جاري التحميل...'); return; }
@@ -3863,6 +3879,7 @@ async function ivRender() {
 }
 function ivTap(el) {
   const k = el.dataset.k, id = el.dataset.id;
+  try { if (k === 'vod' || k === 'series' || k === 'live') tzTap(k, id); } catch (e) {}
   if (k === 'more') return ivOpen(id);
   if (k === 'cat') return ivOpen(el.dataset.ck, id);
   if (k === 'live') {
@@ -3885,6 +3902,7 @@ async function ivDetail(box) {
       if (tok !== IV.rt || IV.sel !== s) return;
       const i = v.info || {}, md = v.movie_data || {}, ext = md.container_extension || 'mp4', nm = md.name || i.name || 'فيلم';
       const url = ivMovieUrl(s.id, ext);
+      if (!isTv()) { ivVodNf(box, v, s, i, md, url, nm, ext); return; }
       box.innerHTML = '<div class="ivdet">' + (i.movie_image ? '<img ' + lzA(i.movie_image) + ' alt="">' : '') + '<div><h2>' + esc(nm) + '</h2>' +
         '<small>' + [i.releasedate || i.releaseDate, i.genre, i.duration, i.rating ? '⭐ ' + i.rating : ''].filter(Boolean).map(esc).join(' · ') + '</small>' +
         '<p>' + esc(i.plot || i.description || '') + '</p></div></div>' +
@@ -3905,7 +3923,7 @@ async function ivDetail(box) {
 }
 function ivEpisodes(v) {
   const out = [], eps = v.episodes || {};
-  const add = x => out.push({id: x.id, ext: x.container_extension || 'mp4', s: +x.season || 0, e: +x.episode_num || 0, t: x.title || '', img: (x.info && x.info.movie_image) || '', dur: (x.info && x.info.duration) || ''});
+  const add = x => out.push({id: x.id, ext: x.container_extension || 'mp4', s: +x.season || 0, e: +x.episode_num || 0, t: x.title || '', img: (x.info && x.info.movie_image) || '', dur: (x.info && x.info.duration) || '', p: (x.info && x.info.plot) || ''});
   if (Array.isArray(eps)) eps.forEach(a => (Array.isArray(a) ? a : [a]).forEach(add));
   else Object.keys(eps).forEach(sn => (eps[sn] || []).forEach(x => { if (!x.season) x.season = +sn; add(x); }));
   out.sort((a, b) => a.s - b.s || a.e - b.e);
@@ -3922,6 +3940,7 @@ function ivSeriesRender(box) {
   const seasons = [...new Set(all.map(x => x.s))];
   if (IV.ss == null || !seasons.includes(IV.ss)) IV.ss = seasons[0];
   const prog = ivProgAll();
+  if (!isTv()) { ivSeriesNf(box, v, i, nm, all, seasons, prog); return; }
   const eps = all.map((x, ix) => ({x: x, ix: ix})).filter(o => o.x.s === IV.ss);
   box.innerHTML = '<div class="ivdet">' + (i.cover ? '<img ' + lzA(i.cover) + ' alt="">' : '') + '<div><h2>' + esc(nm) + '</h2>' +
     '<small>' + [i.releaseDate || i.releasedate, i.genre, i.rating ? '⭐ ' + i.rating : ''].filter(Boolean).map(esc).join(' · ') + '</small><p>' + esc(i.plot || '') + '</p></div></div>' +
@@ -7293,6 +7312,7 @@ function setSpeed(x) {
 function saveProgress(v, ended) {
   if (!PLAY || !PID || !v) return;
   const c = PLAY, n = nextTarget();
+  tzSitePlay(c);
   const oldIt = getItem(c.key) || {};
   const fin = isFinite(v.duration) && v.duration > 0;
   if (fin && v.duration < 60) return;
@@ -10730,6 +10750,7 @@ function seedFavMaybe() {
 }
 function homeBoot() {
   ensureFavList(); loadFav(); seedFavMaybe();
+  try { tzBoot(); } catch (e) {}
   if (pf().ar.length) ensureAddonRows();
 }
 function favBarHTML() {
@@ -10747,6 +10768,9 @@ function newHomeHTML() {
   h += favBarHTML();
   try { h += ivPinHTML(); } catch (e) {}   // قنوات/أفلام/مسلسلات الـIPTV المثبّتة
   try { h += cwRowHTML(); } catch (e) {}   // كمّل المشاهدة (موقع + IPTV) تحت المثبّتات
+  try { h += tzHomeHTML(); } catch (e) {}   // على ذوقك (تعلّم تلقائي)
+  try { h += ivSecGet(); } catch (e) {}     // أقسام IPTV كاملة (رمضان…)
+  try { h += ivHubGet(); } catch (e) {}     // القنوات المباشرة
   if (!NEWD) h += NEW_ERR ? warn('تعذّر تحميل الجديد: ' + NEW_ERR) + '<button class="search-btn" style="margin:8px 0" onclick="NEW_ERR=\'\';renderShelves();loadNew(true)">🔄 جرّب تاني</button>' : pend('جاري تحميل الجديد...');
   else {
     let any = false;
@@ -12577,5 +12601,488 @@ body:not(.m-tv):not(.m-desktop) #relBox .hrow>.poster{flex:none!important;width:
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .sz{direction:ltr}
 body:not(.m-tv):not(.m-desktop) #eps .ep.nfep .eacts .nfmore svg{width:30px;height:30px}
 </style>
+<style>
+/* ===== v76 ===== */
+.tzhd{display:flex;align-items:center;gap:10px;margin:20px 2px 0;padding:10px 12px;border-radius:16px;background:linear-gradient(135deg,#ff5a3626,#7c3aed26);border:1px solid #ff5a3638}
+.tzhd .tzi{font-size:24px}.tzhd>div{flex:1;min-width:0}.tzhd b{display:block;font-size:16px;font-weight:900;color:#fff}.tzhd small{display:block;color:#9aa0b4;font-size:12px;margin-top:2px}
+.ivsec{margin:18px 0 6px;padding:10px 0 0;border-radius:20px}
+.ivsec.ram{background:linear-gradient(180deg,#3b1d6e99,#0000 70%);border:1px solid #f59e0b33;padding:12px 10px 0}
+.ivsec.dub{background:linear-gradient(180deg,#0e3a4a88,#0000 70%);padding:12px 10px 0}
+.ivsec.hin{background:linear-gradient(180deg,#5a2a0a88,#0000 70%);padding:12px 10px 0}
+.ivsec.toon{background:linear-gradient(180deg,#0b4a2a77,#0000 70%);padding:12px 10px 0}
+.ivsh{display:flex;align-items:center;gap:10px;margin:0 2px 12px}
+.ivsh>div{flex:1;min-width:0}.ivsh b{display:block;font-size:19px;font-weight:900;color:#fff;line-height:1.3}.ivsh small{display:block;color:#9aa0b4;font-size:12px;margin-top:2px}
+.ivsi{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none;background:linear-gradient(135deg,#ff5a36,#ff8a3d)}
+.ivsec.ram .ivsi{background:linear-gradient(135deg,#6d28d9,#f59e0b)}.ivsec.dub .ivsi{background:linear-gradient(135deg,#0ea5e9,#22d3ee)}.ivsec.hin .ivsi{background:linear-gradient(135deg,#f97316,#16a34a)}.ivsec.toon .ivsi{background:linear-gradient(135deg,#22c55e,#facc15)}
+.ivsm{flex:none;background:#ffffff14;border:1px solid #ffffff1f;color:#fff;border-radius:99px;padding:7px 14px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer}
+.ivhub{margin:22px 0 8px;padding:14px 12px 4px;border-radius:22px;background:linear-gradient(160deg,#2a1020,#0b0c12 70%);border:1px solid #ff5a3640}
+.ivhh{display:flex;align-items:center;gap:10px;margin-bottom:12px}.ivhh b{flex:1;font-size:20px;font-weight:900;color:#fff}
+.lvlive{color:#ef4444;font-weight:900;font-size:12px;animation:lvp 1.4s infinite}@keyframes lvp{50%{opacity:.3}}
+.ivgear{background:#ffffff14;border:1px solid #ffffff1f;color:#fff;border-radius:99px;padding:7px 13px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer}
+.ivhc{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:10px}.ivhc::-webkit-scrollbar{display:none}
+.ivhc button{flex:none;padding:9px 16px;border-radius:99px;background:#1c1d28;border:1px solid #ffffff14;color:#e5e7ef;font-family:inherit;font-weight:800;font-size:14px;white-space:nowrap;cursor:pointer}
+.ivhc button.on{background:linear-gradient(135deg,#ff5a36,#ff8a3d);border:0;color:#fff}
+.lvc{position:relative;flex:0 0 136px;width:136px;border-radius:18px;background:#14151e;border:1px solid #ffffff14;overflow:hidden;cursor:pointer;scroll-snap-align:start}
+.lvc .lvl{height:88px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#23242f,#0d0e15);font-size:34px}
+.lvc .lvl img{max-width:68%;max-height:66px;object-fit:contain;aspect-ratio:auto}
+.lvc .t{padding:9px 8px 11px;font-size:13px;font-weight:800;text-align:center;line-height:1.35;color:#fff;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:2.8em}
+.lvb{position:absolute;top:7px;left:7px;background:#dc2626;color:#fff;font-size:10px;font-weight:900;padding:2px 7px;border-radius:7px;z-index:1}
+.lvc .ivpin{position:absolute;top:5px;right:5px;z-index:2}
+body.m-tv .lvc{flex-basis:190px;width:190px}
+.ivhe{color:#9aa0b4;text-align:center;font-size:13px;padding:14px 8px;line-height:1.8}
+#ivMgr{position:fixed;inset:0;z-index:100000;display:none;align-items:flex-end;direction:rtl}
+#ivMgr .ivmbg{position:absolute;inset:0;background:#000b}
+#ivMgr .ivmb{position:relative;width:100%;max-height:90vh;background:#12131b;border-radius:22px 22px 0 0;display:flex;flex-direction:column;box-shadow:0 -10px 40px #000;padding-bottom:env(safe-area-inset-bottom,0px)}
+#ivMgr .ivmh{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #ffffff14}#ivMgr .ivmh b{flex:1;font-size:18px;color:#fff}
+#ivMgr .ivmh button{width:38px;height:38px;border-radius:50%;border:0;background:#ffffff14;color:#fff;font-size:16px}
+#ivMgr .ivmbody{overflow-y:auto;padding:6px 14px 20px;color:#fff}
+#ivMgr .ivms{margin:16px 2px 8px;font-weight:900;font-size:15px;color:#ff8a3d}
+#ivMgr .ivmr{display:flex;align-items:center;gap:8px;padding:10px 4px;border-bottom:1px solid #ffffff0f}
+#ivMgr .ivmr b{flex:1;min-width:0;font-size:14px;line-height:1.4}#ivMgr .ivmk{font-size:11px;color:#9aa0b4;flex:none;min-width:64px}
+#ivMgr .ivmr button{flex:none;min-width:38px;height:36px;border-radius:10px;border:1px solid #ffffff1f;background:#1c1d28;color:#fff;font-family:inherit;font-weight:800}
+#ivMgr .ivmr button.x{color:#f87171}#ivMgr .ivmr button.ad{background:linear-gradient(135deg,#ff5a36,#ff8a3d);border:0;padding:0 14px}#ivMgr .ivmr em{font-style:normal;color:#86efac;font-size:12px}
+#ivMgr .search-input{width:100%;box-sizing:border-box;margin:0 0 8px;height:44px;padding:0 14px;border-radius:12px;background:#0d0e15;border:1px solid #ffffff1f;color:#fff}
+/* تفاصيل Netflix للـIPTV */
+#iv.ivnf{background:#000!important}#iv.ivnf .sphd{display:none}#iv.ivnf .spbody{padding:0 12px 48px}
+.nfv-hero{position:relative;aspect-ratio:16/9;max-height:58vh;margin:0 -12px;background:#111 center/cover no-repeat}
+.nfv-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,#000 0,#0000 40%),linear-gradient(to bottom,#000a,#0000 28%)}
+.nfv-back{position:absolute;z-index:2;top:calc(8px + env(safe-area-inset-top,0px));right:10px;width:46px;height:46px;border:0;background:none;color:#fff;font-size:30px;line-height:46px;cursor:pointer}
+.nfv-h{font-size:30px;font-weight:900;line-height:1.25;color:#fff;margin:14px 0 8px}
+.nfv-meta{display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:15px;color:#a3a3a3;margin:0 0 14px}
+.nfv-hd{border:1px solid #a3a3a3;border-radius:3px;padding:0 5px;font-size:11px;font-weight:800;line-height:16px}.nfv-rt{color:#fbbf24}
+.nfv-w,.nfv-g{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:50px;margin:0 0 10px;padding:0 16px;border:0;border-radius:6px;font-size:17px;font-weight:800;font-family:inherit;cursor:pointer}
+.nfv-w{background:#fff;color:#000}.nfv-g{background:#262626;color:#fff;font-weight:700}.nfv-w svg,.nfv-g svg{width:24px;height:24px}
+.nfv-ov{font-size:15px;line-height:1.8;color:#e5e5e5;margin:12px 0 8px}.nfv-cast{font-size:13px;line-height:1.7;color:#a3a3a3;margin:2px 0}.nfv-cast b{color:#bdbdbd}
+.nfv-act{display:flex;justify-content:space-around;margin:18px 0 6px;padding:0 0 12px}
+.nfv-a{background:none;border:0;color:#a3a3a3;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:70px;font-size:13px;font-family:inherit;cursor:pointer}.nfv-a svg{width:30px;height:30px;color:#fff}
+.nfv-tabs{display:flex;gap:26px;margin:4px -12px 12px;padding:0 16px;border-top:1px solid #2f2f2f;overflow-x:auto;scrollbar-width:none}
+.nfv-tabs button{position:relative;background:none;border:0;padding:14px 0;color:#a3a3a3;font-size:17px;font-weight:800;font-family:inherit;white-space:nowrap;cursor:pointer}
+.nfv-tabs button.on{color:#fff}.nfv-tabs button.on::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;background:#e50914}
+.nfv-seas{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 0 16px}
+.nfv-seas button{flex:none;padding:9px 16px;border-radius:6px;border:0;background:#262626;color:#fff;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer}.nfv-seas button.on{background:#fff;color:#000}
+.nfv-lim{font-size:20px;font-weight:800;color:#fff;margin:6px 4px 16px}
+.nfv-ep{display:grid;grid-template-columns:150px minmax(0,1fr) 46px;grid-template-areas:"th tt dl" "th mt dl" "th . dl" "od od od";grid-template-rows:auto auto 1fr auto;gap:2px 12px;align-items:start;margin:0 0 22px}
+.nfv-ep .th{grid-area:th;position:relative;aspect-ratio:16/9;border-radius:4px;overflow:hidden;background:#1c1c1c;cursor:pointer;min-width:0}
+.nfv-ep .th img{width:100%;height:100%;object-fit:cover;display:block}.nfv-ep .noimg{height:100%;display:flex;align-items:center;justify-content:center;font-size:28px}
+.nfv-ep .th .pl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-style:normal}.nfv-ep .th .pl svg{width:42px;height:42px}
+.nfv-ep .pg{position:absolute;left:0;right:0;bottom:0;height:3px;background:#ffffff40}.nfv-ep .pg i{display:block;height:100%;background:#e50914}
+.nfv-ep .tt{grid-area:tt;font-size:16px;font-weight:800;color:#fff;line-height:1.4;padding-top:2px}.nfv-ep .mt{grid-area:mt;font-size:14px;color:#a3a3a3}
+.nfv-ep .od{grid-area:od;font-size:14px;line-height:1.75;color:#d4d4d4;margin:10px 0 0}
+.nfv-ep .dl{grid-area:dl;width:42px;height:42px;padding:0;background:none;border:0;color:#fff;cursor:pointer}.nfv-ep .dl svg{width:30px;height:30px}
+@media(max-width:380px){.nfv-ep{grid-template-columns:124px minmax(0,1fr) 42px}}
+.nfv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.nfv-grid .poster{width:100%!important;max-width:none!important;flex:none!important;border-radius:6px!important}
+.nfv-tr{aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:#111}.nfv-tr iframe{width:100%;height:100%;border:0}
+</style>
+<script>
+/* ================= v76: ذوقك التلقائي + أقسام IPTV + قنوات مباشرة + تفاصيل IPTV بستايل Netflix ================= */
+const IVX = {};
+function ivReg(kind, x) {
+  const id = kind === 'series' ? x.series_id : x.stream_id;
+  IVX[kind + ':' + id] = {c: String(x.category_id || ''), n: String(x.name || ''), i: (kind === 'series' ? x.cover : x.stream_icon) || ''};
+}
+const ivCn = (kind, cid) => ((IV.cn || {})[kind] || {})[String(cid)] || '';
+
+// ---------- ذوقك: تعلّم تلقائي من اللي بتشوفه ----------
+const TZ_INT = [
+  {k: 'dub', n: 'مدبلج', ic: '🎙️', rx: /(مدبلج|دبلج|dubbed|dubbing|\bdub\b)/i},
+  {k: 'hindi', n: 'هندي', ic: '🇮🇳', rx: /(هند[يى]|الهند|hindi|bollywood|بوليوود|\bIN\s*\||india|tamil|telugu|malayalam|تامل)/i},
+  {k: 'toon', n: 'كرتون وأطفال', ic: '🧸', rx: /(كرتون|cartoon|أطفال|اطفال|kids|children|animation|animated|رسوم متحركة|انيميشن|أنيميشن|disney|ديزني|pixar|بيكسار|nickelodeon|spacetoon|سبيستون)/i},
+  {k: 'anime', n: 'أنمي', ic: '🎌', rx: /(anime|انمي|أنمي)/i},
+  {k: 'tr', n: 'تركي', ic: '🇹🇷', rx: /(تركي|turk|تركيا)/i},
+  {k: 'kr', n: 'كوري', ic: '🇰🇷', rx: /(كوري|korea|kdrama|k-drama)/i},
+  {k: 'ram', n: 'رمضان', ic: '🌙', rx: /(رمضان|ramadan)/i},
+  {k: 'sport', n: 'رياضة', ic: '⚽', rx: /(sport|رياض|bein|كورة|مباراة|مباريات|football|soccer)/i},
+  {k: 'news', n: 'أخبار', ic: '📰', rx: /(news|اخبار|أخبار)/i},
+  {k: 'horror', n: 'رعب', ic: '👻', rx: /(رعب|horror)/i},
+  {k: 'action', n: 'أكشن', ic: '💥', rx: /(اكشن|أكشن|action)/i},
+  {k: 'comedy', n: 'كوميدي', ic: '😂', rx: /(كوميدي|كوميديا|comedy)/i},
+  {k: 'doc', n: 'وثائقي', ic: '🎞️', rx: /(وثائقي|documentary)/i},
+  {k: 'ar', n: 'عربي', ic: '🇪🇬', gen: 1, rx: /(عربي|عربى|مصري|مصرى|egypt|arabic|خليج|سعودي|سوري|لبناني)/i},
+  {k: 'en', n: 'أجنبي', ic: '🇺🇸', gen: 1, rx: /(english|إنجليزي|انجليزي|اجنبي|أجنبي|hollywood|هوليوود|\bEN\s*\||\bUS\s*\|)/i}
+];
+const TZ_HALF = 21 * 86400000;
+const tzKey = () => 'tz_' + (UNAME || '') + '_' + (PID || '');
+function tzLoad() {
+  let a = null, b = null;
+  try { const p = prof(); if (p && p.tz && p.tz.w) a = p.tz; } catch (e) {}
+  try { b = JSON.parse(localStorage.getItem(tzKey()) || 'null'); if (!b || !b.w) b = null; } catch (e) { b = null; }
+  const o = (a && b) ? ((a.u || 0) >= (b.u || 0) ? a : b) : (a || b);
+  return o || {w: {}, off: 0, u: 0};
+}
+let _tzSv = 0;
+function tzSave(o) {
+  o.u = Date.now();
+  try { localStorage.setItem(tzKey(), JSON.stringify(o)); } catch (e) {}
+  clearTimeout(_tzSv);
+  _tzSv = setTimeout(() => { try { const p = prof(); if (p) { p.tz = o; saveProfileObj(p); } } catch (e) {} }, 20000);
+}
+const tzVal = (o, k) => { const e = o.w && o.w[k]; return e ? e.v * Math.pow(0.5, (Date.now() - e.t) / TZ_HALF) : 0; };
+function tzFeed(text, wt) {
+  text = String(text || ''); if (!text.trim()) return;
+  const o = tzLoad(); if (o.off) return;
+  o.w = o.w || {}; let hit = false;
+  TZ_INT.forEach(it => { if (it.rx.test(text)) { o.w[it.k] = {v: Math.min(60, tzVal(o, it.k) + wt * (it.gen ? 0.4 : 1)), t: Date.now()}; hit = true; } });
+  if (hit) tzSave(o);
+}
+function tzTop(n) {
+  const o = tzLoad(); if (o.off) return [];
+  const arr = TZ_INT.map(it => ({it: it, v: tzVal(o, it.k)})).filter(x => x.v >= 2.5).sort((a, b) => b.v - a.v);
+  if (!arr.length) return [];
+  return arr.filter(x => x.v >= arr[0].v * 0.25).slice(0, n).map(x => x.it);
+}
+const _tzSeen = {};
+function tzOnce(k, ms) { const t = Date.now(); if (_tzSeen[k] && t - _tzSeen[k] < ms) return false; _tzSeen[k] = t; return true; }
+function tzTap(k, id) {
+  if (!tzOnce('t:' + k + id, 600000)) return;
+  const r = IVX[k + ':' + id]; if (!r) return;
+  tzFeed(r.n + ' ' + ivCn(k, r.c), 1);
+}
+function tzPlay(title, o) {
+  const m = o.meta || {}, kind = o.liveId ? 'live' : m.k, id = o.liveId || m.id;
+  const r = (kind && id != null) ? IVX[kind + ':' + id] : null;
+  if (kind === 'live') ivRecentAdd(id, title, r && r.i);
+  if (!tzOnce('p:' + kind + id, 1800000)) return;
+  tzFeed(String(title || '') + ' ' + (r ? r.n + ' ' + ivCn(kind, r.c) : ''), kind === 'live' ? 1.5 : 3);
+}
+// الموقع (TMDB): النوع واللغة والعنوان
+const TZ_LG = {hi: 'هندي', ta: 'هندي', te: 'هندي', ml: 'هندي', kn: 'هندي', bn: 'هندي', mr: 'هندي', pa: 'هندي', ko: 'كوري', tr: 'تركي', ar: 'عربي'};
+function tzSiteText(d, extra) {
+  let t = String((d && d.title) || '') + ' ' + ((d && d.genres) || []).join(' ') + ' ' + (extra || '');
+  const lg = d && d.lang; if (lg && TZ_LG[lg]) t += ' ' + TZ_LG[lg];
+  if (lg === 'ja' && /(رسوم متحركة|animation|أنيميشن)/i.test(t)) t += ' أنمي';
+  return t;
+}
+function tzSite(d) { try { if (!tzOnce('s:' + d.type + d.id, 600000)) return; tzFeed(tzSiteText(d), 1); } catch (e) {} }
+function tzSitePlay(c) {
+  try {
+    if (!c || !tzOnce('sp:' + (c.tmdb || c.key), 1800000)) return;
+    const d = (typeof cur !== 'undefined' && cur && String(cur.id) === String(c.tmdb)) ? cur : {title: c.title, genres: []};
+    tzFeed(tzSiteText(d, (c.qn || '') + ' ' + (c.title || '')), 3);
+  } catch (e) {}
+}
+const TZ_FAV = {hindi: 'l:hi', kr: 'l:ko', tr: 'l:tr', anime: 'anime', toon: 'g:cartoon', horror: 'g:horror', action: 'g:action', comedy: 'g:comedy', doc: 'g:doc'};
+async function tzBoot() {
+  const F = pf().fav;
+  const ks = tzTop(3).map(i => TZ_FAV[i.k]).filter(k => k && !F.includes(k));
+  for (const k of ks) {
+    const c = FAVD[k];
+    if ((c && Date.now() - c.t < 20 * 60 * 1000) || FAV_BUSY[k]) continue;
+    FAV_BUSY[k] = 1;
+    try { const {d} = await api('/fav/rows?k=' + encodeURIComponent(k)); FAVD[k] = {t: Date.now(), rows: d.rows || []}; } catch (e) {}
+    FAV_BUSY[k] = 0;
+    if (CAT === 'home' && !FAV_OPEN) renderShelvesSoon();
+  }
+  if (tzTop(3).some(i => i.k === 'dub')) ensureAddonRows();
+}
+function ivTasteRows() {
+  const P = IV.tzPool; if (!P) return '';
+  const top = tzTop(3); if (!top.length) return '';
+  IV.tzC = IV.tzC || {};
+  const pm = IV._pm || (IV._pm = ivProgMap());
+  let h = '';
+  top.forEach(it => {
+    [['vod', P.vod, P.vc, 'stream_id', '🎬 أفلام'], ['series', P.ser, P.sc, 'series_id', '📺 مسلسلات']].forEach(a => {
+      const kind = a[0], ck = it.k + ':' + kind;
+      let picks = IV.tzC[ck];
+      if (!picks) {
+        const ok = new Set((a[2] || []).filter(c => it.rx.test(c.category_name || '')).map(c => String(c.category_id)));
+        picks = (a[1] || []).filter(x => ok.has(String(x.category_id)) || it.rx.test(x.name || ''))
+          .sort((x, y) => ((+y.added || +y.last_modified || 0) - (+x.added || +x.last_modified || 0))).slice(0, 80);
+        IV.tzC[ck] = picks;
+      }
+      const list = picks.filter(x => pm[kind + ':' + x[a[3]]] !== 'done').slice(0, 24);
+      if (list.length >= 3) h += '<h3 class="sec">' + it.ic + ' ' + it.n + ' · ' + a[4] + '</h3><div class="hrow">' + list.map(x => ivTile(kind, x)).join('') + ivMore(kind) + '</div>';
+    });
+  });
+  return h;
+}
+function tzSiteRows() {
+  let h = ''; const F = pf();
+  tzTop(3).forEach(it => {
+    const k = TZ_FAV[it.k];
+    if (k && !F.fav.includes(k) && FAVD[k]) FAVD[k].rows.forEach(r => { const items = xlFilter(r.items); if (items.length) h += row(it.ic + ' ' + r.title, items, r.id); });
+    if (it.k === 'dub' && typeof ROWS !== 'undefined' && ROWS) ROWS.filter(r => DUB_RX.test(r.title || '') && !F.ar.includes(r.id)).forEach(r => { if (r.items && r.items.length) h += row('🎙️ ' + r.title, isTv() ? r.items.slice(0, TV_ROW_N) : r.items, r.id); });
+  });
+  return h;
+}
+function tzHomeHTML() {
+  let h = '';
+  try { h += ivTasteRows(); } catch (e) {}
+  try { h += tzSiteRows(); } catch (e) {}
+  if (!h) return '';
+  return '<div class="tzhd"><span class="tzi">🎯</span><div><b>على ذوقك</b><small>بنتعلّم من اللي بتشوفه وبنرتّب لك الرئيسية</small></div><button class="fc" onclick="tzReset()">↺ صفّر</button></div>' + h;
+}
+function tzReset() {
+  if (!confirm('تصفير ذوقك؟ الرئيسية هتتعلّم من الأول من اللي هتشوفه.')) return;
+  tzSave({w: {}, off: 0}); IV.tzC = {}; renderShelvesSoon();
+}
+
+// ---------- أقسام IPTV كاملة في الرئيسية (من الأقسام المثبّتة) ----------
+const IVX_ST = [[/(رمضان|ramadan)/i, '🌙', 'ram'], [/(مدبلج|dubbed)/i, '🎙️', 'dub'], [/(هند|hindi)/i, '🇮🇳', 'hin'], [/(كرتون|cartoon|أطفال|اطفال|kids|anime|انمي|أنمي)/i, '🧸', 'toon'],
+  [/(تركي|turk)/i, '🇹🇷', 'trk'], [/(كوري|korea)/i, '🇰🇷', 'kor'], [/(رياض|sport)/i, '⚽', 'spt'], [/(2026|2027|new|جديد|latest)/i, '🆕', 'new']];
+function ivSecStyle(n) { for (const s of IVX_ST) if (s[0].test(n)) return {ic: s[1], cls: s[2]}; return {ic: '⭐', cls: ''}; }
+const ivCatLabel = c => ivCleanName(String(c.n || '').replace(/^⭐\s*/, ''));
+async function ivSecBuild(pcs) {
+  const N = isTv() ? TV_ROW_N : 24;
+  const cats = pcs.filter(c => c.k === 'vod' || c.k === 'series').slice(0, 12);
+  const parts = await Promise.all(cats.map(async c => {
+    try {
+      const list = (await ivList(c.k === 'vod' ? 'get_vod_streams' : 'get_series', c.id)).slice()
+        .sort((a, b) => ((+b.added || +b.last_modified || 0) - (+a.added || +a.last_modified || 0))).slice(0, N);
+      if (!list.length) return '';
+      const nm = ivCatLabel(c), st = ivSecStyle(nm);
+      return '<div class="ivsec ' + st.cls + '"><div class="ivsh"><span class="ivsi">' + st.ic + '</span><div><b>' + esc(nm) + '</b><small>' + (c.k === 'vod' ? 'أفلام' : 'مسلسلات') + ' · ' + list.length + '+ عمل</small></div>' +
+        '<button class="ivsm" data-k="cat" data-ck="' + c.k + '" data-id="' + esc(c.id) + '" data-n="' + esc(c.n) + '" onclick="ivTap(this)">عرض الكل ‹</button></div>' +
+        '<div class="hrow">' + list.map(x => ivTile(c.k, x)).join('') + '</div></div>';
+    } catch (e) { return ''; }
+  }));
+  return parts.join('');
+}
+function ivSecGet() { return (IV.secPid === PID && IV.secHTML) ? IV.secHTML : ''; }
+
+// ---------- القنوات المباشرة: قسم كامل بتبويبات ----------
+const ivRecentKey = () => 'ivrl_' + (UNAME || '') + '_' + (PID || '');
+function ivRecentGet() { try { const a = JSON.parse(localStorage.getItem(ivRecentKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function ivRecentAdd(id, n, i) {
+  const a = ivRecentGet().filter(x => String(x.id) !== String(id)); a.unshift({id: String(id), n: String(n || ''), i: i || ''});
+  try { localStorage.setItem(ivRecentKey(), JSON.stringify(a.slice(0, 14))); } catch (e) {}
+}
+const IVH_AUTO = [[/(sport|رياض|bein|كورة|مباراة|مباريات|ssc)/i, 'sport'], [/(news|اخبار|أخبار)/i, 'news'], [/(kids|اطفال|أطفال|cartoon|كرتون|toon)/i, 'toon'],
+  [/(egypt|مصر|مصري)/i, 'ar'], [/(ramadan|رمضان)/i, 'ram'], [/(movies|افلام|أفلام|cinema|سينما)/i, ''], [/(music|اغاني|أغاني)/i, '']];
+async function ivHubFetch(id) {
+  if (id === '__pin') return ftPinLive(await ivList('get_live_streams'));
+  return (await ivList('get_live_streams', id)).slice(0, 60);
+}
+async function ivHubBuild(pcs, pid) {
+  const P = IV.tzPool || {}, lc = P.lc || [], chips = [], used = new Set();
+  if (IV.pins.live.length) chips.push({id: '__pin', n: '⭐ المثبّتة'});
+  pcs.filter(c => c.k === 'live').forEach(c => { if (!used.has(String(c.id))) { used.add(String(c.id)); chips.push({id: String(c.id), n: ivCatLabel(c)}); } });
+  const o = tzLoad();
+  IVH_AUTO.map((a, ix) => ({a: a, ix: ix, v: a[1] ? tzVal(o, a[1]) : 0})).sort((x, y) => (y.v - x.v) || (x.ix - y.ix)).forEach(z => {
+    lc.filter(c => z.a[0].test(c.category_name || '') && !used.has(String(c.category_id))).slice(0, 2).forEach(c => {
+      if (chips.length >= 14) return;
+      used.add(String(c.category_id)); chips.push({id: String(c.category_id), n: ivCleanName(c.category_name)});
+    });
+  });
+  if (!chips.length) lc.slice(0, 6).forEach(c => chips.push({id: String(c.category_id), n: ivCleanName(c.category_name)}));
+  const old = IV.hub && IV.hub.pid === pid ? IV.hub : null;
+  const H = {pid: pid, chips: chips, cache: old ? old.cache : {}, sel: (old && chips.some(c => c.id === old.sel)) ? old.sel : (chips[0] && chips[0].id), busy: null};
+  IV.hub = H;
+  if (H.sel && !H.cache[H.sel]) { try { H.cache[H.sel] = await ivHubFetch(H.sel); } catch (e) { H.cache[H.sel] = []; } }
+}
+function ivLvCard(x) {
+  ivReg('live', x);
+  return '<div class="lvc" tabindex="0" role="button" data-k="live" data-id="' + esc(x.stream_id) + '" onclick="ivTap(this)">' +
+    '<button class="ivpin" tabindex="-1" onclick="event.stopPropagation();ivTogglePin(this.parentNode.dataset.id,this,this.parentNode.dataset.k)">' + (ivPinned(x.stream_id, 'live') ? '⭐' : '📌') + '</button>' +
+    '<span class="lvb">● LIVE</span><div class="lvl">' + (x.stream_icon ? '<img ' + lzA(x.stream_icon) + ' alt="">' : '<span>📡</span>') + '</div><div class="t" title="' + esc(x.name) + '">' + esc(x.name) + '</div></div>';
+}
+function ivHubGet() {
+  const H = IV.hub; if (!H || H.pid !== PID) return '';
+  const rec = ivRecentGet();
+  const chips = (rec.length ? [{id: '__recent', n: '🕘 آخر ما شاهدت'}] : []).concat(H.chips);
+  const sel = chips.some(c => c.id === H.sel) ? H.sel : (chips[0] && chips[0].id);
+  let items = [];
+  if (sel === '__recent') items = rec.map(r => ({stream_id: r.id, name: r.n, stream_icon: r.i, category_id: ''}));
+  else items = H.cache[sel] || [];
+  const body = (H.busy === sel) ? '<div class="ivhe">جاري تحميل القنوات...</div>' : (items.length ? items.map(ivLvCard).join('') : '<div class="ivhe">مفيش قنوات هنا. جرّب تبويب تاني أو دوس ⚙ وثبّت أقسام.</div>');
+  return '<div class="ivhub" id="ivHub"><div class="ivhh"><b>📡 القنوات المباشرة</b><span class="lvlive">● LIVE</span><button class="ivgear" onclick="ivMgrOpen()">⚙ الأقسام</button></div>' +
+    '<div class="ivhc">' + chips.map(c => '<button class="' + (c.id === sel ? 'on' : '') + '" data-id="' + esc(c.id) + '" onclick="ivHubSel(this.dataset.id)">' + esc(c.n) + '</button>').join('') +
+    '<button data-id="__all" onclick="ivHubSel(this.dataset.id)">كل القنوات ‹</button></div><div class="hrow ivhr">' + body + '</div></div>';
+}
+function ivHubPaint() {
+  const el = $('ivHub'); if (!el) { renderShelvesSoon(); return; }
+  const sc = (el.querySelector('.ivhc') || {}).scrollLeft || 0;
+  el.outerHTML = ivHubGet();
+  const n = $('ivHub'); if (n && n.querySelector('.ivhc')) n.querySelector('.ivhc').scrollLeft = sc;
+  try { lzScan(); } catch (e) {}
+  try { tvApply(); } catch (e) {}
+}
+async function ivHubSel(id) {
+  if (id === '__all') return ivOpen('live');
+  const H = IV.hub; if (!H) return;
+  H.sel = id;
+  if (id === '__recent' || H.cache[id]) { ivHubPaint(); return; }
+  H.busy = id; ivHubPaint();
+  try { H.cache[id] = await ivHubFetch(id); } catch (e) { H.cache[id] = []; }
+  H.busy = null; ivHubPaint();
+}
+
+// ---------- إدارة أقسام الرئيسية (تثبيت أي قسم + اقتراحات) ----------
+const IVM_SUG = [/(رمضان|ramadan)/i, /(2026|2027|new|جديد|latest)/i, /(مدبلج|dubbed)/i, /(هند|hindi)/i, /(كرتون|cartoon|kids|أطفال|اطفال)/i, /(انمي|أنمي|anime)/i, /(تركي|turk)/i, /(كوري|korea)/i, /(رياض|sport|bein)/i, /(اخبار|أخبار|news)/i, /(وثائق|documentary)/i];
+const IVM_KL = {vod: '🎬 أفلام', series: '📺 مسلسلات', live: '📡 قنوات'};
+function ivMgrAll() {
+  const P = IV.tzPool || {}, out = [];
+  (P.vc || []).forEach(c => out.push({k: 'vod', id: String(c.category_id), n: c.category_name || ''}));
+  (P.sc || []).forEach(c => out.push({k: 'series', id: String(c.category_id), n: c.category_name || ''}));
+  (P.lc || []).forEach(c => out.push({k: 'live', id: String(c.category_id), n: c.category_name || ''}));
+  return out;
+}
+function ivMgrOpen() {
+  if (!IV.tzPool) { toast('استنى لحظة… الأقسام لسه بتتحمّل'); return; }
+  let el = $('ivMgr');
+  if (!el) { el = document.createElement('div'); el.id = 'ivMgr'; document.body.appendChild(el); }
+  IV.mgrQ = '';
+  el.innerHTML = '<div class="ivmbg" onclick="ivMgrClose()"></div><div class="ivmb"><div class="ivmh"><b>⚙ أقسام الرئيسية' + (IV.gm ? ' <small style="color:#86efac">(بتثبّت للكل)</small>' : '') + '</b><button onclick="ivMgrClose()" aria-label="إغلاق">✕</button></div>' +
+    '<div class="ivmbody"><div class="ivms">المثبّتة في الرئيسية</div><div id="ivMgrP"></div>' +
+    '<div class="ivms">ضيف قسم</div><input id="ivMgrQ" class="search-input" placeholder="دوّر على قسم (رمضان، مدبلج، هندي…)" oninput="IV.mgrQ=this.value.trim();ivMgrPaint()"><div id="ivMgrR"></div></div></div>';
+  el.style.display = 'flex';
+  ivMgrPaint();
+}
+function ivMgrClose() { const el = $('ivMgr'); if (el) el.style.display = 'none'; }
+function ivMgrPaint() {
+  const pins = IV.pins.cats, q = (IV.mgrQ || '').toLowerCase();
+  const isG = c => !IV.gm && ((IV.g || {}).cats || []).some(x => x.k === c.k && String(x.id) === String(c.id));
+  $('ivMgrP').innerHTML = pins.length ? pins.map((c, i) => '<div class="ivmr"><span class="ivmk">' + IVM_KL[c.k] + '</span><b>' + esc(ivCatLabel(c)) + '</b>' +
+    (isG(c) ? '<em>📢 للكل</em>' : '<button onclick="ivMgrMv(' + i + ',-1)" aria-label="فوق">▲</button><button onclick="ivMgrMv(' + i + ',1)" aria-label="تحت">▼</button><button class="x" onclick="ivMgrDel(' + i + ')" aria-label="شيل">✕</button>') + '</div>').join('')
+    : '<p class="ivhe">مفيش أقسام مثبّتة. اختار من تحت.</p>';
+  const has = c => pins.some(p => p.k === c.k && String(p.id) === c.id);
+  let list = ivMgrAll().filter(c => !has(c));
+  list = q ? list.filter(c => c.n.toLowerCase().includes(q)) : list.filter(c => IVM_SUG.some(r => r.test(c.n)));
+  IV.mgrList = list.slice(0, 60);
+  $('ivMgrR').innerHTML = (q ? '' : '<p class="ivhe" style="margin:6px 0">اقتراحات تلقائية من حسابك:</p>') + (IV.mgrList.length ? IV.mgrList.map((c, j) => '<div class="ivmr"><span class="ivmk">' + IVM_KL[c.k] + '</span><b>' + esc(ivCleanName(c.n)) + '</b><button class="ad" onclick="ivMgrAdd(' + j + ')">＋ ثبّت</button></div>').join('') : '<p class="ivhe">مفيش نتايج.</p>');
+}
+function ivMgrAdd(j) {
+  const c = IV.mgrList[j]; if (!c) return;
+  if (IV.pins.cats.length >= 60) { toast('وصلت الحد الأقصى للأقسام'); return; }
+  IV.pins.cats.push({k: c.k, id: c.id, n: c.n});
+  ivPinsSave(); toast('القسم اتثبّت ⭐ وهيظهر في الرئيسية'); ivMgrPaint();
+}
+function ivMgrDel(i) { IV.pins.cats.splice(i, 1); ivPinsSave(); ivMgrPaint(); }
+function ivMgrMv(i, d) {
+  const a = IV.pins.cats, j = i + d; if (j < 0 || j >= a.length) return;
+  const t = a[i]; a[i] = a[j]; a[j] = t;
+  IV.pinsBase = null;       // الترتيب الجديد يتحفظ زي ما هو من غير دمج
+  ivPinsSave(); ivMgrPaint();
+}
+
+// ---------- تفاصيل IPTV بستايل Netflix ----------
+const NFV_I = {
+  dl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M5 20h14"/></svg>',
+  play: '<svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>'
+};
+function nfvMin(d) {
+  if (d == null || d === '') return '';
+  const s = String(d); let m = 0;
+  if (/^\d+:\d+(:\d+)?$/.test(s)) { const p = s.split(':').map(Number); m = p.length === 3 ? p[0] * 60 + p[1] + (p[2] >= 30 ? 1 : 0) : p[0]; }
+  else if (/^\d+$/.test(s)) { const n = +s; m = n > 600 ? Math.round(n / 60) : n; }
+  return m > 0 ? m + ' د' : '';
+}
+function nfvImg(i, alt) {
+  const b = i && i.backdrop_path; const bs = Array.isArray(b) ? b[0] : b;
+  return bs || (i && (i.movie_image || i.cover)) || alt || '';
+}
+function nfvTrailerId(i) {
+  const t = String((i && i.youtube_trailer) || '').trim(); if (!t) return '';
+  const m = t.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/) || t.match(/^([\w-]{11})$/);
+  return m ? m[1] : '';
+}
+function nfvHead(img, title, meta) {
+  return '<div class="nfv-hero"' + (img ? ' style="background-image:url(\'' + escUrl(img) + '\')"' : '') + '><button class="nfv-back" onclick="ivBack()" aria-label="رجوع">→</button></div>' +
+    '<h2 class="nfv-h">' + esc(title) + '</h2><div class="nfv-meta">' + meta.filter(Boolean).join('') + '</div>';
+}
+function nfvMeta(i, extra) {
+  const yr = String(i.releasedate || i.releaseDate || '').slice(0, 4), rt = parseFloat(i.rating);
+  return [yr ? '<span>' + esc(yr) + '</span>' : '', '<span class="nfv-hd">HD</span>', extra ? '<span>' + esc(extra) + '</span>' : '', rt > 0 ? '<span class="nfv-rt">⭐ ' + rt.toFixed(1) + '</span>' : ''];
+}
+function nfvInfoHTML(i) {
+  const cast = String(i.cast || i.actors || '').split(/[,،]/).map(s => s.trim()).filter(Boolean);
+  const gen = String(i.genre || '').split(/[,،\/]/).map(s => s.trim()).filter(Boolean).slice(0, 4);
+  return '<p class="nfv-ov">' + esc(i.plot || i.description || '') + '</p>' +
+    (cast.length ? '<p class="nfv-cast"><b>بطولة:</b> ' + cast.slice(0, 4).map(esc).join('، ') + (cast.length > 4 ? '… وآخرون' : '') + '</p>' : '') +
+    (i.director ? '<p class="nfv-cast"><b>إخراج:</b> ' + esc(i.director) + '</p>' : '') +
+    (gen.length ? '<p class="nfv-cast"><b>التصنيف:</b> ' + gen.map(esc).join('، ') + '</p>' : '');
+}
+const nfvAct = (ic, lbl, js, id) => '<button class="nfv-a"' + (id ? ' id="' + id + '"' : '') + ' onclick="' + js + '">' + ic + '<span>' + lbl + '</span></button>';
+function nfvPinHTML() { const N = IV.nf; return (ivPinned(N.id, N.kind) ? NFI.check : NFI.plus) + '<span>قائمتي</span>'; }
+function nfvPin() { const N = IV.nf; ivTogglePin(N.id, null, N.kind); const b = $('nfvPinB'); if (b) b.innerHTML = nfvPinHTML(); }
+function nfvShare() {
+  const t = (IV.nf && IV.nf.title) || '';
+  try { if (navigator.share) return navigator.share({title: t, text: t}).catch(() => {}); } catch (e) {}
+  try { navigator.clipboard.writeText(t); toast('📋 اتنسخ الاسم'); } catch (e) { toast(t); }
+}
+function nfvCopy() { if (IV.nf && IV.nf.url) ivCopy(IV.nf.url); }
+function nfvTrailer() { nfvTab('tr'); const t = document.querySelector('.nfv-tabs'); if (t) t.scrollIntoView({behavior: 'smooth'}); }
+function nfvTabsHTML(list) { return '<div class="nfv-tabs">' + list.map(t => '<button data-t="' + t[0] + '" class="' + (IV.nfTab === t[0] ? 'on' : '') + '" onclick="nfvTab(this.dataset.t)">' + t[1] + '</button>').join('') + '</div><div id="nfvPanel"></div>'; }
+function nfvTab(t) {
+  IV.nfTab = t;
+  document.querySelectorAll('.nfv-tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  const p = $('nfvPanel'); if (!p) return;
+  if (t === 'eps') return nfvEps();
+  if (t === 'tr') { const id = nfvTrailerId(IV.nf.info); p.innerHTML = id ? '<div class="nfv-tr"><iframe src="https://www.youtube.com/embed/' + id + '?rel=0&playsinline=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>' : '<p class="ivhe">مفيش تريلر.</p>'; return; }
+  nfvSim();
+}
+async function nfvSim() {
+  const p = $('nfvPanel'), N = IV.nf, tok = IV.rt, s = IV.sel; if (!p) return;
+  p.innerHTML = pend('جاري التحميل...');
+  try {
+    const kind = N.kind, reg = IVX[kind + ':' + N.id], cid = N.cat || (reg && reg.c);
+    if (!cid) { p.innerHTML = '<p class="ivhe">مفيش أعمال مشابهة.</p>'; return; }
+    const list = (await ivList(kind === 'vod' ? 'get_vod_streams' : 'get_series', cid)).filter(x => String(kind === 'vod' ? x.stream_id : x.series_id) !== String(N.id))
+      .sort((a, b) => ((+b.added || +b.last_modified || 0) - (+a.added || +a.last_modified || 0))).slice(0, 60);
+    if (tok !== IV.rt || IV.sel !== s || IV.nfTab !== 'sim') return;
+    p.innerHTML = list.length ? '<div class="nfv-grid">' + list.map(x => ivTile(kind, x)).join('') + '</div>' : '<p class="ivhe">مفيش أعمال مشابهة.</p>';
+    try { lzScan(); } catch (e) {}
+  } catch (e) { if (tok === IV.rt) p.innerHTML = ivErr(e); }
+}
+function ivVodNf(box, v, s, i, md, url, nm, ext) {
+  const cn = ivCleanName(nm), key = 'm:' + s.id, pos = ivPosGet(key), tr = nfvTrailerId(i);
+  IV.nf = {kind: 'vod', id: String(s.id), title: cn, url: url, nm: nm, ext: ext, key: key, info: i, cat: String(md.category_id || i.category_id || ''),
+    meta: {k: 'vod', id: s.id, n: nm, img: i.movie_image || '', ext: ext}};
+  if (IV.nfFor !== s) { IV.nfFor = s; IV.nfTab = null; }
+  if (!IV.nfTab || (IV.nfTab === 'tr' && !tr)) IV.nfTab = 'sim';
+  box.innerHTML = nfvHead(nfvImg(i), cn, nfvMeta(i, nfvMin(i.duration || i.duration_secs))) +
+    '<button class="nfv-w" onclick="nfvPlayVod()">' + NFV_I.play + '<span>' + (pos ? 'كمّل من ' + fmtTime(pos) : 'عرض') + '</span></button>' +
+    '<button class="nfv-g" onclick="nfvDlVod()">' + NFV_I.dl + '<span>تنزيل</span></button>' + nfvInfoHTML(i) +
+    '<div class="nfv-act">' + nfvAct(NFI.plus, 'قائمتي', 'nfvPin()', 'nfvPinB') + (tr ? nfvAct(NFI.film, 'التريلر', 'nfvTrailer()') : '') + nfvAct(NFI.share, 'مشاركة', 'nfvShare()') + nfvAct(NFV_I.dl, 'نسخ الرابط', 'nfvCopy()') + '</div>' +
+    nfvTabsHTML([].concat(tr ? [['tr', 'المقدمات والمزيد']] : [], [['sim', 'المزيد من العناوين المشابهة']]));
+  $('nfvPinB').innerHTML = nfvPinHTML();
+  nfvTab(IV.nfTab);
+  try { lzScan(); } catch (e) {}
+}
+function nfvPlayVod() { const N = IV.nf; ivPlay(N.url, N.nm, {key: N.key, meta: N.meta}); }
+function nfvDlVod() { const N = IV.nf; ivDownload(N.url, ivClean(N.nm) + '.' + N.ext); }
+function nfvResume(all) {
+  const prog = ivProgAll(), sid = String(IV.flatSid); let best = null;
+  all.forEach((x, ix) => { const o = prog['s:' + sid + ':' + x.id]; if (o && (!best || o.t > best.o.t)) best = {o: o, ix: ix}; });
+  if (!best) return null;
+  let ix = best.ix;
+  if (best.o.done) { if (!all[ix + 1]) return null; ix += 1; return {ix: ix, lbl: 'الحلقة التالية S' + p2s(all[ix].s) + 'E' + p2s(all[ix].e)}; }
+  if (!(best.o.pos > 10)) return null;
+  return {ix: ix, lbl: 'كمّل S' + p2s(all[ix].s) + 'E' + p2s(all[ix].e) + ' · ' + fmtTime(best.o.pos)};
+}
+function nfvEpHTML(x, ix, prog, sid) {
+  const pr = prog['s:' + sid + ':' + x.id], pc = pr ? (pr.done ? 100 : Math.min(99, Math.round(pr.pos / (pr.dur || 1) * 100))) : 0, img = x.img || IV.flatImg;
+  return '<div class="nfv-ep"><div class="th" onclick="ivPlayEp(' + ix + ')">' + (img ? '<img ' + lzA(img) + ' alt="">' : '<div class="noimg">🎬</div>') + '<i class="pl">' + NFI.playc + '</i>' + (pc ? '<b class="pg"><i style="width:' + pc + '%"></i></b>' : '') + '</div>' +
+    '<div class="tt">' + esc((x.e || (ix + 1)) + '. ' + (x.t || ('حلقة ' + x.e))) + '</div><small class="mt">' + esc(nfvMin(x.dur)) + (pr && pr.done ? ' · ✓ شوهدت' : '') + '</small>' +
+    '<button class="dl" onclick="ivDlEp(' + ix + ')" aria-label="تنزيل">' + NFV_I.dl + '</button>' + (x.p ? '<div class="od">' + esc(x.p) + '</div>' : '') + '</div>';
+}
+function nfvEps() {
+  const p = $('nfvPanel'); if (!p) return;
+  const all = IV.flat, seasons = [...new Set(all.map(x => x.s))], prog = ivProgAll(), sid = IV.flatSid;
+  const eps = all.map((x, ix) => ({x: x, ix: ix})).filter(o => o.x.s === IV.ss);
+  const b = $('nfvDlS'); if (b) b.innerHTML = NFV_I.dl + '<span>تنزيل الموسم ' + IV.ss + ' كله</span>';
+  p.innerHTML = (seasons.length > 1 ? '<div class="nfv-seas">' + seasons.map(sn => '<button class="' + (sn === IV.ss ? 'on' : '') + '" onclick="IV.ss=' + sn + ';nfvEps()">' + (sn === 0 ? 'حلقات خاصة' : 'الموسم ' + sn) + '</button>').join('') + '</div>'
+    : '<div class="nfv-lim">مسلسل · ' + eps.length + ' حلقة</div>') +
+    (eps.length ? eps.map(o => nfvEpHTML(o.x, o.ix, prog, sid)).join('') : '<p class="ivhe">مفيش حلقات.</p>');
+  try { lzScan(); } catch (e) {}
+}
+function ivSeriesNf(box, v, i, nm, all, seasons, prog) {
+  const s = IV.sel, tr = nfvTrailerId(i), cn = ivCleanName(nm);
+  IV.nf = {kind: 'series', id: String(s.id), title: cn, info: i, cat: String(i.category_id || '')};
+  if (IV.nfFor !== s) { IV.nfFor = s; IV.nfTab = null; }
+  if (!IV.nfTab || (IV.nfTab === 'tr' && !tr) || (IV.nfTab === 'eps' && !all.length)) IV.nfTab = all.length ? 'eps' : 'sim';
+  const res = nfvResume(all), first = Math.max(0, all.findIndex(x => x.s === seasons[0]));
+  IV.nfRes = res || {ix: first, lbl: all.length ? 'عرض S' + p2s(all[first].s) + 'E' + p2s(all[first].e) : ''};
+  const sm = seasons.length > 1 ? seasons.length + ' مواسم' : 'مسلسل';
+  box.innerHTML = nfvHead(nfvImg(i, IV.flatImg), cn, nfvMeta(i, sm)) +
+    (all.length ? '<button class="nfv-w" onclick="ivPlayEp(IV.nfRes.ix)">' + NFV_I.play + '<span>' + esc(IV.nfRes.lbl) + '</span></button>' +
+      '<button class="nfv-g" id="nfvDlS" onclick="ivDlSeason()">' + NFV_I.dl + '<span>تنزيل الموسم ' + IV.ss + ' كله</span></button>' : '') + nfvInfoHTML(i) +
+    '<div class="nfv-act">' + nfvAct(NFI.plus, 'قائمتي', 'nfvPin()', 'nfvPinB') + (tr ? nfvAct(NFI.film, 'التريلر', 'nfvTrailer()') : '') + nfvAct(NFI.share, 'مشاركة', 'nfvShare()') + '</div>' +
+    nfvTabsHTML([].concat(all.length ? [['eps', 'الحلقات']] : [], tr ? [['tr', 'المقدمات والمزيد']] : [], [['sim', 'المزيد من العناوين المشابهة']]));
+  $('nfvPinB').innerHTML = nfvPinHTML();
+  nfvTab(IV.nfTab);
+  try { lzScan(); } catch (e) {}
+}
+</script>
 </body>
 </html>
