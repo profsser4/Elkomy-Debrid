@@ -1053,7 +1053,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=77;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=78;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -9623,6 +9623,17 @@ function qPrefRank(v) {
   const t = QLVL[p.t] || 3;
   return Math.abs(l - t) * 10 + (5 - l);
 }
+// حجم معقول لكل جودة (جيجا): لو العضو اختار جودة معيّنة، النسخ الأكبر من الحد ده بتنزل لآخر نفس الجودة
+const Q_CAP_MOVIE = {'480p': 1.6, '720p': 3.5, '1080p': 9, '4K': 40};
+const Q_CAP_EP = {'480p': 0.6, '720p': 1.3, '1080p': 3.5, '4K': 14};
+function qSizePen(v) {
+  const p = verPref();
+  if (!p || p.m === 'auto' || !v.size) return 0;
+  const q = qOf(v), cap = (VER.s != null ? Q_CAP_EP : Q_CAP_MOVIE)[q];
+  return cap && v.size > cap * 1073741824 ? 1 : 0;
+}
+// لما العضو يختار 720 أو 480 (الأخف): الأصغر حجمًا أولاً داخل نفس الجودة
+const qSizeAsc = v => { const p = verPref(); return (p && p.m === 'target' && (p.t === '720p' || p.t === '480p')) || (p && p.m === 'low') ? (v.size || 1e15) : 0; };
 const pinFirst = a => a.filter(v => v._pin).concat(a.filter(v => !v._pin));
 function verPrefSet(val) {
   const o = val === 'high' || val === 'low' ? {m: val} : val === 'auto' ? {m: 'auto'} : {m: 'target', t: val};
@@ -9646,9 +9657,11 @@ function verSort(list) {
     (rk(a) - rk(b)) ||
     (df ? dubRank(b) - dubRank(a) : 0) ||     // اللغة: عربي مدبلج ← مترجم ← الأصلي
 
+    (qPrefRank(a) - qPrefRank(b)) ||           // اختيار العضو للجودة: بيتنفّذ الأول (تلقائي = من غير تغيير)
+    (qSizePen(a) - qSizePen(b)) ||             // نسخة ضخمة على الجودة المختارة (زي 720 بـ 10 جيجا) تتأخر
     (!!b.hash - !!a.hash) ||                   // نسخة ليها hash أول: بتتحفظ وتتحوّل من حسابك كل مرة
     (b.instant - a.instant) ||
-    (qPrefRank(a) - qPrefRank(b)) ||           // اختيار العضو لترتيب الجودة (تلقائي = من غير تغيير)
+    (qSizeAsc(a) - qSizeAsc(b)) ||             // على 720/480: الأصغر حجمًا أول
     (sc(b) - sc(a)) ||
     (qRank(a.q) - qRank(b.q)) ||                         // H.264+AAC أول، DDP/DTS/HEVC/x265 آخر
     (b.seeders - a.seeders));
