@@ -1053,7 +1053,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=78;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=79;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -1265,6 +1265,11 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadActivity()">
 <summary>📊 نشاط المستخدمين</summary>
 <div id="actBox" style="margin:14px 0"></div>
+</details>
+
+<details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadHBAdmin()">
+<summary>🧱 أقسام الرئيسية (ترتيب + أقسام جديدة)</summary>
+<div id="hbBox" style="margin:14px 0"></div>
 </details>
 
 <details class="action-box adm" style="text-align:right;margin-top:18px" ontoggle="if(this.open)loadLayout()">
@@ -10764,6 +10769,7 @@ function seedFavMaybe() {
   if (!FAV_ASKED) { FAV_ASKED = true; setTimeout(() => { if (prof() && prof().fav === undefined && CAT === 'home') openFav(); }, 1500); }
 }
 function homeBoot() {
+  try { loadBlocks(); } catch (e) {}
   ensureFavList(); loadFav(); seedFavMaybe();
   try { tzBoot(); } catch (e) {}
   if (pf().ar.length) ensureAddonRows();
@@ -10776,33 +10782,172 @@ function favBarHTML() {
       : '<p class="fbn">اختار منصاتك ولغاتك وأنواعك المفضلة، وكل واحد هيطلع لك <b>صفّين: أفلام + مسلسلات</b>.</p>') + '</div>';
 }
 function favGo(k) { const el = document.getElementById('favs-' + favId(k)); if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+// ================= أقسام الرئيسية (مرتّبة من الأدمن وبتظهر في الموقع والأندرويد والتلفزيون) =================
+let HB = null, HBD = {}, HB_BUSY = false, HB_T = 0;
+const HB_DEF = ['feat', 'cw', 'pins', 'live', 'ivsec', 'new-ar', 'new-for', 'new-toon', 'tz', 'fav', 'ar'];
+try { HB = JSON.parse(localStorage.getItem('hb_v1') || 'null'); } catch (e) { HB = null; }
+function hbList() { return (HB && HB.length) ? HB : HB_DEF.map(id => ({id: id, on: true})); }
+const hbSig = b => [b.ty, b.lg, b.g, b.y1, b.y2, b.so].join('|');
+async function hbLoadCustom(force) {
+  const cs = hbList().filter(b => b.on !== false && /^c_/.test(b.id));
+  let i = 0;
+  const worker = async () => {
+    while (i < cs.length) {
+      const b = cs[i++], c = HBD[b.id];
+      if (!force && c && c.sig === hbSig(b) && Date.now() - c.t < 20 * 60 * 1000) continue;
+      try {
+        const {d} = await api('/home/blockitems?id=' + encodeURIComponent(b.id));
+        HBD[b.id] = {t: Date.now(), items: (d && d.items) || [], sig: hbSig(b)};
+      } catch (e) {}
+      if (CAT === 'home' && !FAV_OPEN) renderShelvesSoon();
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+}
+async function loadBlocks(force) {
+  if (HB_BUSY || (!force && Date.now() - HB_T < 2 * 60 * 1000)) { hbLoadCustom(); return; }
+  HB_BUSY = true;
+  try {
+    const {d} = await api('/home/layoutblocks');
+    if (d && d.blocks) { HB = d.blocks; HB_T = Date.now(); try { localStorage.setItem('hb_v1', JSON.stringify(HB)); } catch (e) {} }
+  } catch (e) {}
+  HB_BUSY = false;
+  hbLoadCustom(force);
+  if (CAT === 'home' && !FAV_OPEN) renderShelvesSoon();
+}
 function newHomeHTML() {
   const P = pf();
-  let h = '';
-  try { ftBoot(PID); h += ivFeatHTML(); } catch (e) {}
-  h += favBarHTML();
-  try { h += ivPinHTML(); } catch (e) {}   // قنوات/أفلام/مسلسلات الـIPTV المثبّتة
-  try { h += cwRowHTML(); } catch (e) {}   // كمّل المشاهدة (موقع + IPTV) تحت المثبّتات
-  try { h += tzHomeHTML(); } catch (e) {}   // على ذوقك (تعلّم تلقائي)
-  try { h += ivSecGet(); } catch (e) {}     // أقسام IPTV كاملة (رمضان…)
-  try { h += ivHubGet(); } catch (e) {}     // القنوات المباشرة
-  if (!NEWD) h += NEW_ERR ? warn('تعذّر تحميل الجديد: ' + NEW_ERR) + '<button class="search-btn" style="margin:8px 0" onclick="NEW_ERR=\'\';renderShelves();loadNew(true)">🔄 جرّب تاني</button>' : pend('جاري تحميل الجديد...');
-  else {
-    let any = false;
-    (NEWD.rows || []).filter(r => !P.hn.includes(r.id)).forEach(r => {
-      const it = xlFilter(r.items);
-      if (it.length) { any = true; h += row(r.title, isTv() ? it.slice(0, 12) : it); }
-    });
-    if (!any) h += '<p style="color:var(--mut);text-align:center;margin:30px 0">مفيش جديد نزل دلوقتي 🙌 هيظهر هنا أول ما ينزل.</p>';
-  }
-  P.fav.forEach(k => {
-    h += '<div id="favs-' + favId(k) + '"></div>';
-    const c = FAVD[k];
-    if (!c) { if (FAV_BUSY[k]) h += pend('جاري تحميل ' + favInfo(k).name + '...'); return; }
-    c.rows.forEach(r => { const it = xlFilter(r.items); if (it.length) h += row(r.title, it, r.id); });
+  let h = favBarHTML(), any = false, askedNew = false;
+  const bl = hbList();
+  bl.forEach(b => {
+    if (b.on === false) return;
+    const id = b.id;
+    try {
+      if (/^c_/.test(id)) {
+        const c = HBD[id];
+        if (!c) { h += pend('جاري تحميل ' + esc(b.t || 'القسم') + '...'); return; }
+        const it = xlFilter(c.items);
+        if (it.length) h += row(esc(b.t || 'قسم'), isTv() ? it.slice(0, 12) : it, 'hb:' + id);
+      } else if (id === 'feat') { try { ftBoot(PID); } catch (e) {} h += ivFeatHTML(); }
+      else if (id === 'cw') h += cwRowHTML();
+      else if (id === 'pins') h += ivPinHTML();
+      else if (id === 'tz') h += tzHomeHTML();
+      else if (id === 'ivsec') h += ivSecGet();
+      else if (id === 'live') h += ivHubGet();
+      else if (id === 'new-ar' || id === 'new-for' || id === 'new-toon') {
+        if (!NEWD) {
+          if (!askedNew) { askedNew = true; h += NEW_ERR ? warn('تعذّر تحميل الجديد: ' + NEW_ERR) + '<button class="search-btn" style="margin:8px 0" onclick="NEW_ERR=\'\';renderShelves();loadNew(true)">🔄 جرّب تاني</button>' : pend('جاري تحميل الجديد...'); }
+          return;
+        }
+        if (P.hn.includes(id)) return;
+        const r = (NEWD.rows || []).find(x => x.id === id);
+        if (!r) return;
+        const it = xlFilter(r.items);
+        if (it.length) { any = true; h += row(b.t ? esc(b.t) : r.title, isTv() ? it.slice(0, 12) : it); }
+      } else if (id === 'fav') {
+        P.fav.forEach(k => {
+          h += '<div id="favs-' + favId(k) + '"></div>';
+          const c = FAVD[k];
+          if (!c) { if (FAV_BUSY[k]) h += pend('جاري تحميل ' + favInfo(k).name + '...'); return; }
+          c.rows.forEach(r => { const it = xlFilter(r.items); if (it.length) h += row(r.title, it, r.id); });
+        });
+      } else if (id === 'ar') {
+        if (P.ar.length && ROWS) ROWS.filter(r => P.ar.includes(r.id)).forEach(r => { h += row(r.title, isTv() ? r.items.slice(0, TV_ROW_N) : r.items, r.id); });
+      }
+    } catch (e) {}
   });
-  if (P.ar.length && ROWS) ROWS.filter(r => P.ar.includes(r.id)).forEach(r => { h += row(r.title, isTv() ? r.items.slice(0, TV_ROW_N) : r.items, r.id); });
+  if (NEWD && !any && bl.some(b => b.on !== false && /^new-/.test(b.id))) h += '<p style="color:var(--mut);text-align:center;margin:30px 0">مفيش جديد نزل دلوقتي 🙌 هيظهر هنا أول ما ينزل.</p>';
   return '<div class="nwhome">' + h + '</div>';
+}
+// ================= لوحة الأدمن: أقسام الرئيسية =================
+let HBA = [], HBN = {}, HB_SV = null;
+const HB_LANGS = [['', 'كل اللغات'], ['ar', '🇪🇬 عربي'], ['en', '🇺🇸 إنجليزي'], ['ko', '🇰🇷 كوري'], ['hi', '🇮🇳 هندي'], ['tr', '🇹🇷 تركي'], ['ja', '🇯🇵 ياباني'], ['zh', '🇨🇳 صيني'], ['es', '🇪🇸 إسباني'], ['fr', '🇫🇷 فرنسي'], ['th', '🇹🇭 تايلاندي'], ['ru', '🇷🇺 روسي']];
+const HB_GENRES = [['', 'كل الأنواع'], ['action', 'أكشن'], ['drama', 'دراما'], ['comedy', 'كوميديا'], ['crime', 'جريمة'], ['scifi', 'خيال علمي'], ['horror', 'رعب'], ['romance', 'رومانسي'], ['cartoon', 'كرتون'], ['family', 'عائلي'], ['doc', 'وثائقي']];
+const HB_TY = {movie: 'أفلام', tv: 'مسلسلات', all: 'أفلام ومسلسلات'};
+const HB_SO = {'new': 'الأحدث', old: 'قديم / كلاسيك', pop: 'الأكثر مشاهدة', top: 'الأعلى تقييمًا'};
+async function loadHBAdmin() {
+  const el = $('hbBox');
+  if (el) el.innerHTML = pend('جاري التحميل...');
+  try {
+    const {d} = await api('/home/layoutblocks');
+    HBA = (d && d.blocks) || [];
+    HBN = (d && d.names) || {};
+  } catch (e) { if (el) el.innerHTML = ERR; return; }
+  renderHBAdmin();
+}
+function hbName(b) { return /^c_/.test(b.id) ? (b.t || 'قسم') : (b.t || HBN[b.id] || b.id); }
+function hbDesc(b) {
+  if (!/^c_/.test(b.id)) return '';
+  const L = HB_LANGS.find(x => x[0] === b.lg), G = HB_GENRES.find(x => x[0] === b.g);
+  return [HB_TY[b.ty] || '', L ? L[1] : 'كل اللغات', G && b.g ? G[1] : '', HB_SO[b.so] || '', (b.y1 || b.y2) ? ((b.y1 || '') + '–' + (b.y2 || 'اليوم')) : ''].filter(Boolean).join(' · ');
+}
+function renderHBAdmin() {
+  const el = $('hbBox');
+  if (!el) return;
+  const B = (cls, fn, i, txt, t) => '<button class="lyb ' + cls + '" title="' + (t || '') + '" onclick="' + fn + '(' + i + ')">' + txt + '</button>';
+  let h = '<div class="lybar"><span id="hbSt">الترتيب بيتحفظ تلقائي</span><button class="lysv" onclick="hbSave()">💾 حفظ</button></div>';
+  h += HBA.map((b, i) => {
+    const cu = /^c_/.test(b.id), rn = cu || /^new-/.test(b.id);
+    return '<div class="lyr' + (b.on === false ? ' off' : '') + '"><div class="lyh">' +
+      '<input type="checkbox" ' + (b.on === false ? '' : 'checked ') + 'onchange="hbOn(' + i + ',this.checked)">' +
+      '<div class="lyt">' + (cu ? '🧱 ' : '') + esc(hbName(b)) + (hbDesc(b) ? '<small>' + esc(hbDesc(b)) + '</small>' : '') + '</div>' +
+      '<span class="lyn">' + (i + 1) + '</span></div><div class="lyg">' +
+      B('', 'hbTop', i, '⏫', 'للأول') + B('', 'hbUp', i, '▲') + B('', 'hbDown', i, '▼') +
+      (cu ? B('sel', 'hbClone', i, 'نسخة', 'نسخة بعدها (قديم)') : '') +
+      (rn ? B('', 'hbRename', i, '✏️') : '') + (cu ? B('del', 'hbDel', i, '🗑') : '') + '</div></div>';
+  }).join('');
+  const opt = (arr) => arr.map(x => '<option value="' + x[0] + '">' + x[1] + '</option>').join('');
+  h += '<h3 class="sec" style="margin-top:16px">➕ قسم جديد (بيتضاف فوق، بعد كمّل المشاهدة)</h3>' +
+    '<input id="hbT" class="search-input" placeholder="اسم القسم (مثلًا: أفلام عربي جديدة)">' +
+    '<select id="hbTy" class="search-input"><option value="movie">أفلام</option><option value="tv">مسلسلات</option><option value="all">أفلام ومسلسلات</option></select>' +
+    '<select id="hbLg" class="search-input">' + opt(HB_LANGS) + '</select>' +
+    '<select id="hbG" class="search-input">' + opt(HB_GENRES) + '</select>' +
+    '<select id="hbSo" class="search-input"><option value="new">الأحدث</option><option value="old">قديم / كلاسيك</option><option value="pop">الأكثر مشاهدة</option><option value="top">الأعلى تقييمًا</option></select>' +
+    '<input id="hbY1" class="search-input" type="number" placeholder="من سنة (اختياري)"><input id="hbY2" class="search-input" type="number" placeholder="لحد سنة (اختياري)">' +
+    '<button class="search-btn btn-blue" onclick="hbAdd()">➕ إضافة القسم</button>' +
+    '<p style="color:var(--mut);font-size:12px;line-height:1.8">تحت أي قسم تقدر تعمل «نسخة» منه وتخليها «قديم» (مثلًا عربي جديد ثم تحته عربي قديم). الترتيب والاختيارات بتظهر لكل الأعضاء في الموقع والأندرويد والتلفزيون.</p>';
+  el.innerHTML = h;
+}
+function hbAuto() {
+  clearTimeout(HB_SV);
+  const s = $('hbSt'); if (s) s.textContent = '⏳ هيتحفظ...';
+  HB_SV = setTimeout(hbSave, 900);
+}
+async function hbSave() {
+  clearTimeout(HB_SV);
+  const s = $('hbSt');
+  try {
+    const {d} = await api('/home/layoutblocks', {method: 'POST', body: JSON.stringify({blocks: HBA})});
+    if (d && d.error) { if (s) s.textContent = '❌ ' + d.error; return; }
+    HB = JSON.parse(JSON.stringify(HBA)); HB_T = Date.now(); HBD = {};
+    try { localStorage.setItem('hb_v1', JSON.stringify(HB)); } catch (e) {}
+    if (s) s.textContent = '✅ اتحفظ ويظهر للكل';
+    hbLoadCustom(true); renderShelves();
+  } catch (e) { if (s) s.textContent = '❌ مش قادر أوصل للسيرفر'; }
+}
+function hbOn(i, v) { HBA[i].on = !!v; hbAuto(); }
+function hbTop(i) { if (i <= 0) return; HBA.unshift(HBA.splice(i, 1)[0]); renderHBAdmin(); hbAuto(); window.scrollTo(0, 0); }
+function hbUp(i) { if (i <= 0) return; [HBA[i - 1], HBA[i]] = [HBA[i], HBA[i - 1]]; renderHBAdmin(); hbAuto(); }
+function hbDown(i) { if (i >= HBA.length - 1) return; [HBA[i + 1], HBA[i]] = [HBA[i], HBA[i + 1]]; renderHBAdmin(); hbAuto(); }
+function hbRename(i) { const t = prompt('اسم القسم', hbName(HBA[i])); if (t && t.trim()) { HBA[i].t = t.trim().slice(0, 60); renderHBAdmin(); hbAuto(); } }
+function hbDel(i) { if (!confirm('تمسح القسم ده؟')) return; HBA.splice(i, 1); renderHBAdmin(); hbAuto(); }
+function hbNewId() { return 'c_' + Math.random().toString(36).slice(2, 10); }
+function hbClone(i) {
+  const o = Object.assign({}, HBA[i], {id: hbNewId(), so: 'old'});
+  o.t = (HBA[i].t || 'قسم') + ' (قديم)';
+  HBA.splice(i + 1, 0, o); renderHBAdmin(); hbAuto();
+}
+function hbAdd() {
+  const v = id => ($(id) || {}).value || '';
+  const b = {id: hbNewId(), on: true, ty: v('hbTy') || 'all', lg: v('hbLg'), g: v('hbG'), so: v('hbSo') || 'new', y1: +v('hbY1') || 0, y2: +v('hbY2') || 0};
+  b.t = v('hbT').trim().slice(0, 60);
+  if (!b.t) {
+    const L = HB_LANGS.find(x => x[0] === b.lg), G = HB_GENRES.find(x => x[0] === b.g && x[0]);
+    b.t = [HB_TY[b.ty], G ? G[1] : '', L && b.lg ? L[1].replace(/^\S+\s/, '') : '', {'new': 'جديد', old: 'قديم', pop: 'الأكثر مشاهدة', top: 'الأعلى تقييمًا'}[b.so]].filter(Boolean).join(' ');
+  }
+  const cw = HBA.findIndex(x => x.id === 'cw');
+  HBA.splice(cw + 1, 0, b);
+  renderHBAdmin(); hbAuto();
 }
 // ---- نافذة الاختيار ----
 async function openFav() {
