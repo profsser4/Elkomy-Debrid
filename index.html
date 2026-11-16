@@ -86,7 +86,7 @@
   v3: شيلت حد الـ4 حلقات (التشغيل التلقائي ورا بعض من غير توقف) + رسالة تشخيص في المشغّل لو الحلقة التالية مش معروفة
   v2: الحلقة التالية في المشغّل الداخلي: زرار برقم الحلقة + عدّاد آخر 250 ثانية + تشغيل ورا بعض في الـIPTV
 -->
-<title>Elkomy Debrid VIP</title>
+<title>TorFlix</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0f172a;--panel:#1e293b;--primary:#38bdf8;--text:#f8fafc;--danger:#ef4444;--success:#22c55e;--mut:#94a3b8}
@@ -1057,7 +1057,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 
 <div id="login-screen">
 <div class="login-box">
-<h2 style="color:var(--primary);margin-top:0">Elkomy VIP 🚀</h2>
+<h2 style="color:var(--primary);margin-top:0">Tor<span style="color:#fff">Flix</span> 🚀</h2>
 <div class="ltabs" id="ltabs">
 <button type="button" class="lt on" id="ltMail" onclick="lTab('mail')">📧 بالإيميل (كود)</button>
 <button type="button" class="lt" id="ltIn" onclick="lTab('in')">👤 يوزر وباسورد</button>
@@ -1142,7 +1142,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <div id="main-content">
 <div class="topbar">
 <div id="planBar"></div>
-<h1 style="color:var(--primary);margin:0;font-size:20px">Elkomy VIP 🚀</h1>
+<h1 style="color:var(--primary);margin:0;font-size:20px">Tor<span style="color:#fff">Flix</span> 🚀</h1>
 <button id="pchip" class="fc" onclick="showProfiles()"></button>
 <div class="cats" id="cats"></div>
 <div class="topbtns"><button id="dlbtn" class="fc" style="display:none" onclick="AndroidPlayer.openDownloads()" data-l="التحميلات" aria-label="التحميلات"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg><span id="dlbadge" style="display:none"></span></button><script>try{if(window.AndroidPlayer&&typeof AndroidPlayer.openDownloads!=="undefined"){document.getElementById("dlbtn").style.display="";setInterval(function(){try{var n=AndroidPlayer.dlActive(),b=document.getElementById("dlbadge");b.textContent=n>0?n:"";b.style.display=n>0?"":"none"}catch(e){}},1500)}}catch(e){}</script><button class="fc" data-l="العرض" aria-label="العرض" onclick="openView()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button><button class="fc" data-l="اهتماماتي" aria-label="اهتماماتي" onclick="openInterests()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg></button><button id="bell" class="fc" data-l="التنبيهات" onclick="bellClick()" style="display:none">🔕</button><button class="fc adm" data-l="الإعدادات" onclick="setOpen()" aria-label="الإعدادات والإضافات"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button></div>
@@ -8955,7 +8955,7 @@ async function usExport() {
     const b = await r.blob();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(b);
-    a.download = 'elkomy-members-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.download = 'torflix-members-backup-' + new Date().toISOString().slice(0, 10) + '.json';
     document.body.appendChild(a); a.click(); a.remove();
   } catch (e) { alert('تعذّر التصدير'); }
 }
