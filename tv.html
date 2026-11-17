@@ -1850,7 +1850,7 @@ openSeries({id: it.id, name: it.name, img: it.img}, it.nx ? it.nx.id : (m.ep && 
 }
 function cwCardAny(e) {
 var t = cwMeta(e), c = sxCard({title: t.title, poster: t.img, sub: t.lbl, pct: t.pct}, t.fn);
-if (t.tag) c.insertAdjacentHTML('beforeend', '<div class="tg2">' + t.tag + '</div>');
+if (t.tag) c.insertAdjacentHTML('beforeend', '<div class="tg2">' + esc(t.tag) + '</div>');
 return c;
 }
 /* تحميل بيانات الموقع في الخلفية (عشان كمّل المشاهدة تظهر في الـIPTV من غير ما تدخل الموقع) */
@@ -1878,7 +1878,7 @@ var o = ftRow(l, '▶ كمّل المشاهدة'), tgt = null;
 l.forEach(function (e, i) {
 var t = cwMeta(e), el = D.createElement('div');
 el.className = 'ft ftP ftC';
-el.innerHTML = '<div class="bg"' + ftBg(t.img) + '></div>' + (t.tag ? '<span class="tgi">' + t.tag + '</span>' : '') + '<div class="tt">' + esc(t.title) + '<small>' + esc(t.lbl) + '</small></div><div class="cwp"><i style="width:' + t.pct + '%"></i></div>';
+el.innerHTML = '<div class="bg"' + ftBg(t.img) + '></div>' + (t.tag ? '<span class="tgi">' + esc(t.tag) + '</span>' : '') + '<div class="tt">' + esc(t.title) + '<small>' + esc(t.lbl) + '</small></div><div class="cwp"><i style="width:' + t.pct + '%"></i></div>';
 ftTile(o.r, el, 'cw' + i, t.fn);
 var f0 = el._focus;
 el._focus = function () { f0(); if (!/\bfs\b/.test(H.className)) H.className += ' fs'; };
