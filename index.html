@@ -3074,9 +3074,36 @@ function ivCached(mk, fetcher, ttl) {
   mem[k] = p;
   return p;
 }
+// رد الـIPTV لو كبير جدًا (قايمة كل الأفلام/المسلسلات مرة واحدة) التطبيق بيرفضه عشان الرامات → بنجيبه قسم قسم
+const IV_BIGRE = /كبير جد|too large|too big|OutOfMemory/i;
+const IV_A2K = {get_vod_streams: 'vod', get_series: 'series', get_live_streams: 'live'};
+const IV_MAXALL = 20000;
+function ivBig(kind, set) {
+  const k = 'ivbig|' + IV.ck + '|' + kind;
+  IV._big = IV._big || {};
+  if (set) { IV._big[k] = 1; try { localStorage.setItem(k, '1'); } catch (e) {} }
+  if (IV._big[k]) return true;
+  try { return !!localStorage.getItem(k); } catch (e) { return false; }
+}
+async function ivMerge(action) {
+  const kind = IV_A2K[action];
+  ivBig(kind, true);
+  const cats = await ivCats(kind), out = [];
+  let i = 0, fails = 0;
+  const worker = async () => {
+    while (i < cats.length && out.length < IV_MAXALL) {
+      const c = cats[i++];
+      try { const l = await ivList(action, c.category_id); for (const x of l) out.push(x); } catch (e) { fails++; }
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  if (!out.length && fails) throw new Error('تعذّر تحميل أقسام الـIPTV، جرّب تاني');
+  return out;
+}
 function ivList(action, catId) {
   const k = action + '|' + (catId || '');
-  return ivCached([IV.L, k], () => ivApi(action, catId ? {category_id: catId} : null, IV_KEEP[action] || '', 30), IV_TTL);
+  return ivCached([IV.L, k], () => ivApi(action, catId ? {category_id: catId} : null, IV_KEEP[action] || '', 30)
+    .catch(e => (!catId && IV_A2K[action] && IV_BIGRE.test((e && e.message) || '')) ? ivMerge(action) : Promise.reject(e)), IV_TTL);
 }
 function ivCats(kind) {
   return ivCached([IV.C, kind], () => ivApi(IV_CATACT[kind], null, '', 120), 60 * 60 * 1000);
@@ -3848,8 +3875,15 @@ async function ivRender() {
   const _lt = setTimeout(() => { if (tok === IV.rt && !IV.sel) box.innerHTML = pend('جاري تحميل القايمة... (أول مرة بس، بعد كده بتفتح فورًا)'); }, 220);
   let cats, list;
   try {
+    cats = await ivCats(kind);
+    // لو الحساب كبير: «الكل» بيفتح أول قسم بدل ما يحمّل كل الأفلام مرة واحدة
+    if (!q && !IV.cat && kind !== 'live' && ivBig(kind)) {
+      const hs = new Set(((IV.pins.hidden || {})[kind] || []).map(String));
+      const f = ivSortCats(kind, cats).find(c => !hs.has(String(c.category_id)));
+      if (f) IV.cat = String(f.category_id);
+    }
     const useCat = IV.cat && IV.cat !== '__pin' && !q;
-    [cats, list] = await Promise.all([ivCats(kind), ivList(IV_ACT[kind], useCat ? IV.cat : '')]);
+    list = await ivList(IV_ACT[kind], useCat ? IV.cat : '');
     if (kind === 'live' && IV.cat === '__pin') list = await ivList(IV_ACT.live);
   } catch (e) { clearTimeout(_lt); if (tok === IV.rt) box.innerHTML = ivErr(e); return; }
   clearTimeout(_lt);
@@ -3868,7 +3902,7 @@ async function ivRender() {
   }
   const pinCats = IV.pins.cats.filter(c => c.k === kind);
   const chip = (id, n, on) => '<button class="' + (on ? 'on' : '') + '" data-c="' + esc(id) + '" onclick="ivSetCat(this.dataset.c)">' + n + '</button>';
-  let chips = chip('', 'الكل', !IV.cat);
+  let chips = (kind !== 'live' && ivBig(kind)) ? '' : chip('', 'الكل', !IV.cat);
   if (kind === 'live') chips += chip('__pin', '⭐ المثبّت', IV.cat === '__pin');
   const hidSet = new Set(((IV.pins.hidden || {})[kind] || []).map(String));
   chips += ivSortCats(kind, cats).filter(c => !hidSet.has(String(c.category_id)) || IV.cat === String(c.category_id))
