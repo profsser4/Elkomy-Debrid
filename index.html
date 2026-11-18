@@ -1154,6 +1154,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <input id="searchInput" class="search-input" placeholder="اسم فيلم/مسلسل، أو رابط مباشر، أو magnet" oninput="sbSync()" onkeydown="if(event.key==='Enter')sbGo()">
 <div class="row" id="sbBtns">
 <button class="search-btn" onclick="unifiedSearch()">🔍 بحث</button>
+<button class="search-btn" style="background:#7c3aed" onclick="aifOpen(false)">🧠 بحث ذكي</button>
 </div>
 <div class="row" id="sbLink" style="display:none">
 <button class="search-btn" onclick="processDirectLink()">سحب الرابط الآن 🚀</button>
@@ -1204,11 +1205,50 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <div class="sprow">
 <button class="spback" onclick="spBack()" aria-label="رجوع">➡️</button>
 <input id="spInput" class="search-input" placeholder="ابحث عن فيلم أو مسلسل..." enterkeyhint="search" onkeydown="if(event.key==='Enter')spGo()">
-<button class="spgo" onclick="spGo()" aria-label="بحث">🔍</button>
+<button class="spgo" onclick="spGo()" aria-label="بحث">🔍</button><button class="spgo" style="background:#7c3aed;border-color:#7c3aed" onclick="aifOpen(true)" aria-label="بحث ذكي">🧠</button>
 </div>
 <div id="spBar"></div>
 </div>
 <div id="spResults" class="spbody"></div>
+</div>
+
+<style id="aif-css">
+#aif{display:none;position:fixed;inset:0;z-index:110;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;direction:rtl;color:var(--text)}
+#aif .sphd{padding-top:calc(10px + env(safe-area-inset-top))}
+#aif .abody{padding:12px 12px 60px;max-width:760px;margin:0 auto}
+#aifQ{width:100%;min-height:92px;resize:vertical;box-sizing:border-box;font-family:inherit;line-height:1.6}
+#aif .arow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+#aif .arow button{flex:1;min-width:130px}
+#aifPrev{display:none;position:relative;margin-top:10px}
+#aifPrev img{width:100%;max-height:220px;object-fit:cover;border-radius:12px;display:block}
+#aifPrev button{position:absolute;top:8px;left:8px;width:34px;height:34px;border-radius:50%;border:0;background:#000b;color:#fff;font-size:16px;cursor:pointer}
+#aif .ahint{color:var(--mut);font-size:12px;margin:10px 0 0;line-height:1.7}
+.aifc{display:flex;gap:12px;background:var(--panel);border:1px solid #ffffff14;border-radius:14px;padding:10px;margin-top:12px;cursor:pointer}
+.aifc img,.aifc .noimg{flex:none;width:84px;height:124px;border-radius:10px;object-fit:cover;background:#0006;display:flex;align-items:center;justify-content:center;font-size:30px}
+.aifc .at{font-weight:700;font-size:16px;line-height:1.4}
+.aifc .ae{color:var(--mut);font-size:12px;direction:ltr;text-align:right}
+.aifc .am{color:var(--primary);font-size:12px;margin-top:4px}
+.aifc .aw{font-size:13px;margin-top:8px;line-height:1.6;opacity:.9}
+.aifc.top{border-color:var(--primary)}
+</style>
+<div id="aif">
+<div class="sphd">
+<div class="sprow">
+<button class="spback" onclick="aifClose()" aria-label="رجوع">➡️</button>
+<div style="flex:1;font-weight:700;font-size:16px;padding:0 6px">🧠 بحث ذكي</div>
+</div>
+</div>
+<div class="abody">
+<textarea id="aifQ" class="search-input" placeholder="اوصف المشهد أو الفكرة… مثلاً: فيلم فيه راجل بيدخل جوه أحلام الناس ويزرع فكرة، أو: مسلسل مصري عن عيلة صعيدية والأب بيموت في الحلقة الأولى"></textarea>
+<div id="aifPrev"><img id="aifImg" alt=""><button onclick="aifClear()" aria-label="شيل الصورة">✕</button></div>
+<div class="arow">
+<button class="search-btn" style="background:#334155" onclick="$('aifFile').click()">📷 ارفع صورة من الفيلم</button>
+<button class="search-btn" onclick="aifGo()">🧠 دوّر</button>
+</div>
+<input id="aifFile" type="file" accept="image/*" style="display:none" onchange="aifPickFile(this)">
+<p class="ahint">تقدر تكتب وصف مشهد، أو موضوع (زي «أفلام عن السفر في الزمن»)، أو ترفع لقطة من فيلم/مسلسل، أو الاتنين مع بعض. النتايج بتتفتح على صفحة العمل مباشرة.</p>
+<div id="aifOut"></div>
+</div>
 </div>
 
 <div id="cl">
@@ -13329,6 +13369,60 @@ function ivSeriesNf(box, v, i, nm, all, seasons, prog) {
   $('nfvPinB').innerHTML = nfvPinHTML();
   nfvTab(IV.nfTab);
   try { lzScan(); } catch (e) {}
+}
+
+// ================= بحث ذكي: وصف مشهد / موضوع / صورة =================
+const AIF = {img: '', busy: false};
+function aifOpen(fromSp) {
+  const v = (fromSp ? $('spInput') : $('searchInput')).value.trim();
+  if (v && !sbIsLink(v)) $('aifQ').value = v;
+  $('aif').style.display = 'block';
+}
+function aifClose() { $('aif').style.display = 'none'; }
+function aifClear() { AIF.img = ''; $('aifPrev').style.display = 'none'; $('aifImg').removeAttribute('src'); }
+function aifPickFile(inp) {
+  const f = inp.files && inp.files[0];
+  inp.value = '';
+  if (!f) return;
+  const u = URL.createObjectURL(f), im = new Image();
+  im.onload = () => {
+    const k = Math.min(1, 1024 / Math.max(im.width, im.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    AIF.img = c.toDataURL('image/jpeg', 0.82);
+    $('aifImg').src = AIF.img;
+    $('aifPrev').style.display = 'block';
+    URL.revokeObjectURL(u);
+  };
+  im.onerror = () => { URL.revokeObjectURL(u); alert('الصورة دي مش مقروءة، جرّب صورة تانية'); };
+  im.src = u;
+}
+async function aifGo() {
+  if (AIF.busy) return;
+  const q = $('aifQ').value.trim();
+  if (!q && !AIF.img) return alert('اكتب وصف المشهد أو ارفع صورة الأول');
+  AIF.busy = true;
+  const out = $('aifOut');
+  out.innerHTML = pend(AIF.img ? 'بحلل الصورة وبدوّر…' : 'بدوّر على العمل…');
+  try {
+    const {r, d} = await api('/ai/find', {method: 'POST', body: JSON.stringify({q: q, image: AIF.img}), timeout: 90000});
+    if (d.error) { out.innerHTML = warn(d.error); return; }
+    const L = d.results || [];
+    if (!L.length) { out.innerHTML = warn('مقدرتش أحدد العمل. جرّب تضيف تفاصيل أكتر (الممثلين، اللغة، السنة التقريبية، أحداث تانية في القصة).'); return; }
+    out.innerHTML = L.map((t, i) =>
+      '<div class="aifc' + (i === 0 ? ' top' : '') + '" data-t="' + esc(t.type) + '" data-i="' + esc(t.id) + '" onclick="aifOpenWork(this.dataset.t,this.dataset.i)">' +
+      (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">' : '<div class="noimg">🎬</div>') +
+      '<div style="flex:1;min-width:0"><div class="at">' + esc(t.title) + '</div>' +
+      (t.title_en && t.title_en !== t.title ? '<div class="ae">' + esc(t.title_en) + '</div>' : '') +
+      '<div class="am">' + (t.type === 'tv' ? '📺 مسلسل' : '🎬 فيلم') + (t.year ? ' · ' + esc(t.year) : '') + (i === 0 ? ' · الأقرب' : '') + '</div>' +
+      (t.why ? '<div class="aw">' + esc(t.why) + '</div>' : '') + '</div></div>').join('');
+  } catch (e) { out.innerHTML = ERR; }
+  finally { AIF.busy = false; }
+}
+function aifOpenWork(type, id) {
+  aifClose();
+  openDetails(type, Number(id));
 }
 </script>
 </body>
