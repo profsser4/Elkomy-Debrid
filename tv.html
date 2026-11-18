@@ -945,7 +945,7 @@ if (curScr === 'favs') sxFavsDone();
 var p = stack.pop();
 if (!p) { if (curScr === 'home') return exitApp(); return; }
 show(p);
-if (p === 'site') { sxSecCw(); sxSecFav(); sxSecAr(); loadFavRows(false); }
+if (p === 'site') { sxSecCw(); sxSecFav(); sxSecAr(); loadFavRows(false); try { sxSecTaste(); tasteLoad(false); } catch (e) {} }
 if (FOC[p] && D.body.contains(FOC[p])) setFocus(FOC[p]); else if (p === 'site') { cur = null; setFocus(fvis($('sxrows')) || $('xSearch')); } else focusFirst();
 if (p === 'home') { homeRefresh(); homeFeat(); }
 }
@@ -3354,21 +3354,19 @@ function hbApplyTv() {
 var rows = $('sxrows'); if (!rows) return;
 var order = [], seen = {}, allOff = {};
 hbList().forEach(function (b) {
-var cu = /^c_/.test(b.id), sid = cu ? 'sec-cb-' + b.id : HB_SEC[b.id];
-if (!sid) return;
-if (cu && b.on !== false && !$(sid)) { var d = D.createElement('div'); d.id = sid; rows.appendChild(d); }
+if (/^c_/.test(b.id)) return;
+var sid = HB_SEC[b.id];
+if (!sid || sid === 'sec-new' || sid === 'sec-ar') return;
 if (!seen[sid]) { seen[sid] = 1; order.push(sid); allOff[sid] = true; }
 if (b.on !== false) allOff[sid] = false;
 });
 order.forEach(function (sid) { var el = $(sid); if (el) { rows.appendChild(el); el.style.display = allOff[sid] ? 'none' : ''; } });
-['sec-feat', 'sec-cw', 'sec-new', 'sec-fav', 'sec-ar', 'sec-int'].forEach(function (sid) { if (!seen[sid]) { var el = $(sid); if (el) rows.appendChild(el); } });
+['sec-feat', 'sec-cw', 'sec-fav', 'sec-int'].forEach(function (sid) { if (!seen[sid]) { var el = $(sid); if (el) rows.appendChild(el); } });
+var cw = $('sec-cw'), tz = $('sec-taste');
+if (tz) { if (cw && cw.parentNode === rows) rows.insertBefore(tz, cw.nextSibling); else rows.appendChild(tz); }
+var tb = $('sec-tab'); if (tb) rows.appendChild(tb);
 }
-function hbPutTv(b) {
-sxPut('sec-cb-' + b.id, function (box) {
-var c = HBTD[b.id]; if (!c) return;
-sxRowIn(box, b.t || '', xlFilter(c.items), function () { sxBrowse('k=' + enc('hb:' + b.id), b.t || ''); });
-});
-}
+function hbPutTv(b) { tabRefresh(); }
 function hbPullTv(force) {
 var pid = PID;
 hbList().forEach(function (b) {
@@ -3391,13 +3389,8 @@ if (curScr === 'site') { hbApplyTv(); hbPullTv(); sxSecNew(); }
 }
 function sxSecNew() {
 try { heroRefresh(); } catch (e) {}
-sxPut('sec-new', function (box) {
-if (!NEWD) { box.innerHTML = '<div class="empty" style="padding-top:60px;font-size:30px">جاري تحميل الجديد...</div>'; return; }
-var P = pfx(), n = 0;
-var hbp = {}, hbo = {}; hbList().forEach(function (b, i) { hbp[b.id] = i; if (b.on === false) hbo[b.id] = 1; });
-(NEWD.rows || []).slice().sort(function (a, b) { return (hbp[a.id] == null ? 99 : hbp[a.id]) - (hbp[b.id] == null ? 99 : hbp[b.id]); }).forEach(function (r) { if (P.hn.indexOf(r.id) >= 0 || hbo[r.id]) return; var it = xlFilter(r.items); if (it.length) { n++; sxRowIn(box, r.title, it); } });
-if (!n) box.innerHTML = '<div class="empty" style="padding-top:60px;font-size:30px">مفيش جديد نزل دلوقتي 🙌</div>';
-});
+try { sxSecTaste(); } catch (e) {}
+tabRefresh();
 }
 function sxSecFav() {
 sxPut('sec-fav', function (box) {
@@ -3407,16 +3400,11 @@ c.rows.forEach(function (r) { var it = xlFilter(r.items); if (it.length) sxRowIn
 });
 });
 }
-function sxSecAr() {
-sxPut('sec-ar', function (box) {
-var P = pfx(); if (!P.ar.length || !ROWS) return;
-ROWS.forEach(function (r) { if (P.ar.indexOf(r.id) >= 0) sxRowIn(box, r.title, xlFilter(r.items), r.id ? function () { sxBrowse(moreQ(r.id), r.title); } : null); });
-});
-}
+function sxSecAr() { tabRefresh(); }
 function sxLoad(force) {
 var rows = $('sxrows'); rows.scrollTop = 0;
-rows.innerHTML = '<div id="sec-hero"></div><div id="sec-feat"></div><div id="sec-cw"></div><div id="sec-new"></div><div id="sec-fav"></div><div id="sec-ar"></div><div id="sec-int"></div><div id="sec-tab"></div>';
-TAB = 'home'; rows.classList.remove('tabm'); navMark(); heroInit(); sxSecCw(); sxSecNew(); sxSecFav(); sxSecAr(); sxSecInt(); loadIntRows();
+rows.innerHTML = '<div id="sec-hero"></div><div id="sec-feat"></div><div id="sec-cw"></div><div id="sec-taste"></div><div id="sec-fav"></div><div id="sec-int"></div><div id="sec-tab"></div>';
+TAB = 'home'; rows.classList.remove('tabm'); navMark(); heroInit(); sxSecCw(); sxSecFav(); sxSecInt(); loadIntRows(); sxSecTaste(); tasteLoad(false);
 hbApplyTv(); hbPullTv(); hbSyncTv();
 ivsPull(function () { if (curScr === 'site') sxSecCw(); }, 45000);
 if (FT.res) featRender();
@@ -3554,6 +3542,7 @@ set = {}; (c.cached || []).forEach(function (h) { set[String(h).toLowerCase()] =
 }
 }
 function sxOpen(t) {
+try { if (t && t.id && t.lg) TASTE.hint[String(t.id)] = t.lg; } catch (e) {}
 var ty = (t.type === 'series' || t.type === 'tv') ? 'tv' : 'movie';
 if (t.id) return siteDetails(ty, t.id);
 if (t.imdb) {
@@ -3596,6 +3585,7 @@ api('/details?type=' + type + '&id=' + id, {timeout: 60000}, function (err, st, 
 if (curScr !== 'detail') return;
 if (err || st !== 200 || d.error) return detailFail((d && d.error) || err || ('كود ' + st));
 SX.cur = d;
+try { tasteSeen(d); } catch (e) {}
 var isTvT = d.type !== 'movie';
 var gens = (d.genres || []).slice(0, 5).map(function (g) { return typeof g === 'string' ? g : (g && g.name) || ''; }).filter(Boolean);
 var meta = (d.rating > 0 ? '<b>⭐ ' + esc(d.rating) + '</b>  ·  ' : '') + [d.year, d.runtime ? d.runtime + ' د' : ''].filter(Boolean).map(esc).join('  ·  ');
@@ -3943,6 +3933,7 @@ hlsFrom: {hls: d.hls, torrent_id: d.torrent_id, file_id: d.file_id, direct: d.di
 }, null, 0);
 }
 function sxStartPlay(o) {
+try { tastePlay(o); } catch (e) {}
 var d = o.hlsFrom; delete o.hlsFrom;
 /* المشاهدة من TorBox = رابط التحويل (HLS) عشان الصوت والصورة؛ الرابط الأصلي احتياطي لو البث فشل. AllDebrid وغيره: الرابط العادي */
 var go2 = function () {
@@ -4320,6 +4311,7 @@ function heroPoolBuild() {
 var out = xlFilter(((NEWD && NEWD.hero) || [])).filter(function (x) { return x && x.id && x.title && (x.backdrop || x.poster); });
 if (TAB === 'movie' || TAB === 'tv') out = out.filter(function (x) { return normTy(x.type) === TAB; });
 else if (TAB === 'cartoon') out = [];
+else { try { var tl = tasteLangs(); if (tl.length) { var m = out.filter(function (x) { return tl.indexOf(String(x.lg || '').toLowerCase()) >= 0; }); if (m.length) out = m.concat(out.filter(function (x) { return m.indexOf(x) < 0; })); } } catch (e) {} }
 return out.slice(0, 10);
 }
 function heroInit() { HERO.d = null; HERO.src = null; heroRefresh(); }
@@ -4362,6 +4354,7 @@ heroGo(d, ty);
 });
 }
 function heroGo(d, ty) {
+try { tasteSeen(d, true); } catch (e) {}
 var base = {type: ty, id: d.id, imdb: d.imdb || '', title: d.title, poster: d.poster || '', year: d.year || '', q: d.qname || d.title, ms: (d.seasons || []).reduce(function (m, s) { return Math.max(m, s.n || 0); }, 0)};
 if (ty === 'movie') return sitePlay(sxMix(base, {resume: 0}));
 var s0 = (d.seasons || [])[0]; if (!s0) return siteDetails(ty, d.id);
@@ -4401,6 +4394,113 @@ worker();
 }
 worker(); worker();
 }
+/* ===================== الرئيسية = المثبّت + على ذوقك · الأفلام والمسلسلات في أقسامها ===================== */
+var TASTE = {rows: {}, busy: {}, hint: {}, last: null, pid: null};
+var TASTE_LG = {hindi: ['hi', 'ta', 'te', 'ml', 'kn', 'bn', 'mr', 'pa'], kr: ['ko'], tr: ['tr'], anime: ['ja'], ar: ['ar']};
+var TASTE_Q = {hindi: ['int=hi', 'int=in', 'int=hindi'], kr: ['int=ko', 'int=kr'], tr: ['int=tr'], anime: ['genre=anime', 'int=ja'], ar: ['int=ar'],
+toon: ['genre=cartoon'], action: ['genre=action'], comedy: ['genre=comedy'], horror: ['genre=horror'], doc: ['genre=doc']};
+function tasteKeys() {
+var out = [];
+try { tzTop(8).forEach(function (it) { if (TASTE_Q[it.k] || TASTE_LG[it.k]) out.push(it); }); } catch (e) {}
+return out.slice(0, 3);
+}
+function tasteLangs() { var l = []; tasteKeys().forEach(function (it) { (TASTE_LG[it.k] || []).forEach(function (c) { l.push(c); }); }); return l; }
+function tasteText(d) {
+var lg = String((d && (d.lg || d.original_language || d.lang)) || (d && TASTE.hint[String(d.id)]) || '').toLowerCase(), t = '';
+if (TASTE_LG.hindi.indexOf(lg) >= 0) t = 'hindi bollywood';
+else if (lg === 'ko') t = 'korea kdrama';
+else if (lg === 'tr') t = 'turk';
+else if (lg === 'ar') t = 'عربي';
+var g = ((d && d.genres) || []).map(function (x) { return typeof x === 'string' ? x : (x && x.name) || ''; }).join(' ');
+return (t + ' ' + g).trim();
+}
+function tasteSeen(d, noFeed) {
+if (!d || !d.id) return;
+var txt = tasteText(d); TASTE.last = {id: d.id, text: txt};
+if (!noFeed && txt && tzOnce('sd:' + d.id, 1800000)) tzFeed(txt, 1);
+}
+function tastePlay(o) {
+var sp = o && o.sp, L = TASTE.last;
+if (!sp || !sp.id || !L || String(L.id) !== String(sp.id) || !L.text) return;
+if (tzOnce('sp:' + sp.id, 1800000)) tzFeed(L.text, 3);
+}
+function tastePool() {
+var seen = {}, out = [];
+function add(a) { (a || []).forEach(function (x) { if (!x || !x.title) return; var k = (x.type || '') + ':' + (x.id || x.imdb || x.title); if (!seen[k]) { seen[k] = 1; out.push(x); } }); }
+if (NEWD) { (NEWD.rows || []).forEach(function (r) { add(r.items); }); add(NEWD.hero); }
+(ROWS || []).forEach(function (r) { add(r.items); });
+(IROWS || []).forEach(function (r) { add(r.items); });
+Object.keys(FAVD).forEach(function (k) { ((FAVD[k] || {}).rows || []).forEach(function (r) { add(r.items); }); });
+Object.keys(HBTD).forEach(function (k) { add((HBTD[k] || {}).items); });
+Object.keys(TABR).forEach(function (k) { ((TABR[k] || {}).rows || []).forEach(function (r) { add(r.items); }); });
+return out;
+}
+function tasteLoad(force) {
+if (!S.tok) return;
+if (TASTE.pid !== PID) { TASTE.pid = PID; TASTE.rows = {}; TASTE.busy = {}; }
+var pid = PID;
+tasteKeys().forEach(function (it) {
+var c = TASTE.rows[it.k];
+if ((c && !force && Date.now() - c.t < 20 * 60000) || TASTE.busy[it.k]) return;
+var qs = (TASTE_Q[it.k] || []).slice();
+if (!qs.length) return;
+TASTE.busy[it.k] = 1;
+(function next() {
+var q = qs.shift();
+if (!q) { TASTE.busy[it.k] = 0; TASTE.rows[it.k] = {t: Date.now(), items: []}; if (curScr === 'site' && pid === PID) sxSecTaste(); return; }
+api('/browse?' + q + '&skip=0', {timeout: 40000}, function (e, s, d) {
+var a = ((!e && s === 200 && d && d.items) || []).filter(function (x) { return x && x.title; });
+if (a.length < 4) return next();
+TASTE.busy[it.k] = 0; TASTE.rows[it.k] = {t: Date.now(), items: a, q: q};
+if (curScr === 'site' && pid === PID) sxSecTaste();
+});
+})();
+});
+}
+function sxSecTaste() {
+sxPut('sec-taste', function (box) {
+var ks = tasteKeys().slice(0, 2), n = 0;
+ks.forEach(function (it) {
+var c = TASTE.rows[it.k], items = (c && c.items && c.items.length) ? c.items : null, more = null;
+if (items) { if (c.q) more = function () { sxBrowse(c.q, it.ic + ' ' + it.n); }; }
+else if (TASTE_LG[it.k]) { var lg = TASTE_LG[it.k]; items = tastePool().filter(function (x) { return lg.indexOf(String(x.lg || '').toLowerCase()) >= 0; }); }
+items = xlFilter(items || []);
+if (!items.length) return;
+n++; sxRowIn(box, it.ic + ' ' + it.n + '  ·  🎯 على ذوقك', items, more);
+});
+if (!n && !ks.length && NEWD && NEWD.rows) {
+var hbo = {}; hbList().forEach(function (b) { if (b.on === false) hbo[b.id] = 1; });
+for (var i = 0; i < NEWD.rows.length; i++) { var r = NEWD.rows[i], it2 = xlFilter(r.items); if (it2.length && !hbo[r.id]) { sxRowIn(box, r.title, it2); break; } }
+}
+});
+}
+function tabVT(items, t) {
+return xlFilter(items || []).filter(function (x) { return x && x.title && (t === 'cartoon' || !x.type || normTy(x.type) === t); });
+}
+function tabHomeRows(t) {
+var out = [], P = pfx(), hbp = {}, hbo = {};
+hbList().forEach(function (b, i) { hbp[b.id] = i; if (b.on === false) hbo[b.id] = 1; });
+if (NEWD && NEWD.rows) NEWD.rows.slice().sort(function (a, b) { return (hbp[a.id] == null ? 99 : hbp[a.id]) - (hbp[b.id] == null ? 99 : hbp[b.id]); }).forEach(function (r) {
+if (P.hn.indexOf(r.id) >= 0 || hbo[r.id]) return;
+if (t === 'cartoon' && r.id !== 'new-toon') return;
+var it = tabVT(r.items, t); if (it.length) out.push({title: r.title, items: it, more: null});
+});
+if (t !== 'cartoon') {
+if (P.ar.length && ROWS) ROWS.forEach(function (r) { if (P.ar.indexOf(r.id) < 0) return; var it = tabVT(r.items, t); if (it.length) out.push({title: r.title, items: it, more: r.id ? function () { sxBrowse(moreQ(r.id), r.title); } : null}); });
+hbList().forEach(function (b) {
+if (!/^c_/.test(b.id) || b.on === false) return;
+var c = HBTD[b.id]; if (!c) return;
+var it = tabVT(c.items, t); if (it.length) out.push({title: b.t || '', items: it, more: function () { sxBrowse('k=' + enc('hb:' + b.id), b.t || ''); }});
+});
+}
+return out;
+}
+function tabRefresh() {
+if (TAB === 'home' || curScr !== 'site') return;
+var tb = $('sec-tab');
+if (tb && cur && tb.contains(cur) && tb.querySelector('.sxr')) return;
+sxTabRender();
+}
 function sxTabRender() {
 if (TAB === 'home') return;
 var t = TAB;
@@ -4411,6 +4511,7 @@ if (cw.length) {
 var h = D.createElement('div'); h.className = 'sxh'; h.textContent = '▶ كمّل المشاهدة'; box.appendChild(h);
 var r = D.createElement('div'); r.className = 'sxr'; cw.forEach(function (x) { r.appendChild(cwCardAny({x: x})); }); box.appendChild(r);
 }
+tabHomeRows(t).forEach(function (x) { sxRowIn(box, x.title, x.items, x.more); });
 var R = TABR[t];
 (R ? R.rows : []).forEach(function (r) { var it = xlFilter(r.items); if (it.length) sxRowIn(box, r.title, it, function () { sxBrowse(r.q, r.title); }); });
 if (!R || R.st !== 2) { var p = D.createElement('div'); p.className = 'empty'; p.style.cssText = 'padding:30px 0;font-size:28px'; p.textContent = 'جاري تحميل الأقسام...'; box.appendChild(p); }
