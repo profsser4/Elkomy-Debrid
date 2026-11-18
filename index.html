@@ -1247,6 +1247,8 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 </div>
 <input id="aifFile" type="file" accept="image/*" style="display:none" onchange="aifPickFile(this)">
 <p class="ahint">تقدر تكتب وصف مشهد، أو موضوع (زي «أفلام عن السفر في الزمن»)، أو ترفع لقطة من فيلم/مسلسل، أو الاتنين مع بعض. النتايج بتتفتح على صفحة العمل مباشرة.</p>
+<button class="search-btn adm" style="background:#334155;margin-top:14px;width:100%" onclick="aifTest()">🔧 فحص مفتاح الذكاء الاصطناعي</button>
+<div id="aifTestOut" class="ahint" style="direction:rtl;line-height:2"></div>
 <div id="aifOut"></div>
 </div>
 </div>
@@ -13423,6 +13425,20 @@ async function aifGo() {
 function aifOpenWork(type, id) {
   aifClose();
   openDetails(type, Number(id));
+}
+
+async function aifTest() {
+  const o = $('aifTestOut');
+  o.innerHTML = pend('بفحص المفتاح…');
+  try {
+    const {d} = await api('/ai/test', {timeout: 60000});
+    if (d.error) { o.innerHTML = warn(d.error); return; }
+    o.innerHTML = '<div class="warn" style="' + (d.ok ? 'color:#22c55e' : 'color:#ef4444') + '">' + esc(d.msg || '') + '</div>' +
+      'المزوّد اللي السيرفر شايفه: <b>' + esc(d.provider) + '</b><br>' +
+      'الموديل: ' + esc(d.model) + '<br>' +
+      'المفتاح: ' + (d.key_set ? esc(d.key_mask) + ' (' + d.key_len + ' حرف)' : 'مش موجود') + '<br>' +
+      'AI_PROVIDER: ' + esc(d.ai_provider_env || 'فاضي') + ' · TMDB: ' + (d.tmdb ? 'موجود' : 'ناقص');
+  } catch (e) { o.innerHTML = ERR; }
 }
 </script>
 </body>
