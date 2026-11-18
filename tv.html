@@ -612,12 +612,12 @@ body{color:var(--tx)}
 /* ===================== الموقع: شكل Morph (نافبار + هيرو كبير + صفوف) ===================== */
 #site{background:#0a0d1c}
 #site .bh{position:absolute;left:0;right:0;top:0;height:132px;padding:0 70px;display:flex;align-items:center;justify-content:space-between;direction:ltr;z-index:20;border:0;background:linear-gradient(180deg,rgba(8,10,22,.88) 0,rgba(8,10,22,.55) 70%,rgba(8,10,22,0) 100%)}
-#site .bh h2{flex:none;order:0;width:380px;font-size:40px;font-weight:800;text-align:left;direction:ltr;white-space:nowrap}
+#site .bh h2{flex:none;order:0;width:260px;overflow:hidden;font-size:40px;font-weight:800;text-align:left;direction:ltr;white-space:nowrap}
 #site .bh h2 .bl{color:#fff;letter-spacing:.5px}
 #site .bh h2 .bl b{color:#ffc83d}
 #site .bh h2 small{display:block;font-size:22px;font-weight:500;color:#b9c2e6;margin-top:2px;direction:rtl;text-align:left}
 #sxnav{display:flex;align-items:center;direction:ltr;padding:8px;border-radius:46px;background:rgba(36,40,58,.72);border:1px solid rgba(255,255,255,.12)}
-#site #sxnav .btn{min-width:0;height:66px;line-height:66px;padding:0 30px;margin:0 2px;font-size:28px;font-weight:600;border-radius:33px;background:none;border:0;color:#e4e8fa;box-shadow:none}
+#site #sxnav .btn{min-width:0;height:66px;line-height:66px;padding:0 22px;margin:0 2px;font-size:26px;font-weight:600;border-radius:33px;background:none;border:0;color:#e4e8fa;box-shadow:none}
 #site #sxnav .btn.cur{background:#fff;color:#111}
 #site #sxnav .btn.on{background:#ffc83d;color:#15172b;box-shadow:0 0 0 3px #fff;transform:scale(1.06);position:relative;z-index:3}
 #sxclock{flex:none;width:380px;text-align:right;direction:ltr}
@@ -640,6 +640,9 @@ body{color:var(--tx)}
 #hbtns .btn.on{background:#fff;color:#111;box-shadow:0 0 0 4px rgba(255,200,61,.9);transform:scale(1.05)}
 #site .sxh{font-size:38px;font-weight:800;margin:20px 6px 2px}
 #site .sxh:before{display:none}
+.bsp{flex:none;width:260px}
+#sxrows.tabm>div:not(#sec-hero):not(#sec-tab){display:none!important}
+#sxrows:not(.tabm)>#sec-tab{display:none}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -691,8 +694,8 @@ body{color:var(--tx)}
 </div>
 <div id="site" class="scr">
   <div class="bh"><h2 id="sxT">TorFlix</h2>
-    <div id="sxnav"><div class="f btn nv2 cur" id="xHome">الرئيسية</div><div class="f btn nv2" id="xSearch">🔍 بحث</div><div class="f btn nv2" id="xList">⭐ قائمتي</div><div class="f btn nv2" id="xLib">📚 مكتبتي</div><div class="f btn nv2" id="xLink">🔗 رابط</div><div class="f btn nv2" id="xMore">⚙ المزيد</div></div>
-    <div id="sxclock"><b id="sxtm"></b><small id="sxdt"></small></div></div>
+    <div id="sxnav"><div class="f btn nv2 cur" id="xHome">🏠 الرئيسية</div><div class="f btn nv2" id="xMov">🎬 أفلام</div><div class="f btn nv2" id="xSer">📺 مسلسلات</div><div class="f btn nv2" id="xToon">🧸 كرتون</div><div class="f btn nv2" id="xList">⭐ قائمتي</div><div class="f btn nv2" id="xLib">📚 مكتبتي</div><div class="f btn nv2" id="xLink" style="display:none">🔗</div><div class="f btn nv2" id="xSearch">🔍 بحث</div><div class="f btn nv2" id="xMore">⚙</div></div>
+    <div class="bsp"></div></div>
   <div class="sc" id="sxrows" style="position:absolute;left:0;right:0;top:0;bottom:0;overflow:hidden"></div>
 </div>
 <div id="prof" class="scr"><div class="pbrand"><div class="mark">T</div><div class="wm">TOR<b>FLIX</b></div><p>اختر ملفًا شخصيًا للمتابعة</p></div><div class="phead"><div class="wm2">TOR<b>FLIX</b></div><div class="t">اختر ملفًا شخصيًا</div></div><div class="pgrid sc" id="pgrid"></div></div>
@@ -716,7 +719,7 @@ body{color:var(--tx)}
 /* ===================== إعدادات (عدّل هنا لو احتجت) ===================== */
 var CFG = {
 API: 'https://elkomy-server-neon.vercel.app',   // نفس سيرفر موقعك
-VER: '3.5.0',
+VER: '3.5.1',
 AUTO_USER: '',   // لو كتبت يوزر وباس هنا: التطبيق يدخل لوحده من غير ما تكتب حاجة
 AUTO_PASS: ''
 };
@@ -937,7 +940,7 @@ var p = stack.pop();
 if (!p) { if (curScr === 'home') return exitApp(); return; }
 show(p);
 if (p === 'site') { sxSecCw(); sxSecFav(); sxSecAr(); loadFavRows(false); }
-if (FOC[p] && D.body.contains(FOC[p])) setFocus(FOC[p]); else if (p === 'site') { cur = null; setFocus($('sec-cw').querySelector('.f') || $('xSearch')); } else focusFirst();
+if (FOC[p] && D.body.contains(FOC[p])) setFocus(FOC[p]); else if (p === 'site') { cur = null; setFocus(fvis($('sxrows')) || $('xSearch')); } else focusFirst();
 if (p === 'home') { homeRefresh(); homeFeat(); }
 }
 function exitApp() { try { tizen.application.getCurrentApplication().exit(); } catch (e) {} }
@@ -982,7 +985,7 @@ var root = activeRoot(); if (!root) return;
 if (cur && !KB && D.body.contains(cur)) {
 var par = cur.parentNode, f0, fr;
 if (curScr === 'site') {
-if (dir === 40 && par && par.id === 'sxnav') { f0 = $('sxrows').querySelector('.f'); if (f0) { $('sxrows').scrollTop = 0; return setFocus(f0); } }
+if (dir === 40 && par && par.id === 'sxnav') { f0 = fvis($('sxrows')); if (f0) { $('sxrows').scrollTop = 0; return setFocus(f0); } }
 if (dir === 38 && $('sxrows').contains(cur)) { var hb0 = $('hbtns'); if (hb0 && hb0.querySelector('.f')) { if (hb0.contains(cur)) return setFocus($('xHome')); } else { fr = $('sxrows').querySelector('.sxr,.hri'); if (fr && fr.contains(cur)) return setFocus($('xHome')); } }
 }
 if (curScr === 'sres' && dir === 40 && par && par.id === 'sresB') { f0 = $('sgrid').querySelector('.f'); if (f0) { $('sgrid').scrollTop = 0; return setFocus(f0); } }
@@ -3137,7 +3140,7 @@ p.t = Date.now(); SD.profiles[p.id] = p; sdSave();
 var o = {}; o[p.id] = p;
 api('/ud/merge?lite=1', {method: 'POST', body: {profiles: o, items: {}}, timeout: 30000}, function () {});
 }
-function sdReset() { try { HERO.src = null; HERO.pool = []; HERO.i = 0; HERO.d = null; } catch (e) {} SD = {profiles: {}, items: {}}; PID = null; SDOK = false; sdQ = {}; NEWD = null; FAVL = null; FAVD = {}; FAVB = {}; ROWS = null; SX.lib = null; SX.epsBy = {}; SX.failed = {}; SX.smap = {}; }
+function sdReset() { try { TABR = {}; TAB = 'home'; HERO.src = null; HERO.pool = []; HERO.i = 0; HERO.d = null; } catch (e) {} SD = {profiles: {}, items: {}}; PID = null; SDOK = false; sdQ = {}; NEWD = null; FAVL = null; FAVD = {}; FAVB = {}; ROWS = null; SX.lib = null; SX.epsBy = {}; SX.failed = {}; SX.smap = {}; }
 function autoNext() { var p = prof(); return !(p && p.auto === false); }
 function dubFirst() { var p = prof(); return !p || p.dubFirst !== false; }
 /* ---------- دخول القسم + اختيار البروفايل ---------- */
@@ -3406,8 +3409,8 @@ ROWS.forEach(function (r) { if (P.ar.indexOf(r.id) >= 0) sxRowIn(box, r.title, x
 }
 function sxLoad(force) {
 var rows = $('sxrows'); rows.scrollTop = 0;
-rows.innerHTML = '<div id="sec-hero"></div><div id="sec-feat"></div><div id="sec-cw"></div><div id="sec-new"></div><div id="sec-fav"></div><div id="sec-ar"></div><div id="sec-int"></div>';
-heroInit(); sxSecCw(); sxSecNew(); sxSecFav(); sxSecAr(); sxSecInt(); loadIntRows();
+rows.innerHTML = '<div id="sec-hero"></div><div id="sec-feat"></div><div id="sec-cw"></div><div id="sec-new"></div><div id="sec-fav"></div><div id="sec-ar"></div><div id="sec-int"></div><div id="sec-tab"></div>';
+TAB = 'home'; rows.classList.remove('tabm'); navMark(); heroInit(); sxSecCw(); sxSecNew(); sxSecFav(); sxSecAr(); sxSecInt(); loadIntRows();
 hbApplyTv(); hbPullTv(); hbSyncTv();
 ivsPull(function () { if (curScr === 'site') sxSecCw(); }, 45000);
 if (FT.res) featRender();
@@ -3441,8 +3444,8 @@ worker();
 }
 worker(); worker(); worker();
 }
-['xHome', 'xSearch', 'xList', 'xLib', 'xLink', 'xMore'].forEach(function (id) { $(id)._focus = function () { $('sxrows').scrollTop = 0; }; });
-$('xHome')._ok = function () { $('sxrows').scrollTop = 0; var f = $('hPlay'); if (f) setFocus(f); else { var f2 = $('sxrows').querySelector('.f'); if (f2) setFocus(f2); } };
+['xHome', 'xMov', 'xSer', 'xToon', 'xSearch', 'xList', 'xLib', 'xLink', 'xMore'].forEach(function (id) { $(id)._focus = function () { $('sxrows').scrollTop = 0; }; });
+$('xHome')._ok = function () { if (TAB !== 'home') return sxTab('home'); $('sxrows').scrollTop = 0; var f = $('hPlay') || fvis($('sxrows')); if (f) setFocus(f); };
 /* ---------- شبكة نتائج عامة + قايمة عامة ---------- */
 function sxHead(title, tabs) {
 $('sresT').textContent = title;
@@ -4251,6 +4254,7 @@ sxGrid('⭐ قائمتي', out, sxOpen, 'قائمتك فاضية\nافتح أي 
 var IALL = [], IROWS = [];
 $('xMore')._ok = function () {
 sxList('⋯ المزيد', [
+{txt: '🔗 تشغيل من رابط / ماجنت', sub: 'الصق رابط مباشر', fn: function () { $('xLink')._ok(); }},
 {txt: '👤 تبديل البروفايل', sub: 'اختيار مين بيشاهد', fn: function () { sxProfiles(false); }},
 {txt: '🌐 بحث روابط الويب', sub: 'بيدوّر في صفحات الويب على روابط مدعومة', fn: function () { wsStart(false); }}
 ]);
@@ -4297,66 +4301,64 @@ FAVCH = false; var p = prof(); if (!p) return;
 if (p.fav === undefined) p.fav = [];
 sdSaveProf(p); FAVD = {}; FAVB = {};
 }
-/* ===================== هيرو الموقع (شكل Morph): بانر كبير + أزرار تشغيل/تفاصيل + ساعة ===================== */
-var HERO = {pool: [], i: 0, src: null, hd: {}, tok: 0, d: null};
-function heroPoolBuild() {
-var out = [], seen = {};
-if (!NEWD || !NEWD.rows) return out;
-var P0 = pfx();
-NEWD.rows.forEach(function (r) {
-if (P0.hn.indexOf(r.id) >= 0) return;
-var n = 0;
-xlFilter(r.items || []).forEach(function (t) {
-if (!t || !t.id || !t.title || !t.poster || n >= 3 || out.length >= 12 || seen[t.id]) return;
-seen[t.id] = 1; n++; out.push(t);
-});
-});
-return out;
+/* ===================== هيرو الموقع (شكل Morph) + أقسام أفلام/مسلسلات/كرتون ===================== */
+var TAB = 'home', TABR = {};
+var HERO = {pool: [], i: 0, src: null, tab: '', d: null};
+function normTy(t) { return t === 'series' ? 'tv' : t; }
+function fvis(root) { var l = root.querySelectorAll('.f'), i; for (i = 0; i < l.length; i++) if (vis(l[i])) return l[i]; return null; }
+function navMark() {
+[['xHome', 'home'], ['xMov', 'movie'], ['xSer', 'tv'], ['xToon', 'cartoon']].forEach(function (a) { var e = $(a[0]); if (e) e.className = e.className.replace(/ ?\bcur\b/g, '') + (TAB === a[1] ? ' cur' : ''); });
 }
-function heroInit() { HERO.d = null; heroRefresh(); }
+/* البانر بياخد بياناته جاهزة من /new (hero) من غير أي طلبات زيادة، فهو سريع وخفيف */
+function heroPoolBuild() {
+var out = xlFilter(((NEWD && NEWD.hero) || [])).filter(function (x) { return x && x.id && x.title && (x.backdrop || x.poster); });
+if (TAB === 'movie' || TAB === 'tv') out = out.filter(function (x) { return normTy(x.type) === TAB; });
+else if (TAB === 'cartoon') out = [];
+return out.slice(0, 10);
+}
+function heroInit() { HERO.d = null; HERO.src = null; heroRefresh(); }
 function heroRefresh() {
 if (!NEWD) return heroPaint(null);
-if (HERO.src !== NEWD || !HERO.pool.length) { HERO.src = NEWD; HERO.pool = heroPoolBuild(); HERO.i = 0; HERO.d = null; }
+if (HERO.src !== NEWD || HERO.tab !== TAB) { HERO.src = NEWD; HERO.tab = TAB; HERO.pool = heroPoolBuild(); HERO.i = 0; HERO.d = null; }
 if (!HERO.pool.length) return heroPaint(null);
 heroShow();
 }
 function heroShow() {
-var t = HERO.pool[HERO.i]; if (!t) return;
-if (HERO.d && HERO.d._t === t && $('hbtns')) return;
-var ty = (t.type === 'series' || t.type === 'tv') ? 'tv' : 'movie', k = ty + ':' + t.id, my = ++HERO.tok, c = HERO.hd[k];
-if (c) { c._t = t; HERO.d = c; return heroPaint(c); }
-api('/details?type=' + ty + '&id=' + t.id, {timeout: 40000}, function (e, s, d) {
-if (my !== HERO.tok) return;
-if (e || s !== 200 || !d || d.error) { if (HERO.pool.length > 1) { HERO.pool.splice(HERO.i, 1); HERO.i = HERO.i % HERO.pool.length; HERO.d = null; return heroShow(); } return; }
-d._t = t; HERO.hd[k] = d; HERO.d = d; heroPaint(d);
-});
+var x = HERO.pool[HERO.i]; if (!x) return;
+if (HERO.d === x && $('hbtns')) return;
+HERO.d = x; heroPaint(x);
 }
-function heroPaint(d) {
+function heroPaint(x) {
 var box = $('sec-hero'); if (!box) return;
 var had = cur && box.contains(cur), hadId = had ? cur.id : '';
-if (!d) { box.className = ''; box.innerHTML = ''; if (had) { cur = null; setFocus($('xHome')); } return; }
-var ty = d.type === 'movie' ? 'movie' : 'tv', bg = d.backdrop || d.poster || '', meta = [];
-if (d.rating > 0) meta.push('<b>★ ' + esc(d.rating) + '</b>');
-if (d.year) meta.push(esc(d.year));
-if (ty === 'movie' && d.runtime) meta.push(esc(d.runtime) + ' د');
-if (ty === 'tv' && (d.seasons || []).length > 1) meta.push(d.seasons.length + ' مواسم');
-var pl = String(d.overview || ''); if (pl.length > 250) pl = pl.slice(0, 247).replace(/\s+\S*$/, '') + '…';
+if (!x) { box.className = ''; box.innerHTML = ''; if (had) { cur = null; setFocus($('xHome')); } return; }
+var ty = normTy(x.type) === 'movie' ? 'movie' : 'tv', bg = x.backdrop || x.poster || '', meta = [];
+if (x.rating > 0) meta.push('<b>★ ' + esc(x.rating) + '</b>');
+if (x.year) meta.push(esc(x.year));
+if (x.cl) meta.push(esc(x.cl));
+var pl = String(x.overview || ''); if (pl.length > 250) pl = pl.slice(0, 247).replace(/\s+\S*$/, '') + '…';
 var dots = ''; if (HERO.pool.length > 1) { for (var i = 0; i < HERO.pool.length; i++) dots += i === HERO.i ? '●' : '○'; }
 box.className = 'on';
-box.innerHTML = '<div class="hbg"' + (bg ? ' style="background-image:url(\'' + esc(bg) + '\')"' : '') + '></div><div class="hov"></div><div class="hx"><div class="htag">' + (ty === 'movie' ? 'فيلم جديد' : 'مسلسل جديد') + '</div><h1>' + esc(d.title) + '</h1><div class="hmeta">' + meta.join('  ·  ') + '</div><div class="hpl">' + esc(pl) + '</div><div id="hbtns"></div>' + (dots ? '<div class="hdots">' + dots + '</div>' : '') + '</div>';
+box.innerHTML = '<div class="hbg"' + (bg ? ' style="background-image:url(\'' + esc(bg) + '\')"' : '') + '></div><div class="hov"></div><div class="hx"><div class="htag">' + (ty === 'movie' ? 'فيلم جديد' : 'مسلسل جديد') + '</div><h1>' + esc(x.title) + '</h1><div class="hmeta">' + meta.join('  ·  ') + '</div><div class="hpl">' + esc(pl) + '</div><div id="hbtns"></div>' + (dots ? '<div class="hdots">' + dots + '</div>' : '') + '</div>';
 var b = $('hbtns');
-var pb = addBtn(b, '▶  تشغيل', function () { heroPlay(d); }); pb.id = 'hPlay';
-var ib = addBtn(b, 'ⓘ  تفاصيل', function () { siteDetails(ty, d.id); }); ib.id = 'hInfo';
+var pb = addBtn(b, '▶  تشغيل', function () { heroPlay(x, ty); }); pb.id = 'hPlay';
+var ib = addBtn(b, 'ⓘ  تفاصيل', function () { siteDetails(ty, x.id); }); ib.id = 'hInfo';
 if (had) { cur = null; setFocus(hadId === 'hInfo' ? ib : pb); }
 }
-function heroPlay(d) {
-var ty = d.type === 'movie' ? 'movie' : 'tv', last = latestOf(d.id);
+function heroPlay(x, ty) {
+var last = latestOf(x.id);
 if (last && !last.done && last.pos > 10) return playItem(last.key);
 if (last && last.done && ty === 'tv' && (last.next || nextEpOf(last))) return playItem(last.key);
+toast('جاري التجهيز...');
+api('/details?type=' + ty + '&id=' + x.id, {timeout: 40000}, function (e, s, d) {
+if (e || s !== 200 || !d || d.error) return siteDetails(ty, x.id);
+heroGo(d, ty);
+});
+}
+function heroGo(d, ty) {
 var base = {type: ty, id: d.id, imdb: d.imdb || '', title: d.title, poster: d.poster || '', year: d.year || '', q: d.qname || d.title, ms: (d.seasons || []).reduce(function (m, s) { return Math.max(m, s.n || 0); }, 0)};
 if (ty === 'movie') return sitePlay(sxMix(base, {resume: 0}));
 var s0 = (d.seasons || [])[0]; if (!s0) return siteDetails(ty, d.id);
-toast('جاري التجهيز...');
 sxEps(d.id, s0.n, function (l) {
 var f = null; (l || []).forEach(function (x) { if (!f && !sxFuture(x)) f = x; });
 if (!f) return siteDetails('tv', d.id);
@@ -4367,17 +4369,59 @@ setInterval(function () {
 if (curScr !== 'site' || P.on || KB || HERO.pool.length < 2 || $('sxrows').scrollTop > 20) return;
 HERO.i = (HERO.i + 1) % HERO.pool.length; HERO.d = null; heroShow();
 }, 14000);
-$('sxrows').addEventListener('scroll', function () { var bh = $('site').querySelector('.bh'); if (bh) bh.style.background = this.scrollTop > 40 ? 'rgba(10,13,28,.95)' : ''; });
-function sxClock() {
-var t = new Date(), a = $('sxtm'), b = $('sxdt'); if (!a) return;
-var DN = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'], MN2 = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-a.textContent = p2(t.getHours()) + ':' + p2(t.getMinutes());
-b.textContent = DN[t.getDay()] + ' ' + t.getDate() + ' ' + MN2[t.getMonth()];
+/* ---- تبويبات الأقسام (أفلام / مسلسلات / كرتون): صفوف تصنيفات بتتحمّل أول مرة بس وبتتخزّن ---- */
+var TGEN = {action: 'أكشن', drama: 'دراما', comedy: 'كوميديا', crime: 'جريمة', scifi: 'خيال علمي', horror: 'رعب', romance: 'رومانسي', family: 'عائلي', doc: 'وثائقي'};
+function tabDefs(t) {
+if (t === 'cartoon') return [['كرتون', 'genre=cartoon', ''], ['عائلي', 'genre=family', '']];
+var d = Object.keys(TGEN).map(function (g) { return [TGEN[g], 'genre=' + g + '&type=' + t, t]; });
+d.splice(1, 0, [t === 'movie' ? '🇰🇷 أفلام كورية' : '🇰🇷 مسلسلات كورية', 'int=ko&type=' + t, t]);
+return d;
 }
-setInterval(sxClock, 20000); sxClock();
+function tabLoad(t) {
+var R = TABR[t] || (TABR[t] = {rows: [], st: 0, w: 2});
+if (R.st) return;
+R.st = 1;
+var defs = tabDefs(t), i = 0;
+function worker() {
+if (i >= defs.length) { if (--R.w === 0) { R.st = 2; if (TAB === t && curScr === 'site') sxTabRender(); } return; }
+var ix = i++, df = defs[ix];
+api('/browse?' + df[1] + '&skip=0', {timeout: 40000}, function (e, s, d) {
+var it = (!e && s === 200 && d && d.items) || [];
+if (df[2]) it = it.filter(function (x) { return normTy(x.type) === df[2]; });
+if (it.length) { R.rows.push({ix: ix, title: df[0], items: it, q: df[1]}); R.rows.sort(function (a, b) { return a.ix - b.ix; }); }
+if (TAB === t && curScr === 'site') sxTabRender();
+worker();
+});
+}
+worker(); worker();
+}
+function sxTabRender() {
+if (TAB === 'home') return;
+var t = TAB;
+sxPut('sec-tab', function (box) {
+var cw = [];
+if (t !== 'cartoon') { try { cw = sdCw().filter(function (x) { return !x.cl && (x.type === 'tv') === (t === 'tv'); }).slice(0, 6); } catch (e) {} }
+if (cw.length) {
+var h = D.createElement('div'); h.className = 'sxh'; h.textContent = '▶ كمّل المشاهدة'; box.appendChild(h);
+var r = D.createElement('div'); r.className = 'sxr'; cw.forEach(function (x) { r.appendChild(cwCardAny({x: x})); }); box.appendChild(r);
+}
+var R = TABR[t];
+(R ? R.rows : []).forEach(function (r) { var it = xlFilter(r.items); if (it.length) sxRowIn(box, r.title, it, function () { sxBrowse(r.q, r.title); }); });
+if (!R || R.st !== 2) { var p = D.createElement('div'); p.className = 'empty'; p.style.cssText = 'padding:30px 0;font-size:28px'; p.textContent = 'جاري تحميل الأقسام...'; box.appendChild(p); }
+else if (!box.querySelector('.f')) box.innerHTML = '<div class="empty" style="padding-top:60px;font-size:30px">مفيش حاجة هنا لسه</div>';
+});
+}
+function sxTab(t) {
+TAB = t; var rows = $('sxrows');
+if (t === 'home') rows.classList.remove('tabm'); else rows.classList.add('tabm');
+navMark(); rows.scrollTop = 0; heroInit();
+if (t !== 'home') { tabLoad(t); sxTabRender(); }
+}
+[['xMov', 'movie'], ['xSer', 'tv'], ['xToon', 'cartoon']].forEach(function (a) { $(a[0])._ok = function () { sxTab(a[1]); }; });
+$('sxrows').addEventListener('scroll', function () { var bh = $('site').querySelector('.bh'); if (bh) bh.style.background = this.scrollTop > 40 ? 'rgba(10,13,28,.95)' : ''; });
 /* ---- كمّل المشاهدة: زر قديم متوافق ---- */
 function sxAfterPlay() {
-if (curScr === 'site') { sxSecCw(); cur = null; var f = $('sec-cw').querySelector('.f') || $('xSearch'); setFocus(f); }
+if (curScr === 'site') { sxSecCw(); cur = null; var f = fvis($('sec-cw')) || fvis($('sxrows')) || $('xSearch'); setFocus(f); }
 else if (curScr === 'detail' && SX.cur && D.getElementById('dbtns')) { var d = SX.cur; siteDetails(d.type === 'movie' ? 'movie' : 'tv', d.id, true); }
 else if (cur && D.body.contains(cur)) { var c = cur; cur = null; setFocus(c); }
 }
