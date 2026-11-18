@@ -608,6 +608,48 @@ body{color:var(--tx)}
 .ftChip{height:72px;line-height:72px;padding:0 34px;border-radius:40px;font-size:28px;background:#1c1d28;color:#e5e7ef;margin-right:16px}
 .ftChip.sel{background:linear-gradient(135deg,#ff5a36,#ff8a3d);color:#fff}
 .v76e{color:#9aa0b4;font-size:28px;padding:80px 40px;white-space:normal}
+
+/* ===================== الرئيسية بشكل Morph (عربي) ===================== */
+#home{background:#07090f}
+#hbg{position:absolute;left:-60px;top:-60px;width:2040px;height:1200px;background:#0b1020 center/cover no-repeat;filter:blur(30px) brightness(.55) saturate(1.2)}
+#hpic{position:absolute;left:0;top:0;width:900px;height:1080px;background:#0b1020 center top/cover no-repeat;-webkit-mask-image:linear-gradient(to left,rgba(0,0,0,0) 0,#000 45%);mask-image:linear-gradient(to left,rgba(0,0,0,0) 0,#000 45%)}
+#hshade{position:absolute;left:0;top:0;width:1920px;height:1080px;background:linear-gradient(270deg,rgba(7,9,15,.98) 0,rgba(7,9,15,.9) 30%,rgba(7,9,15,.35) 62%,rgba(7,9,15,.2) 100%),linear-gradient(0deg,rgba(7,9,15,1) 0,rgba(7,9,15,.85) 22%,rgba(7,9,15,0) 48%),linear-gradient(180deg,rgba(7,9,15,.75) 0,rgba(7,9,15,0) 20%)}
+#home.noimg #hbg{background:radial-gradient(circle at 70% 30%,#1d3a8a 0,#0a1024 60%,#07090f 100%);filter:none}
+#home.noimg #hpic{display:none}
+.mtop{position:absolute;left:0;top:34px;width:1920px;height:96px;direction:rtl}
+.mlogo{position:absolute;right:90px;top:12px;font-size:46px;font-weight:800;color:#fff;white-space:nowrap}
+.mlogo b{color:#ffd75e}
+.mlogo small{font-size:26px;font-weight:600;color:#cbd5f5;margin-right:14px}
+.mnav{position:absolute;left:50%;top:0;transform:translateX(-50%);display:flex;direction:rtl;white-space:nowrap;background:rgba(36,44,68,.66);border:1px solid rgba(255,255,255,.16);border-radius:60px;padding:10px 12px}
+.mp{height:70px;line-height:70px;padding:0 26px;border-radius:40px;font-size:28px;color:#e8eefc;margin:0 2px}
+.mp.ic{width:70px;padding:0;text-align:center;font-size:32px}
+.mp.sel{background:rgba(255,255,255,.2)}
+.mp.on{background:#fff;color:#111;font-weight:800;transform:none;box-shadow:none}
+.mclock{position:absolute;left:90px;top:4px;text-align:center;direction:ltr}
+.mclock b{display:block;font-size:48px;font-weight:700;line-height:54px}
+.mclock small{display:block;font-size:22px;color:#b6c0de;direction:rtl}
+#home .foot,#home.hf .foot{position:absolute;left:auto;right:90px;top:140px;bottom:auto;direction:rtl;font-size:22px;color:#8fa0c8;transform:none}
+#home .foot span{margin-left:30px}
+#hero{position:absolute;right:90px;bottom:340px;width:920px;direction:rtl;text-align:right}
+#hkick{font-size:30px;font-weight:700;color:#cfd6ee}
+#hT{font-size:84px;line-height:1.32;font-weight:800;margin:6px 0 10px;max-height:226px;padding-bottom:6px;overflow:hidden;text-shadow:0 4px 18px rgba(0,0,0,.7)}
+#hT.lg{font-size:60px;line-height:1.4;max-height:170px}
+#hMeta{font-size:34px;color:#ffd75e;font-weight:700;margin-bottom:18px;min-height:44px}
+#hProgW{display:none;width:520px;height:8px;border-radius:4px;background:rgba(255,255,255,.28);margin:0 0 30px}
+#hProg{height:8px;border-radius:4px;background:#e50914;width:0}
+#hBtns{display:flex;direction:rtl}
+.mbtn{min-width:230px;height:84px;line-height:82px;padding:0 38px;border-radius:42px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.28);font-size:32px;font-weight:700;text-align:center;margin-left:22px;color:#fff}
+.mbtn.on{background:#fff;color:#111;transform:scale(1.06);box-shadow:0 8px 30px rgba(0,0,0,.55)}
+#hfeat{left:0;right:0;top:760px;height:320px}
+#home.fs #hfeat{top:760px}
+#home.fs .top,#home.fs .hcards,#home.fs .foot{transform:none}
+#hfeat .hrw{height:320px}
+#hfeat .hrt{font-size:34px;color:#fff;text-align:right;direction:rtl;padding:0 60px}
+#hfeat .hri{height:262px;padding:14px 60px 0}
+#hfeat .ft{height:230px;margin-right:22px;border-radius:20px}
+#hfeat .ftP{width:300px}
+#hfeat .ftP .bg{background-position:center 25%}
+#hfeat .ft.on{transform:scale(1.05);box-shadow:0 0 0 5px #fff}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -628,12 +670,28 @@ body{color:var(--tx)}
 </div>
 
 <div id="home" class="scr">
-<div class="top"><div class="logo">Tor<b>Flix</b><i></i></div>
-<div class="tr"><div class="f ib" id="hMode" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">&#128100;</div><div class="f ib" id="hOut" style="background:linear-gradient(135deg,#fb7185,#e11d48)">&#9211;</div></div></div>
-<div class="hcards">
-<div class="f hc c1 big" id="hLive" data-k="live"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="10" y="16" width="150" height="100" rx="14" fill="none" stroke="#fff" stroke-width="10"/><path d="M60 130h50M85 116v14" stroke="#fff" stroke-width="10" stroke-linecap="round"/><path d="M70 44l38 22-38 22z" fill="#fff"/></svg><em>البث المباشر</em><small id="nLive"></small></div>
-<div class="hcol"><div class="f hc c2" id="hVod" data-k="vod"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="14" y="36" width="142" height="96" rx="12" fill="none" stroke="#fff" stroke-width="10"/><path d="M14 36l24-26M62 36l24-26M110 36l24-26M14 62h142" stroke="#fff" stroke-width="10" stroke-linecap="round"/></svg><em>الأفلام</em><small id="nVod"></small></div><div class="f hb" id="hCw">&#9654;&nbsp; متابعة المشاهدة</div></div>
-<div class="hcol"><div class="f hc c3" id="hSer" data-k="series"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="30" y="8" width="110" height="16" rx="6" fill="#fff" opacity=".6"/><rect x="18" y="32" width="134" height="16" rx="6" fill="#fff" opacity=".8"/><rect x="8" y="58" width="154" height="84" rx="12" fill="none" stroke="#fff" stroke-width="10"/><path d="M72 80l34 20-34 20z" fill="#fff"/></svg><em>المسلسلات</em><small id="nSer"></small></div><div class="f hb" id="hFav">&#9733;&nbsp; المفضلة</div></div>
+<div id="hbg"></div><div id="hpic"></div><div id="hshade"></div>
+<div class="mtop">
+  <div class="mlogo">Tor<b>Flix</b><small>بريميوم</small></div>
+  <div class="mnav">
+    <div class="f mp sel" id="hHome">الرئيسية</div>
+    <div class="f mp" id="hLive" data-k="live">البث المباشر</div>
+    <div class="f mp" id="hVod" data-k="vod">الأفلام</div>
+    <div class="f mp" id="hSer" data-k="series">المسلسلات</div>
+    <div class="f mp" id="hCw">متابعتي</div>
+    <div class="f mp" id="hFav">المفضلة</div>
+    <div class="f mp ic" id="hMode">&#128100;</div>
+    <div class="f mp ic" id="hOut">&#9211;</div>
+  </div>
+  <div class="mclock"><b id="mTime"></b><small id="mDate"></small></div>
+</div>
+<span id="nLive" style="display:none"></span><span id="nVod" style="display:none"></span><span id="nSer" style="display:none"></span>
+<div id="hero">
+  <div id="hkick"></div>
+  <h1 id="hT"></h1>
+  <div id="hMeta"></div>
+  <div id="hProgW"><div id="hProg"></div></div>
+  <div id="hBtns"><div class="f mbtn" id="hPlay">&#9654;&nbsp; تشغيل</div><div class="f mbtn" id="hMore">&#9432;&nbsp; المزيد</div></div>
 </div>
 <div id="hfeat" class="sc"></div>
 <div class="foot"><span id="hUser"></span><span id="hExp"></span></div>
@@ -898,7 +956,7 @@ if (!noPush && curScr && curScr !== 'splash' && curScr !== 'msg' && curScr !== '
 show(name);
 }
 function back() {
-if (curScr === 'home' && cur && cur._fk) { setFocus($('hLive')); return; }
+if (curScr === 'home' && cur && cur._fk) { setFocus($('hPlay')); return; }
 if (curScr === 'favs') sxFavsDone();
 var p = stack.pop();
 if (!p) { if (curScr === 'home') return exitApp(); return; }
@@ -948,6 +1006,7 @@ function move(dir) {
 var root = activeRoot(); if (!root) return;
 if (cur && !KB && D.body.contains(cur)) {
 var par = cur.parentNode, f0, fr;
+if (curScr === 'home' && dir === 40 && (cur.id === 'hPlay' || cur.id === 'hMore')) { var ff = $('hfeat').querySelectorAll('.f'); if (ff.length) { f0 = ff[0]; for (var q = 0; q < ff.length; q++) if (ff[q]._fk === HERO.k) f0 = ff[q]; return setFocus(f0); } }
 if (curScr === 'site') {
 if (dir === 40 && par && /\bbh\b/.test(par.className)) { f0 = $('sxrows').querySelector('.f'); if (f0) { $('sxrows').scrollTop = 0; return setFocus(f0); } }
 if (dir === 38 && $('sxrows').contains(cur)) { fr = $('sxrows').querySelector('.sxr,.hri'); if (fr && fr.contains(cur)) return setFocus($('xSearch')); }
@@ -1181,7 +1240,7 @@ e.textContent = days > 0 ? 'الاشتراك: باقي ' + days + ' يوم' : '�
 } else { e.className = ''; e.textContent = (i && i.exp_date === null) ? 'الاشتراك: غير محدود' : ''; }
 }
 function loadPinsIf(cb, age) { if (S.pinDirty || (S.pinAt && Date.now() - S.pinAt < (age || 45000))) return cb(); loadPins(cb); }
-function showHome() { homeRefresh(); show('home'); meCheck(); loadPinsIf(function () { if (curScr === 'home') homeFeat(); }); homeFeat(); ivsPull(function () { if (curScr === 'home') homeFeat(); }, 45000); siteBg(function () { if (curScr === 'home') homeFeat(); }); setFocus($('hLive')); }
+function showHome() { homeRefresh(); show('home'); meCheck(); loadPinsIf(function () { if (curScr === 'home') homeFeat(); }); homeFeat(); ivsPull(function () { if (curScr === 'home') homeFeat(); }, 45000); siteBg(function () { if (curScr === 'home') homeFeat(); }); setFocus($('hPlay')); }
 ['hLive', 'hVod', 'hSer', 'hCw', 'hFav', 'hMode', 'hOut'].forEach(function (id) { $(id)._focus = function () { $('home').className = $('home').className.replace(/ ?\bfs\b/g, ''); }; });
 ['hLive', 'hVod', 'hSer'].forEach(function (id) { $(id)._ok = function (el) { openBrowse(el.getAttribute('data-k')); }; });
 function chooser(title, mode, kinds) {
@@ -1867,25 +1926,64 @@ PID = id || null;
 if (cb) cb();
 });
 }
+var HERO = {fn: null, e: null, mode: 'empty'};
+function homeCls(add, rm) { var H = $('home'); H.className = H.className.replace(new RegExp(' ?\\b' + rm + '\\b', 'g'), ''); if (add && !new RegExp('\\b' + add + '\\b').test(H.className)) H.className += ' ' + add; }
+function heroSet(t, e, k) {
+var u = t && t.img ? String(t.img).replace(/["\\\r\n]/g, '') : '';
+if (u) { $('hbg').style.backgroundImage = 'url("' + u + '")'; $('hpic').style.backgroundImage = 'url("' + u + '")'; homeCls('', 'noimg'); } else homeCls('noimg', 'xx');
+$('hkick').textContent = (t.tag ? t.tag + '  ·  ' : '') + 'كمّل المشاهدة';
+var h = $('hT'); h.textContent = t.title || ''; h.className = (t.title || '').length > 34 ? 'lg' : '';
+$('hMeta').textContent = t.lbl || '';
+$('hProgW').style.display = t.pct ? 'block' : 'none'; $('hProg').style.width = (t.pct || 0) + '%';
+$('hPlay').innerHTML = '&#9654;&nbsp; ' + (t.pct ? 'استكمال' : 'تشغيل');
+$('hMore').innerHTML = '&#9432;&nbsp; المزيد';
+HERO.fn = t.fn; HERO.e = e || null; HERO.k = k || 'cw0'; HERO.mode = 'cw';
+}
+function heroEmpty() {
+homeCls('noimg', 'xx');
+$('hkick').textContent = 'أهلاً بيك'; $('hT').textContent = 'TorFlix'; $('hT').className = '';
+$('hMeta').textContent = 'اختار من القائمة اللي فوق'; $('hProgW').style.display = 'none';
+$('hPlay').innerHTML = '&#128250;&nbsp; البث المباشر'; $('hMore').innerHTML = '&#127916;&nbsp; الأفلام';
+HERO.fn = null; HERO.e = null; HERO.mode = 'empty';
+}
+$('hPlay')._ok = function () { if (HERO.mode === 'cw' && HERO.fn) HERO.fn(); else openBrowse('live'); };
+$('hMore')._ok = function () {
+if (HERO.mode !== 'cw') return openBrowse('vod');
+var x = HERO.e && HERO.e.x;
+if (x && x.tmdb) return siteDetails(x.type === 'tv' ? 'tv' : 'movie', x.tmdb);
+if (HERO.fn) HERO.fn();
+};
+$('hHome')._ok = function () { setFocus($('hPlay')); };
+(function () {
+var DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+var MONS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+function tick() {
+var d = new Date(), h = d.getHours(), m = d.getMinutes();
+$('mTime').textContent = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+$('mDate').textContent = DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONS[d.getMonth()];
+}
+tick(); setInterval(tick, 20000);
+})();
 function homeFeat() {
 var H = $('home'), box = $('hfeat'), fk = (cur && cur._fk && box.contains(cur)) ? cur._fk : null;
 var l = cwAll().slice(0, 20);
 box.innerHTML = '';
 H.className = H.className.replace(/ ?\bhf\b/g, '');
-if (!l.length) { H.className = H.className.replace(/ ?\bfs\b/g, ''); if (cur && !D.body.contains(cur) && curScr === 'home') setFocus($('hLive')); return; }
+if (!l.length) { heroEmpty(); if (cur && !D.body.contains(cur) && curScr === 'home') setFocus($('hPlay')); return; }
 H.className += ' hf';
-var o = ftRow(l, '▶ كمّل المشاهدة'), tgt = null;
+var o = ftRow(l, 'شاهدت مؤخراً'), tgt = null;
 l.forEach(function (e, i) {
 var t = cwMeta(e), el = D.createElement('div');
 el.className = 'ft ftP ftC';
 el.innerHTML = '<div class="bg"' + ftBg(t.img) + '></div>' + (t.tag ? '<span class="tgi">' + esc(t.tag) + '</span>' : '') + '<div class="tt">' + esc(t.title) + '<small>' + esc(t.lbl) + '</small></div><div class="cwp"><i style="width:' + t.pct + '%"></i></div>';
 ftTile(o.r, el, 'cw' + i, t.fn);
 var f0 = el._focus;
-el._focus = function () { f0(); if (!/\bfs\b/.test(H.className)) H.className += ' fs'; };
+el._focus = function () { f0(); heroSet(t, e, 'cw' + i); };
 if (fk === 'cw' + i) tgt = el;
 });
 box.appendChild(o.w);
-if (curScr === 'home' && cur && !D.body.contains(cur)) setFocus(tgt || $('hLive'));
+if (curScr === 'home' && cur && !D.body.contains(cur)) setFocus(tgt || $('hPlay'));
+if (!tgt) heroSet(cwMeta(l[0]), l[0], 'cw0');
 }
 function norm(s) { return String(s || '').toLowerCase().replace(/[\u064B-\u065F]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي'); }
 var SN = {def: 'الافتراضي', az: 'أ - ي', rate: 'التقييم'};
