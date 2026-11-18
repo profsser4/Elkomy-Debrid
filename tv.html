@@ -347,7 +347,7 @@ body{color:var(--tx)}
 #site .bh{left:48px;right:48px;top:0;height:104px;border-bottom:1px solid var(--ln)}
 #site .bh h2{font-size:38px;font-weight:800;color:var(--tx);letter-spacing:.3px}
 #site .bh .btn{min-width:0;height:60px;line-height:36px;padding:12px 26px;margin:0 6px;font-size:25px}
-#sxrows{top:118px!important;padding-bottom:50px}
+#sxrows{padding-bottom:80px}
 /* rows */
 .sxh{font-size:34px;font-weight:800;color:var(--tx);margin:26px 16px 4px;padding:0;border:0;line-height:44px}
 .sxh:before{content:"";display:inline-block;width:8px;height:30px;border-radius:4px;background:var(--ac);margin-left:14px;vertical-align:-5px}
@@ -609,47 +609,37 @@ body{color:var(--tx)}
 .ftChip.sel{background:linear-gradient(135deg,#ff5a36,#ff8a3d);color:#fff}
 .v76e{color:#9aa0b4;font-size:28px;padding:80px 40px;white-space:normal}
 
-/* ===================== الرئيسية بشكل Morph (عربي) ===================== */
-#home{background:#07090f}
-#hbg{position:absolute;left:-60px;top:-60px;width:2040px;height:1200px;background:#0b1020 center/cover no-repeat;filter:blur(30px) brightness(.55) saturate(1.2)}
-#hpic{position:absolute;left:0;top:0;width:900px;height:1080px;background:#0b1020 center top/cover no-repeat;-webkit-mask-image:linear-gradient(to left,rgba(0,0,0,0) 0,#000 45%);mask-image:linear-gradient(to left,rgba(0,0,0,0) 0,#000 45%)}
-#hshade{position:absolute;left:0;top:0;width:1920px;height:1080px;background:linear-gradient(270deg,rgba(7,9,15,.98) 0,rgba(7,9,15,.9) 30%,rgba(7,9,15,.35) 62%,rgba(7,9,15,.2) 100%),linear-gradient(0deg,rgba(7,9,15,1) 0,rgba(7,9,15,.85) 22%,rgba(7,9,15,0) 48%),linear-gradient(180deg,rgba(7,9,15,.75) 0,rgba(7,9,15,0) 20%)}
-#home.noimg #hbg{background:radial-gradient(circle at 70% 30%,#1d3a8a 0,#0a1024 60%,#07090f 100%);filter:none}
-#home.noimg #hpic{display:none}
-.mtop{position:absolute;left:0;top:34px;width:1920px;height:96px;direction:rtl}
-.mlogo{position:absolute;right:90px;top:12px;font-size:46px;font-weight:800;color:#fff;white-space:nowrap}
-.mlogo b{color:#ffd75e}
-.mlogo small{font-size:26px;font-weight:600;color:#cbd5f5;margin-right:14px}
-.mnav{position:absolute;left:50%;top:0;transform:translateX(-50%);display:flex;direction:rtl;white-space:nowrap;background:rgba(36,44,68,.66);border:1px solid rgba(255,255,255,.16);border-radius:60px;padding:10px 12px}
-.mp{height:70px;line-height:70px;padding:0 26px;border-radius:40px;font-size:28px;color:#e8eefc;margin:0 2px}
-.mp.ic{width:70px;padding:0;text-align:center;font-size:32px}
-.mp.sel{background:rgba(255,255,255,.2)}
-.mp.on{background:#fff;color:#111;font-weight:800;transform:none;box-shadow:none}
-.mclock{position:absolute;left:90px;top:4px;text-align:center;direction:ltr}
-.mclock b{display:block;font-size:48px;font-weight:700;line-height:54px}
-.mclock small{display:block;font-size:22px;color:#b6c0de;direction:rtl}
-#home .foot,#home.hf .foot{position:absolute;left:auto;right:90px;top:140px;bottom:auto;direction:rtl;font-size:22px;color:#8fa0c8;transform:none}
-#home .foot span{margin-left:30px}
-#hero{position:absolute;right:90px;bottom:340px;width:920px;direction:rtl;text-align:right}
-#hkick{font-size:30px;font-weight:700;color:#cfd6ee}
-#hT{font-size:84px;line-height:1.32;font-weight:800;margin:6px 0 10px;max-height:226px;padding-bottom:6px;overflow:hidden;text-shadow:0 4px 18px rgba(0,0,0,.7)}
-#hT.lg{font-size:60px;line-height:1.4;max-height:170px}
-#hMeta{font-size:34px;color:#ffd75e;font-weight:700;margin-bottom:18px;min-height:44px}
-#hProgW{display:none;width:520px;height:8px;border-radius:4px;background:rgba(255,255,255,.28);margin:0 0 30px}
-#hProg{height:8px;border-radius:4px;background:#e50914;width:0}
-#hBtns{display:flex;direction:rtl}
-.mbtn{min-width:230px;height:84px;line-height:82px;padding:0 38px;border-radius:42px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.28);font-size:32px;font-weight:700;text-align:center;margin-left:22px;color:#fff}
-.mbtn.on{background:#fff;color:#111;transform:scale(1.06);box-shadow:0 8px 30px rgba(0,0,0,.55)}
-#hfeat{left:0;right:0;top:760px;height:320px}
-#home.fs #hfeat{top:760px}
-#home.fs .top,#home.fs .hcards,#home.fs .foot{transform:none}
-#hfeat .hrw{height:320px}
-#hfeat .hrt{font-size:34px;color:#fff;text-align:right;direction:rtl;padding:0 60px}
-#hfeat .hri{height:262px;padding:14px 60px 0}
-#hfeat .ft{height:230px;margin-right:22px;border-radius:20px}
-#hfeat .ftP{width:300px}
-#hfeat .ftP .bg{background-position:center 25%}
-#hfeat .ft.on{transform:scale(1.05);box-shadow:0 0 0 5px #fff}
+/* ===================== الموقع: شكل Morph (نافبار + هيرو كبير + صفوف) ===================== */
+#site{background:#0a0d1c}
+#site .bh{position:absolute;left:0;right:0;top:0;height:132px;padding:0 70px;display:flex;align-items:center;justify-content:space-between;direction:ltr;z-index:20;border:0;background:linear-gradient(180deg,rgba(8,10,22,.88) 0,rgba(8,10,22,.55) 70%,rgba(8,10,22,0) 100%)}
+#site .bh h2{flex:none;order:0;width:380px;font-size:40px;font-weight:800;text-align:left;direction:ltr;white-space:nowrap}
+#site .bh h2 .bl{color:#fff;letter-spacing:.5px}
+#site .bh h2 .bl b{color:#ffc83d}
+#site .bh h2 small{display:block;font-size:22px;font-weight:500;color:#b9c2e6;margin-top:2px;direction:rtl;text-align:left}
+#sxnav{display:flex;align-items:center;direction:ltr;padding:8px;border-radius:46px;background:rgba(36,40,58,.72);border:1px solid rgba(255,255,255,.12)}
+#site #sxnav .btn{min-width:0;height:66px;line-height:66px;padding:0 30px;margin:0 2px;font-size:28px;font-weight:600;border-radius:33px;background:none;border:0;color:#e4e8fa;box-shadow:none}
+#site #sxnav .btn.cur{background:#fff;color:#111}
+#site #sxnav .btn.on{background:#ffc83d;color:#15172b;box-shadow:0 0 0 3px #fff;transform:scale(1.06);position:relative;z-index:3}
+#sxclock{flex:none;width:380px;text-align:right;direction:ltr}
+#sxclock b{display:block;font-size:46px;font-weight:800;line-height:48px}
+#sxclock small{display:block;font-size:24px;color:#cbd5f5;direction:rtl}
+#sxrows>div{padding:0 40px}
+#sxrows>#sec-hero{padding:0;position:relative;height:140px}
+#sec-hero.on{height:800px}
+#sec-hero .hbg{position:absolute;left:0;top:0;width:1920px;height:800px;background:#0a0d1c center 20%/cover no-repeat}
+#sec-hero .hov{position:absolute;left:0;top:0;width:1920px;height:800px;background:linear-gradient(90deg,rgba(8,10,22,.94) 0,rgba(8,10,22,.7) 34%,rgba(8,10,22,.1) 68%,rgba(8,10,22,0) 100%),linear-gradient(0deg,#0a0d1c 0,rgba(10,13,28,.9) 12%,rgba(10,13,28,0) 48%)}
+#sec-hero .hx{position:absolute;left:90px;top:250px;width:1000px;direction:ltr;text-align:left}
+#sec-hero .htag{font-size:32px;font-weight:700;color:#e9edff;letter-spacing:1px;margin-bottom:6px;unicode-bidi:plaintext}
+#sec-hero h1{font-size:84px;line-height:1.1;font-weight:900;color:#fff;text-shadow:0 4px 20px rgba(0,0,0,.65);max-height:186px;overflow:hidden;unicode-bidi:plaintext}
+#sec-hero .hmeta{font-size:32px;color:#e3e6f3;margin:14px 0}
+#sec-hero .hmeta b{color:#ffc83d}
+#sec-hero .hpl{font-size:30px;line-height:1.55;color:#f0f2fb;max-height:140px;overflow:hidden;margin-bottom:28px;text-shadow:0 2px 8px #000;unicode-bidi:plaintext}
+#sec-hero .hdots{margin-top:22px;font-size:20px;color:#fff;letter-spacing:8px;opacity:.8}
+#hbtns{display:flex;direction:ltr}
+#hbtns .btn{min-width:0;height:76px;line-height:76px;padding:0 44px;margin:0 18px 0 0;font-size:30px;font-weight:700;border-radius:38px;background:rgba(120,124,140,.55);border:1px solid rgba(255,255,255,.18);color:#fff}
+#hbtns .btn.on{background:#fff;color:#111;box-shadow:0 0 0 4px rgba(255,200,61,.9);transform:scale(1.05)}
+#site .sxh{font-size:38px;font-weight:800;margin:20px 6px 2px}
+#site .sxh:before{display:none}
 </style></head><body>
 <object id="avp" type="application/avplayer"></object>
 <video id="vid" playsinline></video>
@@ -670,28 +660,12 @@ body{color:var(--tx)}
 </div>
 
 <div id="home" class="scr">
-<div id="hbg"></div><div id="hpic"></div><div id="hshade"></div>
-<div class="mtop">
-  <div class="mlogo">Tor<b>Flix</b><small>بريميوم</small></div>
-  <div class="mnav">
-    <div class="f mp sel" id="hHome">الرئيسية</div>
-    <div class="f mp" id="hLive" data-k="live">البث المباشر</div>
-    <div class="f mp" id="hVod" data-k="vod">الأفلام</div>
-    <div class="f mp" id="hSer" data-k="series">المسلسلات</div>
-    <div class="f mp" id="hCw">متابعتي</div>
-    <div class="f mp" id="hFav">المفضلة</div>
-    <div class="f mp ic" id="hMode">&#128100;</div>
-    <div class="f mp ic" id="hOut">&#9211;</div>
-  </div>
-  <div class="mclock"><b id="mTime"></b><small id="mDate"></small></div>
-</div>
-<span id="nLive" style="display:none"></span><span id="nVod" style="display:none"></span><span id="nSer" style="display:none"></span>
-<div id="hero">
-  <div id="hkick"></div>
-  <h1 id="hT"></h1>
-  <div id="hMeta"></div>
-  <div id="hProgW"><div id="hProg"></div></div>
-  <div id="hBtns"><div class="f mbtn" id="hPlay">&#9654;&nbsp; تشغيل</div><div class="f mbtn" id="hMore">&#9432;&nbsp; المزيد</div></div>
+<div class="top"><div class="logo">Tor<b>Flix</b><i></i></div>
+<div class="tr"><div class="f ib" id="hMode" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">&#128100;</div><div class="f ib" id="hOut" style="background:linear-gradient(135deg,#fb7185,#e11d48)">&#9211;</div></div></div>
+<div class="hcards">
+<div class="f hc c1 big" id="hLive" data-k="live"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="10" y="16" width="150" height="100" rx="14" fill="none" stroke="#fff" stroke-width="10"/><path d="M60 130h50M85 116v14" stroke="#fff" stroke-width="10" stroke-linecap="round"/><path d="M70 44l38 22-38 22z" fill="#fff"/></svg><em>البث المباشر</em><small id="nLive"></small></div>
+<div class="hcol"><div class="f hc c2" id="hVod" data-k="vod"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="14" y="36" width="142" height="96" rx="12" fill="none" stroke="#fff" stroke-width="10"/><path d="M14 36l24-26M62 36l24-26M110 36l24-26M14 62h142" stroke="#fff" stroke-width="10" stroke-linecap="round"/></svg><em>الأفلام</em><small id="nVod"></small></div><div class="f hb" id="hCw">&#9654;&nbsp; متابعة المشاهدة</div></div>
+<div class="hcol"><div class="f hc c3" id="hSer" data-k="series"><svg width="170" height="150" viewBox="0 0 170 150"><rect x="30" y="8" width="110" height="16" rx="6" fill="#fff" opacity=".6"/><rect x="18" y="32" width="134" height="16" rx="6" fill="#fff" opacity=".8"/><rect x="8" y="58" width="154" height="84" rx="12" fill="none" stroke="#fff" stroke-width="10"/><path d="M72 80l34 20-34 20z" fill="#fff"/></svg><em>المسلسلات</em><small id="nSer"></small></div><div class="f hb" id="hFav">&#9733;&nbsp; المفضلة</div></div>
 </div>
 <div id="hfeat" class="sc"></div>
 <div class="foot"><span id="hUser"></span><span id="hExp"></span></div>
@@ -716,9 +690,10 @@ body{color:var(--tx)}
   <div class="foot"><span id="mUser"></span><span></span></div>
 </div>
 <div id="site" class="scr">
-  <div class="bh"><h2 id="sxT">🎬 الموقع</h2>
-    <div class="f btn" id="xSearch">🔍 بحث</div><div class="f btn" id="xList">⭐ قائمتي</div><div class="f btn" id="xLib">📚 مكتبتي</div><div class="f btn" id="xLink">🔗 رابط</div><div class="f btn" id="xMore">⋯ المزيد</div></div>
-  <div class="sc" id="sxrows" style="position:absolute;left:40px;right:40px;top:130px;bottom:30px;overflow:hidden"></div>
+  <div class="bh"><h2 id="sxT">TorFlix</h2>
+    <div id="sxnav"><div class="f btn nv2 cur" id="xHome">الرئيسية</div><div class="f btn nv2" id="xSearch">🔍 بحث</div><div class="f btn nv2" id="xList">⭐ قائمتي</div><div class="f btn nv2" id="xLib">📚 مكتبتي</div><div class="f btn nv2" id="xLink">🔗 رابط</div><div class="f btn nv2" id="xMore">⚙ المزيد</div></div>
+    <div id="sxclock"><b id="sxtm"></b><small id="sxdt"></small></div></div>
+  <div class="sc" id="sxrows" style="position:absolute;left:0;right:0;top:0;bottom:0;overflow:hidden"></div>
 </div>
 <div id="prof" class="scr"><div class="pbrand"><div class="mark">T</div><div class="wm">TOR<b>FLIX</b></div><p>اختر ملفًا شخصيًا للمتابعة</p></div><div class="phead"><div class="wm2">TOR<b>FLIX</b></div><div class="t">اختر ملفًا شخصيًا</div></div><div class="pgrid sc" id="pgrid"></div></div>
 <div id="sres" class="scr">
@@ -741,7 +716,7 @@ body{color:var(--tx)}
 /* ===================== إعدادات (عدّل هنا لو احتجت) ===================== */
 var CFG = {
 API: 'https://elkomy-server-neon.vercel.app',   // نفس سيرفر موقعك
-VER: '3.4.2',
+VER: '3.5.0',
 AUTO_USER: '',   // لو كتبت يوزر وباس هنا: التطبيق يدخل لوحده من غير ما تكتب حاجة
 AUTO_PASS: ''
 };
@@ -956,7 +931,7 @@ if (!noPush && curScr && curScr !== 'splash' && curScr !== 'msg' && curScr !== '
 show(name);
 }
 function back() {
-if (curScr === 'home' && cur && cur._fk) { setFocus($('hPlay')); return; }
+if (curScr === 'home' && cur && cur._fk) { setFocus($('hLive')); return; }
 if (curScr === 'favs') sxFavsDone();
 var p = stack.pop();
 if (!p) { if (curScr === 'home') return exitApp(); return; }
@@ -995,8 +970,8 @@ function ensureVisible(el) {
 var p = el.parentNode;
 while (p && p !== D.body) {
 if (p.className && /\bsc\b/.test(p.className)) {
-var top = offTop(el, p), bot = top + el.offsetHeight, H = p.clientHeight, st = p.scrollTop, m = 70;
-if (bot > st + H - m) p.scrollTop = bot - H + m; else if (top < st + m) p.scrollTop = Math.max(0, top - m);
+var top = offTop(el, p), bot = top + el.offsetHeight, H = p.clientHeight, st = p.scrollTop, m = 70, mt = p.id === 'sxrows' ? 150 : 70;
+if (bot > st + H - m) p.scrollTop = bot - H + m; else if (top < st + mt) p.scrollTop = Math.max(0, top - mt);
 return;
 }
 p = p.parentNode;
@@ -1006,10 +981,9 @@ function move(dir) {
 var root = activeRoot(); if (!root) return;
 if (cur && !KB && D.body.contains(cur)) {
 var par = cur.parentNode, f0, fr;
-if (curScr === 'home' && dir === 40 && (cur.id === 'hPlay' || cur.id === 'hMore')) { var ff = $('hfeat').querySelectorAll('.f'); if (ff.length) { f0 = ff[0]; for (var q = 0; q < ff.length; q++) if (ff[q]._fk === HERO.k) f0 = ff[q]; return setFocus(f0); } }
 if (curScr === 'site') {
-if (dir === 40 && par && /\bbh\b/.test(par.className)) { f0 = $('sxrows').querySelector('.f'); if (f0) { $('sxrows').scrollTop = 0; return setFocus(f0); } }
-if (dir === 38 && $('sxrows').contains(cur)) { fr = $('sxrows').querySelector('.sxr,.hri'); if (fr && fr.contains(cur)) return setFocus($('xSearch')); }
+if (dir === 40 && par && par.id === 'sxnav') { f0 = $('sxrows').querySelector('.f'); if (f0) { $('sxrows').scrollTop = 0; return setFocus(f0); } }
+if (dir === 38 && $('sxrows').contains(cur)) { var hb0 = $('hbtns'); if (hb0 && hb0.querySelector('.f')) { if (hb0.contains(cur)) return setFocus($('xHome')); } else { fr = $('sxrows').querySelector('.sxr,.hri'); if (fr && fr.contains(cur)) return setFocus($('xHome')); } }
 }
 if (curScr === 'sres' && dir === 40 && par && par.id === 'sresB') { f0 = $('sgrid').querySelector('.f'); if (f0) { $('sgrid').scrollTop = 0; return setFocus(f0); } }
 }
@@ -1240,7 +1214,7 @@ e.textContent = days > 0 ? 'الاشتراك: باقي ' + days + ' يوم' : '�
 } else { e.className = ''; e.textContent = (i && i.exp_date === null) ? 'الاشتراك: غير محدود' : ''; }
 }
 function loadPinsIf(cb, age) { if (S.pinDirty || (S.pinAt && Date.now() - S.pinAt < (age || 45000))) return cb(); loadPins(cb); }
-function showHome() { homeRefresh(); show('home'); meCheck(); loadPinsIf(function () { if (curScr === 'home') homeFeat(); }); homeFeat(); ivsPull(function () { if (curScr === 'home') homeFeat(); }, 45000); siteBg(function () { if (curScr === 'home') homeFeat(); }); setFocus($('hPlay')); }
+function showHome() { homeRefresh(); show('home'); meCheck(); loadPinsIf(function () { if (curScr === 'home') homeFeat(); }); homeFeat(); ivsPull(function () { if (curScr === 'home') homeFeat(); }, 45000); siteBg(function () { if (curScr === 'home') homeFeat(); }); setFocus($('hLive')); }
 ['hLive', 'hVod', 'hSer', 'hCw', 'hFav', 'hMode', 'hOut'].forEach(function (id) { $(id)._focus = function () { $('home').className = $('home').className.replace(/ ?\bfs\b/g, ''); }; });
 ['hLive', 'hVod', 'hSer'].forEach(function (id) { $(id)._ok = function (el) { openBrowse(el.getAttribute('data-k')); }; });
 function chooser(title, mode, kinds) {
@@ -1926,64 +1900,25 @@ PID = id || null;
 if (cb) cb();
 });
 }
-var HERO = {fn: null, e: null, mode: 'empty'};
-function homeCls(add, rm) { var H = $('home'); H.className = H.className.replace(new RegExp(' ?\\b' + rm + '\\b', 'g'), ''); if (add && !new RegExp('\\b' + add + '\\b').test(H.className)) H.className += ' ' + add; }
-function heroSet(t, e, k) {
-var u = t && t.img ? String(t.img).replace(/["\\\r\n]/g, '') : '';
-if (u) { $('hbg').style.backgroundImage = 'url("' + u + '")'; $('hpic').style.backgroundImage = 'url("' + u + '")'; homeCls('', 'noimg'); } else homeCls('noimg', 'xx');
-$('hkick').textContent = (t.tag ? t.tag + '  ·  ' : '') + 'كمّل المشاهدة';
-var h = $('hT'); h.textContent = t.title || ''; h.className = (t.title || '').length > 34 ? 'lg' : '';
-$('hMeta').textContent = t.lbl || '';
-$('hProgW').style.display = t.pct ? 'block' : 'none'; $('hProg').style.width = (t.pct || 0) + '%';
-$('hPlay').innerHTML = '&#9654;&nbsp; ' + (t.pct ? 'استكمال' : 'تشغيل');
-$('hMore').innerHTML = '&#9432;&nbsp; المزيد';
-HERO.fn = t.fn; HERO.e = e || null; HERO.k = k || 'cw0'; HERO.mode = 'cw';
-}
-function heroEmpty() {
-homeCls('noimg', 'xx');
-$('hkick').textContent = 'أهلاً بيك'; $('hT').textContent = 'TorFlix'; $('hT').className = '';
-$('hMeta').textContent = 'اختار من القائمة اللي فوق'; $('hProgW').style.display = 'none';
-$('hPlay').innerHTML = '&#128250;&nbsp; البث المباشر'; $('hMore').innerHTML = '&#127916;&nbsp; الأفلام';
-HERO.fn = null; HERO.e = null; HERO.mode = 'empty';
-}
-$('hPlay')._ok = function () { if (HERO.mode === 'cw' && HERO.fn) HERO.fn(); else openBrowse('live'); };
-$('hMore')._ok = function () {
-if (HERO.mode !== 'cw') return openBrowse('vod');
-var x = HERO.e && HERO.e.x;
-if (x && x.tmdb) return siteDetails(x.type === 'tv' ? 'tv' : 'movie', x.tmdb);
-if (HERO.fn) HERO.fn();
-};
-$('hHome')._ok = function () { setFocus($('hPlay')); };
-(function () {
-var DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-var MONS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-function tick() {
-var d = new Date(), h = d.getHours(), m = d.getMinutes();
-$('mTime').textContent = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
-$('mDate').textContent = DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONS[d.getMonth()];
-}
-tick(); setInterval(tick, 20000);
-})();
 function homeFeat() {
 var H = $('home'), box = $('hfeat'), fk = (cur && cur._fk && box.contains(cur)) ? cur._fk : null;
 var l = cwAll().slice(0, 20);
 box.innerHTML = '';
 H.className = H.className.replace(/ ?\bhf\b/g, '');
-if (!l.length) { heroEmpty(); if (cur && !D.body.contains(cur) && curScr === 'home') setFocus($('hPlay')); return; }
+if (!l.length) { H.className = H.className.replace(/ ?\bfs\b/g, ''); if (cur && !D.body.contains(cur) && curScr === 'home') setFocus($('hLive')); return; }
 H.className += ' hf';
-var o = ftRow(l, 'شاهدت مؤخراً'), tgt = null;
+var o = ftRow(l, '▶ كمّل المشاهدة'), tgt = null;
 l.forEach(function (e, i) {
 var t = cwMeta(e), el = D.createElement('div');
 el.className = 'ft ftP ftC';
 el.innerHTML = '<div class="bg"' + ftBg(t.img) + '></div>' + (t.tag ? '<span class="tgi">' + esc(t.tag) + '</span>' : '') + '<div class="tt">' + esc(t.title) + '<small>' + esc(t.lbl) + '</small></div><div class="cwp"><i style="width:' + t.pct + '%"></i></div>';
 ftTile(o.r, el, 'cw' + i, t.fn);
 var f0 = el._focus;
-el._focus = function () { f0(); heroSet(t, e, 'cw' + i); };
+el._focus = function () { f0(); if (!/\bfs\b/.test(H.className)) H.className += ' fs'; };
 if (fk === 'cw' + i) tgt = el;
 });
 box.appendChild(o.w);
-if (curScr === 'home' && cur && !D.body.contains(cur)) setFocus(tgt || $('hPlay'));
-if (!tgt) heroSet(cwMeta(l[0]), l[0], 'cw0');
+if (curScr === 'home' && cur && !D.body.contains(cur)) setFocus(tgt || $('hLive'));
 }
 function norm(s) { return String(s || '').toLowerCase().replace(/[\u064B-\u065F]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي'); }
 var SN = {def: 'الافتراضي', az: 'أ - ي', rate: 'التقييم'};
@@ -3202,7 +3137,7 @@ p.t = Date.now(); SD.profiles[p.id] = p; sdSave();
 var o = {}; o[p.id] = p;
 api('/ud/merge?lite=1', {method: 'POST', body: {profiles: o, items: {}}, timeout: 30000}, function () {});
 }
-function sdReset() { SD = {profiles: {}, items: {}}; PID = null; SDOK = false; sdQ = {}; NEWD = null; FAVL = null; FAVD = {}; FAVB = {}; ROWS = null; SX.lib = null; SX.epsBy = {}; SX.failed = {}; SX.smap = {}; }
+function sdReset() { try { HERO.src = null; HERO.pool = []; HERO.i = 0; HERO.d = null; } catch (e) {} SD = {profiles: {}, items: {}}; PID = null; SDOK = false; sdQ = {}; NEWD = null; FAVL = null; FAVD = {}; FAVB = {}; ROWS = null; SX.lib = null; SX.epsBy = {}; SX.failed = {}; SX.smap = {}; }
 function autoNext() { var p = prof(); return !(p && p.auto === false); }
 function dubFirst() { var p = prof(); return !p || p.dubFirst !== false; }
 /* ---------- دخول القسم + اختيار البروفايل ---------- */
@@ -3257,8 +3192,8 @@ if (!same) { FAVD = {}; FAVB = {}; }
 sxMigrate(); ivsSwitch();
 if (S.wantIptv) { S.wantIptv = 0; return iptvEnter(); }
 var p = prof();
-$('sxT').textContent = '🎬 الموقع  ·  ' + (p ? (p.emoji || '') + ' ' + p.name : '');
-show('site'); setFocus($('xSearch'));
+$('sxT').innerHTML = '<span class="bl">Tor<b>Flix</b></span><small>' + (p ? esc((p.emoji || '') + ' ' + p.name) : '') + '</small>';
+show('site'); setFocus($('xHome'));
 sxLoad(false);
 }
 /* بيانات التلفزيون القديمة (قبل الربط): نحوّلها لنفس شكل الموقع مرة واحدة */
@@ -3446,6 +3381,7 @@ if (curScr === 'site') { hbApplyTv(); hbPullTv(); sxSecNew(); }
 });
 }
 function sxSecNew() {
+try { heroRefresh(); } catch (e) {}
 sxPut('sec-new', function (box) {
 if (!NEWD) { box.innerHTML = '<div class="empty" style="padding-top:60px;font-size:30px">جاري تحميل الجديد...</div>'; return; }
 var P = pfx(), n = 0;
@@ -3470,8 +3406,8 @@ ROWS.forEach(function (r) { if (P.ar.indexOf(r.id) >= 0) sxRowIn(box, r.title, x
 }
 function sxLoad(force) {
 var rows = $('sxrows'); rows.scrollTop = 0;
-rows.innerHTML = '<div id="sec-feat"></div><div id="sec-cw"></div><div id="sec-new"></div><div id="sec-fav"></div><div id="sec-ar"></div><div id="sec-int"></div>';
-sxSecCw(); sxSecNew(); sxSecFav(); sxSecAr(); sxSecInt(); loadIntRows();
+rows.innerHTML = '<div id="sec-hero"></div><div id="sec-feat"></div><div id="sec-cw"></div><div id="sec-new"></div><div id="sec-fav"></div><div id="sec-ar"></div><div id="sec-int"></div>';
+heroInit(); sxSecCw(); sxSecNew(); sxSecFav(); sxSecAr(); sxSecInt(); loadIntRows();
 hbApplyTv(); hbPullTv(); hbSyncTv();
 ivsPull(function () { if (curScr === 'site') sxSecCw(); }, 45000);
 if (FT.res) featRender();
@@ -3505,7 +3441,8 @@ worker();
 }
 worker(); worker(); worker();
 }
-['xSearch', 'xList', 'xLib', 'xLink', 'xMore'].forEach(function (id) { $(id)._focus = function () { $('sxrows').scrollTop = 0; }; });
+['xHome', 'xSearch', 'xList', 'xLib', 'xLink', 'xMore'].forEach(function (id) { $(id)._focus = function () { $('sxrows').scrollTop = 0; }; });
+$('xHome')._ok = function () { $('sxrows').scrollTop = 0; var f = $('hPlay'); if (f) setFocus(f); else { var f2 = $('sxrows').querySelector('.f'); if (f2) setFocus(f2); } };
 /* ---------- شبكة نتائج عامة + قايمة عامة ---------- */
 function sxHead(title, tabs) {
 $('sresT').textContent = title;
@@ -4360,6 +4297,84 @@ FAVCH = false; var p = prof(); if (!p) return;
 if (p.fav === undefined) p.fav = [];
 sdSaveProf(p); FAVD = {}; FAVB = {};
 }
+/* ===================== هيرو الموقع (شكل Morph): بانر كبير + أزرار تشغيل/تفاصيل + ساعة ===================== */
+var HERO = {pool: [], i: 0, src: null, hd: {}, tok: 0, d: null};
+function heroPoolBuild() {
+var out = [], seen = {};
+if (!NEWD || !NEWD.rows) return out;
+var P0 = pfx();
+NEWD.rows.forEach(function (r) {
+if (P0.hn.indexOf(r.id) >= 0) return;
+var n = 0;
+xlFilter(r.items || []).forEach(function (t) {
+if (!t || !t.id || !t.title || !t.poster || n >= 3 || out.length >= 12 || seen[t.id]) return;
+seen[t.id] = 1; n++; out.push(t);
+});
+});
+return out;
+}
+function heroInit() { HERO.d = null; heroRefresh(); }
+function heroRefresh() {
+if (!NEWD) return heroPaint(null);
+if (HERO.src !== NEWD || !HERO.pool.length) { HERO.src = NEWD; HERO.pool = heroPoolBuild(); HERO.i = 0; HERO.d = null; }
+if (!HERO.pool.length) return heroPaint(null);
+heroShow();
+}
+function heroShow() {
+var t = HERO.pool[HERO.i]; if (!t) return;
+if (HERO.d && HERO.d._t === t && $('hbtns')) return;
+var ty = (t.type === 'series' || t.type === 'tv') ? 'tv' : 'movie', k = ty + ':' + t.id, my = ++HERO.tok, c = HERO.hd[k];
+if (c) { c._t = t; HERO.d = c; return heroPaint(c); }
+api('/details?type=' + ty + '&id=' + t.id, {timeout: 40000}, function (e, s, d) {
+if (my !== HERO.tok) return;
+if (e || s !== 200 || !d || d.error) { if (HERO.pool.length > 1) { HERO.pool.splice(HERO.i, 1); HERO.i = HERO.i % HERO.pool.length; HERO.d = null; return heroShow(); } return; }
+d._t = t; HERO.hd[k] = d; HERO.d = d; heroPaint(d);
+});
+}
+function heroPaint(d) {
+var box = $('sec-hero'); if (!box) return;
+var had = cur && box.contains(cur), hadId = had ? cur.id : '';
+if (!d) { box.className = ''; box.innerHTML = ''; if (had) { cur = null; setFocus($('xHome')); } return; }
+var ty = d.type === 'movie' ? 'movie' : 'tv', bg = d.backdrop || d.poster || '', meta = [];
+if (d.rating > 0) meta.push('<b>★ ' + esc(d.rating) + '</b>');
+if (d.year) meta.push(esc(d.year));
+if (ty === 'movie' && d.runtime) meta.push(esc(d.runtime) + ' د');
+if (ty === 'tv' && (d.seasons || []).length > 1) meta.push(d.seasons.length + ' مواسم');
+var pl = String(d.overview || ''); if (pl.length > 250) pl = pl.slice(0, 247).replace(/\s+\S*$/, '') + '…';
+var dots = ''; if (HERO.pool.length > 1) { for (var i = 0; i < HERO.pool.length; i++) dots += i === HERO.i ? '●' : '○'; }
+box.className = 'on';
+box.innerHTML = '<div class="hbg"' + (bg ? ' style="background-image:url(\'' + esc(bg) + '\')"' : '') + '></div><div class="hov"></div><div class="hx"><div class="htag">' + (ty === 'movie' ? 'فيلم جديد' : 'مسلسل جديد') + '</div><h1>' + esc(d.title) + '</h1><div class="hmeta">' + meta.join('  ·  ') + '</div><div class="hpl">' + esc(pl) + '</div><div id="hbtns"></div>' + (dots ? '<div class="hdots">' + dots + '</div>' : '') + '</div>';
+var b = $('hbtns');
+var pb = addBtn(b, '▶  تشغيل', function () { heroPlay(d); }); pb.id = 'hPlay';
+var ib = addBtn(b, 'ⓘ  تفاصيل', function () { siteDetails(ty, d.id); }); ib.id = 'hInfo';
+if (had) { cur = null; setFocus(hadId === 'hInfo' ? ib : pb); }
+}
+function heroPlay(d) {
+var ty = d.type === 'movie' ? 'movie' : 'tv', last = latestOf(d.id);
+if (last && !last.done && last.pos > 10) return playItem(last.key);
+if (last && last.done && ty === 'tv' && (last.next || nextEpOf(last))) return playItem(last.key);
+var base = {type: ty, id: d.id, imdb: d.imdb || '', title: d.title, poster: d.poster || '', year: d.year || '', q: d.qname || d.title, ms: (d.seasons || []).reduce(function (m, s) { return Math.max(m, s.n || 0); }, 0)};
+if (ty === 'movie') return sitePlay(sxMix(base, {resume: 0}));
+var s0 = (d.seasons || [])[0]; if (!s0) return siteDetails(ty, d.id);
+toast('جاري التجهيز...');
+sxEps(d.id, s0.n, function (l) {
+var f = null; (l || []).forEach(function (x) { if (!f && !sxFuture(x)) f = x; });
+if (!f) return siteDetails('tv', d.id);
+sitePlay(sxMix(base, {s: s0.n, e: f.n, eps: (l || []).length, resume: 0, fresh: 1}));
+});
+}
+setInterval(function () {
+if (curScr !== 'site' || P.on || KB || HERO.pool.length < 2 || $('sxrows').scrollTop > 20) return;
+HERO.i = (HERO.i + 1) % HERO.pool.length; HERO.d = null; heroShow();
+}, 14000);
+$('sxrows').addEventListener('scroll', function () { var bh = $('site').querySelector('.bh'); if (bh) bh.style.background = this.scrollTop > 40 ? 'rgba(10,13,28,.95)' : ''; });
+function sxClock() {
+var t = new Date(), a = $('sxtm'), b = $('sxdt'); if (!a) return;
+var DN = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'], MN2 = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+a.textContent = p2(t.getHours()) + ':' + p2(t.getMinutes());
+b.textContent = DN[t.getDay()] + ' ' + t.getDate() + ' ' + MN2[t.getMonth()];
+}
+setInterval(sxClock, 20000); sxClock();
 /* ---- كمّل المشاهدة: زر قديم متوافق ---- */
 function sxAfterPlay() {
 if (curScr === 'site') { sxSecCw(); cur = null; var f = $('sec-cw').querySelector('.f') || $('xSearch'); setFocus(f); }
