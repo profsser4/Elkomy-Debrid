@@ -1060,7 +1060,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=82;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=83;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -10837,6 +10837,7 @@ function catView() {
   const lt = (CAT === 'korean') ? [] : LATEST.filter(ok);
   if (lt.length) h += row('🔔 جديد في قائمتي', lt);
   if (ty) {
+    if (!ARD_ALL) ensureAddonRows(true);
     const p = prof(), hr = (p && p.hr) || [];
     const add = (r, rid) => { const it = (r.items || []).filter(ok); if (it.length) h += row(r.title, it, rid); };
     FRESH.forEach(r => add(r, r.id));
@@ -10909,8 +10910,15 @@ async function ensureAddonMeta() {   // أسماء الصفوف بس (سريع) 
   } catch (e) {}
   await ensureAddonRows(); ARM = ROWS || [];   // سيرفر قديم: نرجع للطريقة القديمة
 }
-let ARD_T = 0;
-async function ensureAddonRows() {
+let ARD_T = 0, ARD_ALL = false;
+async function ensureAddonRows(all) {
+  if (all) {   // قسم الأفلام/المسلسلات: كل صفوف الإضافات (بتتحمّل أول مرة تفتح القسم بس)
+    if (ARD_ALL) return;
+    ARD_ALL = true;
+    try { const {d} = await api('/rows'); ROWS = layApply(d.rows || []); ARD_LOADED = true; ARD_T = Date.now(); } catch (e) { ARD_ALL = false; return; }
+    if (CAT === 'movie' || CAT === 'tv') renderShelvesSoon();
+    return;
+  }
   const want = (pf().ar || []).map(String);
   const have = id => (ROWS || []).some(r => String(r.id) === id);
   if (ARD_LOADED && (want.every(have) || Date.now() - ARD_T < 60000)) return;
@@ -10956,8 +10964,8 @@ function favBarHTML() {
 function favGo(k) { const el = document.getElementById('favs-' + favId(k)); if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
 // ================= أقسام الرئيسية (مرتّبة من الأدمن وبتظهر في الموقع والأندرويد والتلفزيون) =================
 let HB = null, HBD = {}, HB_BUSY = false, HB_T = 0;
-const HB_DEF = ['feat', 'cw', 'pins', 'live', 'ivsec', 'tz', 'ar'];
-try { HB = JSON.parse(localStorage.getItem('hb_v2') || 'null'); } catch (e) { HB = null; }
+const HB_DEF = ['feat', 'cw', 'pins', 'live', 'ivsec', 'tz'];
+try { HB = JSON.parse(localStorage.getItem('hb_v3') || 'null'); } catch (e) { HB = null; }
 function hbList() { return (HB && HB.length) ? HB : HB_DEF.map(id => ({id: id, on: true})); }
 const hbHas = f => hbList().some(b => b.on !== false && f(b.id));
 const hbSig = b => [b.ty, b.lg, b.g, b.y1, b.y2, b.so].join('|');
@@ -10982,7 +10990,7 @@ async function loadBlocks(force) {
   HB_BUSY = true;
   try {
     const {d} = await api('/home/layoutblocks');
-    if (d && d.blocks) { HB = d.blocks; HB_T = Date.now(); try { localStorage.setItem('hb_v2', JSON.stringify(HB)); } catch (e) {} }
+    if (d && d.blocks) { HB = d.blocks; HB_T = Date.now(); try { localStorage.setItem('hb_v3', JSON.stringify(HB)); } catch (e) {} }
   } catch (e) {}
   HB_BUSY = false;
   hbLoadCustom(force);
@@ -11094,7 +11102,7 @@ async function hbSave() {
     const {d} = await api('/home/layoutblocks', {method: 'POST', body: JSON.stringify({blocks: HBA})});
     if (d && d.error) { if (s) s.textContent = '❌ ' + d.error; return; }
     HB = JSON.parse(JSON.stringify(HBA)); HB_T = Date.now(); HBD = {};
-    try { localStorage.setItem('hb_v2', JSON.stringify(HB)); } catch (e) {}
+    try { localStorage.setItem('hb_v3', JSON.stringify(HB)); } catch (e) {}
     if (s) s.textContent = '✅ اتحفظ ويظهر للكل';
     hbLoadCustom(true); renderShelves();
   } catch (e) { if (s) s.textContent = '❌ مش قادر أوصل للسيرفر'; }
