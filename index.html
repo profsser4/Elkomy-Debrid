@@ -1053,7 +1053,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=79;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=80;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -4872,6 +4872,39 @@ function ftPopClose(go) {
   const m = $('ftpop'); if (m) m.remove();
   if (go && p.k && p.sid) ftTap({dataset: {k: p.k, id: p.sid}});
 }
+// ---------- المثبّت في الرئيسية / الأفلام / المسلسلات ----------
+const FT_SEC = {};
+const ftSecCard = x => '<div class="poster" tabindex="0" role="button" data-k="' + esc(x.k) + '" data-id="' + esc(x.id) + '" onclick="ftTap(this)">' +
+  (x.img ? '<img ' + lzA(x.img) + ' alt="">' : '<div class="noimg">🎬</div>') + '<div class="t">' + esc(x.n) + '</div></div>';
+function ftSecHTML(cat) {
+  if (!FT.d) { ftLoad().then(renderShelvesSoon); return ''; }
+  const a = (FT.d.sec && FT.d.sec[cat]) || [];
+  if (!a.length) return '';
+  const src = JSON.stringify(a), c = FT_SEC[cat];
+  if (!c || (c.src !== src && !c.busy)) ftSecResolve(cat, src, a);
+  const it = (c && c.items) || [];
+  return it.length ? '<h3 class="sec">📌 مثبّت</h3><div class="hrow">' + it.map(ftSecCard).join('') + '</div>' : '';
+}
+async function ftSecResolve(cat, src, a) {
+  const st = FT_SEC[cat] || (FT_SEC[cat] = {src: '', items: [], busy: false});
+  st.busy = true;
+  const out = [];
+  let cfg = null;
+  try { cfg = await ivCfg(); } catch (e) {}
+  for (const x of a) {
+    try {
+      if (x.k === 'lib') { const lx = await ftLibGet(x.sid, x.nm); if (lx) out.push({k: 'lib', id: String(lx.id), n: lx.title, img: lx.poster || x.img || ''}); continue; }
+      if (!cfg) continue;
+      const vod = x.k === 'vod', list = await ivList(vod ? 'get_vod_streams' : 'get_series');
+      const f = ftFind(list, vod ? 'stream_id' : 'series_id', x.sid, x.nm);
+      if (f) out.push({k: x.k, id: String(vod ? f.stream_id : f.series_id), n: f.name, img: (vod ? f.stream_icon : f.cover) || x.img || ''});
+    } catch (e) {}
+  }
+  st.items = out; st.src = src; st.busy = false;
+  if (CAT === cat || cat === 'home') renderShelvesSoon();
+}
+function ftSecDel(k, i) { FA.sec[k].splice(i, 1); ftAdmRender(); }
+function ftSecMv(k, i) { const a = FA.sec[k]; if (i > 0) { a.unshift(a.splice(i, 1)[0]); ftAdmRender(); } }
 // ---------- ربط بالمكتبة (أفلام/مسلسلات المكتبة مش من الـIPTV) ----------
 async function ftLibGet(id, name) {
   try { await clibLoad(); } catch (e) {}
@@ -4894,7 +4927,7 @@ async function ftAdmLoad() {
   el.innerHTML = pend('جاري التحميل...');
   try { await ivCfg(true); } catch (e) {}
   const d = await ftLoad(true);
-  FA = JSON.parse(JSON.stringify({mt: d.mt || '', matches: d.matches || [], banners: d.banners || [], popup: d.popup || {on: false}}));
+  FA = JSON.parse(JSON.stringify({mt: d.mt || '', matches: d.matches || [], banners: d.banners || [], popup: d.popup || {on: false}, sec: Object.assign({home: [], movie: [], tv: []}, d.sec || {})}));
   ftAdmRender();
 }
 function ftAdmRender() {
@@ -4920,10 +4953,17 @@ function ftAdmRender() {
     dt(p.until, 'FA.popup.until', 'يقف بعد يوم:') +
     '<small style="color:var(--mut)">' + (p.sid ? '🔗 مربوط بـ ' + (p.k === 'lib' ? 'عنصر من المكتبة 📚' : p.k === 'series' ? 'مسلسل' : 'فيلم') + (p.nm ? ' «' + esc(p.nm) + '»' : ' (id ' + esc(p.sid) + ')') : 'مش مربوط بفيلم') + '</small> ' +
     (p.sid ? '<button class="fc" onclick="FA.popup.k=\'\';FA.popup.sid=\'\';ftAdmRender()">فك الربط</button>' : '') + '</div>';
+  h += '<h4>📌 المثبّت في الأقسام</h4>' + [['home', '🏠 الرئيسية'], ['movie', '🎬 الأفلام'], ['tv', '📺 المسلسلات']].map(s => {
+    const a = FA.sec[s[0]] || [];
+    return '<div class="ep"><b>' + s[1] + '</b>' + (a.map((x, i) => '<div class="row" style="gap:6px;align-items:center;margin-top:6px"><span style="flex:1">' +
+      (x.k === 'lib' ? '📚' : x.k === 'series' ? '📺' : '🎬') + ' ' + esc(x.nm) + '</span>' + (i ? '<button class="fc" onclick="ftSecMv(\'' + s[0] + '\',' + i + ')">⬆</button>' : '') +
+      '<button class="fc" onclick="ftSecDel(\'' + s[0] + '\',' + i + ')">🗑</button></div>').join('') || '<small style="color:var(--mut)"> مفيش حاجة مثبّتة</small>') + '</div>';
+  }).join('');
   h += '<h4>🔎 ضيف من الـIPTV</h4><small style="color:var(--mut);display:block;margin-bottom:6px">اختار من حسابك إنت. الأعضاء اللي على مزوّد تاني بيتدوّر لهم بالاسم، ولو القناة/الفيلم مش موجود عندهم الكارت بيتخفي.</small><div class="row" style="gap:6px;flex-wrap:wrap">' +
     '<button class="fc" onclick="ftMode(\'match\')">⚽ قناة ماتش</button><button class="fc" onclick="ftMode(\'banner\')">🆕 بانر فيلم/مسلسل</button>' +
     '<button class="fc" onclick="ftMode(\'popup\')">🪧 اربط المنبثق</button>' +
-    '<button class="fc" onclick="ftMode(\'lbanner\')">📚 بانر من المكتبة</button><button class="fc" onclick="ftMode(\'lpopup\')">📚 اربط المنبثق بالمكتبة</button><button class="fc" onclick="ftAddCustom()">✍️ بانر مكتوب</button></div>' +
+    '<button class="fc" onclick="ftMode(\'lbanner\')">📚 بانر من المكتبة</button><button class="fc" onclick="ftMode(\'lpopup\')">📚 اربط المنبثق بالمكتبة</button>' +
+    '<button class="fc" onclick="ftMode(\'shome\')">📌 ثبّت في الرئيسية</button><button class="fc" onclick="ftMode(\'smovie\')">📌 ثبّت في الأفلام</button><button class="fc" onclick="ftMode(\'stv\')">📌 ثبّت في المسلسلات</button><button class="fc" onclick="ftAddCustom()">✍️ بانر مكتوب</button></div>' +
     '<small id="ftMode" style="color:var(--success)"></small>' +
     '<input id="ftQ" class="search-input" placeholder="ابحث بالاسم..." oninput="clearTimeout(_ftT);_ftT=setTimeout(ftSearch,300)"><div id="ftRes"></div>' +
     '<button class="search-btn" style="margin-top:12px" onclick="ftAdmSave(this)">💾 حفظ ونشر للكل</button></div>';
@@ -4932,7 +4972,7 @@ function ftAdmRender() {
 }
 function ftModeLbl() {
   const e = $('ftMode');
-  if (e) e.textContent = {match: '⚽ البحث دلوقتي في القنوات المباشرة', banner: '🆕 البحث دلوقتي في الأفلام والمسلسلات (بانر)', popup: '🪧 اختار فيلم/مسلسل يتربط بالمنبثق', lbanner: '📚 البحث دلوقتي في المكتبة (بانر)', lpopup: '📚 البحث دلوقتي في المكتبة (منبثق)'}[FT_MODE];
+  if (e) e.textContent = {match: '⚽ البحث دلوقتي في القنوات المباشرة', banner: '🆕 البحث دلوقتي في الأفلام والمسلسلات (بانر)', popup: '🪧 اختار فيلم/مسلسل يتربط بالمنبثق', lbanner: '📚 البحث دلوقتي في المكتبة (بانر)', lpopup: '📚 البحث دلوقتي في المكتبة (منبثق)', shome: '📌 ابحث (IPTV + المكتبة) وثبّت في الرئيسية', smovie: '📌 ابحث (IPTV + المكتبة) وثبّت في الأفلام', stv: '📌 ابحث (IPTV + المكتبة) وثبّت في المسلسلات'}[FT_MODE];
 }
 function ftMode(m) { FT_MODE = m; ftModeLbl(); ftSearch(); const q = $('ftQ'); if (q) q.focus(); }
 function ftAddCustom() { FA.banners.push({id: ftId(), k: '', sid: '', title: 'عنوان الإعلان', sub: '', img: '', tag: '📢 إعلان', until: ftDay(7)}); ftAdmRender(); }
@@ -4954,6 +4994,12 @@ async function ftSearch() {
   try {
     let items;
     if (FT_MODE === 'lbanner' || FT_MODE === 'lpopup') { await clibLoad(); items = CL.items.map(x => ({k: 'lib', id: String(x.id), n: x.title, img: x.poster, tv: x.kind === 'tv'})); }
+    else if (/^s(home|movie|tv)$/.test(FT_MODE)) {
+      items = [];
+      try { const [v, s] = await Promise.all([ivList('get_vod_streams'), ivList('get_series')]); items = v.map(x => ({k: 'vod', id: String(x.stream_id), n: x.name, img: x.stream_icon})).concat(s.map(x => ({k: 'series', id: String(x.series_id), n: x.name, img: x.cover}))); } catch (e) {}
+      await clibLoad();
+      items = items.concat(CL.items.map(x => ({k: 'lib', id: String(x.id), n: x.title, img: x.poster, tv: x.kind === 'tv'})));
+    }
     else if (FT_MODE === 'match') items = (await ivList('get_live_streams')).map(x => ({k: 'live', id: String(x.stream_id), n: x.name, img: x.stream_icon}));
     else {
       const [v, s] = await Promise.all([ivList('get_vod_streams'), ivList('get_series')]);
@@ -4969,6 +5015,7 @@ function ftPick(i) {
   const x = FT_RES[i];
   if (!x) return;
   if (FT_MODE === 'match') FA.matches.push({id: ftId(), ch: x.id, n: x.n, icon: x.img || '', title: '', time: '', until: ftDay(0)});
+  else if (/^s(home|movie|tv)$/.test(FT_MODE)) { const key = {shome: 'home', smovie: 'movie', stv: 'tv'}[FT_MODE], a = FA.sec[key]; if (!a.some(y => y.k === x.k && y.sid === x.id)) a.push({k: x.k, sid: x.id, nm: x.n, img: x.img || ''}); }
   else if (FT_MODE === 'lbanner') FA.banners.push({id: ftId(), k: 'lib', sid: x.id, title: x.n, sub: '', img: x.img || '', tag: '🆕 نزل حالاً', nm: x.n, until: ftDay(14)});
   else if (FT_MODE === 'banner') FA.banners.push({id: ftId(), k: x.k, sid: x.id, title: x.n, sub: '', img: x.img || '', tag: '🆕 نزل حالاً', nm: x.n, until: ftDay(14)});
   else Object.assign(FA.popup, {k: x.k, sid: x.id, nm: x.n, img: FA.popup.img || x.img || '', title: FA.popup.title || x.n});
@@ -10757,6 +10804,7 @@ function catView() {
   };
   const cw = [...groups.values()].filter(x => cwOK(x) && inCat(x)).sort((a, b) => b.t - a.t).slice(0, 20);
   if (cw.length) h += '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + cw.map(cwHTML).join('') + '</div>';
+  if (ty) h += ftSecHTML(CAT);
   // تصنيفات القسم
   if (ty) {
     h += '<div class="hrow">' + CAT_GEN.map(g => {
@@ -10864,9 +10912,9 @@ function seedFavMaybe() {
 }
 function homeBoot() {
   try { loadBlocks(); } catch (e) {}
-  ensureFavList(); loadFav(); seedFavMaybe();
+  if (hbHas(i => i === 'fav')) { ensureFavList(); loadFav(); seedFavMaybe(); }
   try { tzBoot(); } catch (e) {}
-  if (pf().ar.length) ensureAddonRows();
+  if (pf().ar.length && hbHas(i => i === 'ar')) ensureAddonRows();
 }
 function favBarHTML() {
   const f = pf().fav;
@@ -10878,9 +10926,10 @@ function favBarHTML() {
 function favGo(k) { const el = document.getElementById('favs-' + favId(k)); if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
 // ================= أقسام الرئيسية (مرتّبة من الأدمن وبتظهر في الموقع والأندرويد والتلفزيون) =================
 let HB = null, HBD = {}, HB_BUSY = false, HB_T = 0;
-const HB_DEF = ['feat', 'cw', 'pins', 'live', 'ivsec', 'new-ar', 'new-for', 'new-toon', 'tz', 'fav', 'ar'];
-try { HB = JSON.parse(localStorage.getItem('hb_v1') || 'null'); } catch (e) { HB = null; }
+const HB_DEF = ['feat', 'cw', 'pins', 'tz'];
+try { HB = JSON.parse(localStorage.getItem('hb_v2') || 'null'); } catch (e) { HB = null; }
 function hbList() { return (HB && HB.length) ? HB : HB_DEF.map(id => ({id: id, on: true})); }
+const hbHas = f => hbList().some(b => b.on !== false && f(b.id));
 const hbSig = b => [b.ty, b.lg, b.g, b.y1, b.y2, b.so].join('|');
 async function hbLoadCustom(force) {
   const cs = hbList().filter(b => b.on !== false && /^c_/.test(b.id));
@@ -10903,10 +10952,11 @@ async function loadBlocks(force) {
   HB_BUSY = true;
   try {
     const {d} = await api('/home/layoutblocks');
-    if (d && d.blocks) { HB = d.blocks; HB_T = Date.now(); try { localStorage.setItem('hb_v1', JSON.stringify(HB)); } catch (e) {} }
+    if (d && d.blocks) { HB = d.blocks; HB_T = Date.now(); try { localStorage.setItem('hb_v2', JSON.stringify(HB)); } catch (e) {} }
   } catch (e) {}
   HB_BUSY = false;
   hbLoadCustom(force);
+  try { if (hbHas(i => i === 'fav')) loadFav(); if (hbHas(i => /^new-/.test(i))) loadNew(); if (hbHas(i => i === 'ar') && pf().ar.length) ensureAddonRows(); } catch (e) {}
   if (CAT === 'home' && !FAV_OPEN) renderShelvesSoon();
 }
 function newHomeHTML() {
@@ -10924,7 +10974,7 @@ function newHomeHTML() {
         if (it.length) h += row(esc(b.t || 'قسم'), isTv() ? it.slice(0, 12) : it, 'hb:' + id);
       } else if (id === 'feat') { try { ftBoot(PID); } catch (e) {} h += ivFeatHTML(); }
       else if (id === 'cw') h += cwRowHTML();
-      else if (id === 'pins') h += ivPinHTML();
+      else if (id === 'pins') h += ivPinHTML() + ftSecHTML('home');
       else if (id === 'tz') h += tzHomeHTML();
       else if (id === 'ivsec') h += ivSecGet();
       else if (id === 'live') h += ivHubGet();
@@ -11014,7 +11064,7 @@ async function hbSave() {
     const {d} = await api('/home/layoutblocks', {method: 'POST', body: JSON.stringify({blocks: HBA})});
     if (d && d.error) { if (s) s.textContent = '❌ ' + d.error; return; }
     HB = JSON.parse(JSON.stringify(HBA)); HB_T = Date.now(); HBD = {};
-    try { localStorage.setItem('hb_v1', JSON.stringify(HB)); } catch (e) {}
+    try { localStorage.setItem('hb_v2', JSON.stringify(HB)); } catch (e) {}
     if (s) s.textContent = '✅ اتحفظ ويظهر للكل';
     hbLoadCustom(true); renderShelves();
   } catch (e) { if (s) s.textContent = '❌ مش قادر أوصل للسيرفر'; }
@@ -11108,7 +11158,7 @@ async function loadCert(d) {
   } catch (e) {}
 }
 async function loadHero() {
-  if (HOME_ONLY_NEW) { await loadNew(); return; }
+  if (HOME_ONLY_NEW) { if (hbHas(i => /^new-/.test(i))) await loadNew(); else renderHero(); return; }
   if (!HERO.length) {
     try { const {d} = await api('/hero'); HERO = d.items || []; } catch (e) {}
   }
@@ -11287,7 +11337,7 @@ async function loadForYou() {
   } catch (e) {}
 }
 async function loadFresh() {
-  if (HOME_ONLY_NEW) { loadNew(); loadFav(); return; }
+  if (HOME_ONLY_NEW) { if (hbHas(i => /^new-/.test(i))) loadNew(); if (hbHas(i => i === 'fav')) loadFav(); return; }
   try { const {d} = await api('/fresh'); FRESH = d.rows || []; FRESH_T = Date.now(); } catch (e) {}
   loadForYou().then(renderShelvesSoon);
   renderShelvesSoon();
