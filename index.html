@@ -5,7 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
 <script>try{if(window.AndroidPlayer||/; wv\)/.test(navigator.userAgent))document.documentElement.classList.add('wv');}catch(e){}</script>
-<style>html.wv *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}</style>
+<style>html.wv *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+/* وضع خفيف للأندرويد: من غير بلور/ظلال/أنيميشن مستمر (دول أكتر حاجة بتتقّل الموبايل) */
+html.lite *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;text-shadow:none!important}
+html.lite .ftbg{filter:none!important;transform:none!important;opacity:.35}
+html.lite .fttag,html.lite .ftlive,html.lite .ftm-live i,html.lite .ivdot,html.lite .lvlive{animation:none!important}
+html.lite .poster,html.lite .ftban,html.lite .ivsec,html.lite .lvc,html.lite .ftm-c,html.lite .hz,html.lite .topbar{box-shadow:none!important}
+html.lite .poster{transition:none!important}</style>
+<script>if(/Android/i.test(navigator.userAgent))document.documentElement.classList.add('lite')</script>
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
@@ -1053,7 +1060,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=81;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=82;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -10902,10 +10909,13 @@ async function ensureAddonMeta() {   // أسماء الصفوف بس (سريع) 
   } catch (e) {}
   await ensureAddonRows(); ARM = ROWS || [];   // سيرفر قديم: نرجع للطريقة القديمة
 }
+let ARD_T = 0;
 async function ensureAddonRows() {
-  if (ARD_LOADED) return;
-  ARD_LOADED = true;
-  try { const {d} = await api('/rows'); ROWS = layApply(d.rows || []); } catch (e) { ROWS = ROWS || []; ARD_LOADED = false; }
+  const want = (pf().ar || []).map(String);
+  const have = id => (ROWS || []).some(r => String(r.id) === id);
+  if (ARD_LOADED && (want.every(have) || Date.now() - ARD_T < 60000)) return;
+  ARD_LOADED = true; ARD_T = Date.now();
+  try { const {d} = await api('/rows' + (want.length ? '?ids=' + encodeURIComponent(want.join(',')) : '')); ROWS = layApply(d.rows || []); } catch (e) { ROWS = ROWS || []; ARD_LOADED = false; }
   if (CAT === 'home' && !FAV_OPEN) renderShelvesSoon();
 }
 async function loadFav(force) {
@@ -10946,7 +10956,7 @@ function favBarHTML() {
 function favGo(k) { const el = document.getElementById('favs-' + favId(k)); if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
 // ================= أقسام الرئيسية (مرتّبة من الأدمن وبتظهر في الموقع والأندرويد والتلفزيون) =================
 let HB = null, HBD = {}, HB_BUSY = false, HB_T = 0;
-const HB_DEF = ['feat', 'cw', 'pins', 'live', 'ivsec', 'tz'];
+const HB_DEF = ['feat', 'cw', 'pins', 'live', 'ivsec', 'tz', 'ar'];
 try { HB = JSON.parse(localStorage.getItem('hb_v2') || 'null'); } catch (e) { HB = null; }
 function hbList() { return (HB && HB.length) ? HB : HB_DEF.map(id => ({id: id, on: true})); }
 const hbHas = f => hbList().some(b => b.on !== false && f(b.id));
