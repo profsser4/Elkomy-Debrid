@@ -1053,7 +1053,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=80;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=81;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -3779,15 +3779,17 @@ async function ivHomeLoad(pid) {
   const gb = $('ivGmBtn'); if (gb) gb.style.display = (cfg && ROLE === 'admin') ? '' : 'none';
   if (!cfg) { IV.homeHTML = ''; IV.pinHTML = ''; IV.homePid = pid; return; }
   if (IV.homeFor !== pid) return;
+  // نبدأ تحميل القوائم الكبيرة بالتوازي من أول لحظة (بدل ما نستنى واحدة واحدة)
+  ivList('get_vod_streams').catch(() => {}); ivList('get_series').catch(() => {});
   await ivPinsLoad();
+  if (IV.pins && IV.pins.live && IV.pins.live.length) ivList('get_live_streams').catch(() => {});
   await ftLoad();
-  await ftResolve();
+  ftResolve().then(() => renderShelvesSoon()).catch(() => {});   // البانرات ما بتعطّلش المثبّت
   ivStatRefresh();
   const N = isTv() ? TV_ROW_N : 20;
   let err = '';
   const bad = e => { err = err || (e && e.message) || 'خطأ'; return []; };
   const [vod, ser] = await Promise.all([ivList('get_vod_streams').catch(bad), ivList('get_series').catch(bad)]);
-  const pcs = await ftCatsFor();
   const pc = k => '';   // v76: الأقسام المثبّتة بقت أقسام كاملة (ivSecBuild) مش كروت
   let h = '', pinH = '', pv = [], ps = [], livePinH = '';
   const st = ivDaysTxt(cfg.stat);
@@ -3804,6 +3806,13 @@ async function ivHomeLoad(pid) {
     if (ps.length) pinH += '<h3 class="sec">⭐ المسلسلات المثبّتة</h3><div class="hrow">' + ps.map(x => ivTile('series', x)).join('') + '</div>';
     if (mv.length || pc('vod')) h += '<h3 class="sec">🎬 آخر الأفلام المضافة</h3><div class="hrow">' + pc('vod') + mv.map(x => ivTile('vod', x)).join('') + ivMore('vod') + '</div>';
     if (sr.length || pc('series')) h += '<h3 class="sec">📺 آخر المسلسلات المضافة</h3><div class="hrow">' + pc('series') + sr.map(x => ivTile('series', x)).join('') + ivMore('series') + '</div>';
+  }
+  // عرض مبكّر: الأفلام والمسلسلات المثبّتة تظهر فورًا من غير ما تستنى القنوات والأقسام
+  if (IV.homeFor === pid) {
+    const pe = (t, arr, k) => arr.length ? '<h3 class="sec">' + t + '</h3><div class="hrow">' + arr.map(x => ivTile(k, x)).join('') + ivMore(k) + '</div>' : '';
+    IV.pinHTML = pe('⭐ الأفلام المثبّتة', pv, 'vod') + pe('⭐ المسلسلات المثبّتة', ps, 'series');
+    IV.homeHTML = h; IV.homePid = pid;
+    renderShelvesSoon();
   }
   // القنوات المباشرة: المثبّت الأول
   try {
@@ -3833,8 +3842,10 @@ async function ivHomeLoad(pid) {
     sc.forEach(c => { IV.cn.series[String(c.category_id)] = c.category_name; });
     lc.forEach(c => { IV.cn.live[String(c.category_id)] = c.category_name; });
     IV.tzPool = {vod: vod, ser: ser, vc: vc, sc: sc, lc: lc}; IV.tzC = {};
-    IV.secHTML = await ivSecBuild(pcs); IV.secPid = pid;
-    await ivHubBuild(pcs, pid);
+    const pcs = await ftCatsFor();
+    await ivHubBuild(pcs, pid);                       // القنوات الأول
+    if (IV.homeFor === pid) { IV.homePid = pid; renderShelvesSoon(); }
+    IV.secHTML = await ivSecBuild(pcs); IV.secPid = pid;   // وبعدين الأقسام المثبّتة
   } catch (e) {}
   if (IV.homeFor !== pid) return;
   IV.homePid = pid;
@@ -10882,6 +10893,15 @@ async function ensureFavList() {
   try { const {d} = await api('/fav/list'); if (d && d.platforms) FAVL = d; } catch (e) {}
   if (CAT === 'home' && !FAV_OPEN) renderShelvesSoon();
 }
+let ARM = null;
+async function ensureAddonMeta() {   // أسماء الصفوف بس (سريع) بدل تحميل كل الأفلام
+  if (ARM) return;
+  try {
+    const {d} = await api('/rows/meta');
+    if (d && Array.isArray(d.rows)) { ARM = d.rows; return; }
+  } catch (e) {}
+  await ensureAddonRows(); ARM = ROWS || [];   // سيرفر قديم: نرجع للطريقة القديمة
+}
 async function ensureAddonRows() {
   if (ARD_LOADED) return;
   ARD_LOADED = true;
@@ -10926,7 +10946,7 @@ function favBarHTML() {
 function favGo(k) { const el = document.getElementById('favs-' + favId(k)); if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
 // ================= أقسام الرئيسية (مرتّبة من الأدمن وبتظهر في الموقع والأندرويد والتلفزيون) =================
 let HB = null, HBD = {}, HB_BUSY = false, HB_T = 0;
-const HB_DEF = ['feat', 'cw', 'pins', 'tz'];
+const HB_DEF = ['feat', 'cw', 'pins', 'live', 'ivsec', 'tz'];
 try { HB = JSON.parse(localStorage.getItem('hb_v2') || 'null'); } catch (e) { HB = null; }
 function hbList() { return (HB && HB.length) ? HB : HB_DEF.map(id => ({id: id, on: true})); }
 const hbHas = f => hbList().some(b => b.on !== false && f(b.id));
@@ -11102,7 +11122,7 @@ async function openFav() {
   vpEl().innerHTML = '<div class="vbox favp"><button class="vx" onclick="closeVP()">✕</button>' + pend('جاري التحميل...') + '</div>';
   await ensureFavList();
   drawFav();
-  ensureAddonRows().then(() => { if (FAV_OPEN) { const y = (vpEl().querySelector('.vbox') || {}).scrollTop || 0; drawFav(); const b = vpEl().querySelector('.vbox'); if (b) b.scrollTop = y; } });
+  ensureAddonMeta().then(() => { if (FAV_OPEN) { const y = (vpEl().querySelector('.vbox') || {}).scrollTop || 0; drawFav(); const b = vpEl().querySelector('.vbox'); if (b) b.scrollTop = y; } });
 }
 function favChip(f, k, label, on, cls, logo) {
   return '<button class="fc' + (on ? ' on' : '') + (cls ? ' ' + cls : '') + '" data-f="' + f + '" data-k="' + esc(k) + '" onclick="favTog(this)">' +
@@ -11122,9 +11142,9 @@ function drawFav() {
     '<div class="chips">' + XL_NAMES.map(x => favChip('xl', x[0], x[1], P.xl.includes(x[0]), 'xl')).join('') + '</div>');
   h += sec('🏠 صفوف الجديد', 'اللي تقفله مش هيظهر في الرئيسية.',
     '<div class="chips">' + NEWROW_NAMES.map(x => favChip('hn', x[0], x[1], !P.hn.includes(x[0]), '')).join('') + '</div>');
-  const rs = (ROWS || []);
+  const rs = (ARM || []);
   h += sec('🧩 صفوف الإضافات (Stremio)', 'علّم الصفوف اللي عايزها تظهر لك بس.',
-    rs.length ? '<div class="chips">' + rs.map(r => favChip('ar', r.id, r.title, P.ar.includes(r.id), '')).join('') + '</div>' : '<p class="fps">' + (ARD_LOADED ? 'مفيش صفوف إضافات.' : '⏳ جاري التحميل...') + '</p>');
+    rs.length ? '<div class="chips">' + rs.map(r => favChip('ar', r.id, r.title, P.ar.includes(r.id), '')).join('') + '</div>' : '<p class="fps">' + (ARM ? 'مفيش صفوف إضافات.' : '⏳ جاري التحميل...') + '</p>');
   h += '<button class="search-btn" style="margin-top:18px" onclick="closeVP()">تمام ✔</button></div>';
   vpEl().innerHTML = h;
 }
