@@ -17,6 +17,7 @@ html.lite .poster{transition:none!important}</style>
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v78: البحث الذكي: زرار «ارفع صورة من الفيلم» بقى بيفتح اختيار الصور مباشرة (إصلاح WebView الأندرويد) + لصق صورة كبديل (مع إضافة onShowFileChooser في MainActivity)
   v77: القواعد المشتركة (الذوق/تبويبات القنوات/أنماط الأقسام/اقتراحات ⚙) اتفصلت في elk_shared.js ومتزامنة مع شاشة الـTV (sync_shared.py)
   v76: الرئيسية بتتعلّم من اللي بتشوفه (مدبلج/هندي/كرتون…) + أقسام IPTV كاملة (رمضان وغيره) من الأقسام المثبّتة + قسم قنوات مباشرة بتبويبات و«آخر ما شاهدت» + إدارة الأقسام ⚙ + صفحة تفاصيل الأفلام والمسلسلات في الـIPTV بستايل Netflix (محتاج bot_5.py لتعلّم لغة الموقع)
   v75: حد تحميلات SubDL (50/يوم): الترجمة بتتحفظ على السيرفر فمتتحمّلش تاني + التجربة التلقائية لحد 3 بس
@@ -1249,10 +1250,9 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <textarea id="aifQ" class="search-input" placeholder="اوصف المشهد أو الفكرة… مثلاً: فيلم فيه راجل بيدخل جوه أحلام الناس ويزرع فكرة، أو: مسلسل مصري عن عيلة صعيدية والأب بيموت في الحلقة الأولى"></textarea>
 <div id="aifPrev"><img id="aifImg" alt=""><button onclick="aifClear()" aria-label="شيل الصورة">✕</button></div>
 <div class="arow">
-<button class="search-btn" style="background:#334155" onclick="$('aifFile').click()">📷 ارفع صورة من الفيلم</button>
+<label class="search-btn" style="background:#334155;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;text-align:center;margin:0">📷 ارفع صورة من الفيلم<input id="aifFile" type="file" accept="image/*" onchange="aifPickFile(this)" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0"></label>
 <button class="search-btn" onclick="aifGo()">🧠 دوّر</button>
 </div>
-<input id="aifFile" type="file" accept="image/*" style="display:none" onchange="aifPickFile(this)">
 <p class="ahint">تقدر تكتب وصف مشهد، أو موضوع (زي «أفلام عن السفر في الزمن»)، أو ترفع لقطة من فيلم/مسلسل، أو الاتنين مع بعض. النتايج بتتفتح على صفحة العمل مباشرة.</p>
 <button class="search-btn adm" style="background:#334155;margin-top:14px;width:100%" onclick="aifTest()">🔧 فحص مفتاح الذكاء الاصطناعي</button>
 <div id="aifTestOut" class="ahint" style="direction:rtl;line-height:2"></div>
@@ -13491,6 +13491,15 @@ function aifClear() { AIF.img = ''; $('aifPrev').style.display = 'none'; $('aifI
 function aifPickFile(inp) {
   const f = inp.files && inp.files[0];
   inp.value = '';
+  aifLoadFile(f);
+}
+// لصق صورة (Ctrl+V / لصق من الكيبورد) كبديل لو اختيار الملفات مش شغّال
+document.addEventListener('paste', e => {
+  if ($('aif').style.display !== 'block') return;
+  const it = [].find.call((e.clipboardData && e.clipboardData.items) || [], x => x.type && x.type.indexOf('image/') === 0);
+  if (it) { e.preventDefault(); aifLoadFile(it.getAsFile()); }
+});
+function aifLoadFile(f) {
   if (!f) return;
   const u = URL.createObjectURL(f), im = new Image();
   im.onload = () => {
