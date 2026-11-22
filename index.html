@@ -17,6 +17,7 @@ html.lite .poster{transition:none!important}</style>
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v79: التحميل: تجديد الرابط المنتهي تلقائي من الأصل (مكتبة / تورنت / رابط أصلي) في كل أزرار التحميل، مع إعادة محاولة تلقائية، والاستكمال بياخد رابط جديد لوحده من غير ما ترجع للصفحة
   v78: البحث الذكي: زرار «ارفع صورة من الفيلم» بقى بيفتح اختيار الصور مباشرة (إصلاح WebView الأندرويد) + لصق صورة كبديل (مع إضافة onShowFileChooser في MainActivity)
   v77: القواعد المشتركة (الذوق/تبويبات القنوات/أنماط الأقسام/اقتراحات ⚙) اتفصلت في elk_shared.js ومتزامنة مع شاشة الـTV (sync_shared.py)
   v76: الرئيسية بتتعلّم من اللي بتشوفه (مدبلج/هندي/كرتون…) + أقسام IPTV كاملة (رمضان وغيره) من الأقسام المثبّتة + قسم قنوات مباشرة بتبويبات و«آخر ما شاهدت» + إدارة الأقسام ⚙ + صفحة تفاصيل الأفلام والمسلسلات في الـIPTV بستايل Netflix (محتاج bot_5.py لتعلّم لغة الموقع)
@@ -2097,28 +2098,61 @@ function playerMenu(u, hls) {
     '<details class="pm" open><summary>⬇️ برامج التحميل (الملف الأصلي)</summary><div class="pgrid2">' + D.join('') + '</div></details>' +
     '<p style="color:var(--mut);font-size:12px;margin:8px 0 0">الترجمة العربي بتتجهّز لوحدها، واضغط VLC وهتيجي معاه. لو عايز ترجمة تانية اختارها من زرار 💬.</p></details>';
 }
-// بيجدّد رابط التحميل (debrid) لما التطبيق يطلب ده وإنت بتكمّل تحميل قديم
-window.dlRefresh = async function (id, srcJson) {
-  let sv = '';
-  try { sv = $('results') ? $('results').innerHTML : ''; } catch (e) {}
-  let url = '';
+// بيجدّد رابط التحميل (debrid) لما التطبيق يطلب ده وإنت بتكمّل تحميل قديم أو الرابط يموت (بعد ساعات/يوم)
+// المصدر الأصلي (srcJson) أنواعه: spec (تورنت/نسخة) · clib (المكتبة) · q (رابط/مغناطيس/هاش أصلي)
+window.DL_SRC = null;
+function dlSrcMark(o) { try { o.t = Date.now(); window.DL_SRC = o; } catch (e) {} }
+function dlSrcJson(el) {
   try {
-    const src = JSON.parse(srcJson);
-    if (src.k === 'spec') {
-      const d = await startPlay(src.spec, 'download');
-      url = (d && d.direct) || '';
-    } else if (src.k === 'q') {
-      try { const r = await getLink({query: src.q}, ++pullId); url = (r && r.d && r.d.direct_link) || ''; } catch (e) {}
-      if (!url && DBP.cfg().ad && /^https?:/i.test(src.q)) {
-        try { const dd = await adLinkResolve(src.q); url = (dd && dd.direct_link) || ''; } catch (e) {}
-      }
-    }
+    if (el && el.dataset && el.dataset.src) return el.dataset.src;
+    const m = window.DL_SRC;
+    if (m && Date.now() - m.t < 1800000) { const o = Object.assign({}, m); delete o.t; return JSON.stringify(o); }
+    if (typeof curSrc !== 'undefined' && curSrc) return JSON.stringify({k: 'q', q: curSrc});
   } catch (e) {}
-  try { if (sv && $('results')) $('results').innerHTML = sv; } catch (e) {}
+  return '';
+}
+function dlStart(url, nm, srcJson) {
+  if (typeof AndroidPlayer.downloadR !== 'undefined') window.AndroidPlayer.downloadR(url, nm, srcJson || '');
+  else window.AndroidPlayer.download(url, nm);
+}
+async function dlResolveOnce(src) {
+  let url = '';
+  if (src.k === 'spec' && src.spec) {
+    const d = await startPlay(src.spec, 'download');
+    url = (d && d.direct) || '';
+  } else if (src.k === 'clib' && src.id) {
+    const my = ++pullId;
+    const r = await clibGet({id: src.id, s: src.s == null ? null : src.s, e: src.e == null ? null : src.e, skip: [], mode: 'download'}, my);
+    url = (r && r.d && r.d.direct_link) || '';
+  } else if (src.k === 'q' && src.q) {
+    try { const r = await getLink({query: src.q}, ++pullId); url = (r && r.d && r.d.direct_link) || ''; } catch (e) {}
+    if (!url && DBP.cfg().ad && /^https?:/i.test(src.q)) {
+      try { const dd = await adLinkResolve(src.q); url = (dd && dd.direct_link) || ''; } catch (e) {}
+    }
+  }
+  return /^https?:/i.test(url) ? url : '';
+}
+const DL_RF = {};
+window.dlRefresh = async function (id, srcJson) {
+  if (DL_RF[id]) return;           // نفس التحميل بيتجدّد حالياً
+  DL_RF[id] = 1;
+  let sv = '', sy = 0;
+  try { sv = $('results') ? $('results').innerHTML : ''; sy = window.scrollY || 0; } catch (e) {}
+  let url = '', src = null;
+  try { src = JSON.parse(srcJson); } catch (e) {}
+  if (src) {
+    // لحد 3 محاولات (الشبكة أو المزوّد ممكن يكونوا واقفين لحظة) والتحميل في الخلفية من غير ما نفتح صفحات
+    for (let i = 0; i < 3 && !url; i++) {
+      try { url = await dlResolveOnce(src); } catch (e) {}
+      if (!url && i < 2) await sleep(2000 + i * 3000);
+    }
+  }
+  try { if (sv && $('results')) $('results').innerHTML = sv; window.scrollTo(0, sy); } catch (e) {}
   try {
     if (url) AndroidPlayer.setLink(id, url);
-    else AndroidPlayer.refreshFail(id, 'ماقدرتش أجدّد الرابط');
+    else AndroidPlayer.refreshFail(id, src ? 'ماقدرتش أجدّد الرابط من الأصل' : 'مفيش مصدر أصلي محفوظ للتحميل ده');
   } catch (e) {}
+  delete DL_RF[id];
 };
 // اسم التحميل لازم يفيه رقم الموسم والحلقة عشان تفرّق بين الحلقات في قائمة التحميلات
 function dlNm(nm, s, e) {
@@ -2138,9 +2172,7 @@ function dlApp(el) {
   const cx = dlCtx(el);
   const nm = dlNm(el.dataset.n || 'video.mkv', cx[0], cx[1]);
   try {
-    const src = (typeof curSrc !== 'undefined' && curSrc) ? JSON.stringify({k: 'q', q: curSrc}) : '';
-    if (typeof AndroidPlayer.downloadR !== 'undefined') window.AndroidPlayer.downloadR(el.dataset.u, nm, src);
-    else window.AndroidPlayer.download(el.dataset.u, nm);
+    dlStart(el.dataset.u, nm, dlSrcJson(el));
     toast('⬇️ بدأ التحميل — تابعه من زرار التحميلات الأخضر', false);
   } catch (e) { toast('❌ مقدرتش أبدأ التحميل', true); }
 }
@@ -5224,6 +5256,7 @@ async function clibResolve(id, s, e, skip, mode) {
   skip = skip || [];
   const base = {title: it.title, poster: it.poster || '', year: it.year || '', type: it.kind === 'tv' ? 'tv' : 'movie',
     cl: id, cle: eps ? 1 : 0, s: eps ? s : null, e: eps ? e : null, src: ''};
+  dlSrcMark({k: 'clib', id: id, s: eps ? s : null, e: eps ? e : null});
   const res = await clibGet({id: id, s: s, e: e, skip: skip, mode: mode || 'watch'}, my);
   if (!res) return null;
   const d = res.d;
@@ -7155,6 +7188,7 @@ async function pullSource(src, base, fid) {
   window.PCH_FORCE = null;
   if (noWatch()) return;
   curSrc = src;
+  dlSrcMark({k: 'q', q: src});
   clearCd();
   const id = ++pullId;
   $('results').innerHTML = pend('جاري سحب الرابط...');
@@ -10158,11 +10192,9 @@ async function dlVersion(i) {
 async function dlAuto(d, spec) {
   if (window.AndroidPlayer) {
     const nm = dlNm(d.name || 'video.mkv', (spec && spec.s != null ? spec.s : (typeof PLAY !== 'undefined' && PLAY ? PLAY.s : null)), (spec && spec.e != null ? spec.e : (typeof PLAY !== 'undefined' && PLAY ? PLAY.e : null)));
-    if (spec && typeof AndroidPlayer.downloadR !== 'undefined') {
-      let sj = '';
-      try { sj = JSON.stringify({k: 'spec', spec: spec}); } catch (e) {}
-      window.AndroidPlayer.downloadR(d.direct, nm, sj);
-    } else window.AndroidPlayer.download(d.direct, nm);
+    let sj = '';
+    try { sj = spec ? JSON.stringify({k: 'spec', spec: spec}) : dlSrcJson(null); } catch (e) {}
+    dlStart(d.direct, nm, sj);
     try { await subxWarm(); if (PLAY && PLAY.sub) await dlCurSub(nm.replace(/\.[a-z0-9]{2,4}$/i, '')); } catch (e) {}
     try { pgBack(); } catch (e) {}
     return;
@@ -10173,7 +10205,7 @@ async function dlBoth(el) {
   if (window.AndroidPlayer) {
     const cx = dlCtx(el);
     const nm = dlNm(el.dataset.n || 'video.mkv', cx[0], cx[1]);
-    window.AndroidPlayer.download(el.dataset.u, nm);
+    dlStart(el.dataset.u, nm, dlSrcJson(el));
     try { await dlCurSub(nm.replace(/\.[a-z0-9]{2,4}$/i, '')); } catch (e) {}
     return;
   }
@@ -10217,6 +10249,7 @@ async function startPlay(spec, mode, baseOver) {
     $('results').innerHTML = pend('جاري تجهيز النسخة من: ' + (w1 === 'ad' && spec.hash ? 'AllDebrid' : w1 === 'tb' && spec.hash ? 'TorBox' : 'السيرفر') + (spec.hash ? '' : ' (نسخة Stremio بتعدّي على السيرفر دايماً)')); }
   let tid = null, tries = 0, res, d = null;
   window.LAST_SP = {spec: spec, mode: mode, base: baseOver};
+  if (mode === 'download') dlSrcMark({k: 'spec', spec: spec});
   const chosen = DBP.cfg()[mode === 'download' ? 'dl' : 'play'];
   // لو مفيش مفتاح على الجهاز ده، DBP.prov بيرجّع 'server' والسيرفر هو اللي يشتغل بمفتاح الأدمن
   const pv = spec._ad ? 'ad' : spec._tb ? 'tb' : DBP.prov(mode);
