@@ -1192,7 +1192,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <div id="titles"></div>
 <div id="details"></div>
 <div id="browse"></div>
-<div id="hz"><div id="hzb"></div><div id="gtiles"></div></div>
+<div id="hz"><div id="cwtop"></div><div id="hzb"></div><div id="gtiles"></div></div>
 <div id="shelves"></div>
 
 <div id="torrentPanel" style="display:none">
@@ -2747,9 +2747,10 @@ function renderShelvesSoon() {
 function renderShelves() {
   if (typeof TV_FREED !== 'undefined' && TV_FREED) return;
   const el = $('shelves');
-  if (!PID) { el.innerHTML = ''; return; }
-  if (CAT !== 'home') { el.innerHTML = catView(); tvApply(); return; }
+  if (!PID) { el.innerHTML = ''; cwTopSet(''); return; }
+  if (CAT !== 'home') { cwTopSet(''); el.innerHTML = catView(); tvApply(); return; }
   if (HOME_ONLY_NEW) { el.innerHTML = newHomeHTML(); tvApply(); return; }
+  cwTopSet('');
   const its = Object.values(UD.items[PID] || {}).filter(x => !x.del && x.key);
   const groups = new Map();
   its.filter(x => x.key[0] !== 'l').forEach(x => {
@@ -10908,6 +10909,8 @@ async function loadNew(force) {
   if (CAT === 'home' && !FAV_OPEN) { renderHero(); renderShelves(); }
   try { homeBoot(); } catch (e) {}
 }
+function cwOnTop() { try { return (IS_ANDROID || !!window.AndroidPlayer) && !isTv(); } catch (e) { return false; } }
+function cwTopSet(h) { try { const e = document.getElementById('cwtop'); if (e && e.innerHTML !== h) e.innerHTML = h; } catch (e) {} }
 function cwRowHTML() {
   const l = cwMerged(null, isTv() ? 10 : 14, false);
   return l.length ? '<h3 class="sec">▶ كمّل المشاهدة</h3><div class="hrow">' + l.join('') + '</div>' : '';
@@ -11034,6 +11037,10 @@ function newHomeHTML() {
   const P = pf();
   let h = favBarHTML(), any = false, askedNew = false;
   const bl = hbList();
+  // أندرويد: «كمّل المشاهدة» أول حاجة على الشاشة (فوق البانر)، وباقي الأقسام بترتيب الأدمن بالظبط
+  const cwB = bl.find(b => b.id === 'cw');
+  const cwLift = cwOnTop() && !!cwB && cwB.on !== false;
+  try { cwTopSet(cwLift ? cwRowHTML() : ''); } catch (e) { cwTopSet(''); }
   bl.forEach(b => {
     if (b.on === false) return;
     const id = b.id;
@@ -11044,7 +11051,7 @@ function newHomeHTML() {
         const it = xlFilter(c.items);
         if (it.length) h += row(esc(b.t || 'قسم'), isTv() ? it.slice(0, 12) : it, 'hb:' + id);
       } else if (id === 'feat') { try { ftBoot(PID); } catch (e) {} h += ivFeatHTML(); }
-      else if (id === 'cw') h += cwRowHTML();
+      else if (id === 'cw') { if (!cwLift) h += cwRowHTML(); }
       else if (id === 'pins') h += ivPinHTML() + ftSecHTML('home');
       else if (id === 'tz') h += tzHomeHTML();
       else if (id === 'ivsec') h += ivSecGet();
@@ -12440,6 +12447,7 @@ body.sopen #searchBox{display:block}
 body.sopen #wsBox{display:block}
 .topbar{position:sticky;top:0;z-index:50;margin:0 -16px 8px;padding:10px 16px;background:linear-gradient(#0f172aee,#0f172acc);backdrop-filter:blur(8px)}
 #hz{margin:0 -16px 6px}
+#cwtop:not(:empty){padding:0 16px;margin-bottom:6px}
 #hz .hz{height:62vh;min-height:380px;max-height:600px;border-radius:0;position:relative;overflow:hidden;background-size:cover;background-position:center}
 #hz .hz::before{content:"";position:absolute;inset:0;background:linear-gradient(to top,#0f172a 4%,#0f172a00 55%),linear-gradient(to bottom,#0f172a99,#0000 25%);z-index:2;pointer-events:none}
 #hz .hc{position:absolute;z-index:3;right:0;left:0;bottom:30px;padding:0 16px;background:none}
