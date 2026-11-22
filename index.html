@@ -10909,7 +10909,7 @@ async function loadNew(force) {
   if (CAT === 'home' && !FAV_OPEN) { renderHero(); renderShelves(); }
   try { homeBoot(); } catch (e) {}
 }
-function cwOnTop() { try { return (IS_ANDROID || !!window.AndroidPlayer) && !isTv(); } catch (e) { return false; } }
+function cwOnTop() { try { return IS_ANDROID || !!window.AndroidPlayer || /; wv\)/.test(navigator.userAgent); } catch (e) { return false; } }
 function cwTopSet(h) { try { const e = document.getElementById('cwtop'); if (e && e.innerHTML !== h) e.innerHTML = h; } catch (e) {} }
 function cwRowHTML() {
   const l = cwMerged(null, isTv() ? 10 : 14, false);
