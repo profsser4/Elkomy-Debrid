@@ -3350,23 +3350,57 @@ cur = null; var f = box.querySelector('.f') || $('sresB').firstChild; if (f) set
 var HBT = lj('hb:v1', null), HBTD = {};
 var HB_SEC = {feat: 'sec-feat', cw: 'sec-cw', 'new-ar': 'sec-new', 'new-for': 'sec-new', 'new-toon': 'sec-new', tz: 'sec-int', fav: 'sec-fav', ar: 'sec-ar'};
 function hbList() { return (HBT && HBT.length) ? HBT : ['feat', 'cw', 'new-ar', 'new-for', 'new-toon', 'tz', 'fav', 'ar'].map(function (id) { return {id: id, on: true}; }); }
+function hbSid(id) {
+if (/^c_/.test(id) || /^new-/.test(id) || id === 'ar') return 'sec-hb-' + id;
+if (id === 'tz') return 'sec-taste';
+return HB_SEC[id] || null;
+}
 function hbApplyTv() {
 var rows = $('sxrows'); if (!rows) return;
-var order = [], seen = {}, allOff = {};
-hbList().forEach(function (b) {
-if (/^c_/.test(b.id)) return;
-var sid = HB_SEC[b.id];
-if (!sid || sid === 'sec-new' || sid === 'sec-ar') return;
+var order = [], seen = {}, allOff = {}, bl = hbList();
+/* البانر الكبير أول حاجة، وبعده «كمّل المشاهدة» دايماً، وبعدهم باقي الأقسام بترتيب الأدمن بالظبط (زي الأندرويد) */
+var hero = $('sec-hero'); if (hero) rows.appendChild(hero);
+var cwEl = $('sec-cw');
+if (cwEl) { var cwb = bl.filter(function (b) { return b.id === 'cw'; })[0]; rows.appendChild(cwEl); cwEl.style.display = (cwb && cwb.on === false) ? 'none' : ''; }
+seen['sec-cw'] = 1;
+bl.forEach(function (b) {
+var sid = hbSid(b.id);
+if (!sid || sid === 'sec-cw') return;
 if (!seen[sid]) { seen[sid] = 1; order.push(sid); allOff[sid] = true; }
 if (b.on !== false) allOff[sid] = false;
+if (sid === 'sec-taste' && !seen['sec-int']) { seen['sec-int'] = 1; order.push('sec-int'); allOff['sec-int'] = true; }
+if (sid === 'sec-taste' && b.on !== false) allOff['sec-int'] = false;
 });
-order.forEach(function (sid) { var el = $(sid); if (el) { rows.appendChild(el); el.style.display = allOff[sid] ? 'none' : ''; } });
-['sec-feat', 'sec-cw', 'sec-fav', 'sec-int'].forEach(function (sid) { if (!seen[sid]) { var el = $(sid); if (el) rows.appendChild(el); } });
-var cw = $('sec-cw'), tz = $('sec-taste');
-if (tz) { if (cw && cw.parentNode === rows) rows.insertBefore(tz, cw.nextSibling); else rows.appendChild(tz); }
+order.forEach(function (sid) {
+var el = $(sid);
+if (!el && /^sec-hb-/.test(sid)) { el = D.createElement('div'); el.id = sid; }
+if (el) { rows.appendChild(el); el.style.display = allOff[sid] ? 'none' : ''; }
+});
+['sec-feat', 'sec-fav', 'sec-taste', 'sec-int'].forEach(function (sid) { if (!seen[sid]) { var el = $(sid); if (el) rows.appendChild(el); } });
 var tb = $('sec-tab'); if (tb) rows.appendChild(tb);
+hbFillHome();
 }
-function hbPutTv(b) { tabRefresh(); }
+/* بيملا أقسام الرئيسية (الجديد / الأقسام المخصّصة / صفوف الإضافات) بنفس ترتيب الأدمن */
+var HB_BUD = 4, HB_BT = 0;
+function hbFillHome() {
+if (curScr !== 'site' || TAB !== 'home') return;
+var P = pfx(), left = HB_BUD;
+hbList().forEach(function (b) {
+var id = b.id, el = $('sec-hb-' + id); if (!el) return;
+if (b.on === false) { el.style.display = 'none'; return; }
+el.style.display = '';
+var out = [];
+function add(t, it, more) { it = xlFilter(it || []).filter(function (x) { return x && x.title; }); if (it.length) out.push({t: t, it: it, more: more || null}); }
+if (/^c_/.test(id)) { var c = HBTD[id]; if (c) add(b.t || 'قسم', c.items, function () { sxBrowse('k=' + enc('hb:' + id), b.t || ''); }); }
+else if (/^new-/.test(id)) { if (P.hn.indexOf(id) < 0 && NEWD && NEWD.rows) NEWD.rows.forEach(function (r) { if (r.id === id) add(b.t || r.title, r.items, null); }); }
+else if (id === 'ar') { if (P.ar.length && ROWS) ROWS.slice(0, 40).forEach(function (r) { if (P.ar.indexOf(r.id) >= 0) add(r.title, r.items, r.id ? function () { sxBrowse(moreQ(r.id), r.title); } : null); }); }
+if (left <= 0) out = []; else { out = out.slice(0, left); left -= out.length; }
+var sig = out.map(function (r) { return r.t + ':' + r.it.length + ':' + String(r.it[0].id || r.it[0].title); }).join('|');
+if (el._sig === sig) return; el._sig = sig;
+sxPut(el.id, function (box) { out.forEach(function (r) { sxRowIn(box, r.t, r.it, r.more); }); });
+});
+}
+function hbPutTv(b) { tabRefresh(); hbFillHome(); }
 function hbPullTv(force) {
 var pid = PID;
 hbList().forEach(function (b) {
@@ -3390,7 +3424,7 @@ if (curScr === 'site') { hbApplyTv(); hbPullTv(); sxSecNew(); }
 function sxSecNew() {
 try { heroRefresh(); } catch (e) {}
 try { sxSecTaste(); } catch (e) {}
-tabRefresh();
+tabRefresh(); hbFillHome();
 }
 function sxSecFav() {
 sxPut('sec-fav', function (box) {
@@ -3400,11 +3434,11 @@ c.rows.forEach(function (r) { var it = xlFilter(r.items); if (it.length) sxRowIn
 });
 });
 }
-function sxSecAr() { tabRefresh(); }
+function sxSecAr() { tabRefresh(); hbFillHome(); }
 function sxLoad(force) {
 var rows = $('sxrows'); rows.scrollTop = 0;
 rows.innerHTML = '<div id="sec-hero"></div><div id="sec-feat"></div><div id="sec-cw"></div><div id="sec-taste"></div><div id="sec-fav"></div><div id="sec-int"></div><div id="sec-tab"></div>';
-TAB = 'home'; rows.classList.remove('tabm'); navMark(); heroInit(); sxSecCw(); sxSecFav(); sxSecInt(); loadIntRows(); sxSecTaste(); tasteLoad(false);
+HB_BUD = 4; TAB = 'home'; rows.classList.remove('tabm'); navMark(); heroInit(); sxSecCw(); sxSecFav(); sxSecInt(); loadIntRows(); sxSecTaste(); tasteLoad(false);
 hbApplyTv(); hbPullTv(); hbSyncTv();
 ivsPull(function () { if (curScr === 'site') sxSecCw(); }, 45000);
 if (FT.res) featRender();
@@ -4525,7 +4559,7 @@ navMark(); rows.scrollTop = 0; heroInit();
 if (t !== 'home') { tabLoad(t); sxTabRender(); }
 }
 [['xMov', 'movie'], ['xSer', 'tv'], ['xToon', 'cartoon']].forEach(function (a) { $(a[0])._ok = function () { sxTab(a[1]); }; });
-$('sxrows').addEventListener('scroll', function () { var bh = $('site').querySelector('.bh'); if (bh) bh.style.background = this.scrollTop > 40 ? 'rgba(10,13,28,.95)' : ''; });
+$('sxrows').addEventListener('scroll', function () { if (TAB === 'home' && !HB_BT && this.scrollTop + this.clientHeight > this.scrollHeight - 700) { HB_BT = setTimeout(function () { HB_BT = 0; HB_BUD += 3; hbFillHome(); }, 150); } var bh = $('site').querySelector('.bh'); if (bh) bh.style.background = this.scrollTop > 40 ? 'rgba(10,13,28,.95)' : ''; });
 /* ---- كمّل المشاهدة: زر قديم متوافق ---- */
 function sxAfterPlay() {
 if (curScr === 'site') { sxSecCw(); cur = null; var f = fvis($('sec-cw')) || fvis($('sxrows')) || $('xSearch'); setFocus(f); }
