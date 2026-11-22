@@ -312,22 +312,17 @@ html,body{background:#0e1131}
 #plmenu .mi.on{background:#fff;color:#000;font-weight:700;border-radius:4px}
 #plmsg{background:rgba(0,0,0,.82);font-size:38px;line-height:1.6}
 /* next episode card + countdown */
-#plnext{position:absolute;right:70px;bottom:120px;min-width:620px;display:none;direction:rtl;background:rgba(20,20,20,.94);border:2px solid rgba(255,255,255,.85);border-radius:10px;padding:22px 30px;box-shadow:0 14px 50px rgba(0,0,0,.8);animation:nxin .4s ease-out}
+#plnext{position:absolute;right:60px;bottom:110px;display:none;direction:rtl;background:rgba(0,0,0,.55);border-radius:12px;padding:10px 24px;animation:nxin .4s ease-out}
 #plbar.show~#plnext{bottom:330px}
 @keyframes nxin{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
-#plnext:after{content:"";display:table;clear:both}
-#plnext .nxr{float:right;position:relative;width:104px;height:104px;margin-left:26px}
-#plnext .nxr svg{width:104px;height:104px;transform:rotate(-90deg)}
-#plnext .nxr circle{fill:none;stroke-width:8}
-#plnext .nxr .bg{stroke:rgba(255,255,255,.22)}
-#plnext .nxr .fg{stroke:#e50914;stroke-dasharray:276.5;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
-#plnext .nxr b{position:absolute;left:0;right:0;top:0;line-height:104px;text-align:center;font-size:27px;font-weight:700;direction:ltr;color:#fff}
-#plnext .nxt{overflow:hidden;padding-top:2px}
-#plnext .nxt small{display:block;font-size:24px;color:#b3b3b3;font-weight:600}
-#plnext .nxt strong{display:block;font-size:36px;font-weight:800;color:#fff;margin:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#plnext .nxt span{display:block;font-size:23px;color:#ddd}
-#plnext .nxi{position:absolute;left:30px;top:50%;margin-top:-30px}
-#plnext .nxi svg{width:60px;height:60px;fill:#fff}
+#plnext .nxw{display:flex;align-items:center;gap:16px}
+#plnext .nxr{position:relative;flex:none;width:56px;height:56px}
+#plnext .nxr svg{display:block;width:56px;height:56px;transform:rotate(-90deg)}
+#plnext .nxr circle{fill:none;stroke-width:10}
+#plnext .nxr .bg{stroke:rgba(255,255,255,.25)}
+#plnext .nxr .fg{stroke:#fff;stroke-dasharray:276.5;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+#plnext .nxr b{position:absolute;left:0;right:0;top:0;line-height:56px;text-align:center;font-size:22px;font-weight:700;direction:ltr;color:#fff}
+#plnext .nxt strong{display:block;font-size:30px;font-weight:600;color:#fff;white-space:nowrap;max-width:620px;overflow:hidden;text-overflow:ellipsis}
 
 /* ===================== modern site look (light & fast: no blur, no filters, flat fills) ===================== */
 :root{--bg:#0c0f1f;--s1:#151a33;--s2:#1e2547;--ac:#ffc83d;--ac2:#6c63ff;--tx:#f2f4ff;--mu:#9aa3c7;--ln:rgba(255,255,255,.08)}
@@ -2155,10 +2150,10 @@ var rem = Math.ceil(P.dur - (P.pos + (P.acc || 0)));
 if (rem > 200 || rem <= 0) { if (P.nxOn) nxHide(); return; }
 if (!P.nxOn) {
 P.nxOn = true;
-e.innerHTML = '<div class="nxr"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="44"/><circle class="fg" id="nxring" cx="50" cy="50" r="44"/></svg><b id="nxc"></b></div>' +
-'<div class="nxt"><small>الحلقة التالية</small><strong>' + esc(nxLabel() || 'شغّل التالي') + '</strong><span>اضغط OK للتشغيل الآن</span></div><div class="nxi">' + IC.next + '</div>';
+e.innerHTML = '<div class="nxw"><div class="nxr"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="44"/><circle class="fg" id="nxring" cx="50" cy="50" r="44"/></svg><b id="nxc"></b></div>' +
+'<div class="nxt"><strong>' + esc(nxLabel() ? 'التالي  ' + nxLabel() : 'شغّل التالي') + '</strong></div></div>';
 }
-$('nxc').textContent = fmt(rem);
+$('nxc').textContent = String(rem);
 $('nxring').style.strokeDashoffset = String(276.5 * (1 - rem / 200));
 e.style.display = 'block';
 }
