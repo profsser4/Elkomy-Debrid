@@ -4532,5 +4532,21 @@ if (curScr === 'site') { sxSecCw(); cur = null; var f = fvis($('sec-cw')) || fvi
 else if (curScr === 'detail' && SX.cur && D.getElementById('dbtns')) { var d = SX.cur; siteDetails(d.type === 'movie' ? 'movie' : 'tv', d.id, true); }
 else if (cur && D.body.contains(cur)) { var c = cur; cur = null; setFocus(c); }
 }
+var REVS = null, REVB = false;
+function revCheck() {
+if (REVB || D.hidden || !S.tok) return;
+REVB = true;
+api('/home/rev', {timeout: 10000}, function (e, s, d) {
+REVB = false;
+if (e || s !== 200 || !d || d.v == null) return;
+if (REVS === null) { REVS = d.v; return; }
+if (d.v === REVS) return;
+REVS = d.v;
+hbSyncTv();
+});
+}
+setInterval(revCheck, 15000);
+D.addEventListener('visibilitychange', function () { if (!D.hidden) revCheck(); });
+setTimeout(revCheck, 3000);
 boot();
 })();</script></body></html>

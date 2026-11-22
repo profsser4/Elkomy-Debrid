@@ -13589,5 +13589,33 @@ async function aifTest() {
   } catch (e) { o.innerHTML = ERR; }
 }
 </script>
+<script>
+/* مزامنة تلقائية: أي ترتيب/تفعيل من لوحة الأدمن يظهر على الشاشة لوحده (موقع + أندرويد) */
+(function () {
+  let seen = null, busy = false;
+  async function check() {
+    if (busy || document.hidden) return;
+    busy = true;
+    try {
+      if (typeof TOK !== 'string' || !TOK || !PID) return;
+      const {d} = await api('/home/rev');
+      const v = d && d.v;
+      if (v == null) return;
+      if (seen === null) { seen = v; return; }
+      if (v === seen) return;
+      seen = v;
+      ARD_LOADED = false; ARD_ALL = false; ARD_T = 0; ROWS = null; HB_T = 0;
+      await loadBlocks(true);
+      if (CAT === 'movie' || CAT === 'tv') ensureAddonRows(true);
+      renderShelvesSoon();
+    } catch (e) {} finally { busy = false; }
+  }
+  setInterval(check, 15000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  window.addEventListener('focus', check);
+  window.addEventListener('online', check);
+  setTimeout(check, 3000);
+})();
+</script>
 </body>
 </html>
