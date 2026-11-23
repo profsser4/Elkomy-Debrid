@@ -60,6 +60,7 @@ html.lite .poster{transition:none!important}</style>
   v38: التلفزيون (سامسونج): مشغّل AVPlay جوه الصفحة (يدعم MKV/HEVC/DDP) بنفس واجهة مشغّل الأندرويد (كمّل مشاهدة + الحلقة التالية + الترجمة والصوت بالألوان) + تحديث تلقائي للصفحة من غير إعادة رفع التطبيق + رجوع مرتين للخروج
   v37: تاريخ آخر إضافة على نتايج التورنت (شارة 📅 + زرار «🆕 الأحدث أولاً») — بيقرأ التاريخ من السيرفر لو بعته
   v36: IPTV: حساب مشترك لكل الأعضاء + تثبيت أقسام/قنوات للكل من الأدمن (محتاج bot-40.py)
+  v36: بحث Yoyo Cinema بدل Ahwak في بحث الأدمن (محتاج bot.py الجديد)
   v35: عرض الجودة والمساحة في نتايج بحث Moviz وAhwak (محتاج bot-40.py)
   v34: بحث Ahwak بدل Cimalight + رفع بافر التشغيل في وضع التلفزيون (محتاج bot-40.py)
   v33: بحث Shoffree (للأدمن) + إظهار صندوق بحث الويب للأدمن + استبعاد نتايج Shoffree اللي اسمها مش مطابق للبحث (محتاج bot-39.py)
@@ -1181,7 +1182,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <input id="wsQ" class="search-input" placeholder="اسم العمل (مثلاً: دافنينه سوا الحلقة 3)" onkeydown="if(event.key==='Enter')wsGo()">
 <div class="row"><button class="search-btn" onclick="wsGo()">🔎 دوّر على روابط مدعومة</button>
 <button class="search-btn" style="background:#7c3aed" onclick="mzGo()">🎯 بحث في Moviz</button>
-<button class="search-btn" style="background:#db2777" onclick="mzGo('ahwak')">🎬 بحث في Ahwak</button></div>
+<button class="search-btn" style="background:#db2777" onclick="mzGo('yoyo')">🎬 بحث في Yoyo</button></div>
 <p style="color:var(--mut);font-size:12px;margin:8px 0 0">بيدوّر في جوجل ويفتح الصفحات ويطلّع الروابط اللي موقعها مدعوم عند TorBox وAllDebrid وباقي مزوّديك. دوس "سحب" على أي رابط وهيتحوّل زي أي رابط ملصوق.</p>
 <div id="wsOut"></div>
 </div>
@@ -6860,7 +6861,7 @@ async function mzGo(site) {
   const q = $('wsQ').value.trim();
   if (!q) return alert('اكتب اسم العمل الأول');
   const box = $('wsOut');
-  const siteName = site === 'ahwak' ? 'Ahwak' : 'Moviz';
+  const siteName = site === 'yoyo' ? 'Yoyo' : 'Moviz';
   box.innerHTML = pend('بدوّر في ' + siteName + ' وبفتح الصفحات...');
   try {
     const {d} = await api('/sitesearch', {method: 'POST', body: JSON.stringify({q: q, site: site || ''}), timeout: 90000});
