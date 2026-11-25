@@ -13686,9 +13686,9 @@ async function ruStart(kind, ix) {
     const go = $('ruGo'); go.disabled = true;
     localStorage.setItem('ruAcc', sel.value); localStorage.setItem('ruFolder', $('ruFolder').value.trim() || '0');
     let ok = 0, bad = 0, err = '';
-    for (let i = 0; i < items.length; i += 50) {
-      const part = items.slice(i, i + 50);
-      msg.textContent = '⏳ بيتبعت ' + Math.min(i + 50, items.length) + ' / ' + items.length + '...';
+    for (let i = 0; i < items.length; i += 30) {
+      const part = items.slice(i, i + 30);
+      msg.textContent = '⏳ بيتبعت ' + Math.min(i + 30, items.length) + ' / ' + items.length + '...';
       try {
         const {r, d} = await api('/ru/send', {method: 'POST', body: JSON.stringify({account_id: sel.value, folder_id: $('ruFolder').value.trim() || '0', urls: part.map(x => x.url)})});
         if (r.ok && d.ok) ok += part.length; else { bad += part.length; err = d.error || ('كود ' + r.status); }
