@@ -13477,7 +13477,7 @@ function ivVodNf(box, v, s, i, md, url, nm, ext) {
   if (!IV.nfTab || (IV.nfTab === 'tr' && !tr)) IV.nfTab = 'sim';
   box.innerHTML = nfvHead(nfvImg(i), cn, nfvMeta(i, nfvMin(i.duration || i.duration_secs))) +
     '<button class="nfv-w" onclick="nfvPlayVod()">' + NFV_I.play + '<span>' + (pos ? 'كمّل من ' + fmtTime(pos) : 'عرض') + '</span></button>' +
-    '<button class="nfv-g" onclick="nfvDlVod()">' + NFV_I.dl + '<span>تنزيل</span></button>' + nfvInfoHTML(i) +
+    '<button class="nfv-g" onclick="nfvDlVod()">' + NFV_I.dl + '<span>تنزيل</span></button>' + ruBtns('vod') + nfvInfoHTML(i) +
     '<div class="nfv-act">' + nfvAct(NFI.plus, 'قائمتي', 'nfvPin()', 'nfvPinB') + (tr ? nfvAct(NFI.film, 'التريلر', 'nfvTrailer()') : '') + nfvAct(NFI.share, 'مشاركة', 'nfvShare()') + nfvAct(NFV_I.dl, 'نسخ الرابط', 'nfvCopy()') + '</div>' +
     nfvTabsHTML([].concat(tr ? [['tr', 'المقدمات والمزيد']] : [], [['sim', 'المزيد من العناوين المشابهة']]));
   $('nfvPinB').innerHTML = nfvPinHTML();
@@ -13498,7 +13498,7 @@ function nfvResume(all) {
 function nfvEpHTML(x, ix, prog, sid) {
   const pr = prog['s:' + sid + ':' + x.id], pc = pr ? (pr.done ? 100 : Math.min(99, Math.round(pr.pos / (pr.dur || 1) * 100))) : 0, img = x.img || IV.flatImg;
   return '<div class="nfv-ep"><div class="th" onclick="ivPlayEp(' + ix + ')">' + (img ? '<img ' + lzA(img) + ' alt="">' : '<div class="noimg">🎬</div>') + '<i class="pl">' + NFI.playc + '</i>' + (pc ? '<b class="pg"><i style="width:' + pc + '%"></i></b>' : '') + '</div>' +
-    '<div class="tt">' + esc((x.e || (ix + 1)) + '. ' + (x.t || ('حلقة ' + x.e))) + '</div><small class="mt">' + esc(nfvMin(x.dur)) + (pr && pr.done ? ' · ✓ شوهدت' : '') + '</small>' +
+    '<div class="tt">' + esc((x.e || (ix + 1)) + '. ' + (x.t || ('حلقة ' + x.e))) + '</div><small class="mt">' + esc(nfvMin(x.dur)) + (pr && pr.done ? ' · ✓ شوهدت' : '') + ruEpBtn(ix) + '</small>' +
     '<button class="dl" onclick="ivDlEp(' + ix + ')" aria-label="تنزيل">' + NFV_I.dl + '</button>' + (x.p ? '<div class="od">' + esc(x.p) + '</div>' : '') + '</div>';
 }
 function nfvEps() {
@@ -13521,7 +13521,7 @@ function ivSeriesNf(box, v, i, nm, all, seasons, prog) {
   const sm = seasons.length > 1 ? seasons.length + ' مواسم' : 'مسلسل';
   box.innerHTML = nfvHead(nfvImg(i, IV.flatImg), cn, nfvMeta(i, sm)) +
     (all.length ? '<button class="nfv-w" onclick="ivPlayEp(IV.nfRes.ix)">' + NFV_I.play + '<span>' + esc(IV.nfRes.lbl) + '</span></button>' +
-      '<button class="nfv-g" id="nfvDlS" onclick="ivDlSeason()">' + NFV_I.dl + '<span>تنزيل الموسم ' + IV.ss + ' كله</span></button>' : '') + nfvInfoHTML(i) +
+      '<button class="nfv-g" id="nfvDlS" onclick="ivDlSeason()">' + NFV_I.dl + '<span>تنزيل الموسم ' + IV.ss + ' كله</span></button>' + ruBtns('series') : '') + nfvInfoHTML(i) +
     '<div class="nfv-act">' + nfvAct(NFI.plus, 'قائمتي', 'nfvPin()', 'nfvPinB') + (tr ? nfvAct(NFI.film, 'التريلر', 'nfvTrailer()') : '') + nfvAct(NFI.share, 'مشاركة', 'nfvShare()') + '</div>' +
     nfvTabsHTML([].concat(all.length ? [['eps', 'الحلقات']] : [], tr ? [['tr', 'المقدمات والمزيد']] : [], [['sim', 'المزيد من العناوين المشابهة']]));
   $('nfvPinB').innerHTML = nfvPinHTML();
@@ -13633,6 +13633,71 @@ async function aifTest() {
   window.addEventListener('online', check);
   setTimeout(check, 3000);
 })();
+</script>
+
+<script id="ru-x">
+// ================= رفع ريموت (للأدمن): فيلم / حلقة / موسم / مسلسل كامل → 1fichier =================
+const RU = {acc: [], loaded: false};
+const ruAdm = () => typeof ROLE !== 'undefined' && ROLE === 'admin';
+function ruBtns(kind) {
+  if (!ruAdm()) return '';
+  if (kind === 'vod') return '<button class="nfv-g" style="background:#0f766e" onclick="ruStart(\'vod\')"><span>☁️ رفع ريموت</span></button>';
+  return '<button class="nfv-g" style="background:#0f766e" onclick="ruStart(\'season\')"><span>☁️ رفع الموسم ' + IV.ss + ' كله</span></button>' +
+         '<button class="nfv-g" style="background:#0f766e" onclick="ruStart(\'all\')"><span>☁️ رفع المسلسل كله (كل المواسم)</span></button>';
+}
+const ruEpBtn = ix => ruAdm() ? ' <button style="background:#0f766e;color:#fff;border:0;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;margin-inline-start:6px" onclick="event.stopPropagation();ruStart(\'ep\',' + ix + ')">☁️ رفع</button>' : '';
+function ruItems(kind, ix) {
+  const ep = x => ({url: ivEpUrl(x.id, x.ext), name: ivEpName(x) + '.' + x.ext});
+  if (kind === 'vod') { const N = IV.nf; return [{url: N.url, name: ivClean(N.nm) + '.' + N.ext}]; }
+  if (kind === 'ep') return IV.flat[ix] ? [ep(IV.flat[ix])] : [];
+  if (kind === 'season') return IV.flat.filter(x => x.s === IV.ss).map(ep);
+  return IV.flat.map(ep);
+}
+async function ruStart(kind, ix) {
+  const items = ruItems(kind, ix);
+  if (!items.length) { toast('مفيش روابط', true); return; }
+  let box = document.getElementById('ruBox');
+  if (box) box.remove();
+  box = document.createElement('div');
+  box.id = 'ruBox';
+  box.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#000000cc;display:flex;align-items:flex-end;justify-content:center';
+  box.innerHTML = '<div style="background:#181818;color:#fff;width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:18px;direction:rtl;max-height:85vh;overflow:auto">' +
+    '<h3 style="margin:0 0 10px">☁️ رفع ريموت · ' + items.length + ' رابط</h3>' +
+    '<div id="ruList" style="font-size:12px;color:#a3a3a3;max-height:90px;overflow:auto;margin-bottom:10px;direction:ltr;text-align:left"></div>' +
+    '<label style="font-size:13px">الحساب اللي هيترفع عليه</label>' +
+    '<select id="ruAcc" style="width:100%;padding:10px;margin:4px 0 10px;border-radius:8px;background:#262626;color:#fff;border:0"></select>' +
+    '<label style="font-size:13px">رقم الفولدر (0 = الرئيسي)</label>' +
+    '<input id="ruFolder" value="' + esc(localStorage.getItem('ruFolder') || '0') + '" style="width:100%;padding:10px;margin:4px 0 12px;border-radius:8px;background:#262626;color:#fff;border:0;direction:ltr">' +
+    '<div id="ruMsg" style="font-size:13px;margin-bottom:10px;line-height:1.8"></div>' +
+    '<div style="display:flex;gap:8px"><button id="ruGo" class="search-btn" style="flex:1;background:#0f766e">ارفع دلوقتي</button><button class="fc" onclick="document.getElementById(\'ruBox\').remove()">إغلاق</button></div></div>';
+  document.body.appendChild(box);
+  $('ruList').innerHTML = items.slice(0, 6).map(x => esc(x.name)).join('<br>') + (items.length > 6 ? '<br>… +' + (items.length - 6) : '');
+  const sel = $('ruAcc'), msg = $('ruMsg');
+  try {
+    const {r, d} = await api('/ru/targets');
+    if (!r.ok) throw new Error(d.error || 'كود ' + r.status);
+    RU.acc = d.items || [];
+  } catch (e) { msg.textContent = '⚠️ ' + e.message + ' (تأكد إن ru_patch.py متركّب على السيرفر)'; return; }
+  if (!RU.acc.length) { msg.textContent = '⚠️ مفيش حساب 1fichier بمفتاح API. ضيف واحد من الإعدادات → المزوّدين.'; return; }
+  sel.innerHTML = RU.acc.map(a => '<option value="' + esc(a.id) + '">' + esc(a.name) + (a.cdn ? ' (CDN)' : '') + ' · ' + esc(a.key) + '</option>').join('');
+  const last = localStorage.getItem('ruAcc');
+  if (last && RU.acc.some(a => a.id === last)) sel.value = last;
+  $('ruGo').onclick = async () => {
+    const go = $('ruGo'); go.disabled = true;
+    localStorage.setItem('ruAcc', sel.value); localStorage.setItem('ruFolder', $('ruFolder').value.trim() || '0');
+    let ok = 0, bad = 0, err = '';
+    for (let i = 0; i < items.length; i += 50) {
+      const part = items.slice(i, i + 50);
+      msg.textContent = '⏳ بيتبعت ' + Math.min(i + 50, items.length) + ' / ' + items.length + '...';
+      try {
+        const {r, d} = await api('/ru/send', {method: 'POST', body: JSON.stringify({account_id: sel.value, folder_id: $('ruFolder').value.trim() || '0', urls: part.map(x => x.url)})});
+        if (r.ok && d.ok) ok += part.length; else { bad += part.length; err = d.error || ('كود ' + r.status); }
+      } catch (e) { bad += part.length; err = e.message; }
+    }
+    msg.innerHTML = (ok ? '✅ اتبعت ' + ok + ' رابط لـ1fichier (بيتسحبوا هناك في الخلفية)<br>' : '') + (bad ? '❌ فشل ' + bad + ': ' + esc(err) : '');
+    go.disabled = false;
+  };
+}
 </script>
 </body>
 </html>
