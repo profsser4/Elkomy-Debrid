@@ -6455,7 +6455,7 @@ const SOURCES = [
    title: t => t.title, thumb: t => t.thumb || '', meta: t => t.owner || '',
    open: t => pullSource(t.url, {src: t.url, title: t.title}, null)},
 ];
-let ALL = [], SRCERR = {}, SRCF = 'all', USEQ = 0, SPS = '', SPLIB = [];
+let ALL = [], SRCERR = {}, SRCF = 'all', USEQ = 0, SPS = '', SPLIB = [], SPLX = [];
 function dmDur(s) {
   s = Math.round(+s || 0);
   const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
@@ -6509,13 +6509,14 @@ async function unifiedSearch(force) {
   // الرئيسية = بحث في كل حاجة. أي قسم تاني = بحث في القسم ده بس (force=true يجبر البحث الشامل)
   const sc = force === true ? '' : (SPG.open ? SPS : (SCOPES[CAT] ? CAT : ''));
   if (sc) return scopedSearch(q, sc);
-  SPS = ''; SPLIB = [];
+  SPS = ''; SPLIB = []; SPLX = [];
   const my = ++USEQ;
   autoPick = false;
   BR.on = false;
   closeDetails();
   $('titles').innerHTML = '';
   ALL = []; SRCERR = {}; SRCF = 'all';
+  libxStart(q, '', my);
   spOpen(q);
   $('spBar').innerHTML = '';
   $('spResults').innerHTML = pend('جاري البحث في كل المصادر...');
@@ -6602,6 +6603,36 @@ async function scopeFilter(list, sc, my) {
   await Promise.all([worker(), worker(), worker(), worker()]);
   return list.filter(x => keep.has(x));
 }
+// ---------- مكتبة الأدمن (/lib) داخل البحث: العضو يلاقي اللي اترفع، واللينك نفسه مخفي ----------
+function libxMatch(q, sc) {
+  if (typeof LIB === 'undefined' || !LIB.items || !LIB.items.length) return [];
+  const n = libNorm(q);
+  if (!n) return [];
+  const kd = x => (LIBK[x.kind] ? x.kind : 'vod');
+  const ok = sc === 'movie' ? (x => kd(x) === 'vod') : sc === 'tv' ? (x => kd(x) === 'series') : sc === 'cartoon' ? (x => kd(x) === 'cartoon') : (() => sc === '');
+  return LIB.items.filter(x => ok(x) && libNorm(x.title).includes(n));
+}
+async function libxStart(q, sc, my) {
+  try {
+    SPLX = libxMatch(q, sc);
+    if (typeof LIB !== 'undefined' && !LIB.loaded && typeof libLoad === 'function') {
+      await Promise.race([libLoad(), sleep(2500)]);
+      if (my !== USEQ) return;
+      SPLX = libxMatch(q, sc);
+      renderAll(true);
+    }
+  } catch (e) {}
+}
+function libxCard(x) {
+  const k = LIBK[x.kind] || LIBK.vod;
+  return '<div class="spc" tabindex="0" data-k="' + esc(x.key) + '" onclick="libOpen(this.dataset.k)"><div class="spi">' +
+    (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">' + k[0] + '</div>') +
+    '<span class="spk movie">📚 المكتبة</span></div><div class="spt">' + esc(x.title) + '</div>' +
+    '<div class="spm">' + k[2] + (x.n > 1 ? ' · ' + x.n + ' ملف' : '') + (x.year ? ' · ' + esc(x.year) : '') + '</div><div class="spm sprt"></div></div>';
+}
+function libxSection(list) {
+  return list.length ? '<div class="sph"><h3>📚 المكتبة <small>(' + list.length + ')</small></h3></div><div class="spg">' + list.map(libxCard).join('') + '</div>' : '';
+}
 function clibSearchMatch(q, sc) {
   const n = libNorm(q), cat = sc === 'movie' ? 'movie' : sc === 'tv' ? 'series' : sc === 'cartoon' ? 'cartoon' : '';
   if (!n || !cat || typeof CL === 'undefined') return [];
@@ -6612,7 +6643,8 @@ async function scopedSearch(q, sc) {
   autoPick = false; BR.on = false;
   closeDetails();
   $('titles').innerHTML = '';
-  ALL = []; SRCERR = {}; SRCF = 'all'; SPS = sc; SPLIB = [];
+  ALL = []; SRCERR = {}; SRCF = 'all'; SPS = sc; SPLIB = []; SPLX = [];
+  libxStart(q, sc, my);
   spOpen(q);
   $('spBar').innerHTML = '';
   $('spResults').innerHTML = pend('جاري البحث في ' + SCOPES[sc].n + '...');
@@ -6654,9 +6686,9 @@ function spLibCard(x) {
 function renderScoped(loading) {
   const sc = SCOPES[SPS];
   if (!sc) return;
-  $('spBar').innerHTML = '<div class="fbar"><button class="fc on">' + sc.i + ' ' + esc(sc.n) + ' (' + (ALL.length + SPLIB.length) + ')</button>' +
+  $('spBar').innerHTML = '<div class="fbar"><button class="fc on">' + sc.i + ' ' + esc(sc.n) + ' (' + (ALL.length + SPLIB.length + SPLX.length) + ')</button>' +
     '<button class="fc" onclick="spAll()">🔎 ابحث في كل حاجة</button></div>';
-  let h = '';
+  let h = libxSection(SPLX);
   if (SPLIB.length) h += '<div class="sph"><h3>📚 من مكتبتي <small>(' + SPLIB.length + ')</small></h3></div><div class="spg">' + SPLIB.map(spLibCard).join('') + '</div>';
   if (ALL.length) h += '<div class="sph"><h3>' + sc.i + ' ' + esc(sc.n) + ' <small>(' + ALL.length + ')</small></h3></div><div class="spg">' + ALL.map((x, i) => spCard(x, i)).join('') + '</div>';
   const err = SRCERR.titles ? warn('🎬 أعمال: ' + SRCERR.titles) : '';
@@ -6714,6 +6746,10 @@ function renderAllNow(loading) {
   $('spBar').innerHTML = '<div class="fbar">' + SP_TABS.map(tb =>
     '<button class="fc' + (f === tb[0] ? ' on' : '') + '" onclick="setSrcF(\'' + tb[0] + '\')">' + tb[1] + ' (' + (tb[0] === 'all' ? ALL.length : by(tb[0]).length) + ')</button>').join('') + '</div>';
   let h = '';
+  if (SPLX.length) {
+    const kd = x => (LIBK[x.kind] ? x.kind : 'vod');
+    h += libxSection(f === 'all' ? SPLX : f === 'movie' ? SPLX.filter(x => kd(x) === 'vod') : f === 'tv' ? SPLX.filter(x => kd(x) !== 'vod') : []);
+  }
   [['movie', '🎬 الأفلام'], ['tv', '📺 المسلسلات'], ['iptv', '📡 IPTV'], ['torrent', '🧲 التورنت'], ['dm', '▶️ Dailymotion'], ['arc', '🏛 Archive.org'], ['rt', '🇷🇺 Rutube']].forEach(g => {
     const c = g[0];
     if (f !== 'all' && f !== c) return;
