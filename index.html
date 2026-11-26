@@ -13840,6 +13840,7 @@ async function libOpen(key) {
   try {
     const {r, d} = await api('/lib/item?key=' + encodeURIComponent(key));
     if (!r.ok || !d.ok) { $('libBody').innerHTML = warn(d.error || 'مش موجود'); return; }
+    LIB.cur = d;
     const k = LIBK[d.kind] || LIBK.vod, one = d.files.length === 1;
     $('libBody').innerHTML =
       '<div style="display:flex;gap:12px;align-items:flex-start">' +
@@ -13852,24 +13853,33 @@ async function libOpen(key) {
       '</div></div>' +
       (d.plot ? '<p style="font-size:13px;line-height:1.8;color:#d4d4d4;margin:12px 0">' + esc(d.plot) + '</p>' : '') +
       '<div style="margin-top:12px">' + (one
-        ? '<button class="search-btn" style="width:100%" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i)">⬇️ تحميل / تشغيل</button>' +
+        ? '<div style="display:flex;gap:8px"><button class="search-btn" style="flex:1;background:#fff;color:#000" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'play\')">▶ تشغيل</button>' +
+          '<button class="search-btn" style="flex:1;background:#333" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'dl\')">⬇ تنزيل</button></div>' +
+          '<button class="fc" style="margin-top:8px;width:100%" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'cp\')">📋 نسخ الرابط</button>' +
           (d.admin ? '<button class="fc" style="margin-top:8px" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libRm(this.dataset.k,+this.dataset.i)">✕ شيل الملف ده</button>' : '')
         : d.files.map((f, n) => { const m = /S(\d+)E\d+/i.exec(f.name), pm = n ? /S(\d+)E\d+/i.exec(d.files[n - 1].name) : null;
           return (m && (!pm || pm[1] !== m[1]) ? '<h4 style="margin:14px 0 4px;color:#5eead4">الموسم ' + (+m[1]) + '</h4>' : '') + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff14"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">' + esc(f.name) + '</span>' +
-          '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i)">⬇️</button>' +
+          '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'play\')">▶</button>' +
+          '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'dl\')">⬇️</button>' +
           (d.admin ? '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libRm(this.dataset.k,+this.dataset.i)">✕</button>' : '') + '</div>'; }).join('')) +
       '</div><div id="libOut" style="margin-top:14px"></div>';
   } catch (e) { $('libBody').innerHTML = ERR; }
 }
-async function libGo(key, i) {
-  if (typeof noDl === 'function' && noDl()) return;
+async function libGo(key, i, mode) {
+  mode = mode || 'dl';
+  if (mode !== 'play' && typeof noDl === 'function' && noDl()) return;
+  if (mode === 'play' && typeof noWatch === 'function' && noWatch()) return;
   const out = $('libOut');
-  out.innerHTML = pend('جاري تجهيز الرابط...');
-  try { out.scrollIntoView({behavior: 'smooth', block: 'center'}); } catch (e) {}
+  toast('⏳ جاري تجهيز الرابط...');
   try {
     const {d} = await api('/lib/go', {method: 'POST', body: JSON.stringify({key: key, i: i})});
-    out.innerHTML = d && d.direct_link ? linkCard(d, false) : warn((d && d.error) || 'الملف لسه بيجهز، جرّب بعد شوية');
-  } catch (e) { out.innerHTML = ERR; }
+    if (!d || !d.direct_link) { if (out) out.innerHTML = warn((d && d.error) || 'الملف لسه بيجهز، جرّب بعد شوية'); return; }
+    const cur = LIB.cur || {}, nm = d.name || '', tag = (/S\d+E\d+/i.exec(nm) || [''])[0];
+    const title = (cur.title || nm || 'فيلم') + (tag && cur.files && cur.files.length > 1 ? ' · ' + tag : '');
+    if (mode === 'play') ivPlay(d.direct_link, title, {key: 'lib:' + key + ':' + i});
+    else if (mode === 'cp') ivCopy(d.direct_link);
+    else ivDownload(d.direct_link, cur.files && cur.files.length > 1 ? ivClean(nm) : ivClean(cur.title || nm) + (/\.\w{2,4}$/.exec(nm) || [''])[0]);
+  } catch (e) { if (out) out.innerHTML = ERR; }
 }
 async function libPin(key, on) {
   try { await api('/lib/pin', {method: 'POST', body: JSON.stringify({key: key, pin: on})}); } catch (e) {}
