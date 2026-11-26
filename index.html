@@ -5124,6 +5124,7 @@ function clibOpen(cat) {
   if (VS[VS.length - 1] !== 'c') pushView('c');
   clibRender();
   clibLoad(true).then(clibRender);
+  try { LIB.t = 0; libLoad(); } catch (e) {}
   $('cl').scrollTop = 0;
 }
 function clibHide() { CL.open = false; $('cl').style.display = 'none'; document.body.classList.remove('cl-on'); }
@@ -5141,7 +5142,9 @@ function clibRender() {
   if (CL.sel) return clibDetailRender(box);
   const q = CL.q.toLowerCase();
   let list = CL.items.filter(x => x.cat === CL.cat && (!q || x.title.toLowerCase().includes(q)));
-  if (!list.length) { box.innerHTML = '<p style="color:var(--mut);text-align:center;margin-top:40px">' + (CL.loaded ? 'لسه مفيش حاجة هنا' + (ROLE === 'admin' ? ' — دوس ➕ فوق' : '') : '⏳ جاري التحميل...') + '</p>'; return; }
+  const LK = {movie: 'vod', series: 'series', cartoon: 'cartoon'};
+  const ll = (typeof LIB !== 'undefined' ? LIB.items : []).filter(x => (LIBK[x.kind] ? x.kind : 'vod') === LK[CL.cat] && (!q || String(x.title).toLowerCase().includes(q)));
+  if (!list.length && !ll.length) { box.innerHTML = '<p style="color:var(--mut);text-align:center;margin-top:40px">' + (CL.loaded ? 'لسه مفيش حاجة هنا' + (ROLE === 'admin' ? ' — دوس ➕ فوق' : '') : '⏳ جاري التحميل...') + '</p>'; return; }
   const srt = CL.sort || 'new', pr = x => clibProg(x);
   list = list.slice();
   if (srt === 'az') list.sort((x, y) => String(x.title).localeCompare(String(y.title), 'ar'));
@@ -5163,7 +5166,7 @@ function clibRender() {
   box.innerHTML = '<div class="clchips">' + chips + '</div>' +
     (hero ? '<div class="clhero" style="background-image:url(\'' + esc(hero.poster || '') + '\')"><div class="hb"><b>' + esc(hero.title) + '</b><small>' + esc(hero.year || '') + (hero.eps.length ? ' · ' + hero.eps.length + ' حلقة' : '') + '</small>' +
       '<div class="hrw"><button class="search-btn" data-id="' + esc(hero.id) + '" onclick="clibTap(this.dataset.id)">▶ شغّل</button><button class="fc" onclick="clibRandom()">🎲 فاجئني</button></div></div></div>' : '') +
-    '<div class="clgrid">' + list.map(card).join('') + '</div>';
+    '<div class="clgrid">' + ll.map(libCard).join('') + list.map(card).join('') + '</div>';
 }
 // أعلى تقدّم لعمل في المكتبة (آخر حلقة اتشافت للمسلسل)
 function clibProg(x) {
@@ -13701,6 +13704,7 @@ async function ruStart(kind, ix) {
     '<div style="display:flex;gap:6px;margin:4px 0 8px"><button type="button" class="fc" onclick="ruBack()">⬆</button>' +
     '<select id="ruFolderSel" onchange="ruPick(this.value)" style="flex:1;padding:10px;border-radius:8px;background:#262626;color:#fff;border:0"></select></div>' +
     '<label style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="ruNew"> اعمل مجلد جديد جوه المجلد ده وارفع فيه</label>' +
+    (kind !== 'vod' && kind !== 'ep' && /^series:/.test(key) ? '<label style="font-size:13px;display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="ruWatch" checked> 🔔 تابع المسلسل: أي حلقة جديدة تترفع تلقائي وتتضاف بمكانها</label>' : '') +
     '<input id="ruNewName" value="' + esc(defName) + '" style="width:100%;padding:10px;margin:6px 0 12px;border-radius:8px;background:#262626;color:#fff;border:0">' +
     '<div id="ruMsg" style="font-size:13px;margin-bottom:10px;line-height:1.8"></div>' +
     '<div style="display:flex;gap:8px"><button id="ruGo" class="search-btn" style="flex:1;background:#0f766e">ارفع دلوقتي</button><button class="fc" onclick="document.getElementById(\'ruBox\').remove()">إغلاق</button></div></div>';
@@ -13739,7 +13743,8 @@ async function ruStart(kind, ix) {
       const part = items.slice(i, i + 30);
       msg.textContent = '⏳ بيتبعت ' + Math.min(i + 30, items.length) + ' / ' + items.length + '...';
       try {
-        const {r, d} = await api('/ru/send', {method: 'POST', body: JSON.stringify({account_id: acc, folder_id: dest, key: key, meta: ruMeta(), items: part})});
+        const {r, d} = await api('/ru/send', {method: 'POST', body: JSON.stringify({account_id: acc, folder_id: dest, key: key, meta: ruMeta(), items: part,
+          watch: (kind === 'season' || kind === 'all') && $('ruWatch') && $('ruWatch').checked ? {sid: N.id, name: ivClean(N.title || N.nm || ''), scope: kind === 'season' ? IV.ss : 'all'} : null})});
         if (r.ok && d.ok) ok += part.length; else { bad += part.length; err = d.error || ('كود ' + r.status); }
       } catch (e) { bad += part.length; err = e.message; }
     }
@@ -13768,11 +13773,16 @@ async function ruLoadLinks() {
     box.innerHTML = '<b>☁️ على 1fichier</b> · ' + fs.filter(f => f.ok).length + ' ملف' +
       (d.pending ? ' · ⏳ ' + d.pending + ' طلب لسه بيتسحب' : '') +
       ' <button class="fc" style="padding:2px 10px" onclick="RU.polls=0;ruLoadLinks()">🔄</button>' +
+      (d.watch ? ' <button class="fc" style="padding:2px 10px" onclick="ruWatchSet(' + (d.watch.on ? 'false' : 'true') + ')">' + (d.watch.on ? '🔔 المتابعة شغالة (إيقاف)' : '🔕 المتابعة واقفة (تشغيل)') + '</button>' : '') +
       '<div style="margin-top:6px;max-height:220px;overflow:auto">' + fs.map(f => f.ok
         ? '<div style="padding:3px 0;display:flex;gap:8px;align-items:center;justify-content:space-between"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(f.name) + '</span><span style="white-space:nowrap"><a href="' + esc(f.link) + '" target="_blank" rel="noopener" style="color:#5eead4">فتح</a> · <a href="#" style="color:#5eead4" onclick="ruCopy(\'' + esc(f.link) + '\');return false">نسخ</a></span></div>'
         : '<div style="padding:3px 0;color:#fca5a5">❌ ' + esc(f.name) + ' — ' + esc(f.err || 'فشل') + '</div>').join('') + '</div>';
     if (d.pending && RU.polls++ < 40) setTimeout(ruLoadLinks, 15000);
   } catch (e) {}
+}
+async function ruWatchSet(on) {
+  try { await api('/ru/watch', {method: 'POST', body: JSON.stringify({key: ruKey(), on: on, now: on})}); toast(on ? '🔔 المتابعة اشتغلت' : '🔕 المتابعة وقفت'); } catch (e) {}
+  ruLoadLinks();
 }
 function ruCopy(t) { try { navigator.clipboard.writeText(t); toast('اتنسخ'); } catch (e) { prompt('انسخ اللينك', t); } }
 </script>
@@ -13786,11 +13796,16 @@ async function libLoad() {
   LIB.loading = true;
   try {
     const {r, d} = await api('/lib/list');
-    if (r.ok && d.ok) { LIB.items = d.items || []; LIB.admin = !!d.admin; }
+    if (r.ok && d.ok) { const sig = JSON.stringify(d.items || []); LIB.chg = sig !== LIB.sig; LIB.sig = sig; LIB.items = d.items || []; LIB.admin = !!d.admin; }
   } catch (e) {}
   LIB.loading = false; LIB.loaded = true; LIB.t = Date.now();
-  try { renderShelvesSoon(); } catch (e) {}
+  if (LIB.chg !== false) {
+    try { renderShelvesSoon(); } catch (e) {}
+    try { clibRender(); } catch (e) {}
+  }
 }
+// تحديث تلقائي: أي رفع/حلقة جديدة بتظهر في المكتبة من غير ريفريش
+setInterval(() => { try { if (!document.hidden && LIB.loaded) { LIB.t = 0; libLoad(); } } catch (e) {} }, 45000);
 function libRefresh() { LIB.t = 0; LIB.loaded = false; libLoad(); }
 function libCard(x) {
   const k = LIBK[x.kind] || LIBK.vod;
@@ -13838,9 +13853,10 @@ async function libOpen(key) {
       '<div style="margin-top:12px">' + (one
         ? '<button class="search-btn" style="width:100%" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i)">⬇️ تحميل / تشغيل</button>' +
           (d.admin ? '<button class="fc" style="margin-top:8px" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libRm(this.dataset.k,+this.dataset.i)">✕ شيل الملف ده</button>' : '')
-        : d.files.map(f => '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff14"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">' + esc(f.name) + '</span>' +
+        : d.files.map((f, n) => { const m = /S(\d+)E\d+/i.exec(f.name), pm = n ? /S(\d+)E\d+/i.exec(d.files[n - 1].name) : null;
+          return (m && (!pm || pm[1] !== m[1]) ? '<h4 style="margin:14px 0 4px;color:#5eead4">الموسم ' + (+m[1]) + '</h4>' : '') + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff14"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">' + esc(f.name) + '</span>' +
           '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i)">⬇️</button>' +
-          (d.admin ? '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libRm(this.dataset.k,+this.dataset.i)">✕</button>' : '') + '</div>').join('')) +
+          (d.admin ? '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libRm(this.dataset.k,+this.dataset.i)">✕</button>' : '') + '</div>'; }).join('')) +
       '</div><div id="libOut" style="margin-top:14px"></div>';
   } catch (e) { $('libBody').innerHTML = ERR; }
 }
@@ -13934,7 +13950,7 @@ async function libAddGo(key) {
     if (!r.ok || !d.ok) throw new Error(d.error || ('كود ' + r.status));
     libRefresh();
     const b = document.getElementById('libAdd'); if (b) b.remove();
-    toast('✅ اتضاف ' + d.added + ' رابط للمكتبة');
+    toast(d.added ? '✅ اتضاف ' + d.added + ' رابط للمكتبة' : '⚠️ اللينك ده موجود في المكتبة قبل كده', !d.added);
     if (key) libOpen(key);
   } catch (e) { msg.textContent = '❌ ' + e.message; go.disabled = false; }
 }
