@@ -4093,7 +4093,7 @@ function ivSeriesRender(box) {
       return '<div class="ep"><div class="b">' + esc(x.e + '. ' + (x.t || 'الحلقة ' + x.e)) + (x.dur ? '<small>' + esc(x.dur) + '</small>' : '') +
         (pr ? '<small style="color:' + (pr.done ? 'var(--success)' : '#f59e0b') + '">' + (pr.done ? '✓ شوهدت' : '▶ ' + pc + '%') + '</small>' : '') + '</div>' +
         '<button style="background:var(--primary);color:#fff;margin-inline-end:6px" onclick="ivPlayEp(' + o.ix + ')">▶</button>' +
-        '<button style="background:#22c55e;color:#fff" onclick="ivDlEp(' + o.ix + ')">⬇</button></div>';
+        (ruAdm() ? '<button style="background:#334155;color:#fff;margin-inline-end:6px" onclick="ruCopyEp(' + o.ix + ')">🔗</button>' : '') + '<button style="background:#22c55e;color:#fff" onclick="ivDlEp(' + o.ix + ')">⬇</button></div>';
     }).join('');
 }
 // زر «كمّل» أعلى صفحة المسلسل: آخر حلقة وقفت عندها، أو الحلقة التالية لو خلصت
@@ -13649,12 +13649,12 @@ function ruBtns(kind) {
   if (!ruAdm()) return '';
   setTimeout(ruLoadLinks, 80);
   const st = 'style="background:#0f766e"';
-  if (kind === 'vod') return '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'vod\')"><span>☁️ رفع ريموت</span></button>' + '<button class="nfv-g ru-b" ' + st + ' onclick="libAddIptv()"><span>➕ أضف لينك للمكتبة</span></button>';
+  if (kind === 'vod') return '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'vod\')"><span>☁️ رفع ريموت</span></button>' + '<button class="nfv-g ru-b" style="background:#334155" onclick="ruCopyVod()"><span>🔗 نسخ اللينك الأساسي</span></button>' + '<button class="nfv-g ru-b" ' + st + ' onclick="libAddIptv()"><span>➕ أضف لينك للمكتبة</span></button>';
   return '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'season\')"><span>☁️ رفع الموسم ' + IV.ss + ' كله</span></button>' +
          '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'all\')"><span>☁️ رفع المسلسل كله (كل المواسم)</span></button>' +
          '<button class="nfv-g ru-b" ' + st + ' onclick="libAddIptv()"><span>➕ أضف لينك للمكتبة</span></button>';
 }
-const ruEpBtn = ix => ruAdm() ? ' <button style="background:#0f766e;color:#fff;border:0;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;margin-inline-start:6px" onclick="event.stopPropagation();ruStart(\'ep\',' + ix + ')">☁️ رفع</button>' : '';
+const ruEpBtn = ix => ruAdm() ? ' <button style="background:#334155;color:#fff;border:0;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;margin-inline-start:6px" onclick="event.stopPropagation();ruCopyEp(' + ix + ')" title="نسخ اللينك الأساسي">🔗</button>' + ' <button style="background:#0f766e;color:#fff;border:0;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;margin-inline-start:6px" onclick="event.stopPropagation();ruStart(\'ep\',' + ix + ')">☁️ رفع</button>' : '';
 function ruMeta() {
   const N = IV.nf || {}, i = N.info || {};
   return {kind: N.kind, id: N.id, title: N.title || '', poster: i.movie_image || i.cover_big || i.cover || '',
@@ -13785,6 +13785,8 @@ async function ruWatchSet(on) {
   try { await api('/ru/watch', {method: 'POST', body: JSON.stringify({key: ruKey(), on: on, now: on})}); toast(on ? '🔔 المتابعة اشتغلت' : '🔕 المتابعة وقفت'); } catch (e) {}
   ruLoadLinks();
 }
+function ruCopyEp(ix) { const x = IV.flat[ix]; if (x) ruCopy(ivEpUrl(x.id, x.ext)); }
+function ruCopyVod() { const N = IV.nf; if (N && N.url) ruCopy(N.url); }
 function ruCopy(t) { try { navigator.clipboard.writeText(t); toast('اتنسخ'); } catch (e) { prompt('انسخ اللينك', t); } }
 </script>
 <script id="lib-x">
@@ -13856,9 +13858,11 @@ async function libOpen(key) {
         ? '<div style="display:flex;gap:8px"><button class="search-btn" style="flex:1;background:#fff;color:#000" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'play\')">▶ تشغيل</button>' +
           '<button class="search-btn" style="flex:1;background:#333" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'dl\')">⬇ تنزيل</button></div>' +
           '<button class="fc" style="margin-top:8px;width:100%" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'cp\')">📋 نسخ الرابط</button>' +
+          (d.admin ? '<button class="fc" style="margin-top:8px;width:100%" data-i="' + d.files[0].i + '" onclick="libCopyOrig(+this.dataset.i)">🔗 نسخ اللينك الأساسي (أدمن)</button>' : '') +
           (d.admin ? '<button class="fc" style="margin-top:8px" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libRm(this.dataset.k,+this.dataset.i)">✕ شيل الملف ده</button>' : '')
         : d.files.map((f, n) => { const m = /S(\d+)E\d+/i.exec(f.name), pm = n ? /S(\d+)E\d+/i.exec(d.files[n - 1].name) : null;
           return (m && (!pm || pm[1] !== m[1]) ? '<h4 style="margin:14px 0 4px;color:#5eead4">الموسم ' + (+m[1]) + '</h4>' : '') + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff14"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">' + esc(f.name) + '</span>' +
+          (d.admin ? '<button class="fc" title="نسخ اللينك الأساسي" data-i="' + f.i + '" onclick="libCopyOrig(+this.dataset.i)">🔗</button>' : '') +
           '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'play\')">▶</button>' +
           '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'dl\')">⬇️</button>' +
           (d.admin ? '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libRm(this.dataset.k,+this.dataset.i)">✕</button>' : '') + '</div>'; }).join('')) +
@@ -13880,6 +13884,11 @@ async function libGo(key, i, mode) {
     else if (mode === 'cp') ivCopy(d.direct_link);
     else ivDownload(d.direct_link, cur.files && cur.files.length > 1 ? ivClean(nm) : ivClean(cur.title || nm) + (/\.\w{2,4}$/.exec(nm) || [''])[0]);
   } catch (e) { if (out) out.innerHTML = ERR; }
+}
+function libCopyOrig(i) {
+  const f = ((LIB.cur && LIB.cur.files) || []).find(x => x.i === i);
+  if (!f || !f.link) { toast('اللينك مش متاح', true); return; }
+  ruCopy(f.link);
 }
 async function libPin(key, on) {
   try { await api('/lib/pin', {method: 'POST', body: JSON.stringify({key: key, pin: on})}); } catch (e) {}
