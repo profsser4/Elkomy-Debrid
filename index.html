@@ -13738,17 +13738,17 @@ async function ruStart(kind, ix) {
       }
     } catch (e) { msg.textContent = '❌ ' + e.message; go.disabled = false; return; }
     localStorage.setItem('ruNav', JSON.stringify({acc: acc, nav: RU.nav}));
-    let ok = 0, bad = 0, err = '';
+    let ok = 0, bad = 0, err = ''; RU.already = false;
     for (let i = 0; i < items.length; i += 30) {
       const part = items.slice(i, i + 30);
       msg.textContent = '⏳ بيتبعت ' + Math.min(i + 30, items.length) + ' / ' + items.length + '...';
       try {
         const {r, d} = await api('/ru/send', {method: 'POST', body: JSON.stringify({account_id: acc, folder_id: dest, key: key, meta: ruMeta(), items: part,
           watch: (kind === 'season' || kind === 'all') && $('ruWatch') && $('ruWatch').checked ? {sid: N.id, name: ivClean(N.title || N.nm || ''), scope: kind === 'season' ? IV.ss : 'all'} : null})});
-        if (r.ok && d.ok) ok += part.length; else { bad += part.length; err = d.error || ('كود ' + r.status); }
+        if (r.ok && d.ok) { ok += part.length; if (d.already) RU.already = true; } else { bad += part.length; err = d.error || ('كود ' + r.status); }
       } catch (e) { bad += part.length; err = e.message; }
     }
-    msg.innerHTML = (ok ? '✅ اتبعت ' + ok + ' رابط لـ1fichier في: <b>' + esc(RU.nav.map(x => x.name).join(' / ')) + '</b><br>اللينكات والأسماء الحقيقية هتظهر تحت التفاصيل لما السحب يخلص.<br>' : '') + (bad ? '❌ فشل ' + bad + ': ' + esc(err) : '');
+    msg.innerHTML = (ok && RU.already ? '✅ الطلب ده كان اتبعت قبل كده وبتابعه دلوقتي، الأسماء والمكتبة هيتظبطوا لوحدهم خلال دقيقة أو اتنين.<br>' : '') + (ok ? '✅ اتبعت ' + ok + ' رابط لـ1fichier في: <b>' + esc(RU.nav.map(x => x.name).join(' / ')) + '</b><br>اللينكات والأسماء الحقيقية هتظهر تحت التفاصيل لما السحب يخلص.<br>' : '') + (bad ? '❌ فشل ' + bad + ': ' + esc(err) : '');
     go.disabled = false;
     RU.polls = 0; setTimeout(ruLoadLinks, 3000);
   };
