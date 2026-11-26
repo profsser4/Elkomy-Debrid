@@ -13771,7 +13771,8 @@ async function ruLoadLinks() {
     if (!fs.length && !d.pending) { box.style.display = 'none'; return; }
     box.style.display = '';
     box.innerHTML = '<b>☁️ على 1fichier</b> · ' + fs.filter(f => f.ok).length + ' ملف' +
-      (d.pending ? ' · ⏳ ' + d.pending + ' طلب لسه بيتسحب' : '') +
+      (d.pending ? ' · ⏳ ' + d.pending + ' طلب لسه بيتسحب عند 1fichier (ممكن ياخد وقت)' : '') +
+      ((d.errs || []).length ? '<div style="color:#fca5a5;font-size:12px;margin-top:4px">⚠️ ' + d.errs.map(esc).join('<br>') + '</div>' : '') +
       ' <button class="fc" style="padding:2px 10px" onclick="RU.polls=0;ruLoadLinks()">🔄</button>' +
       (d.watch ? ' <button class="fc" style="padding:2px 10px" onclick="ruWatchSet(' + (d.watch.on ? 'false' : 'true') + ')">' + (d.watch.on ? '🔔 المتابعة شغالة (إيقاف)' : '🔕 المتابعة واقفة (تشغيل)') + '</button>' : '') +
       '<div style="margin-top:6px;max-height:220px;overflow:auto">' + fs.map(f => f.ok
