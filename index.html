@@ -11041,7 +11041,7 @@ async function loadBlocks(force) {
 }
 function newHomeHTML() {
   const P = pf();
-  let h = favBarHTML(), any = false, askedNew = false;
+  let h = favBarHTML(), any = false, askedNew = false, libOn = false;
   const bl = hbList();
   // أندرويد: «كمّل المشاهدة» أول حاجة على الشاشة (فوق البانر)، وباقي الأقسام بترتيب الأدمن بالظبط
   const cwB = bl.find(b => b.id === 'cw');
@@ -11058,7 +11058,7 @@ function newHomeHTML() {
         if (it.length) h += row(esc(b.t || 'قسم'), isTv() ? it.slice(0, 12) : it, 'hb:' + id);
       } else if (id === 'feat') { try { ftBoot(PID); } catch (e) {} h += ivFeatHTML(); }
       else if (id === 'cw') { if (!cwLift) h += cwRowHTML(); }
-      else if (id === 'pins') h += ivPinHTML() + ftSecHTML('home');
+      else if (id === 'pins') { h += ivPinHTML() + ftSecHTML('home'); h += libRowHTML(); libOn = true; }
       else if (id === 'tz') h += tzHomeHTML();
       else if (id === 'ivsec') h += ivSecGet();
       else if (id === 'live') h += ivHubGet();
@@ -11085,6 +11085,7 @@ function newHomeHTML() {
     } catch (e) {}
   });
   if (NEWD && !any && bl.some(b => b.on !== false && /^new-/.test(b.id))) h += '<p style="color:var(--mut);text-align:center;margin:30px 0">مفيش جديد نزل دلوقتي 🙌 هيظهر هنا أول ما ينزل.</p>';
+  if (!libOn) { try { h += libRowHTML(); } catch (e) {} }
   return '<div class="nwhome">' + h + '</div>';
 }
 // ================= لوحة الأدمن: أقسام الرئيسية =================
@@ -13636,38 +13637,69 @@ async function aifTest() {
 </script>
 
 <script id="ru-x">
-// ================= رفع ريموت (للأدمن): فيلم / حلقة / موسم / مسلسل كامل → 1fichier =================
-const RU = {acc: [], loaded: false};
+// ===== رفع ريموت (للأدمن): فيلم / حلقة / موسم / مسلسل كامل → 1fichier (مجلد بالاسم + أسماء حقيقية + لينكات على صفحة الـIPTV) =====
+const RU = {acc: [], subs: [], nav: [{id: 0, name: 'الرئيسي'}], polls: 0};
 const ruAdm = () => typeof ROLE !== 'undefined' && ROLE === 'admin';
+const ruKey = () => (IV.nf && IV.nf.id) ? IV.nf.kind + ':' + IV.nf.id : '';
 function ruBtns(kind) {
   if (!ruAdm()) return '';
-  if (kind === 'vod') return '<button class="nfv-g" style="background:#0f766e" onclick="ruStart(\'vod\')"><span>☁️ رفع ريموت</span></button>';
-  return '<button class="nfv-g" style="background:#0f766e" onclick="ruStart(\'season\')"><span>☁️ رفع الموسم ' + IV.ss + ' كله</span></button>' +
-         '<button class="nfv-g" style="background:#0f766e" onclick="ruStart(\'all\')"><span>☁️ رفع المسلسل كله (كل المواسم)</span></button>';
+  setTimeout(ruLoadLinks, 80);
+  const st = 'style="background:#0f766e"';
+  if (kind === 'vod') return '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'vod\')"><span>☁️ رفع ريموت</span></button>';
+  return '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'season\')"><span>☁️ رفع الموسم ' + IV.ss + ' كله</span></button>' +
+         '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'all\')"><span>☁️ رفع المسلسل كله (كل المواسم)</span></button>';
 }
 const ruEpBtn = ix => ruAdm() ? ' <button style="background:#0f766e;color:#fff;border:0;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;margin-inline-start:6px" onclick="event.stopPropagation();ruStart(\'ep\',' + ix + ')">☁️ رفع</button>' : '';
+function ruMeta() {
+  const N = IV.nf || {}, i = N.info || {};
+  return {kind: N.kind, id: N.id, title: N.title || '', poster: i.movie_image || i.cover_big || i.cover || '',
+    year: String(i.releasedate || i.release_date || i.year || '').slice(0, 4),
+    rating: parseFloat(i.rating) || (parseFloat(i.rating_5based) * 2) || 0, plot: i.plot || i.description || ''};
+}
 function ruItems(kind, ix) {
-  const ep = x => ({url: ivEpUrl(x.id, x.ext), name: ivEpName(x) + '.' + x.ext});
-  if (kind === 'vod') { const N = IV.nf; return [{url: N.url, name: ivClean(N.nm) + '.' + N.ext}]; }
+  const ep = x => ({url: ivEpUrl(x.id, x.ext), name: ivEpName(x) + '.' + x.ext, ep: String(x.id)});
+  if (kind === 'vod') { const N = IV.nf; return [{url: N.url, name: ivClean(N.nm) + (/\.\w{2,4}$/.test(N.nm) ? '' : '.' + N.ext), ep: ''}]; }
   if (kind === 'ep') return IV.flat[ix] ? [ep(IV.flat[ix])] : [];
   if (kind === 'season') return IV.flat.filter(x => x.s === IV.ss).map(ep);
   return IV.flat.map(ep);
 }
+// ---- اختيار المجلد بالاسم ----
+async function ruLoadSubs() {
+  const acc = $('ruAcc').value, cur = RU.nav[RU.nav.length - 1], sel = $('ruFolderSel');
+  $('ruPath').textContent = RU.nav.map(x => x.name).join(' / ');
+  sel.innerHTML = '<option value="">⏳ بيحمّل...</option>';
+  try {
+    const {r, d} = await api('/ru/folders?account_id=' + encodeURIComponent(acc) + '&parent=' + cur.id);
+    if (!r.ok || !d.ok) throw new Error(d.error || ('كود ' + r.status));
+    RU.subs = d.items || [];
+    sel.innerHTML = '<option value="">📁 ' + esc(cur.name) + ' (هنا)</option>' + RU.subs.map(f => '<option value="' + f.id + '">📂 ' + esc(f.name) + '</option>').join('');
+  } catch (e) {
+    sel.innerHTML = '<option value="">⚠️ ' + esc(e.message) + '</option>';
+    if (RU.nav.length > 1) { RU.nav = [{id: 0, name: 'الرئيسي'}]; }
+  }
+}
+function ruPick(v) { if (!v) return; const f = RU.subs.find(x => String(x.id) === v); if (f) { RU.nav.push(f); ruLoadSubs(); } }
+function ruBack() { if (RU.nav.length > 1) { RU.nav.pop(); ruLoadSubs(); } }
 async function ruStart(kind, ix) {
   const items = ruItems(kind, ix);
   if (!items.length) { toast('مفيش روابط', true); return; }
+  const N = IV.nf || {}, key = ruKey();
   let box = document.getElementById('ruBox');
   if (box) box.remove();
   box = document.createElement('div');
   box.id = 'ruBox';
   box.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#000000cc;display:flex;align-items:flex-end;justify-content:center';
-  box.innerHTML = '<div style="background:#181818;color:#fff;width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:18px;direction:rtl;max-height:85vh;overflow:auto">' +
+  const defName = ivClean(N.title || N.nm || '') + (kind === 'season' ? ' S' + p2s(IV.ss) : '');
+  box.innerHTML = '<div style="background:#181818;color:#fff;width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:18px;direction:rtl;max-height:88vh;overflow:auto">' +
     '<h3 style="margin:0 0 10px">☁️ رفع ريموت · ' + items.length + ' رابط</h3>' +
     '<div id="ruList" style="font-size:12px;color:#a3a3a3;max-height:90px;overflow:auto;margin-bottom:10px;direction:ltr;text-align:left"></div>' +
-    '<label style="font-size:13px">الحساب اللي هيترفع عليه</label>' +
+    '<label style="font-size:13px">الحساب</label>' +
     '<select id="ruAcc" style="width:100%;padding:10px;margin:4px 0 10px;border-radius:8px;background:#262626;color:#fff;border:0"></select>' +
-    '<label style="font-size:13px">رقم الفولدر (0 = الرئيسي)</label>' +
-    '<input id="ruFolder" value="' + esc(localStorage.getItem('ruFolder') || '0') + '" style="width:100%;padding:10px;margin:4px 0 12px;border-radius:8px;background:#262626;color:#fff;border:0;direction:ltr">' +
+    '<label style="font-size:13px">المجلد: <b id="ruPath">الرئيسي</b></label>' +
+    '<div style="display:flex;gap:6px;margin:4px 0 8px"><button type="button" class="fc" onclick="ruBack()">⬆</button>' +
+    '<select id="ruFolderSel" onchange="ruPick(this.value)" style="flex:1;padding:10px;border-radius:8px;background:#262626;color:#fff;border:0"></select></div>' +
+    '<label style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="ruNew"> اعمل مجلد جديد جوه المجلد ده وارفع فيه</label>' +
+    '<input id="ruNewName" value="' + esc(defName) + '" style="width:100%;padding:10px;margin:6px 0 12px;border-radius:8px;background:#262626;color:#fff;border:0">' +
     '<div id="ruMsg" style="font-size:13px;margin-bottom:10px;line-height:1.8"></div>' +
     '<div style="display:flex;gap:8px"><button id="ruGo" class="search-btn" style="flex:1;background:#0f766e">ارفع دلوقتي</button><button class="fc" onclick="document.getElementById(\'ruBox\').remove()">إغلاق</button></div></div>';
   document.body.appendChild(box);
@@ -13677,26 +13709,138 @@ async function ruStart(kind, ix) {
     const {r, d} = await api('/ru/targets');
     if (!r.ok) throw new Error(d.error || 'كود ' + r.status);
     RU.acc = d.items || [];
-  } catch (e) { msg.textContent = '⚠️ ' + e.message + ' (تأكد إن ru_patch.py متركّب على السيرفر)'; return; }
+  } catch (e) { msg.textContent = '⚠️ ' + e.message + ' (تأكد إن bot.py الجديد متركّب على السيرفر)'; return; }
   if (!RU.acc.length) { msg.textContent = '⚠️ مفيش حساب 1fichier بمفتاح API. ضيف واحد من الإعدادات → المزوّدين.'; return; }
   sel.innerHTML = RU.acc.map(a => '<option value="' + esc(a.id) + '">' + esc(a.name) + (a.cdn ? ' (CDN)' : '') + ' · ' + esc(a.key) + '</option>').join('');
-  const last = localStorage.getItem('ruAcc');
-  if (last && RU.acc.some(a => a.id === last)) sel.value = last;
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('ruNav') || 'null'); } catch (e) {}
+  if (saved && RU.acc.some(a => a.id === saved.acc)) { sel.value = saved.acc; RU.nav = saved.nav && saved.nav.length ? saved.nav : [{id: 0, name: 'الرئيسي'}]; }
+  else RU.nav = [{id: 0, name: 'الرئيسي'}];
+  sel.onchange = () => { RU.nav = [{id: 0, name: 'الرئيسي'}]; ruLoadSubs(); };
+  ruLoadSubs();
   $('ruGo').onclick = async () => {
     const go = $('ruGo'); go.disabled = true;
-    localStorage.setItem('ruAcc', sel.value); localStorage.setItem('ruFolder', $('ruFolder').value.trim() || '0');
+    const acc = sel.value;
+    let dest = RU.nav[RU.nav.length - 1].id;
+    try {
+      if ($('ruNew').checked) {
+        const nm = $('ruNewName').value.trim();
+        msg.textContent = '⏳ بيعمل المجلد...';
+        const {r, d} = await api('/ru/mkdir', {method: 'POST', body: JSON.stringify({account_id: acc, name: nm, parent: dest})});
+        if (!r.ok || !d.ok) throw new Error(d.error || ('كود ' + r.status));
+        dest = d.id; RU.nav.push({id: d.id, name: d.name});
+      }
+    } catch (e) { msg.textContent = '❌ ' + e.message; go.disabled = false; return; }
+    localStorage.setItem('ruNav', JSON.stringify({acc: acc, nav: RU.nav}));
     let ok = 0, bad = 0, err = '';
     for (let i = 0; i < items.length; i += 30) {
       const part = items.slice(i, i + 30);
       msg.textContent = '⏳ بيتبعت ' + Math.min(i + 30, items.length) + ' / ' + items.length + '...';
       try {
-        const {r, d} = await api('/ru/send', {method: 'POST', body: JSON.stringify({account_id: sel.value, folder_id: $('ruFolder').value.trim() || '0', urls: part.map(x => x.url)})});
+        const {r, d} = await api('/ru/send', {method: 'POST', body: JSON.stringify({account_id: acc, folder_id: dest, key: key, meta: ruMeta(), items: part})});
         if (r.ok && d.ok) ok += part.length; else { bad += part.length; err = d.error || ('كود ' + r.status); }
       } catch (e) { bad += part.length; err = e.message; }
     }
-    msg.innerHTML = (ok ? '✅ اتبعت ' + ok + ' رابط لـ1fichier (بيتسحبوا هناك في الخلفية)<br>' : '') + (bad ? '❌ فشل ' + bad + ': ' + esc(err) : '');
+    msg.innerHTML = (ok ? '✅ اتبعت ' + ok + ' رابط لـ1fichier في: <b>' + esc(RU.nav.map(x => x.name).join(' / ')) + '</b><br>اللينكات والأسماء الحقيقية هتظهر تحت التفاصيل لما السحب يخلص.<br>' : '') + (bad ? '❌ فشل ' + bad + ': ' + esc(err) : '');
     go.disabled = false;
+    RU.polls = 0; setTimeout(ruLoadLinks, 3000);
   };
+}
+// ---- لينكات 1fichier المرتبطة بالفيلم/المسلسل (تحت التفاصيل) ----
+async function ruLoadLinks() {
+  const key = ruKey(), anchor = document.querySelector('.ru-b');
+  if (!ruAdm() || !key || !anchor) return;
+  let box = document.getElementById('ruLinksBox');
+  if (!box) {
+    box = document.createElement('div'); box.id = 'ruLinksBox';
+    box.style.cssText = 'margin:10px 16px;padding:10px 12px;border-radius:10px;background:#0f766e22;border:1px solid #0f766e;font-size:13px;direction:rtl';
+    anchor.parentElement.insertAdjacentElement('afterend', box);
+  }
+  try { await api('/ru/sync', {method: 'POST', body: '{}'}); } catch (e) {}
+  try {
+    const {r, d} = await api('/ru/links?key=' + encodeURIComponent(key));
+    if (!r.ok || !d.ok) return;
+    const fs = d.files || [];
+    if (!fs.length && !d.pending) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    box.innerHTML = '<b>☁️ على 1fichier</b> · ' + fs.filter(f => f.ok).length + ' ملف' +
+      (d.pending ? ' · ⏳ ' + d.pending + ' طلب لسه بيتسحب' : '') +
+      ' <button class="fc" style="padding:2px 10px" onclick="RU.polls=0;ruLoadLinks()">🔄</button>' +
+      '<div style="margin-top:6px;max-height:220px;overflow:auto">' + fs.map(f => f.ok
+        ? '<div style="padding:3px 0;display:flex;gap:8px;align-items:center;justify-content:space-between"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(f.name) + '</span><span style="white-space:nowrap"><a href="' + esc(f.link) + '" target="_blank" rel="noopener" style="color:#5eead4">فتح</a> · <a href="#" style="color:#5eead4" onclick="ruCopy(\'' + esc(f.link) + '\');return false">نسخ</a></span></div>'
+        : '<div style="padding:3px 0;color:#fca5a5">❌ ' + esc(f.name) + ' — ' + esc(f.err || 'فشل') + '</div>').join('') + '</div>';
+    if (d.pending && RU.polls++ < 40) setTimeout(ruLoadLinks, 15000);
+  } catch (e) {}
+}
+function ruCopy(t) { try { navigator.clipboard.writeText(t); toast('اتنسخ'); } catch (e) { prompt('انسخ اللينك', t); } }
+</script>
+<script id="lib-x">
+// ================= المكتبة: اللي بيترفع على 1fichier يظهر لكل الأعضاء (اللينك مخفي عنهم) =================
+const LIB = {items: [], loaded: false, loading: false, admin: false, t: 0};
+async function libLoad() {
+  if (LIB.loading) return;
+  LIB.loading = true;
+  try {
+    const {r, d} = await api('/lib/list');
+    if (r.ok && d.ok) { LIB.items = d.items || []; LIB.admin = !!d.admin; }
+  } catch (e) {}
+  LIB.loading = false; LIB.loaded = true; LIB.t = Date.now();
+  try { renderShelvesSoon(); } catch (e) {}
+}
+function libRowHTML() {
+  if (!LIB.loading && (!LIB.loaded || Date.now() - LIB.t > 120000)) libLoad();
+  if (!LIB.items.length) return '';
+  return '<h3 class="sec">📚 المكتبة</h3><div class="hrow">' + LIB.items.map(x =>
+    '<div class="poster" data-k="' + esc(x.key) + '" onclick="libOpen(this.dataset.k)">' +
+    (x.rating > 0 ? '<span class="rt">★ ' + Number(x.rating).toFixed(1) + '</span>' : '') +
+    (x.pin ? '<span class="rt" style="right:auto;left:6px">📌</span>' : '') +
+    (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">🎬</div>') +
+    '<div class="t">' + esc(x.title) + '<div class="y">' + (x.kind === 'series' ? 'مسلسل · ' + x.n + ' حلقة' : 'فيلم') + (x.year ? ' · ' + esc(x.year) : '') + '</div></div></div>').join('') + '</div>';
+}
+async function libOpen(key) {
+  const old = document.getElementById('libBox'); if (old) old.remove();
+  const box = document.createElement('div');
+  box.id = 'libBox';
+  box.style.cssText = 'position:fixed;inset:0;z-index:99998;background:#000000e6;overflow:auto;direction:rtl';
+  box.innerHTML = '<div style="max-width:620px;margin:0 auto;padding:14px 14px 40px;color:#fff"><div style="text-align:left"><button class="fc" onclick="document.getElementById(\'libBox\').remove()">✕ إغلاق</button></div><div id="libBody">' + pend('جاري التحميل...') + '</div></div>';
+  document.body.appendChild(box);
+  try {
+    const {r, d} = await api('/lib/item?key=' + encodeURIComponent(key));
+    if (!r.ok || !d.ok) { $('libBody').innerHTML = warn(d.error || 'مش موجود'); return; }
+    const one = d.files.length === 1 && d.kind !== 'series';
+    $('libBody').innerHTML =
+      '<div style="display:flex;gap:12px;align-items:flex-start">' +
+      (d.poster ? '<img src="' + esc(d.poster) + '" alt="" style="width:34%;max-width:170px;border-radius:10px">' : '') +
+      '<div style="flex:1"><h2 style="margin:0 0 6px">' + esc(d.title) + '</h2><div style="color:#a3a3a3;font-size:13px">' +
+      (d.kind === 'series' ? 'مسلسل · ' + d.files.length + ' حلقة' : 'فيلم') + (d.year ? ' · ' + esc(d.year) : '') + (d.rating > 0 ? ' · ★ ' + Number(d.rating).toFixed(1) : '') + '</div>' +
+      (d.admin ? '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="fc" onclick="libPin(\'' + esc(d.key) + '\',' + (d.pin ? 'false' : 'true') + ')">📌 ' + (d.pin ? 'إلغاء التثبيت' : 'تثبيت فوق') + '</button><button class="fc" onclick="libDel(\'' + esc(d.key) + '\')">🗑 شيل من المكتبة</button></div>' : '') +
+      '</div></div>' +
+      (d.plot ? '<p style="font-size:13px;line-height:1.8;color:#d4d4d4;margin:12px 0">' + esc(d.plot) + '</p>' : '') +
+      '<div style="margin-top:12px">' + (one
+        ? '<button class="search-btn" style="width:100%" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i)">⬇️ تحميل / تشغيل</button>'
+        : d.files.map(f => '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff14"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">' + esc(f.name) + '</span><button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i)">⬇️</button></div>').join('')) +
+      '</div><div id="libOut" style="margin-top:14px"></div>';
+  } catch (e) { $('libBody').innerHTML = ERR; }
+}
+async function libGo(key, i) {
+  if (typeof noDl === 'function' && noDl()) return;
+  const out = $('libOut');
+  out.innerHTML = pend('جاري تجهيز الرابط...');
+  try { out.scrollIntoView({behavior: 'smooth', block: 'center'}); } catch (e) {}
+  try {
+    const {d} = await api('/lib/go', {method: 'POST', body: JSON.stringify({key: key, i: i})});
+    out.innerHTML = d && d.direct_link ? linkCard(d, false) : warn((d && d.error) || 'الملف لسه بيجهز، جرّب بعد شوية');
+  } catch (e) { out.innerHTML = ERR; }
+}
+async function libPin(key, on) {
+  try { await api('/lib/pin', {method: 'POST', body: JSON.stringify({key: key, pin: on})}); } catch (e) {}
+  LIB.t = 0; LIB.loaded = false; libLoad(); libOpen(key);
+}
+async function libDel(key) {
+  if (!confirm('تشيل العمل ده من المكتبة؟ (الملفات على 1fichier مش هتتمسح)')) return;
+  try { await api('/lib/del', {method: 'POST', body: JSON.stringify({key: key})}); } catch (e) {}
+  const b = document.getElementById('libBox'); if (b) b.remove();
+  LIB.t = 0; LIB.loaded = false; libLoad();
 }
 </script>
 </body>
