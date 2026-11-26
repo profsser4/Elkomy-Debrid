@@ -13775,8 +13775,10 @@ async function ruLoadLinks() {
 function ruCopy(t) { try { navigator.clipboard.writeText(t); toast('اتنسخ'); } catch (e) { prompt('انسخ اللينك', t); } }
 </script>
 <script id="lib-x">
-// ================= المكتبة: اللي بيترفع على 1fichier يظهر لكل الأعضاء (اللينك مخفي عنهم) =================
+// ================= المكتبة: اللي بيترفع أو بيتضاف بإيدك يظهر لكل الأعضاء (اللينك مخفي عنهم) =================
 const LIB = {items: [], loaded: false, loading: false, admin: false, t: 0};
+const LIBK = {vod: ['🎬', 'أفلام', 'فيلم'], series: ['📺', 'مسلسلات', 'مسلسل'], cartoon: ['🧸', 'كرتون', 'كرتون']};
+const libInp = 'width:100%;padding:10px;margin:4px 0 10px;border-radius:8px;background:#262626;color:#fff;border:0;box-sizing:border-box';
 async function libLoad() {
   if (LIB.loading) return;
   LIB.loading = true;
@@ -13787,38 +13789,56 @@ async function libLoad() {
   LIB.loading = false; LIB.loaded = true; LIB.t = Date.now();
   try { renderShelvesSoon(); } catch (e) {}
 }
-function libRowHTML() {
-  if (!LIB.loading && (!LIB.loaded || Date.now() - LIB.t > 120000)) libLoad();
-  if (!LIB.items.length) return '';
-  return '<h3 class="sec">📚 المكتبة</h3><div class="hrow">' + LIB.items.map(x =>
-    '<div class="poster" data-k="' + esc(x.key) + '" onclick="libOpen(this.dataset.k)">' +
+function libRefresh() { LIB.t = 0; LIB.loaded = false; libLoad(); }
+function libCard(x) {
+  const k = LIBK[x.kind] || LIBK.vod;
+  return '<div class="poster" data-k="' + esc(x.key) + '" onclick="libOpen(this.dataset.k)">' +
     (x.rating > 0 ? '<span class="rt">★ ' + Number(x.rating).toFixed(1) + '</span>' : '') +
     (x.pin ? '<span class="rt" style="right:auto;left:6px">📌</span>' : '') +
-    (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">🎬</div>') +
-    '<div class="t">' + esc(x.title) + '<div class="y">' + (x.kind === 'series' ? 'مسلسل · ' + x.n + ' حلقة' : 'فيلم') + (x.year ? ' · ' + esc(x.year) : '') + '</div></div></div>').join('') + '</div>';
+    (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">' + k[0] + '</div>') +
+    '<div class="t">' + esc(x.title) + '<div class="y">' + k[2] + (x.n > 1 ? ' · ' + x.n + ' ملف' : '') + (x.year ? ' · ' + esc(x.year) : '') + '</div></div></div>';
+}
+function libRowHTML() {
+  if (!LIB.loading && (!LIB.loaded || Date.now() - LIB.t > 120000)) libLoad();
+  let h = '';
+  if (LIB.admin) h += '<button class="fc" style="margin:6px 0" onclick="libAddOpen()">➕ إضافة رابط للمكتبة</button>';
+  ['vod', 'series', 'cartoon'].forEach(kd => {
+    const l = LIB.items.filter(x => (LIBK[x.kind] ? x.kind : 'vod') === kd);
+    if (l.length) h += '<h3 class="sec">' + LIBK[kd][0] + ' ' + LIBK[kd][1] + ' · المكتبة</h3><div class="hrow">' + l.map(libCard).join('') + '</div>';
+  });
+  return h;
+}
+function libShell(id, inner) {
+  const old = document.getElementById(id); if (old) old.remove();
+  const box = document.createElement('div');
+  box.id = id;
+  box.style.cssText = 'position:fixed;inset:0;z-index:99998;background:#000000e6;overflow:auto;direction:rtl';
+  box.innerHTML = '<div style="max-width:620px;margin:0 auto;padding:14px 14px 40px;color:#fff"><div style="text-align:left"><button class="fc" onclick="document.getElementById(\'' + id + '\').remove()">✕ إغلاق</button></div>' + inner + '</div>';
+  document.body.appendChild(box);
+  return box;
 }
 async function libOpen(key) {
-  const old = document.getElementById('libBox'); if (old) old.remove();
-  const box = document.createElement('div');
-  box.id = 'libBox';
-  box.style.cssText = 'position:fixed;inset:0;z-index:99998;background:#000000e6;overflow:auto;direction:rtl';
-  box.innerHTML = '<div style="max-width:620px;margin:0 auto;padding:14px 14px 40px;color:#fff"><div style="text-align:left"><button class="fc" onclick="document.getElementById(\'libBox\').remove()">✕ إغلاق</button></div><div id="libBody">' + pend('جاري التحميل...') + '</div></div>';
-  document.body.appendChild(box);
+  libShell('libBox', '<div id="libBody">' + pend('جاري التحميل...') + '</div>');
   try {
     const {r, d} = await api('/lib/item?key=' + encodeURIComponent(key));
     if (!r.ok || !d.ok) { $('libBody').innerHTML = warn(d.error || 'مش موجود'); return; }
-    const one = d.files.length === 1 && d.kind !== 'series';
+    const k = LIBK[d.kind] || LIBK.vod, one = d.files.length === 1;
     $('libBody').innerHTML =
       '<div style="display:flex;gap:12px;align-items:flex-start">' +
       (d.poster ? '<img src="' + esc(d.poster) + '" alt="" style="width:34%;max-width:170px;border-radius:10px">' : '') +
       '<div style="flex:1"><h2 style="margin:0 0 6px">' + esc(d.title) + '</h2><div style="color:#a3a3a3;font-size:13px">' +
-      (d.kind === 'series' ? 'مسلسل · ' + d.files.length + ' حلقة' : 'فيلم') + (d.year ? ' · ' + esc(d.year) : '') + (d.rating > 0 ? ' · ★ ' + Number(d.rating).toFixed(1) : '') + '</div>' +
-      (d.admin ? '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="fc" onclick="libPin(\'' + esc(d.key) + '\',' + (d.pin ? 'false' : 'true') + ')">📌 ' + (d.pin ? 'إلغاء التثبيت' : 'تثبيت فوق') + '</button><button class="fc" onclick="libDel(\'' + esc(d.key) + '\')">🗑 شيل من المكتبة</button></div>' : '') +
+      k[2] + (d.files.length > 1 ? ' · ' + d.files.length + ' ملف' : '') + (d.year ? ' · ' + esc(d.year) : '') + (d.rating > 0 ? ' · ★ ' + Number(d.rating).toFixed(1) : '') + '</div>' +
+      (d.admin ? '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="fc" data-k="' + esc(d.key) + '" onclick="libPin(this.dataset.k,' + (d.pin ? 'false' : 'true') + ')">📌 ' + (d.pin ? 'إلغاء التثبيت' : 'تثبيت فوق') + '</button>' +
+        '<button class="fc" data-k="' + esc(d.key) + '" onclick="libAddOpen(this.dataset.k)">➕ إضافة رابط</button>' +
+        '<button class="fc" data-k="' + esc(d.key) + '" onclick="libDel(this.dataset.k)">🗑 شيل من المكتبة</button></div>' : '') +
       '</div></div>' +
       (d.plot ? '<p style="font-size:13px;line-height:1.8;color:#d4d4d4;margin:12px 0">' + esc(d.plot) + '</p>' : '') +
       '<div style="margin-top:12px">' + (one
-        ? '<button class="search-btn" style="width:100%" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i)">⬇️ تحميل / تشغيل</button>'
-        : d.files.map(f => '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff14"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">' + esc(f.name) + '</span><button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i)">⬇️</button></div>').join('')) +
+        ? '<button class="search-btn" style="width:100%" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i)">⬇️ تحميل / تشغيل</button>' +
+          (d.admin ? '<button class="fc" style="margin-top:8px" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libRm(this.dataset.k,+this.dataset.i)">✕ شيل الملف ده</button>' : '')
+        : d.files.map(f => '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff14"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">' + esc(f.name) + '</span>' +
+          '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i)">⬇️</button>' +
+          (d.admin ? '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libRm(this.dataset.k,+this.dataset.i)">✕</button>' : '') + '</div>').join('')) +
       '</div><div id="libOut" style="margin-top:14px"></div>';
   } catch (e) { $('libBody').innerHTML = ERR; }
 }
@@ -13834,13 +13854,80 @@ async function libGo(key, i) {
 }
 async function libPin(key, on) {
   try { await api('/lib/pin', {method: 'POST', body: JSON.stringify({key: key, pin: on})}); } catch (e) {}
-  LIB.t = 0; LIB.loaded = false; libLoad(); libOpen(key);
+  libRefresh(); libOpen(key);
 }
 async function libDel(key) {
   if (!confirm('تشيل العمل ده من المكتبة؟ (الملفات على 1fichier مش هتتمسح)')) return;
   try { await api('/lib/del', {method: 'POST', body: JSON.stringify({key: key})}); } catch (e) {}
   const b = document.getElementById('libBox'); if (b) b.remove();
-  LIB.t = 0; LIB.loaded = false; libLoad();
+  libRefresh();
+}
+async function libRm(key, i) {
+  if (!confirm('تشيل الملف ده؟')) return;
+  try { await api('/lib/rmfile', {method: 'POST', body: JSON.stringify({key: key, i: i})}); } catch (e) {}
+  libRefresh();
+  const {r, d} = await api('/lib/item?key=' + encodeURIComponent(key));
+  if (r.ok && d.ok) libOpen(key); else { const b = document.getElementById('libBox'); if (b) b.remove(); }
+}
+// ---- إضافة لينك بإيدك: اختار فيلم / مسلسل / كرتون وحط اللينك ----
+const LIBF = {poster: '', year: '', rating: 0, plot: ''};
+function libAddOpen(key) {
+  LIBF.poster = ''; LIBF.year = ''; LIBF.rating = 0; LIBF.plot = '';
+  libShell('libAdd', '<h3 style="margin:0 0 10px">➕ ' + (key ? 'إضافة رابط للعمل ده' : 'إضافة للمكتبة') + '</h3>' +
+    (key ? '' :
+      '<label style="font-size:13px">النوع</label><div style="display:flex;gap:14px;margin:6px 0 10px">' +
+      Object.keys(LIBK).map((kd, n) => '<label style="display:flex;gap:4px;align-items:center"><input type="radio" name="libKind" value="' + kd + '"' + (n === 0 ? ' checked' : '') + '>' + LIBK[kd][0] + ' ' + LIBK[kd][2] + '</label>').join('') + '</div>' +
+      '<label style="font-size:13px">اسم العمل</label><div style="display:flex;gap:6px"><input id="libTitle" style="' + libInp + ';flex:1" placeholder="اكتب الاسم"><button type="button" class="fc" style="height:42px;margin-top:4px" onclick="libTm()">🔎 صورة</button></div>' +
+      '<div id="libTmOut"></div>' +
+      '<label style="font-size:13px">رابط الصورة (اختياري)</label><input id="libPoster" style="' + libInp + ';direction:ltr" placeholder="http...">') +
+    '<label style="font-size:13px">اللينكات (كل لينك في سطر)</label>' +
+    '<textarea id="libLinks" rows="5" style="' + libInp + ';direction:ltr" placeholder="https://1fichier.com/?xxxx"></textarea>' +
+    '<div id="libAddMsg" style="font-size:13px;margin-bottom:10px"></div>' +
+    '<button id="libAddGo" class="search-btn" style="width:100%" data-k="' + esc(key || '') + '" onclick="libAddGo(this.dataset.k)">إضافة</button>');
+}
+async function libTm() {
+  const q = $('libTitle').value.trim(), out = $('libTmOut');
+  if (!q) { toast('اكتب الاسم الأول', true); return; }
+  out.innerHTML = pend('بيدوّر...');
+  try {
+    const {d} = await apiQ('/tmdb?q=', q);
+    const r = ((d && d.results) || []).slice(0, 8);
+    if (!r.length) { out.innerHTML = warn('مفيش نتايج، اكتب اللينك والصورة بإيدك'); return; }
+    window._libTm = r;
+    out.innerHTML = '<div style="display:flex;gap:8px;overflow:auto;margin-bottom:10px">' + r.map((x, n) =>
+      '<div style="flex:0 0 84px;text-align:center;font-size:11px;cursor:pointer" onclick="libTmPick(' + n + ')">' +
+      (x.poster ? '<img src="' + esc(x.poster) + '" alt="" style="width:84px;border-radius:8px">' : '<div style="height:120px;background:#262626;border-radius:8px"></div>') +
+      '<div>' + esc(x.title) + (x.year ? ' · ' + esc(x.year) : '') + '</div></div>').join('') + '</div>';
+  } catch (e) { out.innerHTML = ERR; }
+}
+function libTmPick(n) {
+  const x = (window._libTm || [])[n]; if (!x) return;
+  LIBF.poster = x.poster || ''; LIBF.year = String(x.year || ''); LIBF.rating = Number(x.rating) || 0; LIBF.plot = x.overview || x.plot || '';
+  $('libPoster').value = LIBF.poster;
+  if (!$('libTitle').value.trim()) $('libTitle').value = x.title || '';
+  $('libTmOut').innerHTML = '<p style="font-size:12px;color:#5eead4;margin:0 0 8px">✅ اتاخدت الصورة والسنة: ' + esc(x.title || '') + '</p>';
+}
+async function libAddGo(key) {
+  const msg = $('libAddMsg'), go = $('libAddGo');
+  const links = $('libLinks').value.split(/\s+/).map(s => s.trim()).filter(s => /^https?:\/\//.test(s));
+  if (!links.length) { msg.textContent = '⚠️ حط لينك واحد على الأقل'; return; }
+  const body = {links: links, key: key || ''};
+  if (!key) {
+    body.title = $('libTitle').value.trim();
+    if (!body.title) { msg.textContent = '⚠️ اكتب اسم العمل'; return; }
+    const k = document.querySelector('input[name=libKind]:checked');
+    body.kind = k ? k.value : 'vod';
+    body.poster = $('libPoster').value.trim() || LIBF.poster; body.year = LIBF.year; body.rating = LIBF.rating; body.plot = LIBF.plot;
+  }
+  go.disabled = true; msg.textContent = '⏳ بيتضاف... (بيجيب الأسماء من 1fichier)';
+  try {
+    const {r, d} = await api('/lib/add', {method: 'POST', body: JSON.stringify(body)});
+    if (!r.ok || !d.ok) throw new Error(d.error || ('كود ' + r.status));
+    libRefresh();
+    const b = document.getElementById('libAdd'); if (b) b.remove();
+    toast('✅ اتضاف ' + d.added + ' رابط للمكتبة');
+    if (key) libOpen(key);
+  } catch (e) { msg.textContent = '❌ ' + e.message; go.disabled = false; }
 }
 </script>
 </body>
