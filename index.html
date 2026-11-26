@@ -6455,7 +6455,7 @@ const SOURCES = [
    title: t => t.title, thumb: t => t.thumb || '', meta: t => t.owner || '',
    open: t => pullSource(t.url, {src: t.url, title: t.title}, null)},
 ];
-let ALL = [], SRCERR = {}, SRCF = 'all', USEQ = 0, SPS = '', SPLIB = [], SPLX = [];
+let ALL = [], SRCERR = {}, SRCF = 'all', USEQ = 0, SPS = '', SPLIB = [], SPLIB2 = [];
 function dmDur(s) {
   s = Math.round(+s || 0);
   const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
@@ -6509,17 +6509,20 @@ async function unifiedSearch(force) {
   // الرئيسية = بحث في كل حاجة. أي قسم تاني = بحث في القسم ده بس (force=true يجبر البحث الشامل)
   const sc = force === true ? '' : (SPG.open ? SPS : (SCOPES[CAT] ? CAT : ''));
   if (sc) return scopedSearch(q, sc);
-  SPS = ''; SPLIB = []; SPLX = [];
+  SPS = ''; SPLIB = []; SPLIB2 = [];
   const my = ++USEQ;
   autoPick = false;
   BR.on = false;
   closeDetails();
   $('titles').innerHTML = '';
   ALL = []; SRCERR = {}; SRCF = 'all';
-  libxStart(q, '', my);
   spOpen(q);
   $('spBar').innerHTML = '';
   $('spResults').innerHTML = pend('جاري البحث في كل المصادر...');
+  try { if (!LIB.loaded) await Promise.race([libLoad(), sleep(1500)]); } catch (e) {}
+  if (my !== USEQ) return;
+  SPLIB2 = libSearchMatch(q, '');
+  if (SPLIB2.length) renderAll(true);
   let left = SOURCES.length;
   const SLOW = 'بطيء… لسه بيحاول وهيظهر لو رجّع';
   await Promise.all(SOURCES.map(s => new Promise(resolve => {
@@ -6603,36 +6606,6 @@ async function scopeFilter(list, sc, my) {
   await Promise.all([worker(), worker(), worker(), worker()]);
   return list.filter(x => keep.has(x));
 }
-// ---------- مكتبة الأدمن (/lib) داخل البحث: العضو يلاقي اللي اترفع، واللينك نفسه مخفي ----------
-function libxMatch(q, sc) {
-  if (typeof LIB === 'undefined' || !LIB.items || !LIB.items.length) return [];
-  const n = libNorm(q);
-  if (!n) return [];
-  const kd = x => (LIBK[x.kind] ? x.kind : 'vod');
-  const ok = sc === 'movie' ? (x => kd(x) === 'vod') : sc === 'tv' ? (x => kd(x) === 'series') : sc === 'cartoon' ? (x => kd(x) === 'cartoon') : (() => sc === '');
-  return LIB.items.filter(x => ok(x) && libNorm(x.title).includes(n));
-}
-async function libxStart(q, sc, my) {
-  try {
-    SPLX = libxMatch(q, sc);
-    if (typeof LIB !== 'undefined' && !LIB.loaded && typeof libLoad === 'function') {
-      await Promise.race([libLoad(), sleep(2500)]);
-      if (my !== USEQ) return;
-      SPLX = libxMatch(q, sc);
-      renderAll(true);
-    }
-  } catch (e) {}
-}
-function libxCard(x) {
-  const k = LIBK[x.kind] || LIBK.vod;
-  return '<div class="spc" tabindex="0" data-k="' + esc(x.key) + '" onclick="libOpen(this.dataset.k)"><div class="spi">' +
-    (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">' + k[0] + '</div>') +
-    '<span class="spk movie">📚 المكتبة</span></div><div class="spt">' + esc(x.title) + '</div>' +
-    '<div class="spm">' + k[2] + (x.n > 1 ? ' · ' + x.n + ' ملف' : '') + (x.year ? ' · ' + esc(x.year) : '') + '</div><div class="spm sprt"></div></div>';
-}
-function libxSection(list) {
-  return list.length ? '<div class="sph"><h3>📚 المكتبة <small>(' + list.length + ')</small></h3></div><div class="spg">' + list.map(libxCard).join('') + '</div>' : '';
-}
 function clibSearchMatch(q, sc) {
   const n = libNorm(q), cat = sc === 'movie' ? 'movie' : sc === 'tv' ? 'series' : sc === 'cartoon' ? 'cartoon' : '';
   if (!n || !cat || typeof CL === 'undefined') return [];
@@ -6643,8 +6616,7 @@ async function scopedSearch(q, sc) {
   autoPick = false; BR.on = false;
   closeDetails();
   $('titles').innerHTML = '';
-  ALL = []; SRCERR = {}; SRCF = 'all'; SPS = sc; SPLIB = []; SPLX = [];
-  libxStart(q, sc, my);
+  ALL = []; SRCERR = {}; SRCF = 'all'; SPS = sc; SPLIB = []; SPLIB2 = [];
   spOpen(q);
   $('spBar').innerHTML = '';
   $('spResults').innerHTML = pend('جاري البحث في ' + SCOPES[sc].n + '...');
@@ -6658,7 +6630,7 @@ async function scopedSearch(q, sc) {
       if (my === USEQ) renderAll(false);
       return;
     }
-    if (sc !== 'korean') { try { await Promise.race([clibLoad(), sleep(2500)]); } catch (e) {} SPLIB = clibSearchMatch(q, sc); }
+    if (sc !== 'korean') { try { await Promise.race([clibLoad(), sleep(2500)]); } catch (e) {} SPLIB = clibSearchMatch(q, sc); try { if (!LIB.loaded) await Promise.race([libLoad(), sleep(2000)]); } catch (e) {} SPLIB2 = libSearchMatch(q, sc); }
     if (my !== USEQ) return;
     renderAll(true);
     const kp = sc === 'korean' ? korLoad() : null;
@@ -6676,7 +6648,20 @@ async function scopedSearch(q, sc) {
   }
   if (my === USEQ) { renderAll(false); spFillRt(my); }
 }
-function spAll() { SPS = ''; SPLIB = []; unifiedSearch(true); }
+function spAll() { SPS = ''; SPLIB = []; SPLIB2 = []; unifiedSearch(true); }
+function libSearchMatch(q, sc) {
+  const n = libNorm(q), kd = sc === 'movie' ? 'vod' : sc === 'tv' ? 'series' : sc === 'cartoon' ? 'cartoon' : '';
+  if (!n || typeof LIB === 'undefined') return [];
+  return LIB.items.filter(x => (!kd || (LIBK[x.kind] ? x.kind : 'vod') === kd) && libNorm(x.title).includes(n));
+}
+function spLib2Card(x) {
+  const k = LIBK[x.kind] || LIBK.vod;
+  return '<div class="spc" tabindex="0" data-k="' + esc(x.key) + '" onclick="libOpen(this.dataset.k)"><div class="spi">' +
+    (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">' + k[0] + '</div>') +
+    '<span class="spk movie">📚 ' + k[2] + '</span></div><div class="spt">' + esc(x.title) + '</div>' +
+    '<div class="spm">' + esc(x.year || '') + (x.n > 1 ? ' · ' + x.n + ' حلقة/ملف' : '') + (x.new && x.new < x.n && x.last ? ' · 🆕 ' + esc(x.last) : '') + '</div><div class="spm sprt"></div></div>';
+}
+const spLib2HTML = () => SPLIB2.length ? '<div class="sph"><h3>📚 المكتبة <small>(' + SPLIB2.length + ')</small></h3></div><div class="spg">' + SPLIB2.map(spLib2Card).join('') + '</div>' : '';
 function spLibCard(x) {
   return '<div class="spc" tabindex="0" onclick="clibHomeTap(\'' + esc(x.id) + '\')"><div class="spi">' +
     (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">🎬</div>') +
@@ -6686,9 +6671,9 @@ function spLibCard(x) {
 function renderScoped(loading) {
   const sc = SCOPES[SPS];
   if (!sc) return;
-  $('spBar').innerHTML = '<div class="fbar"><button class="fc on">' + sc.i + ' ' + esc(sc.n) + ' (' + (ALL.length + SPLIB.length + SPLX.length) + ')</button>' +
+  $('spBar').innerHTML = '<div class="fbar"><button class="fc on">' + sc.i + ' ' + esc(sc.n) + ' (' + (ALL.length + SPLIB.length + SPLIB2.length) + ')</button>' +
     '<button class="fc" onclick="spAll()">🔎 ابحث في كل حاجة</button></div>';
-  let h = libxSection(SPLX);
+  let h = spLib2HTML();
   if (SPLIB.length) h += '<div class="sph"><h3>📚 من مكتبتي <small>(' + SPLIB.length + ')</small></h3></div><div class="spg">' + SPLIB.map(spLibCard).join('') + '</div>';
   if (ALL.length) h += '<div class="sph"><h3>' + sc.i + ' ' + esc(sc.n) + ' <small>(' + ALL.length + ')</small></h3></div><div class="spg">' + ALL.map((x, i) => spCard(x, i)).join('') + '</div>';
   const err = SRCERR.titles ? warn('🎬 أعمال: ' + SRCERR.titles) : '';
@@ -6745,11 +6730,7 @@ function renderAllNow(loading) {
   const f = SRCF;
   $('spBar').innerHTML = '<div class="fbar">' + SP_TABS.map(tb =>
     '<button class="fc' + (f === tb[0] ? ' on' : '') + '" onclick="setSrcF(\'' + tb[0] + '\')">' + tb[1] + ' (' + (tb[0] === 'all' ? ALL.length : by(tb[0]).length) + ')</button>').join('') + '</div>';
-  let h = '';
-  if (SPLX.length) {
-    const kd = x => (LIBK[x.kind] ? x.kind : 'vod');
-    h += libxSection(f === 'all' ? SPLX : f === 'movie' ? SPLX.filter(x => kd(x) === 'vod') : f === 'tv' ? SPLX.filter(x => kd(x) !== 'vod') : []);
-  }
+  let h = (f === 'all') ? spLib2HTML() : '';
   [['movie', '🎬 الأفلام'], ['tv', '📺 المسلسلات'], ['iptv', '📡 IPTV'], ['torrent', '🧲 التورنت'], ['dm', '▶️ Dailymotion'], ['arc', '🏛 Archive.org'], ['rt', '🇷🇺 Rutube']].forEach(g => {
     const c = g[0];
     if (f !== 'all' && f !== c) return;
@@ -11083,6 +11064,7 @@ function newHomeHTML() {
   const P = pf();
   let h = favBarHTML(), any = false, askedNew = false, libOn = false;
   const bl = hbList();
+  try { h += libRecentHTML(); } catch (e) {}
   // أندرويد: «كمّل المشاهدة» أول حاجة على الشاشة (فوق البانر)، وباقي الأقسام بترتيب الأدمن بالظبط
   const cwB = bl.find(b => b.id === 'cw');
   const cwLift = cwOnTop() && !!cwB && cwB.on !== false;
@@ -13686,7 +13668,7 @@ function ruBtns(kind) {
   setTimeout(ruLoadLinks, 80);
   const st = 'style="background:#0f766e"';
   if (kind === 'vod') return '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'vod\')"><span>☁️ رفع ريموت</span></button>' + '<button class="nfv-g ru-b" style="background:#334155" onclick="ruCopyVod()"><span>🔗 نسخ اللينك الأساسي</span></button>' + '<button class="nfv-g ru-b" ' + st + ' onclick="libAddIptv()"><span>➕ أضف لينك للمكتبة</span></button>';
-  return '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'season\')"><span>☁️ رفع الموسم ' + IV.ss + ' كله</span></button>' +
+  return '<button class="nfv-g ru-b" style="background:#b45309" onclick="ruFollow()"><span>⭐ تابع المسلسل (رفع تلقائي + الحلقات الجديدة)</span></button>' + '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'season\')"><span>☁️ رفع الموسم ' + IV.ss + ' كله</span></button>' +
          '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'all\')"><span>☁️ رفع المسلسل كله (كل المواسم)</span></button>' +
          '<button class="nfv-g ru-b" ' + st + ' onclick="libAddIptv()"><span>➕ أضف لينك للمكتبة</span></button>';
 }
@@ -13851,13 +13833,20 @@ function libCard(x) {
   return '<div class="poster" data-k="' + esc(x.key) + '" onclick="libOpen(this.dataset.k)">' +
     (x.rating > 0 ? '<span class="rt">★ ' + Number(x.rating).toFixed(1) + '</span>' : '') +
     (x.pin ? '<span class="rt" style="right:auto;left:6px">📌</span>' : '') +
+    (x.new ? '<span class="pbadge">' + (x.new < x.n ? '🆕 ' + esc(x.last || 'حلقة جديدة') : 'جديد') + '</span>' : '') +
     (x.poster ? '<img ' + lzA(x.poster) + ' alt="">' : '<div class="noimg">' + k[0] + '</div>') +
     '<div class="t">' + esc(x.title) + '<div class="y">' + k[2] + (x.n > 1 ? ' · ' + x.n + ' ملف' : '') + (x.year ? ' · ' + esc(x.year) : '') + '</div></div></div>';
+}
+function libRecentHTML() {
+  if (!LIB.loading && (!LIB.loaded || Date.now() - LIB.t > 120000)) libLoad();
+  const l = LIB.items.slice().sort((a, b) => (b.t || 0) - (a.t || 0)).slice(0, 20);
+  if (!l.length) return '';
+  return '<h3 class="sec">🆕 أُضيف حديثًا</h3><div class="hrow">' + l.map(libCard).join('') + '</div>';
 }
 function libRowHTML() {
   if (!LIB.loading && (!LIB.loaded || Date.now() - LIB.t > 120000)) libLoad();
   let h = '';
-  if (LIB.admin) h += '<button class="fc" style="margin:6px 0" onclick="libAddOpen()">➕ إضافة رابط للمكتبة</button>';
+  if (LIB.admin) h += '<button class="fc" style="margin:6px 0" onclick="libAddOpen()">➕ إضافة رابط للمكتبة</button> <button class="fc" style="margin:6px 0" onclick="ruWatchList()">📡 المتابعات</button>';
   ['vod', 'series', 'cartoon'].forEach(kd => {
     const l = LIB.items.filter(x => (LIBK[x.kind] ? x.kind : 'vod') === kd);
     if (l.length) h += '<h3 class="sec">' + LIBK[kd][0] + ' ' + LIBK[kd][1] + ' · المكتبة</h3><div class="hrow">' + l.map(libCard).join('') + '</div>';
@@ -14009,6 +13998,59 @@ async function libAddGo(key) {
     toast(d.added ? '✅ اتضاف ' + d.added + ' رابط للمكتبة' : '⚠️ اللينك ده موجود في المكتبة قبل كده', !d.added);
     if (key) libOpen(key);
   } catch (e) { msg.textContent = '❌ ' + e.message; go.disabled = false; }
+}
+</script>
+
+<script id="follow-x">
+// ===== متابعة مسلسل IPTV: ضغطة واحدة → رفع كامل + حلقات جديدة تلقائي + ظهور في البحث والإضافات الحديثة =====
+async function ruFollow() {
+  const N = IV.nf || {}, key = ruKey();
+  if (!ruAdm() || !/^series:/.test(key)) return;
+  if (!IV.flat || !IV.flat.length) { toast('استنى الحلقات تتحمّل الأول', true); return; }
+  toast('⏳ جاري تفعيل المتابعة والرفع...');
+  try {
+    const eps = IV.flat.map(x => ({id: String(x.id), ext: x.ext || 'mp4', s: x.s, e: x.e}));
+    const {r, d} = await api('/ru/follow', {method: 'POST', body: JSON.stringify({sid: N.id, name: ivClean(N.title || N.nm || ''), meta: ruMeta(), eps: eps})});
+    if (!r.ok || !d.ok) throw new Error(d.error || ('كود ' + r.status));
+    toast('✅ ' + (d.already ? 'المتابعة شغالة: ' : 'اتفعّلت: ') + d.title + ' · اتبعت ' + d.sent + ' حلقة، والباقي والجديد هيترفع لوحده');
+    try { libRefresh(); } catch (e) {}
+    RU.polls = 0; setTimeout(ruLoadLinks, 2500);
+  } catch (e) { toast('❌ ' + e.message, true); }
+}
+async function ruWatchList() {
+  libShell('ruWL', '<h3 style="margin:0 0 10px">📡 المسلسلات المتابَعة</h3><div id="ruWLb">' + pend('جاري التحميل...') + '</div>');
+  ruWLLoad();
+}
+async function ruWLLoad() {
+  const b = $('ruWLb'); if (!b) return;
+  try {
+    const {r, d} = await api('/ru/watchlist');
+    if (!r.ok || !d.ok) throw new Error(d.error || ('كود ' + r.status));
+    const ago = t => t ? 'من ' + Math.max(1, Math.round((Date.now() / 1000 - t) / 60)) + ' د' : '—';
+    b.innerHTML =
+      (d.cron ? '' : '<div style="background:#7f1d1d55;border:1px solid #b91c1c;border-radius:8px;padding:8px;margin-bottom:10px;font-size:12px;line-height:1.8">⚠️ مفيش CRON_KEY: الفحص التلقائي بيحصل بس لما حد يفتح التطبيق. ظبّط Cron على /cron/ru (شوف الشرح).</div>') +
+      (d.cool ? '<div style="color:#fca5a5;font-size:12px;margin-bottom:8px">⏸ 1fichier طلب هدوء: الرفع متوقف ' + Math.ceil(d.cool / 60) + ' د</div>' : '') +
+      '<button class="fc" style="margin-bottom:10px" onclick="ruRunNow()">🔄 افحص وارفع دلوقتي</button>' +
+      (d.items.length ? d.items.map(x =>
+        '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #ffffff14">' +
+        (x.poster ? '<img src="' + esc(x.poster) + '" alt="" style="width:38px;border-radius:6px">' : '') +
+        '<div style="flex:1;min-width:0"><b>' + esc(x.name) + '</b><div style="font-size:12px;color:#a3a3a3">✅ ' + x.ok + (x.pending ? ' · ⏳ ' + x.pending + ' بيتسحب' : '') + (x.bad ? ' · ❌ ' + x.bad : '') + (x.backlog ? ' · بيكمّل الرفع' : '') + ' · آخر فحص ' + ago(x.chk) + '</div>' +
+        (x.err ? '<div style="font-size:12px;color:#fca5a5">⚠️ ' + esc(x.err) + '</div>' : '') + '</div>' +
+        '<button class="fc" data-k="' + esc(x.key) + '" onclick="ruWatchTog(this.dataset.k,' + (x.on ? 'false' : 'true') + ')">' + (x.on ? '🔔 شغّالة' : '🔕 واقفة') + '</button></div>').join('')
+        : '<p style="color:#a3a3a3">مفيش مسلسلات متابَعة. افتح مسلسل IPTV ودوس ⭐ تابع المسلسل.</p>');
+  } catch (e) { b.innerHTML = warn(e.message || 'خطأ'); }
+}
+async function ruWatchTog(key, on) {
+  try { await api('/ru/watch', {method: 'POST', body: JSON.stringify({key: key, on: on, now: on})}); } catch (e) {}
+  ruWLLoad();
+}
+async function ruRunNow() {
+  toast('⏳ بيفحص...');
+  try {
+    const {r, d} = await api('/ru/runnow', {method: 'POST', body: '{}'});
+    toast(r.ok && d.ok ? '✅ اتبعت ' + d.sent + ' حلقة جديدة' : '❌ ' + (d.error || r.status), !(r.ok && d.ok));
+  } catch (e) { toast('❌ ' + e.message, true); }
+  ruWLLoad(); try { libRefresh(); } catch (e) {}
 }
 </script>
 </body>
