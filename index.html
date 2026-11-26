@@ -13756,17 +13756,17 @@ async function ruStart(kind, ix) {
       }
     } catch (e) { msg.textContent = '❌ ' + e.message; go.disabled = false; return; }
     localStorage.setItem('ruNav', JSON.stringify({acc: acc, nav: RU.nav}));
-    let ok = 0, bad = 0, err = ''; RU.already = false;
+    let ok = 0, bad = 0, err = ''; RU.already = false; RU.queued = false;
     for (let i = 0; i < items.length; i += 30) {
       const part = items.slice(i, i + 30);
       msg.textContent = '⏳ بيتبعت ' + Math.min(i + 30, items.length) + ' / ' + items.length + '...';
       try {
         const {r, d} = await api('/ru/send', {method: 'POST', body: JSON.stringify({account_id: acc, folder_id: dest, key: key, meta: ruMeta(), items: part,
           watch: (kind === 'season' || kind === 'all') && $('ruWatch') && $('ruWatch').checked ? {sid: N.id, name: ivClean(N.title || N.nm || ''), scope: kind === 'season' ? IV.ss : 'all'} : null})});
-        if (r.ok && d.ok) { ok += part.length; if (d.already) RU.already = true; } else { bad += part.length; err = d.error || ('كود ' + r.status); }
+        if (r.ok && d.ok) { ok += part.length; if (d.already) RU.already = true; if (d.queued) RU.queued = true; } else { bad += part.length; err = d.error || ('كود ' + r.status); }
       } catch (e) { bad += part.length; err = e.message; }
     }
-    msg.innerHTML = (ok && RU.already ? '✅ الطلب ده كان اتبعت قبل كده وبتابعه دلوقتي، الأسماء والمكتبة هيتظبطوا لوحدهم خلال دقيقة أو اتنين.<br>' : '') + (ok ? '✅ اتبعت ' + ok + ' رابط لـ1fichier في: <b>' + esc(RU.nav.map(x => x.name).join(' / ')) + '</b><br>اللينكات والأسماء الحقيقية هتظهر تحت التفاصيل لما السحب يخلص.<br>' : '') + (bad ? '❌ فشل ' + bad + ': ' + esc(err) : '');
+    msg.innerHTML = (ok && RU.already ? '✅ الطلب ده كان اتبعت قبل كده وبتابعه دلوقتي، الأسماء والمكتبة هيتظبطوا لوحدهم خلال دقيقة أو اتنين.<br>' : '') + (ok ? '✅ ' + (RU.queued ? 'اتضاف ' + ok + ' رابط للطابور وهيترفعوا واحد ورا التاني' : 'اتبعت ' + ok + ' رابط لـ1fichier') + ' في: <b>' + esc(RU.nav.map(x => x.name).join(' / ')) + '</b><br>اللينكات والأسماء الحقيقية هتظهر تحت التفاصيل لما السحب يخلص.<br>' : '') + (bad ? '❌ فشل ' + bad + ': ' + esc(err) : '');
     go.disabled = false;
     RU.polls = 0; setTimeout(ruLoadLinks, 3000);
   };
@@ -13786,17 +13786,17 @@ async function ruLoadLinks() {
     const {r, d} = await api('/ru/links?key=' + encodeURIComponent(key));
     if (!r.ok || !d.ok) return;
     const fs = d.files || [];
-    if (!fs.length && !d.pending) { box.style.display = 'none'; return; }
+    if (!fs.length && !d.pending && !d.queued) { box.style.display = 'none'; return; }
     box.style.display = '';
     box.innerHTML = '<b>☁️ على 1fichier</b> · ' + fs.filter(f => f.ok).length + ' ملف' +
-      (d.pending ? ' · ⏳ ' + d.pending + ' طلب لسه بيتسحب عند 1fichier (ممكن ياخد وقت)' : '') +
+      (d.pending ? ' · ⏳ ' + d.pending + ' طلب لسه بيتسحب عند 1fichier (ممكن ياخد وقت)' : '') + (d.queued ? ' · 🕒 ' + d.queued + ' في الطابور (بيترفعوا واحد ورا التاني)' : '') +
       ((d.errs || []).length ? '<div style="color:#fca5a5;font-size:12px;margin-top:4px">⚠️ ' + d.errs.map(esc).join('<br>') + '</div>' : '') +
       ' <button class="fc" style="padding:2px 10px" onclick="RU.polls=0;ruLoadLinks()">🔄</button>' +
       (d.watch ? ' <button class="fc" style="padding:2px 10px" onclick="ruWatchSet(' + (d.watch.on ? 'false' : 'true') + ')">' + (d.watch.on ? '🔔 المتابعة شغالة (إيقاف)' : '🔕 المتابعة واقفة (تشغيل)') + '</button>' : '') +
       '<div style="margin-top:6px;max-height:220px;overflow:auto">' + fs.map(f => f.ok
         ? '<div style="padding:3px 0;display:flex;gap:8px;align-items:center;justify-content:space-between"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(f.name) + '</span><span style="white-space:nowrap"><a href="' + esc(f.link) + '" target="_blank" rel="noopener" style="color:#5eead4">فتح</a> · <a href="#" style="color:#5eead4" onclick="ruCopy(\'' + esc(f.link) + '\');return false">نسخ</a></span></div>'
         : '<div style="padding:3px 0;color:#fca5a5">❌ ' + esc(f.name) + ' — ' + esc(f.err || 'فشل') + '</div>').join('') + '</div>';
-    if (d.pending && RU.polls++ < 40) setTimeout(ruLoadLinks, 15000);
+    if ((d.pending || d.queued) && RU.polls++ < 40) setTimeout(ruLoadLinks, 15000);
   } catch (e) {}
 }
 async function ruWatchSet(on) {
@@ -14012,7 +14012,7 @@ async function ruFollow() {
     const eps = IV.flat.map(x => ({id: String(x.id), ext: x.ext || 'mp4', s: x.s, e: x.e}));
     const {r, d} = await api('/ru/follow', {method: 'POST', body: JSON.stringify({sid: N.id, name: ivClean(N.title || N.nm || ''), meta: ruMeta(), eps: eps})});
     if (!r.ok || !d.ok) throw new Error(d.error || ('كود ' + r.status));
-    toast('✅ ' + (d.already ? 'المتابعة شغالة: ' : 'اتفعّلت: ') + d.title + ' · اتبعت ' + d.sent + ' حلقة، والباقي والجديد هيترفع لوحده');
+    toast('✅ ' + (d.already ? 'المتابعة شغالة: ' : 'اتفعّلت: ') + d.title + ' · ' + d.sent + ' حلقة في الطابور، بتترفع واحدة واحدة وبتنزل المكتبة أول ما تخلص');
     try { libRefresh(); } catch (e) {}
     RU.polls = 0; setTimeout(ruLoadLinks, 2500);
   } catch (e) { toast('❌ ' + e.message, true); }
@@ -14034,7 +14034,7 @@ async function ruWLLoad() {
       (d.items.length ? d.items.map(x =>
         '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #ffffff14">' +
         (x.poster ? '<img src="' + esc(x.poster) + '" alt="" style="width:38px;border-radius:6px">' : '') +
-        '<div style="flex:1;min-width:0"><b>' + esc(x.name) + '</b><div style="font-size:12px;color:#a3a3a3">✅ ' + x.ok + (x.pending ? ' · ⏳ ' + x.pending + ' بيتسحب' : '') + (x.bad ? ' · ❌ ' + x.bad : '') + (x.backlog ? ' · بيكمّل الرفع' : '') + ' · آخر فحص ' + ago(x.chk) + '</div>' +
+        '<div style="flex:1;min-width:0"><b>' + esc(x.name) + '</b><div style="font-size:12px;color:#a3a3a3">✅ ' + x.ok + (x.pending ? ' · ⏳ ' + x.pending + ' بيتسحب' : '') + (x.queued ? ' · 🕒 ' + x.queued + ' في الطابور' : '') + (x.bad ? ' · ❌ ' + x.bad : '') + (x.backlog ? ' · بيكمّل الرفع' : '') + ' · آخر فحص ' + ago(x.chk) + '</div>' +
         (x.err ? '<div style="font-size:12px;color:#fca5a5">⚠️ ' + esc(x.err) + '</div>' : '') + '</div>' +
         '<button class="fc" data-k="' + esc(x.key) + '" onclick="ruWatchTog(this.dataset.k,' + (x.on ? 'false' : 'true') + ')">' + (x.on ? '🔔 شغّالة' : '🔕 واقفة') + '</button></div>').join('')
         : '<p style="color:#a3a3a3">مفيش مسلسلات متابَعة. افتح مسلسل IPTV ودوس ⭐ تابع المسلسل.</p>');
@@ -14048,7 +14048,7 @@ async function ruRunNow() {
   toast('⏳ بيفحص...');
   try {
     const {r, d} = await api('/ru/runnow', {method: 'POST', body: '{}'});
-    toast(r.ok && d.ok ? '✅ اتبعت ' + d.sent + ' حلقة جديدة' : '❌ ' + (d.error || r.status), !(r.ok && d.ok));
+    toast(r.ok && d.ok ? '✅ اتضافت ' + d.sent + ' حلقة جديدة للطابور' : '❌ ' + (d.error || r.status), !(r.ok && d.ok));
   } catch (e) { toast('❌ ' + e.message, true); }
   ruWLLoad(); try { libRefresh(); } catch (e) {}
 }
