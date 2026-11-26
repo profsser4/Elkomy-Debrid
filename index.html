@@ -1286,6 +1286,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <div class="ivlogo"><b>IPTV</b><i class="ivdot"></i></div>
 <span id="ivBadge"></span>
 <button id="ivOrdBtn" class="ivib" onclick="ivOrderOpen()" aria-label="ترتيب الأقسام">↕️</button>
+<button id="ivLibBtn" class="ivib" style="display:none;background:#0f766e" onclick="libAddOpen()" aria-label="إضافة رابط للمكتبة">➕</button>
 <button id="ivGmBtn2" class="ivib" style="display:none;background:#7c3aed" onclick="ivGmToggle()" aria-label="تثبيت للكل">📢</button>
 </div>
 <div class="sprow" id="ivQrow"><input id="ivQ" class="search-input" placeholder="ابحث في الـIPTV..." enterkeyhint="search" oninput="ivSetQ(this.value)"></div>
@@ -3943,7 +3944,7 @@ function ivBack() {
   if (VS[VS.length - 1] === 'iv') history.back(); else ivHide();
 }
 const IV_TABS = [['vod', '🎬 أفلام'], ['series', '📺 مسلسلات'], ['live', '📡 مباشر'], ['me', 'ℹ️ حسابي']];
-function ivHead() {
+function ivHead() { try { const lb = $('ivLibBtn'); if (lb) lb.style.display = (typeof ROLE !== 'undefined' && ROLE === 'admin') ? '' : 'none'; } catch (e) {}
   $('ivTabs').innerHTML = IV_TABS.map(t => {
     const i = t[1].indexOf(' ');
     return '<button class="tab' + (IV.tab === t[0] ? ' on' : '') + '" onclick="ivTab(\'' + t[0] + '\')"><i>' + t[1].slice(0, i) + '</i><span>' + t[1].slice(i + 1) + '</span></button>';
@@ -13645,9 +13646,10 @@ function ruBtns(kind) {
   if (!ruAdm()) return '';
   setTimeout(ruLoadLinks, 80);
   const st = 'style="background:#0f766e"';
-  if (kind === 'vod') return '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'vod\')"><span>☁️ رفع ريموت</span></button>';
+  if (kind === 'vod') return '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'vod\')"><span>☁️ رفع ريموت</span></button>' + '<button class="nfv-g ru-b" ' + st + ' onclick="libAddIptv()"><span>➕ أضف لينك للمكتبة</span></button>';
   return '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'season\')"><span>☁️ رفع الموسم ' + IV.ss + ' كله</span></button>' +
-         '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'all\')"><span>☁️ رفع المسلسل كله (كل المواسم)</span></button>';
+         '<button class="nfv-g ru-b" ' + st + ' onclick="ruStart(\'all\')"><span>☁️ رفع المسلسل كله (كل المواسم)</span></button>' +
+         '<button class="nfv-g ru-b" ' + st + ' onclick="libAddIptv()"><span>➕ أضف لينك للمكتبة</span></button>';
 }
 const ruEpBtn = ix => ruAdm() ? ' <button style="background:#0f766e;color:#fff;border:0;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;margin-inline-start:6px" onclick="event.stopPropagation();ruStart(\'ep\',' + ix + ')">☁️ رفع</button>' : '';
 function ruMeta() {
@@ -13871,15 +13873,22 @@ async function libRm(key, i) {
 }
 // ---- إضافة لينك بإيدك: اختار فيلم / مسلسل / كرتون وحط اللينك ----
 const LIBF = {poster: '', year: '', rating: 0, plot: ''};
-function libAddOpen(key) {
-  LIBF.poster = ''; LIBF.year = ''; LIBF.rating = 0; LIBF.plot = '';
+let LIBP = null;
+function libAddIptv() {
+  const m = ruMeta(), k = ruKey();
+  if (!k) return;
+  libAddOpen('', {key: k, kind: m.kind === 'series' ? 'series' : 'vod', title: m.title, poster: m.poster, year: m.year, rating: m.rating, plot: m.plot});
+}
+function libAddOpen(key, preset) {
+  LIBP = preset || null;
+  LIBF.poster = preset ? preset.poster || '' : ''; LIBF.year = preset ? preset.year || '' : ''; LIBF.rating = preset ? preset.rating || 0 : 0; LIBF.plot = preset ? preset.plot || '' : '';
   libShell('libAdd', '<h3 style="margin:0 0 10px">➕ ' + (key ? 'إضافة رابط للعمل ده' : 'إضافة للمكتبة') + '</h3>' +
     (key ? '' :
       '<label style="font-size:13px">النوع</label><div style="display:flex;gap:14px;margin:6px 0 10px">' +
-      Object.keys(LIBK).map((kd, n) => '<label style="display:flex;gap:4px;align-items:center"><input type="radio" name="libKind" value="' + kd + '"' + (n === 0 ? ' checked' : '') + '>' + LIBK[kd][0] + ' ' + LIBK[kd][2] + '</label>').join('') + '</div>' +
-      '<label style="font-size:13px">اسم العمل</label><div style="display:flex;gap:6px"><input id="libTitle" style="' + libInp + ';flex:1" placeholder="اكتب الاسم"><button type="button" class="fc" style="height:42px;margin-top:4px" onclick="libTm()">🔎 صورة</button></div>' +
+      Object.keys(LIBK).map((kd, n) => '<label style="display:flex;gap:4px;align-items:center"><input type="radio" name="libKind" value="' + kd + '"' + (kd === (LIBP ? LIBP.kind : 'vod') ? ' checked' : '') + '>' + LIBK[kd][0] + ' ' + LIBK[kd][2] + '</label>').join('') + '</div>' +
+      '<label style="font-size:13px">اسم العمل</label><div style="display:flex;gap:6px"><input id="libTitle" value="' + esc(LIBP ? LIBP.title : '') + '" style="' + libInp + ';flex:1" placeholder="اكتب الاسم"><button type="button" class="fc" style="height:42px;margin-top:4px" onclick="libTm()">🔎 صورة</button></div>' +
       '<div id="libTmOut"></div>' +
-      '<label style="font-size:13px">رابط الصورة (اختياري)</label><input id="libPoster" style="' + libInp + ';direction:ltr" placeholder="http...">') +
+      '<label style="font-size:13px">رابط الصورة (اختياري)</label><input id="libPoster" value="' + esc(LIBF.poster) + '" style="' + libInp + ';direction:ltr" placeholder="http...">') +
     '<label style="font-size:13px">اللينكات (كل لينك في سطر)</label>' +
     '<textarea id="libLinks" rows="5" style="' + libInp + ';direction:ltr" placeholder="https://1fichier.com/?xxxx"></textarea>' +
     '<div id="libAddMsg" style="font-size:13px;margin-bottom:10px"></div>' +
@@ -13911,7 +13920,7 @@ async function libAddGo(key) {
   const msg = $('libAddMsg'), go = $('libAddGo');
   const links = $('libLinks').value.split(/\s+/).map(s => s.trim()).filter(s => /^https?:\/\//.test(s));
   if (!links.length) { msg.textContent = '⚠️ حط لينك واحد على الأقل'; return; }
-  const body = {links: links, key: key || ''};
+  const body = {links: links, key: key || (LIBP ? LIBP.key : '')};
   if (!key) {
     body.title = $('libTitle').value.trim();
     if (!body.title) { msg.textContent = '⚠️ اكتب اسم العمل'; return; }
