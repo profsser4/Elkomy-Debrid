@@ -13885,7 +13885,7 @@ function libShell(id, inner) {
   const old = document.getElementById(id); if (old) old.remove();
   const box = document.createElement('div');
   box.id = id;
-  box.style.cssText = 'position:fixed;inset:0;z-index:99998;background:#000000e6;overflow:auto;direction:rtl';
+  box.style.cssText = 'position:fixed;inset:0;z-index:99998;background:var(--bg,#0b1020);overflow:auto;direction:rtl;padding-top:env(safe-area-inset-top,0px)';
   box.innerHTML = '<div style="max-width:620px;margin:0 auto;padding:14px 14px 40px;color:#fff"><div style="text-align:left"><button class="fc" onclick="document.getElementById(\'' + id + '\').remove()">✕ إغلاق</button></div>' + inner + '</div>';
   document.body.appendChild(box);
   return box;
@@ -13902,10 +13902,10 @@ async function libOpen(key) {
       (d.poster ? '<img src="' + esc(d.poster) + '" alt="" style="width:34%;max-width:170px;border-radius:10px">' : '') +
       '<div style="flex:1"><h2 style="margin:0 0 6px">' + esc(d.title) + '</h2><div style="color:#a3a3a3;font-size:13px">' +
       k[2] + (d.files.length > 1 ? ' · ' + d.files.length + ' ملف' : '') + (d.year ? ' · ' + esc(d.year) : '') + (d.rating > 0 ? ' · ★ ' + Number(d.rating).toFixed(1) : '') + '</div>' +
-      (d.admin ? '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="fc" data-k="' + esc(d.key) + '" onclick="libPin(this.dataset.k,' + (d.pin ? 'false' : 'true') + ')">📌 ' + (d.pin ? 'إلغاء التثبيت' : 'تثبيت فوق') + '</button>' +
-        '<button class="fc" data-k="' + esc(d.key) + '" onclick="libAddOpen(this.dataset.k)">➕ إضافة رابط</button>' +
-        '<button class="fc" data-k="' + esc(d.key) + '" onclick="libDel(this.dataset.k)">🗑 شيل من المكتبة</button></div>' : '') +
       '</div></div>' +
+      (d.admin ? '<div style="margin:12px 0 0;display:flex;gap:6px;flex-wrap:wrap"><button class="fc" style="flex:1" data-k="' + esc(d.key) + '" onclick="libPin(this.dataset.k,' + (d.pin ? 'false' : 'true') + ')">📌 ' + (d.pin ? 'إلغاء التثبيت' : 'تثبيت فوق') + '</button>' +
+        '<button class="fc" style="flex:1" data-k="' + esc(d.key) + '" onclick="libAddOpen(this.dataset.k)">➕ إضافة رابط</button>' +
+        '<button class="fc" style="flex:1" data-k="' + esc(d.key) + '" onclick="libDel(this.dataset.k)">🗑 شيل من المكتبة</button></div>' : '') +
       (d.plot ? '<p style="font-size:13px;line-height:1.8;color:#d4d4d4;margin:12px 0">' + esc(d.plot) + '</p>' : '') +
       '<div style="margin-top:12px">' + (one
         ? '<div style="display:flex;gap:8px"><button class="search-btn" style="flex:1;background:#fff;color:#000" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'play\')">▶ تشغيل</button>' +
@@ -13913,12 +13913,26 @@ async function libOpen(key) {
           '<button class="fc" style="margin-top:8px;width:100%" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'cp\')">📋 نسخ الرابط</button>' +
           (d.admin ? '<button class="fc" style="margin-top:8px;width:100%" data-i="' + d.files[0].i + '" onclick="libCopyOrig(+this.dataset.i)">🔗 نسخ اللينك الأساسي (أدمن)</button>' : '') +
           (d.admin ? '<button class="fc" style="margin-top:8px" data-k="' + esc(d.key) + '" data-i="' + d.files[0].i + '" onclick="libRm(this.dataset.k,+this.dataset.i)">✕ شيل الملف ده</button>' : '')
-        : d.files.map((f, n) => { const m = /S(\d+)E\d+/i.exec(f.name), pm = n ? /S(\d+)E\d+/i.exec(d.files[n - 1].name) : null;
-          return (m && (!pm || pm[1] !== m[1]) ? '<h4 style="margin:14px 0 4px;color:#5eead4">الموسم ' + (+m[1]) + '</h4>' : '') + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff14"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">' + esc(f.name) + '</span>' +
-          (d.admin ? '<button class="fc" title="نسخ اللينك الأساسي" data-i="' + f.i + '" onclick="libCopyOrig(+this.dataset.i)">🔗</button>' : '') +
-          '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'play\')">▶</button>' +
-          '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'dl\')">⬇️</button>' +
-          (d.admin ? '<button class="fc" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libRm(this.dataset.k,+this.dataset.i)">✕</button>' : '') + '</div>'; }).join('')) +
+        : (() => {
+          const SE = nm => /S(\d+)E(\d+)/i.exec(nm || ''), p2 = v => ('0' + v).slice(-2);
+          const L = d.files.slice().sort((a, b) => { const x = SE(a.name), y = SE(b.name); if (x && y) return (+x[1] - +y[1]) || (+x[2] - +y[2]); return x ? -1 : y ? 1 : 0; });
+          const bt = 'flex:1;min-width:0;text-align:center;padding:9px 4px;border-radius:12px';
+          return L.map((f, n) => {
+            const m = SE(f.name), pm = n ? SE(L[n - 1].name) : null, tag = m ? 'S' + p2(m[1]) + 'E' + p2(m[2]) : '';
+            const nm = esc(f.name).replace(/\.(mp4|mkv|avi|ts|webm)$/i, '');
+            return (m && (!pm || pm[1] !== m[1]) ? '<h4 style="margin:16px 0 4px;color:#5eead4">الموسم ' + (+m[1]) + '</h4>' : '') +
+              '<div style="padding:12px;margin:8px 0;border-radius:14px;background:#ffffff0d;border:1px solid #ffffff14">' +
+              '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
+              (tag ? '<span style="background:#0f766e;color:#fff;border-radius:8px;padding:2px 8px;font-size:12px;font-weight:700;direction:ltr;flex:none">' + tag + '</span>' : '') +
+              '<span dir="auto" style="flex:1;min-width:0;font-size:14px;line-height:1.6;word-break:break-word">' + nm + '</span></div>' +
+              '<div style="display:flex;gap:6px">' +
+              '<button class="fc" style="' + bt + '" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'play\')">▶ تشغيل</button>' +
+              '<button class="fc" style="' + bt + '" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libGo(this.dataset.k,+this.dataset.i,\'dl\')">⬇️ تنزيل</button>' +
+              (d.admin ? '<button class="fc" style="' + bt + '" title="نسخ اللينك الأساسي" data-i="' + f.i + '" onclick="libCopyOrig(+this.dataset.i)">🔗</button>' : '') +
+              (d.admin ? '<button class="fc" style="' + bt + '" data-k="' + esc(d.key) + '" data-i="' + f.i + '" onclick="libRm(this.dataset.k,+this.dataset.i)">✕</button>' : '') +
+              '</div></div>';
+          }).join('');
+        })()) +
       '</div><div id="libOut" style="margin-top:14px"></div>';
   } catch (e) { $('libBody').innerHTML = ERR; }
 }
