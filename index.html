@@ -13786,15 +13786,17 @@ async function ruLoadLinks() {
     const {r, d} = await api('/ru/links?key=' + encodeURIComponent(key));
     if (!r.ok || !d.ok) return;
     const fs = d.files || [];
-    if (!fs.length && !d.pending && !d.queued) { box.style.display = 'none'; return; }
+    if (!fs.length && !d.pending && !d.queued && !d.watch) { box.style.display = 'none'; return; }
     box.style.display = '';
     box.innerHTML = '<b>☁️ على 1fichier</b> · ' + fs.filter(f => f.ok).length + ' ملف' +
       (d.pending ? ' · ⏳ ' + d.pending + ' طلب لسه بيتسحب عند 1fichier (ممكن ياخد وقت)' : '') + (d.queued ? ' · 🕒 ' + d.queued + ' في الطابور (بيترفعوا واحد ورا التاني)' : '') +
       ((d.errs || []).length ? '<div style="color:#fca5a5;font-size:12px;margin-top:4px">⚠️ ' + d.errs.map(esc).join('<br>') + '</div>' : '') +
+      ((d.errs || []).length ? '<div style="font-size:12px;color:#fcd34d;margin-top:4px;line-height:1.7">' + ruHints(d.errs).map(esc).join('<br>') + '</div>' : '') +
       ((d.errs || []).some(e => /lock|#209|#211|هدوء/i.test(e)) ? '<div style="font-size:12px;color:#fcd34d;margin-top:4px;line-height:1.7">ده رد من 1fichier نفسه (مش من الموقع): حسابهم مقفول. ادخل موقع 1fichier بنفس الحساب وشوف في إشعار قفل، وجرّب مفتاح API جديد، ولو فضل اتواصل مع دعمهم. بعدها دوس 🧹.</div>' : '') +
       (d.cool ? '<div style="font-size:12px;color:#a3a3a3;margin-top:4px">⏸ الموقع واقف عن إرسال أي طلب لـ1fichier ' + Math.ceil(d.cool / 60) + ' دقيقة</div>' : '') +
       ' <button class="fc" style="padding:2px 10px" onclick="RU.polls=0;ruLoadLinks()">🔄</button>' +
       ((d.errs || []).length || d.pending ? ' <button class="fc" style="padding:2px 10px" onclick="ruReset()">🧹 إعادة المحاولة</button>' : '') +
+      ' <button class="fc" style="padding:2px 10px;color:#fca5a5" onclick="ruWipe()">🗑 إلغاء ومسح كل حاجة</button>' +
       (d.watch ? ' <button class="fc" style="padding:2px 10px" onclick="ruWatchSet(' + (d.watch.on ? 'false' : 'true') + ')">' + (d.watch.on ? '🔔 المتابعة شغالة (إيقاف)' : '🔕 المتابعة واقفة (تشغيل)') + '</button>' : '') +
       '<div style="margin-top:6px;max-height:220px;overflow:auto">' + fs.map(f => f.ok
         ? '<div style="padding:3px 0;display:flex;gap:8px;align-items:center;justify-content:space-between"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(f.name) + '</span><span style="white-space:nowrap"><a href="' + esc(f.link) + '" target="_blank" rel="noopener" style="color:#5eead4">فتح</a> · <a href="#" style="color:#5eead4" onclick="ruCopy(\'' + esc(f.link) + '\');return false">نسخ</a></span></div>'
@@ -14020,6 +14022,34 @@ async function ruFollow() {
     RU.polls = 0; setTimeout(ruLoadLinks, 2500);
   } catch (e) { toast('❌ ' + e.message, true); }
 }
+function ruHints(errs) {
+  const H = [
+    [/no such remote/i, 'الطلب اتشال من 1fichier بعد ما خلص. الموقع بيدوّر على الملف في المجلد لوحده؛ لو مفيش، دوس 🗑 وابدأ من جديد.'],
+    [/already requested/i, 'الرابط ده اتبعت قبل كده لـ1fichier. استنى يخلص أو امسح المجلد وابدأ من جديد.'],
+    [/lock|flood|#209|#211|#316|too many|هدوء|try again/i, '1fichier حاطط الحساب في هدوء. متدوسش أي حاجة لحد ما المدة تخلص (الموقع هيكمّل لوحده).'],
+    [/bad param|invalid|bad url/i, 'رابط أو بارامتر غلط. الرابط ممكن يكون منتهي (IPTV) أو المجلد اتمسح.'],
+    [/folder|not found|no such/i, 'المجلد مش موجود على 1fichier. دوس 🗑 وبعدها تابع المسلسل من جديد عشان يتعمل مجلد جديد.'],
+    [/space|quota|limit|premium|credit/i, 'مساحة أو حد حساب 1fichier خلص. افضّي مساحة أو غيّر الحساب.'],
+    [/timeout|timed out|connection|502|503|504/i, 'مشكلة اتصال مؤقتة، هيحاول تاني لوحده.'],
+    [/iptv|player_api|محجوب/i, 'السيرفر مش واصل للـIPTV أو الاشتراك منتهي. جرّب IPTV_PROXY أو تأكد من الاشتراك.'],
+    [/api key|unauthorized|forbidden|401|403|invalid key/i, 'مفتاح API بتاع 1fichier غلط أو منتهي. غيّره من الإعدادات.']
+  ];
+  const out = [];
+  (errs || []).forEach(e => { const h = H.find(x => x[0].test(String(e))); if (h && out.indexOf(h[1]) < 0) out.push('💡 ' + h[1]); });
+  return out;
+}
+async function ruWipe(all) {
+  const key = all ? '' : ruKey();
+  if (!confirm(all ? 'إلغاء ومسح كل المسلسلات المتابَعة وطلباتها وروابطها من المكتبة؟' : 'إلغاء ومسح كل حاجة قديمة للمسلسل ده (الطلبات والمتابعة والروابط والكارت في المكتبة)؟')) return;
+  const purge = confirm('تمسح كمان الملفات اللي على 1fichier في مجلد المسلسل؟\n(موافق = امسحها، إلغاء = سيبها)');
+  toast('⏳ بيمسح...');
+  try {
+    const {r, d} = await api('/ru/wipe', {method: 'POST', body: JSON.stringify({key: key, all: !!all, purge: purge})});
+    if (!r.ok || !d.ok) throw new Error(d.error || ('كود ' + r.status));
+    toast('✅ اتمسح ' + d.wiped + ' عمل' + (purge ? ' · ملفات اتمسحت: ' + d.purged : '') + (d.purge_error ? ' · ⚠️ ' + d.purge_error : '') + ' · ابدأ من جديد بـ ⭐ تابع المسلسل', !!d.purge_error);
+  } catch (e) { toast('❌ ' + e.message, true); }
+  RU.polls = 0; setTimeout(ruLoadLinks, 800); try { libRefresh(); } catch (e) {} try { ruWLLoad(); } catch (e) {}
+}
 async function ruReset() {
   toast('⏳ بيمسح الخطأ ويعيد المحاولة...');
   try {
@@ -14042,7 +14072,7 @@ async function ruWLLoad() {
     b.innerHTML =
       (d.cron ? '' : '<div style="background:#7f1d1d55;border:1px solid #b91c1c;border-radius:8px;padding:8px;margin-bottom:10px;font-size:12px;line-height:1.8">⚠️ مفيش CRON_KEY: الفحص التلقائي بيحصل بس لما حد يفتح التطبيق. ظبّط Cron على /cron/ru (شوف الشرح).</div>') +
       (d.cool ? '<div style="color:#fca5a5;font-size:12px;margin-bottom:8px">⏸ 1fichier طلب هدوء: الرفع متوقف ' + Math.ceil(d.cool / 60) + ' د</div>' : '') +
-      '<button class="fc" style="margin-bottom:10px" onclick="ruRunNow()">🔄 افحص وارفع دلوقتي</button>' +
+      '<button class="fc" style="margin-bottom:10px" onclick="ruRunNow()">🔄 افحص وارفع دلوقتي</button> <button class="fc" style="margin-bottom:10px;color:#fca5a5" onclick="ruWipe(true)">🗑 إلغاء ومسح الكل</button>' +
       (d.items.length ? d.items.map(x =>
         '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #ffffff14">' +
         (x.poster ? '<img src="' + esc(x.poster) + '" alt="" style="width:38px;border-radius:6px">' : '') +
