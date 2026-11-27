@@ -4984,7 +4984,7 @@ function ftTap(el) {
   clibLoad().then(() => { const x = clibFind(id); if (!x) return toast('مش لاقيه في المكتبة'); clibOpen(x.cat); clibTap(id); });
 }
 // ---------- لوحة الأدمن ----------
-let FA = null, FT_MODE = 'match', FT_RES = [], _ftT = null;
+let FA = null, FT_MODE = 'match', FT_RES = [], _ftT = null, FA_USER = '', FA_USERS = null;
 const ftId = () => Math.random().toString(36).slice(2, 10);
 const ftHash = s => { let x = 5381; for (let i = 0; i < s.length; i++) x = ((x << 5) + x + s.charCodeAt(i)) | 0; return Math.abs(x).toString(36); };
 function ftDay(n) { const d = new Date(Date.now() + n * 864e5), p = v => String(v).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
@@ -4993,7 +4993,11 @@ async function ftAdmLoad() {
   if (!el) return;
   el.innerHTML = pend('جاري التحميل...');
   try { await ivCfg(true); } catch (e) {}
-  const d = await ftLoad(true);
+  if (!FA_USERS) {
+    try { const {d: ad} = await api('/iptv/admin'); FA_USERS = (ad.items || []).map(x => x.name).filter(n => n && n !== '__all__'); } catch (e) { FA_USERS = []; }
+  }
+  let d = {};
+  try { const {r, d: dd} = await api('/iptv/feat?raw=1' + (FA_USER ? '&u=' + encodeURIComponent(FA_USER) : '')); if (r.ok) d = dd || {}; } catch (e) {}
   FA = JSON.parse(JSON.stringify({mt: d.mt || '', matches: d.matches || [], banners: d.banners || [], popup: d.popup || {on: false}, sec: Object.assign({home: [], movie: [], tv: []}, d.sec || {})}));
   ftAdmRender();
 }
@@ -5003,6 +5007,9 @@ function ftAdmRender() {
   const inp = (v, ph, path) => '<input class="search-input" value="' + esc(v || '') + '" placeholder="' + esc(ph) + '" oninput="' + path + '=this.value">';
   const dt = (v, path, lbl) => '<label>' + lbl + '<input type="date" class="search-input" value="' + esc(v || '') + '" onchange="' + path + '=this.value"></label>';
   let h = '<div class="ftadm">';
+  h += '<h4>👤 بتعدّل مميّز مين؟</h4><select class="search-input" onchange="FA_USER=this.value;ftAdmLoad()"><option value="">🌍 الكل (يظهر لكل الأعضاء)</option>' +
+    (FA_USERS || []).map(n => '<option value="' + esc(n) + '"' + (n === FA_USER ? ' selected' : '') + '>👤 ' + esc(n) + ' فقط</option>').join('') + '</select>' +
+    (FA_USER ? '<small style="color:var(--success);display:block;margin:4px 0">اللي هتضيفه هنا بيظهر للعضو «' + esc(FA_USER) + '» بس، فوق اللي للكل.</small>' : '');
   h += '<h4>⚽ صف الماتشات (فوق كل الصفوف)</h4>' + inp(FA.mt, 'عنوان الصف (افتراضي: ⚽ مباريات النهارده)', 'FA.mt');
   h += FA.matches.map((m, i) => '<div class="ep"><b>📡 ' + esc(m.n) + '</b>' + inp(m.title, 'اسم الماتش: الأهلي × الزمالك', 'FA.matches[' + i + '].title') +
     inp(m.time, 'الميعاد: 9:00 م', 'FA.matches[' + i + '].time') + dt(m.until, 'FA.matches[' + i + '].until', 'يختفي تلقائي بعد يوم:') +
@@ -5033,7 +5040,7 @@ function ftAdmRender() {
     '<button class="fc" onclick="ftMode(\'shome\')">📌 ثبّت في الرئيسية</button><button class="fc" onclick="ftMode(\'smovie\')">📌 ثبّت في الأفلام</button><button class="fc" onclick="ftMode(\'stv\')">📌 ثبّت في المسلسلات</button><button class="fc" onclick="ftAddCustom()">✍️ بانر مكتوب</button></div>' +
     '<small id="ftMode" style="color:var(--success)"></small>' +
     '<input id="ftQ" class="search-input" placeholder="ابحث بالاسم..." oninput="clearTimeout(_ftT);_ftT=setTimeout(ftSearch,300)"><div id="ftRes"></div>' +
-    '<button class="search-btn" style="margin-top:12px" onclick="ftAdmSave(this)">💾 حفظ ونشر للكل</button></div>';
+    '<button class="search-btn" style="margin-top:12px" onclick="ftAdmSave(this)">💾 ' + (FA_USER ? 'حفظ للعضو ده بس' : 'حفظ ونشر للكل') + '</button></div>';
   el.innerHTML = h;
   ftModeLbl();
 }
@@ -5094,10 +5101,10 @@ async function ftAdmSave(btn) {
   const p = FA.popup || {};
   if (p.title || p.text) p.id = ftHash((p.title || '') + '|' + (p.text || '') + '|' + (p.sid || '') + '|' + (p.until || ''));
   try {
-    const {r, d} = await api('/iptv/feat', {method: 'POST', body: JSON.stringify(FA)});
-    if (r.status === 404) alert('السيرفر ما بيعرفش المميّز لسه: ارفع bot.py الجديد وأعد تشغيل السيرفر (Redeploy).');
+    const {r, d} = await api('/iptv/feat', {method: 'POST', body: JSON.stringify(Object.assign({}, FA, FA_USER ? {user: FA_USER} : {}))});
+    if (r.status === 404 && !FA_USER) alert('السيرفر ما بيعرفش المميّز لسه: ارفع bot.py الجديد وأعد تشغيل السيرفر (Redeploy).');
     else if (!r.ok) alert(d.error || ('السيرفر رد بخطأ ' + r.status));
-    else { toast('اتحفظ ونزل للكل ✅'); await ftLoad(true); await ftResolve(); try { localStorage.removeItem('ftpop'); } catch (e) {} renderShelvesSoon(); }
+    else { toast(FA_USER ? 'اتحفظ للعضو ' + FA_USER + ' ✅' : 'اتحفظ ونزل للكل ✅'); await ftLoad(true); await ftResolve(); try { localStorage.removeItem('ftpop'); } catch (e) {} renderShelvesSoon(); }
   } catch (e) { alert('مش قادر أوصل للسيرفر'); }
   btn.disabled = false;
 }
