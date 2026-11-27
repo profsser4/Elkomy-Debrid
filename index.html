@@ -1068,7 +1068,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=83;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=84;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -1350,6 +1350,14 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <input id="provKey" class="search-input ltr" placeholder="API Key (1Fichier: ممكن كذا مفتاح بمسافة بينهم)">
 <button class="search-btn" onclick="addProv()">➕ إضافة مزوّد</button>
 <p style="color:var(--mut);font-size:12px">الرابط بيجرّب المزوّد اللي دومينه بيطابقه أولاً، وبعدين باقي المزوّدين بالترتيب.</p>
+<div class="setcard adm" id="muCard" style="margin-top:14px;text-align:right">
+<b>☁️ MultiUp (رفع ريموت من غير حظر 1fichier)</b>
+<div id="muSt" style="font-size:12px;color:var(--mut);margin:6px 0"></div>
+<input id="muUser" class="search-input ltr" placeholder="يوزر multiup.io" autocomplete="off">
+<input id="muPass" type="password" class="search-input ltr" placeholder="باسورد multiup.io" autocomplete="new-password">
+<div style="display:flex;gap:8px"><button class="search-btn" style="flex:1" onclick="muSave(this)">💾 حفظ واختبار</button><button class="fc" id="muDel" style="display:none;color:#fca5a5" onclick="muDelete()">🗑 حذف</button></div>
+<p style="color:var(--mut);font-size:12px;margin:6px 0 0">بعد الحفظ هيظهر حساب «MultiUp» في نافذة ☁️ رفع. الرفع بيتم على 1fichier وDDownload وRapidgator.</p>
+</div>
 </details>
 
 <details class="action-box adm" id="srvPick" data-save="saveSrvPick" style="text-align:right;margin-top:18px">
@@ -9495,7 +9503,34 @@ async function loadProviders() {
     ).join('') || warn('مفيش مزوّدين. ضيف أول واحد (TorBox مطلوب للتورنت).');
     saveBackup();
     loadSettings();
+    muLoad();
   } catch (e) {}
+}
+async function muLoad() {
+  try {
+    const {d} = await api('/ru/multiup');
+    const on = !!(d && d.on);
+    if ($('muSt')) $('muSt').textContent = on ? '✅ مفعّل بحساب: ' + d.user : 'غير مفعّل';
+    if ($('muDel')) $('muDel').style.display = on ? '' : 'none';
+    if (on && $('muUser') && !$('muUser').value) $('muUser').value = d.user || '';
+  } catch (e) {}
+}
+async function muSave(btn) {
+  const user = $('muUser').value.trim(), pass = $('muPass').value;
+  if (!user || !pass) return alert('اكتب اليوزر والباسورد');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const {r, d} = await api('/ru/multiup', {method: 'POST', body: JSON.stringify({user: user, pass: pass})});
+    if (!r.ok || !d.ok) alert('❌ ' + (d.error || ('كود ' + r.status)));
+    else { $('muPass').value = ''; toast('✅ اتحفظ' + (d.account ? ' (' + d.account + ')' : '')); }
+  } catch (e) { alert('❌ ' + e.message); }
+  btn.disabled = false; btn.textContent = '💾 حفظ واختبار';
+  muLoad();
+}
+async function muDelete() {
+  if (!confirm('حذف حساب MultiUp؟')) return;
+  await api('/ru/multiup', {method: 'DELETE'});
+  $('muUser').value = ''; muLoad();
 }
 async function saveBackup() {
   const ex = await api('/providers/export');
