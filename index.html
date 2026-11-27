@@ -8901,8 +8901,12 @@ function renderSt() {
       '<p style="color:var(--mut);font-size:12px">الباسورد مش بيتخزّن. بنحفظ مفتاح الجلسة بس. الحسابات اللي مسجّلة بفيسبوك أو آبل مفيش ليها باسورد.</p>';
   }
   h += '<h3 class="sec" style="margin-top:16px">الإضافات (' + ST.items.length + ')</h3>' +
-    (ST.items.map(a =>
+    (ST.items.map((a, i) =>
       '<div class="ep"><div class="b">' + esc(a.name) + '<small>' + (a.stream ? '🎞 بتدي نتايج تشغيل' : 'معلومات / كتالوج بس') + '</small></div>' +
+      '<div style="display:flex;flex-direction:column;gap:4px">' +
+      '<button style="padding:4px 10px"' + (i === 0 ? ' disabled' : '') + ' onclick="stMove(\'' + esc(a.id) + '\',\'up\')">▲</button>' +
+      '<button style="padding:4px 10px"' + (i === ST.items.length - 1 ? ' disabled' : '') + ' onclick="stMove(\'' + esc(a.id) + '\',\'down\')">▼</button></div>' +
+      '<button onclick="stEdit(\'' + esc(a.id) + '\')">✏️</button>' +
       '<button style="background:var(--danger);color:#fff" onclick="stDel(\'' + esc(a.id) + '\')">🗑</button></div>').join('')
       || warn('مفيش إضافات. سجّل دخول أو ضيف رابط إضافة.')) +
     '<input id="stUrl" class="search-input ltr" style="margin-top:10px" placeholder="رابط إضافة: https://.../manifest.json أو stremio://...">' +
@@ -8948,6 +8952,25 @@ async function stAdd(btn) {
   alert(d.added ? stMsg(d) : 'الإضافة دي موجودة بالفعل');
   await loadStremio();
   loadProviders();
+}
+async function stMove(id, dir) {
+  const i = ST.items.findIndex(x => x.id === id), j = dir === 'up' ? i - 1 : i + 1;
+  if (i < 0 || j < 0 || j >= ST.items.length) return;
+  [ST.items[i], ST.items[j]] = [ST.items[j], ST.items[i]];   // تحريك فوري
+  renderSt();
+  await stCall(null, '/stremio/addons/' + id + '/move', {dir});
+  loadStremio();
+}
+async function stEdit(id) {
+  const a = ST.items.find(x => x.id === id);
+  if (!a) return;
+  const name = prompt('اسم الإضافة:', a.name);
+  if (name === null) return;
+  const url = prompt('رابط الإضافة (سيبه زي ما هو لو مش عاوز تغيّره):', a.base || '');
+  if (url === null) return;
+  const d = await stCall(null, '/stremio/addons/' + id + '/edit', {name, url});
+  if (d.error) return alert(d.error);
+  await loadStremio();
 }
 async function stDel(id) {
   if (!confirm('حذف الإضافة؟')) return;
