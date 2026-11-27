@@ -1068,7 +1068,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=84;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=85;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -14151,9 +14151,16 @@ async function ruWLLoad() {
         (x.poster ? '<img src="' + esc(x.poster) + '" alt="" style="width:38px;border-radius:6px">' : '') +
         '<div style="flex:1;min-width:0"><b>' + esc(x.name) + '</b><div style="font-size:12px;color:#a3a3a3">✅ ' + x.ok + (x.pending ? ' · ⏳ ' + x.pending + ' بيتسحب' : '') + (x.queued ? ' · 🕒 ' + x.queued + ' في الطابور' : '') + (x.bad ? ' · ❌ ' + x.bad : '') + (x.backlog ? ' · بيكمّل الرفع' : '') + ' · آخر فحص ' + ago(x.chk) + '</div>' +
         (x.err ? '<div style="font-size:12px;color:#fca5a5">⚠️ ' + esc(x.err) + '</div>' : '') + '</div>' +
-        '<button class="fc" data-k="' + esc(x.key) + '" onclick="ruWatchTog(this.dataset.k,' + (x.on ? 'false' : 'true') + ')">' + (x.on ? '🔔 شغّالة' : '🔕 واقفة') + '</button></div>').join('')
+        '<button class="fc" data-k="' + esc(x.key) + '" onclick="ruWatchTog(this.dataset.k,' + (x.on ? 'false' : 'true') + ')">' + (x.on ? '🔔 شغّالة' : '🔕 واقفة') + '</button>' + (d.mu_on ? '<button class=\"fc\" style=\"font-size:12px\" data-k=\"' + esc(x.key) + '\" onclick=\"ruWatchAcc(this.dataset.k,' + (x.mu ? 'false' : 'true') + ')\">' + (x.mu ? '☁️→1fichier' : '1fichier→☁️') + '</button>' : '') + '</div>').join('')
         : '<p style="color:#a3a3a3">مفيش مسلسلات متابَعة. افتح مسلسل IPTV ودوس ⭐ تابع المسلسل.</p>');
   } catch (e) { b.innerHTML = warn(e.message || 'خطأ'); }
+}
+async function ruWatchAcc(key, toMu) {
+  try {
+    const {r, d} = await api('/ru/watch', {method: 'POST', body: JSON.stringify({key: key, acc: toMu ? 'multiup' : '1fichier', now: true})});
+    toast(r.ok && d.ok ? '✅ اتحوّل ' + (toMu ? 'على MultiUp' : 'على 1fichier') + ' والباقي هيكمّل منه' : '❌ ' + (d.error || r.status), !(r.ok && d.ok));
+  } catch (e) { toast('❌ ' + e.message, true); }
+  ruWLLoad();
 }
 async function ruWatchTog(key, on) {
   try { await api('/ru/watch', {method: 'POST', body: JSON.stringify({key: key, on: on, now: on})}); } catch (e) {}
