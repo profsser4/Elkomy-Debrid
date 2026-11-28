@@ -10622,7 +10622,7 @@ async function playBest(s, e) {
   return go(s, e, true, true, true);
 }
 async function quickPlay(s, e) {
-  if (faOn()) return stGo(s, e, true);   // عمل من قسم إضافة: نتايجها بس
+  if (faOn()) return stDirect(s, e, 'play');   // عمل من قسم إضافة: نتايجها بس، تشغيل مباشر
   const lh = libFor(cur, s, e);
   if (lh) {
     const ok = await libPlayFirst(lh, s, e);
@@ -10646,7 +10646,7 @@ async function bestVer(s, e) {
 }
 async function quickDownload(s, e) {
   if (noDl()) return;
-  if (faOn()) return stGo(s, e);   // عمل من قسم إضافة: نتايجها بس (بالأحجام ومنها التحميل)
+  if (faOn()) return stDirect(s, e, 'dl');   // عمل من قسم إضافة: تحميل مباشر من نتايجها
   const lh = libFor(cur, s, e);
   if (lh) {
     scrollToResults();
@@ -10659,9 +10659,10 @@ async function quickDownload(s, e) {
     toast('رابط المكتبة ماشتغلش، بحوّل على التورنت...');
     if (!cur.imdb) { try { pgBack(); } catch (x) {} return go(s, e); }
   }
+  if (cur && !cur.imdb && stOK()) return stDirect(s, e, 'dl');   // من غير IMDb: تحميل مباشر من إضافات TMDB
   if (cur && !cur.imdb) { try { await Promise.race([resolveImdb(cur), sleep(6000)]); } catch (x) {} }
   if (!cur) return;
-  if (!cur.imdb) { try { pgBack(); } catch (x) {} return stOK() ? stGo(s, e) : go(s, e); }   // من غير IMDb: نتايج إضافات TMDB (عربي) بالأحجام ومنها التحميل
+  if (!cur.imdb) { try { pgBack(); } catch (x) {} return stOK() ? stDirect(s, e, 'dl') : go(s, e); }   // من غير IMDb: نتايج إضافات TMDB (عربي) بالأحجام ومنها التحميل
   scrollToResults();
   $('results').innerHTML = pend('بجهّز أحسن نسخة للتحميل...');
   let v = null;
@@ -14309,6 +14310,38 @@ async function ruRunNow() {
 let FAD = null;
 // إضافات عربي/مدبلج/مترجم: زرار مستقل بيعرض نتايج الإضافة دي بس (من غير تورنت ولا إضافات تانية)
 function arAddonItems() { return (ST.items || []).filter(a => a.stream && /arab|aradeb|عرب|subscene|دبل|ترجم/i.test(a.name + ' ' + (a.base || ''))); }
+// تشغيل/تحميل مباشر من نتايج الإضافة (من غير ما تفتح قايمة ولا تنزّل الصفحة): بيختار أحسن نسخة لوحده
+async function stDirect(s, e, mode) {
+  if (!cur || (!cur.imdb && !cur.id)) return;
+  if (mode === 'dl' ? noDl() : noWatch()) return;
+  toast(mode === 'dl' ? '⬇️ بجهّز التحميل...' : '▶️ بجهّز التشغيل...');
+  const my = ++seq;
+  want = s ? {s: s, e: e || null} : null;
+  let d;
+  try {
+    d = (await api('/stremio/streams?type=' + cur.type + '&imdb=' + encodeURIComponent(cur.imdb || '') + '&tmdb=' + cur.id + faQS() +
+      (want ? '&s=' + want.s + '&e=' + (want.e || 1) : ''))).d;
+  } catch (x) { toast('❌ تعذّر الاتصال بالإضافة', true); return; }
+  if (my !== seq) return;
+  const all = (d && d.results) || [];
+  if (!all.length) { toast('❌ ' + ((d && d.error) || 'الإضافة مرجعتش نتايج للحلقة دي'), true); return; }
+  let list = all.filter(wantOK);
+  if (!list.length) list = all.filter(t => !info(t.title).pack);
+  if (!list.length) list = all;
+  torrents = all; STREP = d.report || [];
+  const ready = list.filter(x => x.ref || x.cached);
+  const best = bestOf(ready.length ? ready : list);
+  if (!best) { toast('❌ مفيش نسخة مناسبة', true); return; }
+  if (mode !== 'dl') { shown = [best]; return pullTorrent(0); }
+  const spec = best.ref ? {ref: best.ref, name: best.title, size: best.size, s: s != null ? s : null, e: e != null ? e : null}
+    : {hash: best.hash, name: best.title, slow: true, s: s != null ? s : null, e: e != null ? e : null};
+  const r = await startPlay(spec, 'download');
+  if (r) {
+    PLAY = Object.assign({title: '', poster: '', year: '', type: null, tmdb: null, s: null, e: null}, baseFromCur(spec),
+      {fname: r.name || '', url: r.direct, hls: '', resume: 0, sub: null, subx: '', subOff: false});
+    await dlAuto(r, spec);
+  }
+}
 function stOnly(aid, s, e) {
   if (!cur) return;
   FAD = {aid: aid, mid: '', type: cur.type, id: cur.id};
