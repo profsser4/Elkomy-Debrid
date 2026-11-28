@@ -3945,7 +3945,18 @@ function sxStartVer(sp, v, tok, retry) {
 var vk = v.hash || v.ref || ''; SX.lastSp = sp; SX.lastV = v;
 sxBusy('جاري تجهيز النسخة...', ((v.q || '') + ' ' + szs(v.size)).replace(/^\s+|\s+$/g, ''));
 sxPoll('/play/start', {hash: v.hash || '', ref: v.hash ? '' : (v.ref || ''), name: v.title, size: v.size,
-s: sp.s != null ? sp.s : null, e: sp.s != null ? sp.e : null, slow: !v.instant, mode: 'watch'}, tok, function (err, d) {
+s: sp.s != null ? sp.s : null, e: sp.s != null ? sp.e : null, slow: !v.instant, mode: 'watch'}, tok, function onD(err, d) {
+/* باك: لو السيرفر رجّع ملف غير حلقتنا (نفس الحلقة / أول حلقة) نجيب ملف الحلقة المطلوبة بنفسنا */
+if (!err && d && !d.error && d.direct && sp.s != null && d.pack && d.files && d.torrent_id && !sp._fx) {
+var fm = null; d.files.forEach(function (x) { if (!fm && +x.episode === +sp.e && (x.season == null || +x.season === +sp.s)) fm = x; });
+if (fm && String(fm.id) !== String(d.file_id)) {
+sp._fx = 1;
+return sxPoll('/generate', {query: '', torrent_id: d.torrent_id, file_id: fm.id}, tok, function (e2, r2) {
+if (e2 || !r2 || !r2.direct_link) return onD(null, d);
+onD(null, {direct: r2.direct_link, hls: r2.hls, torrent_id: r2.torrent_id || d.torrent_id, file_id: r2.file_id != null ? r2.file_id : fm.id, name: fm.name, pack: true, files: d.files});
+}, null, 0);
+}
+}
 if (err || !d || d.error || !d.direct) {
 if (vk) SX.failed[vk] = 1;
 return sxFail(err || (d && d.error) || 'حصل خطأ في التجهيز', retry, sp);
