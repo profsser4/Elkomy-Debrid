@@ -5705,30 +5705,64 @@ function tvEp(n, e) {
 }
 const TVSZ = {};
 function tvSzSet(el, t, cls) { if (!el) return; el.textContent = t; el.className = (el.classList.contains('tvsz') ? 'tvsz ' : 'sz ') + (cls || ''); }
+const SZC = {};   // كاش مشترك من السيرفر: "id:s" -> {t, m}
+async function szLoad(id, s) {
+  const k = id + ':' + (s || 0);
+  if (SZC[k] && Date.now() - SZC[k].t < 120000) return SZC[k].m;
+  let m = {};
+  try { const {d} = await api('/series/sizes?id=' + id + '&s=' + (s || 0)); m = (d && d.sizes) || {}; } catch (x) {}
+  SZC[k] = {t: Date.now(), m: m};
+  return m;
+}
+function szShared(id, s, e) { const c = SZC[id + ':' + (s || 0)]; return c && c.m ? c.m[String(e || 0)] : null; }
+function szResult(h) { return h.n ? {t: '⚠️ مفيش نسخة فورية — اضغط ⚙ لاختيار نسخة', c: 'bad'} : {t: '📦 ' + fmtSize(h.z) + ' · ' + (h.q || ''), c: 'ok'}; }
+function szSave(id, s, e, v) {
+  try {
+    const body = v && v.size > 0 ? {id: id, s: s || 0, e: e || 0, z: Math.round(v.size), q: String(qOf(v) || '').slice(0, 12)} : (v ? null : {id: id, s: s || 0, e: e || 0, n: 1});
+    if (body) api('/series/sizes', {method: 'POST', body: JSON.stringify(body)}).catch(() => {});
+  } catch (x) {}
+}
 async function tvSize(el, s, e) {
   if (!cur || !el) return;
   const id = cur.id, k = id + ':' + (s || 0) + ':' + (e || 0);
   if (TVSZ[k]) { tvSzSet(el, TVSZ[k].t, TVSZ[k].c); return; }
+  const sh = szShared(id, s, e);                       // حد تاني حسبها قبل كده: نقراها من السيرفر من غير ما نحسب
+  if (sh) { const r0 = szResult(sh); TVSZ[k] = r0; tvSzSet(el, r0.t, r0.c); return; }
   tvSzSet(el, '⏳ بحسب حجم النسخة...', 'wait');
   try {
     const v = await bestVer(s, e);
     const r = v ? {t: '📦 ' + fmtSize(v.size) + ' · ' + qOf(v), c: 'ok'} : {t: '⚠️ مفيش نسخة فورية — اضغط ⚙ لاختيار نسخة', c: 'bad'};
     TVSZ[k] = r;
+    szSave(id, s, e, v);                               // نسجّلها للباقي
     if (cur && cur.id === id) tvSzSet(el, r.t, r.c);
   } catch (x) { tvSzSet(el, '🔄 تعذّر حساب الحجم', 'bad'); el.dataset.fail = '1'; }
 }
-// يحسب مساحة كل حلقات الموسم، واحدة ورا التانية (السيرفر مش بيتحمّل أكتر)، ويقف لو غيّرت الموسم أو خرجت من الصفحة
+// أول ما تفتح الموسم: بنقرا اللي اتحسب قبل كده من السيرفر (طلب واحد)، ونحسب بس الحلقات الظاهرة اللي لسه مفيش لها نتيجة
 let _tvSzRun = 0;
 async function tvSizeAll(tok) {
   const run = ++_tvSzRun;
-  const rows = Array.from(document.querySelectorAll('#eps .ep.tve')).filter(r => r.querySelector('.sz'));
-  const alive = () => run === _tvSzRun && tok === sReq && document.body.contains(rows[0] || document.body);
+  const all = Array.from(document.querySelectorAll('#eps .ep.tve')).filter(r => r.querySelector('.sz'));
+  if (!all.length) return;
+  if (!window._tvSzScroll) {
+    window._tvSzScroll = 1; let st = 0;
+    document.addEventListener('scroll', () => { clearTimeout(st); st = setTimeout(() => { try { if ($('eps') && cur) tvSizeAll(sReq); } catch (x) {} }, 500); }, {passive: true, capture: true});
+  }
+  const alive = () => run === _tvSzRun && tok === sReq && document.body.contains(all[0]);
+  try { await szLoad(cur.id, +all[0].dataset.s); } catch (x) {}
+  if (!alive()) return;
+  all.forEach(r => {                                    // المتسجّل عند السيرفر: يتعرض فوراً من غير حساب
+    if (r.dataset.z === 'ok') return;
+    const h = szShared(cur.id, +r.dataset.s, +r.dataset.e), z = r.querySelector('.sz');
+    if (h && z) { const x = szResult(h); tvSzSet(z, x.t, x.c); TVSZ[cur.id + ':' + r.dataset.s + ':' + r.dataset.e] = x; r.dataset.z = 'ok'; }
+  });
+  const H = window.innerHeight || 800;
+  const near = r => { const b = r.getBoundingClientRect(); return b.bottom > -H * 0.3 && b.top < H * 1.2; };
+  const rows = all.filter(r => r.dataset.z !== 'ok' && near(r)).slice(0, 6);     // الظاهر بس
   for (let pass = 0; pass < 2; pass++) {
     for (const r of rows) {
       if (!alive()) return;
       const z = r.querySelector('.sz');
       if (!z || r.dataset.z === 'ok') continue;
-      // لو المستخدم بدأ تشغيل أو فتح قايمة النسخ، نستنى شوية
       for (let w = 0; w < 40 && alive() && (($('results') && $('results').querySelector('video,.nfx')) || ($('vpanel') && $('vpanel').style.display === 'flex')); w++) await new Promise(f => setTimeout(f, 750));
       if (!alive()) return;
       z.dataset.fail = '';
@@ -7206,7 +7240,7 @@ async function smapFillSeries(id, force) {
   let added = 0, left = 0, capped = false;
   try {
     const q = info.qname || info.title || '';
-    let budget = 40;
+    let budget = 10;
     for (const sn of (info.seasons || []).filter(x => x.n > 0)) {
       await smapLoad(id, true);
       const eps = await seasonEps(id, sn.n);
@@ -7232,7 +7266,7 @@ async function smapFillSeries(id, force) {
         budget--;
         smapSt('🔄 بجمّع الحلقات تلقائي: S' + p2(sn.n) + 'E' + p2(e) + '...');
         if (await smapResolveOne(id, info.imdb, q, sn.n, e)) added++; else left++;
-        await sleep(1200);
+        await sleep(3000);
       }
       if (capped) break;
     }
