@@ -1350,6 +1350,14 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <input id="provKey" class="search-input ltr" placeholder="API Key (1Fichier: ممكن كذا مفتاح بمسافة بينهم)">
 <button class="search-btn" onclick="addProv()">➕ إضافة مزوّد</button>
 <p style="color:var(--mut);font-size:12px">الرابط بيجرّب المزوّد اللي دومينه بيطابقه أولاً، وبعدين باقي المزوّدين بالترتيب.</p>
+<div class="setcard adm" id="megaCard" style="margin-top:14px;text-align:right">
+<b>☁️ Mega.nz (رفع مباشر وسريع، رابط ورا التاني)</b>
+<div id="megaSt" style="font-size:12px;color:var(--mut);margin:6px 0"></div>
+<input id="megaEmail" class="search-input ltr" placeholder="إيميل mega.nz" autocomplete="off">
+<input id="megaPass" type="password" class="search-input ltr" placeholder="باسورد mega.nz" autocomplete="new-password">
+<div style="display:flex;gap:8px"><button class="search-btn" style="flex:1" onclick="megaSave(this)">💾 حفظ واختبار</button><button class="fc" id="megaDel" style="display:none;color:#fca5a5" onclick="megaDelete()">🗑 حذف</button></div>
+<p style="color:var(--mut);font-size:12px;margin:6px 0 0">بعد الحفظ هيظهر حساب «Mega» أول واحد في نافذة ☁️ رفع. السيرفر بيسحب من اللينك ويرفع لحساب Mega بتاعك مباشرة، وأول ما رابط يخلص بيبدأ اللي بعده على طول. الحساب لازم يكون من غير تحقق بخطوتين (2FA).</p>
+</div>
 <div class="setcard adm" id="muCard" style="margin-top:14px;text-align:right">
 <b>☁️ MultiUp (رفع ريموت من غير حظر 1fichier)</b>
 <div id="muSt" style="font-size:12px;color:var(--mut);margin:6px 0"></div>
@@ -8889,7 +8897,7 @@ async function loadStremio() {
   try {
     const {d} = await api('/stremio/addons');
     const items = d.items || [];
-    ST = {logged: !!d.logged, email: d.email || '', items: items, n: d.n != null ? d.n : items.filter(x => x.stream).length};
+    ST = {src: d.src || 'stremio', logged: !!d.logged, email: d.email || '', items: items, n: d.n != null ? d.n : items.filter(x => x.stream).length};
   } catch (e) {}
   renderSt();
   loadStLib();
@@ -8904,8 +8912,14 @@ async function loadStLib() {
 function renderSt() {
   const el = $('stBox');
   if (!el) return;
-  let h = '';
-  if (ST.logged) {
+  const nv = ST.src === 'nuvio';
+  let h = '<div class="row" style="margin-bottom:12px;gap:8px">' +
+    '<button class="search-btn" style="flex:1;' + (nv ? 'opacity:.55' : 'background:var(--success)') + '" onclick="stSrc(\'stremio\')">' + (nv ? '' : '✅ ') + 'Stremio</button>' +
+    '<button class="search-btn" style="flex:1;' + (nv ? 'background:var(--success)' : 'opacity:.55') + '" onclick="stSrc(\'nuvio\')">' + (nv ? '✅ ' : '') + 'Nuvio</button></div>' +
+    '<p style="color:var(--mut);font-size:12px;margin:0 0 10px">المصدر المختار هو اللي إضافاته بتظهر وبتشتغل في الموقع. كل مصدر ليه قايمة إضافات لوحده، والتبديل مابيمسحش حاجة.</p>';
+  if (nv) {
+    h += '<p style="color:var(--mut);font-size:12px">إضافات Nuvio هي نفس إضافات Stremio (لينك manifest.json). الصق لينك أو أكتر (كل لينك في سطر) من nuvio.tv أو من صفحة إعداد أي إضافة.</p>';
+  } else if (ST.logged) {
     h += '<div class="warn" style="color:var(--success);border-color:var(--success)">✅ متصل بحساب: <span class="fn" style="display:inline">' + esc(ST.email) + '</span></div>' +
       '<div class="row" style="margin-bottom:12px">' +
       '<button class="search-btn btn-blue" onclick="stSync(this)">🔄 مزامنة من حسابي</button>' +
@@ -8924,10 +8938,10 @@ function renderSt() {
       '<button style="padding:4px 10px"' + (i === ST.items.length - 1 ? ' disabled' : '') + ' onclick="stMove(\'' + esc(a.id) + '\',\'down\')">▼</button></div>' +
       '<button onclick="stEdit(\'' + esc(a.id) + '\')">✏️</button>' +
       '<button style="background:var(--danger);color:#fff" onclick="stDel(\'' + esc(a.id) + '\')">🗑</button></div>').join('')
-      || warn('مفيش إضافات. سجّل دخول أو ضيف رابط إضافة.')) +
-    '<input id="stUrl" class="search-input ltr" style="margin-top:10px" placeholder="رابط إضافة: https://.../manifest.json أو stremio://...">' +
-    '<button class="search-btn btn-blue" onclick="stAdd(this)">➕ إضافة إضافة برابط</button>' +
-    '<p style="color:var(--mut);font-size:12px">الحذف هنا بيشيل الإضافة من موقعك بس، مش من حساب Stremio. ولو الإضافة فيها مفتاح دابريد (زي Torrentio) بيتضاف تلقائياً في المزوّدين.</p>';
+      || warn('مفيش إضافات في المصدر ده. ضيف رابط إضافة' + (nv ? '' : ' أو سجّل دخول') + '.')) +
+    '<textarea id="stUrl" rows="2" class="search-input ltr" style="margin-top:10px;width:100%" placeholder="رابط إضافة: https://.../manifest.json أو stremio://...  (تقدر تلزق أكتر من لينك، كل واحد في سطر)"></textarea>' +
+    '<button class="search-btn btn-blue" onclick="stAdd(this)">➕ إضافة برابط (أو أكتر)</button>' +
+    '<p style="color:var(--mut);font-size:12px">الحذف هنا بيشيل الإضافة من موقعك بس، مش من حساب ' + (nv ? 'Nuvio' : 'Stremio') + '. ولو الإضافة فيها مفتاح دابريد (زي Torrentio) بيتضاف تلقائياً في المزوّدين.</p>';
   el.innerHTML = h;
 }
 async function stCall(btn, path, body) {
@@ -8962,10 +8976,18 @@ async function stLogout() {
   await stCall(null, '/stremio/logout');
   await loadStremio();
 }
+async function stSrc(s) {
+  if (ST.src === s) return;
+  const {r, d} = await api('/settings', {method: 'POST', body: JSON.stringify({asrc: s})});
+  if (!r.ok || d.error) return alert(d.error || ('كود ' + r.status));
+  toast('✅ المصدر دلوقتي: ' + (s === 'nuvio' ? 'Nuvio' : 'Stremio'));
+  await loadStremio();
+  loadProviders();
+}
 async function stAdd(btn) {
-  const d = await stCall(btn, '/stremio/addon', {url: $('stUrl').value});
+  const d = await stCall(btn, '/stremio/addon', {urls: $('stUrl').value});
   if (d.error) return alert(d.error);
-  alert(d.added ? stMsg(d) : 'الإضافة دي موجودة بالفعل');
+  alert((d.added ? stMsg(d) : 'مفيش إضافة جديدة (موجودة بالفعل)') + ((d.errs || []).length ? '\n\n⚠️ ' + d.errs.join('\n') : ''));
   await loadStremio();
   loadProviders();
 }
@@ -9511,7 +9533,34 @@ async function loadProviders() {
     saveBackup();
     loadSettings();
     muLoad();
+    megaLoad();
   } catch (e) {}
+}
+async function megaLoad() {
+  try {
+    const {d} = await api('/ru/mega');
+    const on = !!(d && d.on);
+    if ($('megaSt')) $('megaSt').textContent = on ? '✅ مفعّل بحساب: ' + d.user : 'غير مفعّل' + (d && d.crypto === false ? ' · ⚠️ مكتبة cryptography مش متسطّبة على السيرفر (ضيفها في requirements.txt)' : '');
+    if ($('megaDel')) $('megaDel').style.display = on ? '' : 'none';
+    if (on && $('megaEmail') && !$('megaEmail').value) $('megaEmail').value = d.user || '';
+  } catch (e) {}
+}
+async function megaSave(btn) {
+  const email = $('megaEmail').value.trim(), pass = $('megaPass').value;
+  if (!email || !pass) return alert('اكتب الإيميل والباسورد');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const {r, d} = await api('/ru/mega', {method: 'POST', body: JSON.stringify({email: email, pass: pass})});
+    if (!r.ok || !d.ok) alert('❌ ' + (d.error || ('كود ' + r.status)));
+    else { $('megaPass').value = ''; toast('✅ اتحفظ حساب Mega'); }
+  } catch (e) { alert('❌ ' + e.message); }
+  btn.disabled = false; btn.textContent = '💾 حفظ واختبار';
+  megaLoad();
+}
+async function megaDelete() {
+  if (!confirm('حذف حساب Mega؟')) return;
+  await api('/ru/mega', {method: 'DELETE'});
+  $('megaEmail').value = ''; megaLoad();
 }
 async function muLoad() {
   try {
@@ -13800,12 +13849,13 @@ async function ruStart(kind, ix) {
     if (!r.ok) throw new Error(d.error || 'كود ' + r.status);
     RU.acc = d.items || [];
   } catch (e) { msg.textContent = '⚠️ ' + e.message + ' (تأكد إن bot.py الجديد متركّب على السيرفر)'; return; }
-  if (!RU.acc.length) { msg.textContent = '⚠️ مفيش حساب 1fichier بمفتاح API. ضيف واحد من الإعدادات → المزوّدين.'; return; }
+  if (!RU.acc.length) { msg.textContent = '⚠️ مفيش حساب رفع. ضيف حساب Mega (أو 1fichier / MultiUp) من الإعدادات → المزوّدين.'; return; }
   sel.innerHTML = RU.acc.map(a => '<option value="' + esc(a.id) + '">' + esc(a.name) + (a.cdn ? ' (CDN)' : '') + ' · ' + esc(a.key) + '</option>').join('');
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem('ruNav') || 'null'); } catch (e) {}
   if (saved && RU.acc.some(a => a.id === saved.acc)) { sel.value = saved.acc; RU.nav = saved.nav && saved.nav.length ? saved.nav : [{id: 0, name: 'الرئيسي'}]; }
   else RU.nav = [{id: 0, name: 'الرئيسي'}];
+  if (!saved) { const mg = RU.acc.find(a => a.type === 'mega'); if (mg) sel.value = mg.id; }
   sel.onchange = () => { RU.nav = [{id: 0, name: 'الرئيسي'}]; ruLoadSubs(); };
   ruLoadSubs();
   $('ruGo').onclick = async () => {
@@ -13854,8 +13904,8 @@ async function ruLoadLinks() {
     const fs = d.files || [];
     if (!fs.length && !d.pending && !d.queued && !d.watch) { box.style.display = 'none'; return; }
     box.style.display = '';
-    box.innerHTML = '<b>☁️ على 1fichier</b> · ' + fs.filter(f => f.ok).length + ' ملف' +
-      (d.pending ? ' · ⏳ ' + d.pending + ' طلب لسه بيتسحب عند 1fichier (ممكن ياخد وقت)' : '') + (d.queued ? ' · 🕒 ' + d.queued + ' في الطابور (بيترفعوا واحد ورا التاني)' : '') +
+    box.innerHTML = '<b>☁️ الرفع</b> · ' + fs.filter(f => f.ok).length + ' ملف' +
+      (d.prog ? ' · ⬆️ بيترفع على Mega: <span style="direction:ltr;display:inline-block">' + esc(d.prog.name) + ' ' + d.prog.pct + '% (' + d.prog.mb + ' MB)</span>' : (d.pending ? ' · ⏳ ' + d.pending + ' طلب لسه بيتسحب (ممكن ياخد وقت)' : '')) + (d.queued ? ' · 🕒 ' + d.queued + ' في الطابور (بيترفعوا واحد ورا التاني)' : '') +
       ((d.errs || []).length ? '<div style="color:#fca5a5;font-size:12px;margin-top:4px">⚠️ ' + d.errs.map(esc).join('<br>') + '</div>' : '') +
       ((d.errs || []).length ? '<div style="font-size:12px;color:#fcd34d;margin-top:4px;line-height:1.7">' + ruHints(d.errs).map(esc).join('<br>') + '</div>' : '') +
       ((d.errs || []).some(e => /lock|#209|#211|هدوء/i.test(e)) ? '<div style="font-size:12px;color:#fcd34d;margin-top:4px;line-height:1.7">ده رد من 1fichier نفسه (مش من الموقع): حسابهم مقفول. ادخل موقع 1fichier بنفس الحساب وشوف في إشعار قفل، وجرّب مفتاح API جديد، ولو فضل اتواصل مع دعمهم. بعدها دوس 🧹.</div>' : '') +
@@ -13867,7 +13917,7 @@ async function ruLoadLinks() {
       '<div style="margin-top:6px;max-height:220px;overflow:auto">' + fs.map(f => f.ok
         ? '<div style="padding:3px 0;display:flex;gap:8px;align-items:center;justify-content:space-between"><span style="direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(f.name) + '</span><span style="white-space:nowrap"><a href="' + esc(f.link) + '" target="_blank" rel="noopener" style="color:#5eead4">فتح</a> · <a href="#" style="color:#5eead4" onclick="ruCopy(\'' + esc(f.link) + '\');return false">نسخ</a></span></div>'
         : '<div style="padding:3px 0;color:#fca5a5">❌ ' + esc(f.name) + ' — ' + esc(f.err || 'فشل') + '</div>').join('') + '</div>';
-    if ((d.pending || d.queued) && RU.polls++ < 40) setTimeout(ruLoadLinks, 15000);
+    if ((d.pending || d.queued) && RU.polls++ < (d.prog ? 600 : 40)) setTimeout(ruLoadLinks, d.prog ? 5000 : 15000);
   } catch (e) {}
 }
 async function ruWatchSet(on) {
