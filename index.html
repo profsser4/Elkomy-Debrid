@@ -2854,7 +2854,7 @@ function nfEp(n, e) {
     '<div class="b"><div class="tt"><span>' + e.n + '. ' + esc(e.name || ('حلقة ' + e.n)) + '</span></div>' +
     '<small>' + esc(mins) + (mins && e.date ? ' · ' : '') + esc(e.date || '') + (fut ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') + epMark(cur.id, n, e.n) +
     (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚</span>' : '') + '</small>' +
-    (cur && cur.imdb && !fut ? '<div class="sz wait">⏳ في الانتظار...</div>' : '') +
+    (cur && cur.imdb && !fut ? '<div class="sz wait">⏳ في الانتظار...</div>' : (cur && !fut ? '<div class="sz" style="cursor:pointer" onclick="' + (stOK() ? 'stGo' : 'go') + '(' + n + ',' + e.n + ')">📦 اعرض النسخ والأحجام</div>' : '')) +
     (e.overview ? '<div class="od">' + esc(e.overview) + '</div>' : '') + '</div>' +
     '<div class="eacts"><button class="nfmore" aria-label="تشغيل / تحميل / تغيير النسخة" onclick="nfEpMenu(' + n + ',' + e.n + ')">' + IC('dl') + '</button></div></div>';
 }
@@ -2868,7 +2868,8 @@ function nfEpMenu(s, e) {
   const it = (ic, tx, fn) => '<button onclick="nfSheetClose();' + fn + '">' + ic + '<span>' + tx + '</span></button>';
   let h = '<div class="nfs-t">' + esc(ttl) + (sz ? '<small>' + esc(sz) + '</small>' : '') + '</div>' +
     it(IC('play'), 'تشغيل', 'quickPlay(' + s + ',' + e + ')');
-  if (src) h += it(IC('dl'), 'تحميل', 'quickDownload(' + s + ',' + e + ')') + it(IC('opts'), 'تغيير النسخة', 'playOpen(' + s + ',' + e + ')');
+  h += it(IC('dl'), 'تحميل', 'quickDownload(' + s + ',' + e + ')');
+  if (src) h += it(IC('opts'), 'تغيير النسخة', 'playOpen(' + s + ',' + e + ')');
   if (stOK()) h += it('🧩', 'نسخ Stremio', 'stGo(' + s + ',' + e + ')');
   h += it('🧲', 'نسخ التورنت', 'go(' + s + ',' + e + ')');
   const d = document.createElement('div');
@@ -5694,7 +5695,7 @@ function tvEp(n, e) {
     (e.overview ? '<div class="od">' + esc(e.overview) + '</div>' : '') +
     '<small>' + esc(e.date || '') + (fut ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') + epMark(cur.id, n, e.n) +
     (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚</span>' : '') + '</small>' +
-    (cur && cur.imdb && !fut ? '<div class="sz wait">⏳ في الانتظار...</div>' : '') + '</div>' +
+    (cur && cur.imdb && !fut ? '<div class="sz wait">⏳ في الانتظار...</div>' : (cur && !fut ? '<div class="sz" style="cursor:pointer" onclick="' + (stOK() ? 'stGo' : 'go') + '(' + n + ',' + e.n + ')">📦 اعرض النسخ والأحجام</div>' : '')) + '</div>' +
     '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
     (!cur.imdb ? '<button class="mg" aria-label="تشغيل" onclick="go(' + n + ',' + e.n + ',true)">▶</button>' : '') + '</div></div>';
 }
@@ -5753,7 +5754,7 @@ async function loadSeason(n) {
         '<div class="b"><div class="tt"><span><i class="en">' + e.n + '</i>' + esc(e.name || ('حلقة ' + e.n)) + '</span>' + (e.runtime ? '<em>' + e.runtime + ' د</em>' : '') + '</div><small>' + esc(e.date) + (e.date && e.date > new Date().toISOString().slice(0, 10) ? ' <span style="color:#f59e0b">⏳ لسه ما نزلتش</span>' : '') +
         epMark(cur.id, n, e.n) + (smapSpec(cur.id, n, e.n) ? ' <span style="color:#38bdf8">📌 مضافة</span>' : '') + (libFor(cur, n, e.n) ? ' <span style="color:#22c55e">📚 مكتبتي</span>' : '') + '</small>' +
         (e.overview ? '<div class="od">' + esc(e.overview) + '</div>' : '') +
-        (cur && cur.imdb && !(e.date && e.date > new Date().toISOString().slice(0, 10)) ? '<div class="sz wait">⏳ في الانتظار...</div>' : '') + '</div>' +
+        (cur && cur.imdb && !(e.date && e.date > new Date().toISOString().slice(0, 10)) ? '<div class="sz wait">⏳ في الانتظار...</div>' : (cur && !(e.date && e.date > new Date().toISOString().slice(0, 10)) ? '<div class="sz" style="cursor:pointer" onclick="' + (stOK() ? 'stGo' : 'go') + '(' + n + ',' + e.n + ')">📦 اعرض النسخ والأحجام</div>' : '')) + '</div>' +
         '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
         (ADV() || !cur.imdb ? '<button class="mg" aria-label="تورنت" onclick="go(' + n + ',' + e.n + ')">🧲 بحث تورنت</button>' : '') + '</div></div>').join('');
     tvSizeAll(my);
@@ -10637,7 +10638,9 @@ async function quickDownload(s, e) {
     toast('رابط المكتبة ماشتغلش، بحوّل على التورنت...');
     if (!cur.imdb) { try { pgBack(); } catch (x) {} return go(s, e); }
   }
-  if (!cur || !cur.imdb) return alert('العمل ده مالوش بيانات كافية للتحميل');
+  if (cur && !cur.imdb) { try { await Promise.race([resolveImdb(cur), sleep(6000)]); } catch (x) {} }
+  if (!cur) return;
+  if (!cur.imdb) { try { pgBack(); } catch (x) {} return stOK() ? stGo(s, e) : go(s, e); }   // من غير IMDb: نتايج إضافات TMDB (عربي) بالأحجام ومنها التحميل
   scrollToResults();
   $('results').innerHTML = pend('بجهّز أحسن نسخة للتحميل...');
   let v = null;
