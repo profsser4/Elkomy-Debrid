@@ -5726,6 +5726,9 @@ async function tvSize(el, s, e) {
   if (!cur || !el) return;
   const id = cur.id, k = id + ':' + (s || 0) + ':' + (e || 0);
   if (TVSZ[k]) { tvSzSet(el, TVSZ[k].t, TVSZ[k].c); return; }
+  try {                                                // الحلقة متضافة (📌) أو في المكتبة (📚): بتشتغل علطول، مفيش داعي نبحث
+    if (smapSpec(id, s, e) || libFor(cur, s, e)) { const r1 = {t: '✅ جاهزة للتشغيل', c: 'ok'}; TVSZ[k] = r1; tvSzSet(el, r1.t, r1.c); return; }
+  } catch (x) {}
   const sh = szShared(id, s, e);                       // حد تاني حسبها قبل كده: نقراها من السيرفر من غير ما نحسب
   if (sh) { const r0 = szResult(sh); TVSZ[k] = r0; tvSzSet(el, r0.t, r0.c); return; }
   tvSzSet(el, '⏳ بحسب حجم النسخة...', 'wait');
@@ -11090,7 +11093,7 @@ function catView() {
     const hr0 = ((prof() || {}).hr) || [];
     (ROWS || []).forEach(r => { if (hr0.includes(r.id)) return; const it = (r.items || []).filter(x => x.aid && ok(x)); if (it.length) h += row(r.title, it, r.id); });
     if (!ROWS) return pend('جاري تحميل صفوف الإضافات...');
-    return h || warn('مفيش حاجة من الإضافات هنا لسه. أي إضافة تضيفها هتظهر هنا لوحدها.');
+    return h || pend('جاري التحميل...');
   }
   // كمّل المشاهدة (للقسم ده بس)
   const groups = new Map();
