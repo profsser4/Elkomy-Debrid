@@ -1069,7 +1069,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=86;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=87;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -5710,7 +5710,7 @@ async function loadSeason(n) {
     if (d.error) return b.innerHTML = warn(d.error);
     await smapLoad(cur.id);
     if (my !== sReq) return;
-    b.innerHTML = (!cur.imdb ? '<p style="margin:0 0 10px;color:#f59e0b;font-size:13px">ℹ️ المسلسل ده مالوش رقم IMDb، فالتشغيل بيجرّب إضافات TMDB (Nuvio) الأول وبعدها التورنت. تقدر كمان تدوس «🧲 بحث تورنت» عند الحلقة أو «📦 الموسم كامل».</p>' : '') + (smapKeys(SMAP[cur.id]).length ? '<p style="margin:0 0 10px;color:#38bdf8;font-size:13px">📌 المسلسل متضاف للكل: ' + smapKeys(SMAP[cur.id]).length + ' حلقة بتشتغل ورا بعض</p>' : '') + (!isTv() && (ADV() || !cur.imdb) ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
+    b.innerHTML = (smapKeys(SMAP[cur.id]).length ? '<p style="margin:0 0 10px;color:#38bdf8;font-size:13px">📌 المسلسل متضاف للكل: ' + smapKeys(SMAP[cur.id]).length + ' حلقة بتشتغل ورا بعض</p>' : '') + (!isTv() && (ADV() || !cur.imdb) ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
       (!isTv() && ROLE === 'admin' && cur.imdb ? '<button class="search-btn" style="margin-bottom:10px;background:#0ea5e9" onclick="playOpen(' + n + ',1)">📌 ضيف الموسم ' + n + ' كله (اختار نسخة)</button>' : '') +
       d.episodes.map(e => isTv() ? tvEp(n, e) : isPh() ? nfEp(n, e) : '<div class="ep ept tve" data-s="' + n + '" data-e="' + e.n + '">' +
         (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '') +
@@ -5747,9 +5747,8 @@ function go(s, e, auto, skipSt, skipNew) {
     smapTry({title: cur.title || cur.name, poster: cur.poster, year: cur.year, type: 'tv', tmdb: cur.id, imdb: cur.imdb || '', qn: cur.qname || ''}, s, e);
     return;
   }
-  if (auto && !skipNew && cur && cur.imdb) return playBest(s, e);
-  if (auto && !skipSt && (ST.n > 0 || ROLE !== 'admin') && cur && cur.imdb) return stGo(s, e, true);
-  if (auto && !skipSt && (ST.n > 0 || ROLE !== 'admin') && cur && !cur.imdb && cur.id) return stGo(s, e, true);   // من غير IMDb: إضافات TMDB (Nuvio) الأول، وبعدها التورنت
+  if (auto && !skipSt && (ST.n > 0 || ROLE !== 'admin') && cur && (cur.id || cur.imdb)) return stGo(s, e, true);   // TMDB أول وأساسي: إضافات TMDB الأول
+  if (auto && !skipNew && cur && cur.imdb) return playBest(s, e);   // مسار IMDb بقى احتياطي بعد TMDB
   want = s ? {s: s, e: e || null} : null;
   let nm = (cur.qname || cur.search_title || '').trim();
   // الاسم العربي دايماً بديل أخير: ناس كتير بترفع التورنت بالعربي (مثلاً «بوابة الحلواني»)
