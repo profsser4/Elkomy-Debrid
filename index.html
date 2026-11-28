@@ -2869,9 +2869,13 @@ function nfEpMenu(s, e) {
   let h = '<div class="nfs-t">' + esc(ttl) + (sz ? '<small>' + esc(sz) + '</small>' : '') + '</div>' +
     it(IC('play'), 'تشغيل', 'quickPlay(' + s + ',' + e + ')');
   h += it(IC('dl'), 'تحميل', 'quickDownload(' + s + ',' + e + ')');
+  if (faOn()) h += it('🌍', 'النسخ والأحجام (الإضافة)', 'stGo(' + s + ',' + e + ')');
+  else {
   if (src) h += it(IC('opts'), 'تغيير النسخة', 'playOpen(' + s + ',' + e + ')');
   if (stOK()) h += it('🧩', 'نسخ Stremio', 'stGo(' + s + ',' + e + ')');
+  h += arAddonItems(s, e).map(x => it('🌍', x.name + ' فقط (عربي/مدبلج)', "stOnly('" + esc(x.id) + "'," + s + ',' + e + ')')).join('');
   h += it('🧲', 'نسخ التورنت', 'go(' + s + ',' + e + ')');
+  }
   const d = document.createElement('div');
   d.id = 'nfsheet';
   d.innerHTML = '<div class="nfs-bg" onclick="nfSheetClose()"></div><div class="nfs-box">' + h + '</div>';
@@ -3012,8 +3016,8 @@ async function openDetails(type, id) {
             '<button class="search-btn nfg" style="margin-top:8px" onclick="playOpen()">⚙ اختيار الجودة</button>' +
             (lib0 ? '<div class="libhit">📚 متوفر في مكتبتك</div>' : '');
         }
-        if (stOK() && (ADV() || !d.imdb)) playBlock += '<button class="search-btn nfg" style="margin-top:8px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
-        if (ADV() || !d.imdb) playBlock += '<button class="search-btn nfg" style="margin-top:8px" onclick="go()">🧲 نسخ التورنت</button>';
+        if (!faOn() && stOK() && (ADV() || !d.imdb)) playBlock += '<button class="search-btn nfg" style="margin-top:8px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
+        if (!faOn() && (ADV() || !d.imdb)) playBlock += '<button class="search-btn nfg" style="margin-top:8px" onclick="go()">🧲 نسخ التورنت</button>';
       } else if (!(cb)) {
         playBlock = '<button class="search-btn nfw" onclick="quickPlay(' + s0 + ',1)">▶ عرض الحلقة 1</button>';
       }
@@ -3038,8 +3042,8 @@ async function openDetails(type, id) {
       const lib0 = libFor(d);
       if (lib0) h += '<div class="libhit">📚 متوفر في مكتبتك — التشغيل والتحميل بيستخدموا رابط المكتبة الأول، ولو وقع بيحوّل على التورنت تلقائي.</div>';
       if (d.imdb || lib0 || isTv()) h += '<div class="row" style="margin-bottom:10px"><button class="search-btn" onclick="quickPlay()">▶ تشغيل</button>' + (isTv() ? '<span class="tvsz" id="tvMsz"></span>' : '<button class="search-btn" style="background:#0ea5e9" onclick="quickDownload()">⬇ تحميل</button>') + '</div>' + (!isTv() && d.imdb ? '<div class="sz wait msz" id="tvMsz" style="margin:-2px 0 10px"></div>' : '') + '<button class="search-btn" style="background:#334155;margin-bottom:10px" onclick="playOpen()">⚙ اختيار الجودة</button>';
-      if (stOK() && (ADV() || !d.imdb)) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
-      if ((ADV() || !d.imdb) && !isTv()) h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
+      if (!faOn() && stOK() && (ADV() || !d.imdb)) h += '<button class="search-btn" style="background:#7c3aed;margin-bottom:10px" onclick="stGo()">🧩 نتايج إضافات Stremio</button>';
+      if (!faOn() && (ADV() || !d.imdb) && !isTv()) h += '<button class="search-btn btn-blue" onclick="go()">🧲 نسخ التورنت</button>';
     } else {
       h += '<div class="tabs">' + d.seasons.map(s =>
         '<button class="tab" id="tab' + s.n + '" onclick="loadSeason(' + s.n + ')">الموسم ' + s.n + '</button>'
@@ -5747,7 +5751,7 @@ async function loadSeason(n) {
     if (d.error) return b.innerHTML = warn(d.error);
     await smapLoad(cur.id);
     if (my !== sReq) return;
-    b.innerHTML = (smapKeys(SMAP[cur.id]).length ? '<p style="margin:0 0 10px;color:#38bdf8;font-size:13px">📌 المسلسل متضاف للكل: ' + smapKeys(SMAP[cur.id]).length + ' حلقة بتشتغل ورا بعض</p>' : '') + (!isTv() && (ADV() || !cur.imdb) ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
+    b.innerHTML = (smapKeys(SMAP[cur.id]).length ? '<p style="margin:0 0 10px;color:#38bdf8;font-size:13px">📌 المسلسل متضاف للكل: ' + smapKeys(SMAP[cur.id]).length + ' حلقة بتشتغل ورا بعض</p>' : '') + (!faOn() && !isTv() && (ADV() || !cur.imdb) ? '<button class="search-btn btn-blue" style="margin-bottom:10px" onclick="go(' + n + ')">📦 الموسم ' + n + ' كامل</button>' : '') +
       (!isTv() && ROLE === 'admin' && cur.imdb ? '<button class="search-btn" style="margin-bottom:10px;background:#0ea5e9" onclick="playOpen(' + n + ',1)">📌 ضيف الموسم ' + n + ' كله (اختار نسخة)</button>' : '') +
       d.episodes.map(e => isTv() ? tvEp(n, e) : isPh() ? nfEp(n, e) : '<div class="ep ept tve" data-s="' + n + '" data-e="' + e.n + '">' +
         (e.still ? '<img ' + lzA(e.still) + ' alt="">' : '') +
@@ -5756,7 +5760,7 @@ async function loadSeason(n) {
         (e.overview ? '<div class="od">' + esc(e.overview) + '</div>' : '') +
         (cur && cur.imdb && !(e.date && e.date > new Date().toISOString().slice(0, 10)) ? '<div class="sz wait">⏳ في الانتظار...</div>' : (cur && !(e.date && e.date > new Date().toISOString().slice(0, 10)) ? '<div class="sz" style="cursor:pointer" onclick="' + (stOK() ? 'stGo' : 'go') + '(' + n + ',' + e.n + ')">📦 اعرض النسخ والأحجام</div>' : '')) + '</div>' +
         '<div class="eacts">' + playBtn(n, e.n) + (ADV() ? stBtn(n, e.n) : '') +
-        (ADV() || !cur.imdb ? '<button class="mg" aria-label="تورنت" onclick="go(' + n + ',' + e.n + ')">🧲 بحث تورنت</button>' : '') + '</div></div>').join('');
+        (!faOn() && (ADV() || !cur.imdb) ? '<button class="mg" aria-label="تورنت" onclick="go(' + n + ',' + e.n + ')">🧲 بحث تورنت</button>' : '') + '</div></div>').join('');
     tvSizeAll(my);
   } catch (e) { if (my === sReq) b.innerHTML = ERR; }
 }
@@ -6409,6 +6413,20 @@ async function torSearchQ(q){
 const spCap = id => isTv() ? ({titles: 10, torrent: 20}[id] || 10) : 1e9;
 const spNorm = v => String(v || '').toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه');
 const SOURCES = [
+  {id: 'aadd', icon: '🌍', name: 'إضافات عربي', color: '#16a34a',
+   search: async q => {
+     const {d} = await apiQ('/stremio/asearch?q=', q);
+     if (d.error) throw new Error(d.error);
+     return d.results || [];
+   },
+   title: t => t.title, thumb: t => t.poster || '',
+   meta: t => (t.type === 'tv' ? '📺 مسلسل' : '🎬 فيلم') + (t.year ? ' · ' + t.year : '') + (t.an ? ' · ' + t.an : ''),
+   open: t => {
+     FAD = {aid: t.aid, mid: t.mid || '', pend: true};   // التشغيل بيتحصر على الإضافة دي بس
+     if (t.id) return openDetails(t.type, t.id);
+     if (t.imdb) return openImdb(t.imdb, t.type);
+     if (t.lk) return openLookup({dataset: {q: t.title, t: t.type, y: t.year || ''}});
+   }},
   {id: 'titles', icon: '🎬', name: 'أعمال', color: '#8b5cf6',
    search: async q => {
      const {d} = await apiQ('/tmdb?q=', q);
@@ -6528,7 +6546,7 @@ function dmDur(s) {
 const SPG = {open: false, sy: 0, rt: {}};
 const spCat = x => x.s.id === 'titles' ? x.t.type : x.s.id;          // movie | tv | torrent | dm
 const spKey = x => spCat(x) + ':' + (x.t.id || x.t.imdb || x.t.title);
-const SP_TABS = [['all', 'الكل'], ['movie', '🎬 أفلام'], ['tv', '📺 مسلسلات'], ['torrent', '🧲 تورنت'], ['dm', '▶️ Dailymotion'], ['iptv', '📡 IPTV'], ['arc', '🏛 Archive.org'], ['rt', '🇷🇺 Rutube']];
+const SP_TABS = [['all', 'الكل'], ['aadd', '🌍 إضافات عربي'], ['movie', '🎬 أفلام'], ['tv', '📺 مسلسلات'], ['torrent', '🧲 تورنت'], ['dm', '▶️ Dailymotion'], ['iptv', '📡 IPTV'], ['arc', '🏛 Archive.org'], ['rt', '🇷🇺 Rutube']];
 const fmtMin = m => { m = Math.round(+m || 0); return !m ? '' : (m >= 60 ? Math.floor(m / 60) + 'س' + (m % 60 ? ' ' + (m % 60) + 'د' : '') : m + 'د'); };
 function spOpen(q) {
   const o = $('sp');
@@ -10155,6 +10173,7 @@ function closeVP() {
   }
 }
 async function playOpen(s, e) {
+  if (faOn()) return stGo(s, e);   // عمل من قسم إضافة: نتايجها بس
   AUTO_N = 0;
   if (!cur || !cur.imdb) return alert('العمل ده مالوش بيانات كافية للتشغيل');
   want = s ? {s: s, e: e || null} : null;
@@ -10603,6 +10622,7 @@ async function playBest(s, e) {
   return go(s, e, true, true, true);
 }
 async function quickPlay(s, e) {
+  if (faOn()) return stGo(s, e, true);   // عمل من قسم إضافة: نتايجها بس
   const lh = libFor(cur, s, e);
   if (lh) {
     const ok = await libPlayFirst(lh, s, e);
@@ -10626,6 +10646,7 @@ async function bestVer(s, e) {
 }
 async function quickDownload(s, e) {
   if (noDl()) return;
+  if (faOn()) return stGo(s, e);   // عمل من قسم إضافة: نتايجها بس (بالأحجام ومنها التحميل)
   const lh = libFor(cur, s, e);
   if (lh) {
     scrollToResults();
@@ -14286,6 +14307,13 @@ async function ruRunNow() {
 <script>
 // ===== v89: العمل اللي بيتفتح من قسم إضافة (زي aradeb) بيجيب نتايج الإضافة دي بس، من غير بحث تورنت ولا إضافات تانية =====
 let FAD = null;
+// إضافات عربي/مدبلج/مترجم: زرار مستقل بيعرض نتايج الإضافة دي بس (من غير تورنت ولا إضافات تانية)
+function arAddonItems() { return (ST.items || []).filter(a => a.stream && /arab|aradeb|عرب|subscene|دبل|ترجم/i.test(a.name + ' ' + (a.base || ''))); }
+function stOnly(aid, s, e) {
+  if (!cur) return;
+  FAD = {aid: aid, mid: '', type: cur.type, id: cur.id};
+  return stGo(s, e);
+}
 function faAttr(t) { return t && t.aid ? ' data-aid="' + esc(t.aid) + '" data-mid="' + esc(t.mid || '') + '"' : ''; }
 function faSet(el) { const d = el.dataset || {}; FAD = d.aid ? {aid: d.aid, mid: d.mid || '', pend: true} : null; }
 function faOn() { return !!(FAD && !FAD.pend && cur && FAD.type === cur.type && String(FAD.id) === String(cur.id)); }
