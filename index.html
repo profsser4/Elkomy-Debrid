@@ -17,6 +17,7 @@ html.lite .poster{transition:none!important}</style>
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v87: تبويب «مسلسلات» في الـIPTV بقى يعرض اللي انت ضفته بس (الأقسام المثبّتة + المسلسلات المثبّتة)، من غير أقسام القنوات والباقي. زرار «➕ أضف / رتّب أقسام» فيه ☆ لإضافة أي قسم، وزرار «📂 اعرض كل الأقسام» يرجّع القديم (من غير تعديل في bot.py)
   v86: TMDB هو الأساس (عربي): كروت صفوف الإضافات بتفتح بصفحة TMDB مباشرة، وزرار نتايج Stremio بيشتغل بـTMDB id حتى من غير IMDb. صفوف الإضافات ظاهرة لكل الأعضاء تلقائي والعضو يقدر يقفل أي صف من «مفضلتي» (محتاج bot.py الجديد)
   v79: التحميل: تجديد الرابط المنتهي تلقائي من الأصل (مكتبة / تورنت / رابط أصلي) في كل أزرار التحميل، مع إعادة محاولة تلقائية، والاستكمال بياخد رابط جديد لوحده من غير ما ترجع للصفحة
   v78: البحث الذكي: زرار «ارفع صورة من الفيلم» بقى بيفتح اختيار الصور مباشرة (إصلاح WebView الأندرويد) + لصق صورة كبديل (مع إضافة onShowFileChooser في MainActivity)
@@ -3305,6 +3306,28 @@ function ivTogglePin(id, btn, k) {
   if (IV.open && IV.cat === '__pin') ivRender();
 }
 const ivCatPinned = (k, id) => IV.pins.cats.some(c => c.k === k && c.id === String(id));
+// وضع «اللي ضفته بس»: التبويب يعرض الأقسام والعناصر المثبّتة بس. بيتحفظ جوه hidden[kind] بعلامة '__only' / '__all' (من غير تعديل في السيرفر)
+const IV_ONLY_DEF = {series: true};
+function ivOnly(kind) {
+  const h = ((IV.pins.hidden || {})[kind] || []).map(String);
+  if (h.includes('__all')) return false;
+  if (h.includes('__only')) return true;
+  return !!IV_ONLY_DEF[kind];
+}
+function ivOnlyToggle(kind) {
+  const on = !ivOnly(kind);
+  IV.pins.hidden = IV.pins.hidden || {};
+  IV.pins.hidden[kind] = (IV.pins.hidden[kind] || []).map(String).filter(x => x !== '__only' && x !== '__all').concat(on ? '__only' : '__all');
+  ivPinsSave();
+  IV.cat = ''; IV.lim = 90;
+  ivRender();
+}
+function ivOrdPin(btn) {
+  const kind = IV.ord.kind, id = btn.parentNode.dataset.id;
+  const c = IV.ord.cats.find(x => String(x.category_id) === id);
+  ivToggleCat(kind, id, c ? c.category_name : '');
+  ivOrderRender();
+}
 function ivToggleCat(k, id, n) {
   id = String(id);
   if (!IV.gm && ((IV.g || {}).cats || []).some(x => x.k === k && String(x.id) === id)) { toast('📢 القسم مثبّت للكل من الأدمن — الأدمن بس يقدر يشيله'); return; }
@@ -3356,11 +3379,11 @@ function ivOrderRender() {
   const hid = new Set(((IV.pins.hidden || {})[kind] || []).map(String));
   const box = $('ivOrdBody'), keep = box.scrollTop;
   const rows = list.map((c, i) => ({c: c, i: i})).filter(x => !q || String(x.c.category_name).toLowerCase().includes(q));
-  box.innerHTML = '<p style="color:var(--mut);font-size:12px;margin:4px 2px 10px;line-height:1.8">رتّب الأقسام براحتك: ⤒ فوق خالص · ▲▼ خطوة · ⤓ تحت خالص · ✏️ تغيير الاسم · 👁 إخفاء القسم من الشريط (بيفضل ظاهر في «الكل»). بيتحفظ لبروفايلك لوحده.</p>' +
+  box.innerHTML = '<p style="color:var(--mut);font-size:12px;margin:4px 2px 10px;line-height:1.8">رتّب الأقسام براحتك: ☆ ضيف القسم لقائمتك (⭐ = ظاهر في «اللي ضفته بس») · ⤒ فوق خالص · ▲▼ خطوة · ⤓ تحت خالص · ✏️ تغيير الاسم · 👁 إخفاء القسم من الشريط (بيفضل ظاهر في «الكل»). بيتحفظ لبروفايلك لوحده.</p>' +
     (rows.map(x => {
       const id = esc(x.c.category_id), off = hid.has(String(x.c.category_id));
       return '<div class="ivor' + (off ? ' off' : '') + '" data-id="' + id + '"><span class="ivn">' + (x.i + 1) + '</span>' +
-        '<span class="ivnm">' + (ivCatPinned(kind, x.c.category_id) ? '⭐ ' : '') + esc(x.c.category_name) + (x.c._on ? ' <small style="color:var(--mut)">(' + esc(x.c._on) + ')</small>' : '') + '</span><button onclick="ivRenameCat(this)" aria-label="تغيير الاسم">✏️</button>' +
+        '<span class="ivnm">' + (ivCatPinned(kind, x.c.category_id) ? '⭐ ' : '') + esc(x.c.category_name) + (x.c._on ? ' <small style="color:var(--mut)">(' + esc(x.c._on) + ')</small>' : '') + '</span><button onclick="ivOrdPin(this)" aria-label="إضافة">' + (ivCatPinned(kind, x.c.category_id) ? '⭐' : '☆') + '</button><button onclick="ivRenameCat(this)" aria-label="تغيير الاسم">✏️</button>' +
         '<button onclick="ivMove(this,\'top\')" aria-label="فوق خالص">⤒</button><button onclick="ivMove(this,\'up\')" aria-label="فوق">▲</button>' +
         '<button onclick="ivMove(this,\'down\')" aria-label="تحت">▼</button><button onclick="ivMove(this,\'bot\')" aria-label="تحت خالص">⤓</button>' +
         '<button onclick="ivHideCat(this)" aria-label="إخفاء">' + (off ? '🙈' : '👁') + '</button></div>';
@@ -3990,11 +4013,13 @@ async function ivRender() {
   if (IV.tab === 'me') return ivMe(box);
   const kind = IV.tab, q = IV.q.toLowerCase();
   const _lt = setTimeout(() => { if (tok === IV.rt && !IV.sel) box.innerHTML = pend('جاري تحميل القايمة... (أول مرة بس، بعد كده بتفتح فورًا)'); }, 220);
+  const onlyM = kind !== 'live' && ivOnly(kind);
   let cats, list;
   try {
     cats = await ivCats(kind);
+    if (onlyM && !q && !IV.cat) { const pc = cats.find(c => ivCatPinned(kind, c.category_id)); IV.cat = pc ? String(pc.category_id) : '__pin'; }
     // لو الحساب كبير: «الكل» بيفتح أول قسم بدل ما يحمّل كل الأفلام مرة واحدة
-    if (!q && !IV.cat && kind !== 'live' && ivBig(kind)) {
+    if (!q && !IV.cat && kind !== 'live' && !onlyM && ivBig(kind)) {
       const hs = new Set(((IV.pins.hidden || {})[kind] || []).map(String));
       const f = ivSortCats(kind, cats).find(c => !hs.has(String(c.category_id)));
       if (f) IV.cat = String(f.category_id);
@@ -4002,6 +4027,7 @@ async function ivRender() {
     const useCat = IV.cat && IV.cat !== '__pin' && !q;
     list = await ivList(IV_ACT[kind], useCat ? IV.cat : '');
     if (kind === 'live' && IV.cat === '__pin') list = await ivList(IV_ACT.live);
+    else if (onlyM && IV.cat === '__pin' && !q) list = await ivList(IV_ACT[kind]);
   } catch (e) { clearTimeout(_lt); if (tok === IV.rt) box.innerHTML = ivErr(e); return; }
   clearTimeout(_lt);
   if (tok !== IV.rt) return;
@@ -4011,6 +4037,7 @@ async function ivRender() {
     const by = new Map(list.map(x => [String(x[idk]), x]));
     items = ftPinLive(list);
   }
+  if (onlyM && IV.cat === '__pin' && !q) items = items.filter(x => ivPinned(x[idk], kind));
   if (q) items = items.filter(x => String(x.name || '').toLowerCase().includes(q));
   if (kind !== 'live' || q) {
     items = items.slice();
@@ -4019,19 +4046,21 @@ async function ivRender() {
   }
   const pinCats = IV.pins.cats.filter(c => c.k === kind);
   const chip = (id, n, on) => '<button class="' + (on ? 'on' : '') + '" data-c="' + esc(id) + '" onclick="ivSetCat(this.dataset.c)">' + n + '</button>';
-  let chips = (kind !== 'live' && ivBig(kind)) ? '' : chip('', 'الكل', !IV.cat);
+  let chips = (onlyM || (kind !== 'live' && ivBig(kind))) ? '' : chip('', 'الكل', !IV.cat);
   if (kind === 'live') chips += chip('__pin', '⭐ المثبّت', IV.cat === '__pin');
+  if (onlyM) chips += chip('__pin', kind === 'series' ? '⭐ مسلسلاتي' : '⭐ أفلامي', IV.cat === '__pin');
   const hidSet = new Set(((IV.pins.hidden || {})[kind] || []).map(String));
-  chips += ivSortCats(kind, cats).filter(c => !hidSet.has(String(c.category_id)) || IV.cat === String(c.category_id))
+  chips += ivSortCats(kind, cats).filter(c => !onlyM || ivCatPinned(kind, c.category_id))
+    .filter(c => !hidSet.has(String(c.category_id)) || IV.cat === String(c.category_id))
     .map(c => chip(c.category_id, (ivCatPinned(kind, c.category_id) ? '⭐ ' : '') + esc(c.category_name), IV.cat === String(c.category_id))).join('');
   const cur = cats.find(c => String(c.category_id) === IV.cat);
   const bar = '<div class="clchips">' + chips + '</div>' +
-    '<div class="clchips"><button onclick="ivOrderOpen()">↕️ رتّب الأقسام</button>' + (kind !== 'live' ? [['new', '🆕 الأحدث'], ['az', '🔤 أ - ي']].map(c => '<button class="' + (IV.sort === c[0] ? 'on' : '') + '" onclick="IV.sort=\'' + c[0] + '\';ivRender()">' + c[1] + '</button>').join('') : '') +
+    '<div class="clchips"><button onclick="ivOrderOpen()">' + (onlyM ? '➕ أضف / رتّب أقسام' : '↕️ رتّب الأقسام') + '</button>' + (kind !== 'live' ? '<button class="' + (onlyM ? 'on' : '') + '" onclick="ivOnlyToggle(\'' + kind + '\')">' + (onlyM ? '📂 اعرض كل الأقسام' : '⭐ اللي ضفته بس') + '</button>' : '') + (kind !== 'live' ? [['new', '🆕 الأحدث'], ['az', '🔤 أ - ي']].map(c => '<button class="' + (IV.sort === c[0] ? 'on' : '') + '" onclick="IV.sort=\'' + c[0] + '\';ivRender()">' + c[1] + '</button>').join('') : '') +
     (cur ? '<button data-k="' + kind + '" data-i="' + esc(cur.category_id) + '" data-n="' + esc(cur.category_name) + '" onclick="ivToggleCat(this.dataset.k,this.dataset.i,this.dataset.n)">' + (ivCatPinned(kind, cur.category_id) ? '⭐ القسم مثبّت' : '📌 ثبّت القسم') + '</button>' : '') + '</div>';
   const shown = items.slice(0, IV.lim);
   box.innerHTML = bar + '<div id="ivCw">' + ((kind === 'vod' || kind === 'series') && !q && !IV.cat ? ivCwRow(kind) : '') + '</div>' + (items.length ? '<div class="clgrid' + (kind === 'live' ? ' ivg' : '') + '">' + shown.map(x => ivTile(kind, x)).join('') + '</div>' +
     (items.length > shown.length ? '<div style="text-align:center;margin:14px"><button class="search-btn" style="max-width:260px" onclick="IV.lim+=120;ivRender()">عرض المزيد (' + (items.length - shown.length) + ')</button></div>' : '')
-    : '<p style="color:var(--mut);text-align:center;margin-top:40px">' + (IV.cat === '__pin' ? 'لسه ما ثبّتّش قنوات. دوس 📌 على أي قناة.' : 'مفيش نتائج') + '</p>');
+    : '<p style="color:var(--mut);text-align:center;margin-top:40px">' + (IV.cat === '__pin' ? (onlyM ? 'لسه مفيش حاجة هنا 👌<br>دوس «➕ أضف / رتّب أقسام» وعلّم ☆ على القسم اللي عاوزه، أو ابحث ودوس 📌 على أي عمل.' : 'لسه ما ثبّتّش قنوات. دوس 📌 على أي قناة.') : 'مفيش نتائج') + '</p>');
   try { lzScan(); } catch (e) {}
   try { tvApply(); } catch (e) {}
 }
@@ -10880,6 +10909,9 @@ const CAT_GEN = ['action', 'drama', 'comedy', 'crime', 'scifi', 'horror', 'roman
 const CAT_TOON = [['cartoon', 'كرتون'], ['family', 'عائلي']];
 const CAT_LIB = {movie: 'movie', tv: 'series', cartoon: 'cartoon'};
 const CATR = {};
+// v90: تبويبا «أفلام» و«مسلسلات» بيعرضوا صفوف الإضافات (زي aradeb) بس: أي إضافة تتضاف بتظهر لوحدها، والأفلام في الأفلام والمسلسلات في المسلسلات. المثبّت للكل بيظهر في الرئيسية. غيّرها false لو عاوز ترجّع القديم
+const CAT_ADDON_ONLY = true;
+const catAddonOnly = () => CAT_ADDON_ONLY && (CAT === 'movie' || CAT === 'tv');
 const normTy = t => t === 'series' ? 'tv' : t;
 const catTy = () => (CAT === 'movie' || CAT === 'tv') ? CAT : '';
 // ---- نطاق البحث لكل قسم: الرئيسية بتبحث في كل حاجة، وباقي الأقسام بتبحث في نفسها بس ----
@@ -10928,13 +10960,14 @@ function applyCat(c) {
   closeDetails();
   renderGenres();
   renderHero();
-  if (c === 'movie' || c === 'tv' || c === 'cartoon' || c === 'korean') loadCatRows(c);
+  if (((c === 'movie' || c === 'tv') && !CAT_ADDON_ONLY) || c === 'cartoon' || c === 'korean') loadCatRows(c);
+  if (CAT_ADDON_ONLY && (c === 'movie' || c === 'tv')) { try { ensureAddonRows(true); } catch (e) {} }
   window.scrollTo(0, 0);
 }
 function heroList() {
   const HX = HOME_ONLY_NEW ? xlFilter(HERO) : HERO;
   if (CAT === 'home') return HX;
-  if (CAT === 'movie' || CAT === 'tv') return HX.filter(x => normTy(x.type) === CAT);
+  if (CAT === 'movie' || CAT === 'tv') return CAT_ADDON_ONLY ? [] : HX.filter(x => normTy(x.type) === CAT);
   return [];
 }
 // ---- الكوري: بيتضاف في الأفلام والمسلسلات (صف + زرار) وكمان له قسم لوحده ----
@@ -10985,6 +11018,13 @@ function catView() {
     if (!lst.length) return warn('قائمتك فاضية. افتح أي فيلم أو مسلسل ودوس «أضف لقائمتي».');
     return '<h3 class="sec">❤️ قائمتي</h3>' + row('', lst).replace('<h3 class="sec"></h3><div class="hrow">', '<div class="bgrid">') +
       (LATEST.length ? row('🔔 جديد في قائمتي', LATEST) : '');
+  }
+  if (catAddonOnly()) {   // صفوف الإضافات بس، بنوع القسم (فيلم/مسلسل)
+    if (!ARD_ALL) ensureAddonRows(true);
+    const hr0 = ((prof() || {}).hr) || [];
+    (ROWS || []).forEach(r => { if (hr0.includes(r.id)) return; const it = (r.items || []).filter(ok); if (it.length) h += row(r.title, it, r.id); });
+    if (!ROWS) return pend('جاري تحميل صفوف الإضافات...');
+    return h || warn('مفيش حاجة من الإضافات هنا لسه. أي إضافة تضيفها هتظهر هنا لوحدها.');
   }
   // كمّل المشاهدة (للقسم ده بس)
   const groups = new Map();
