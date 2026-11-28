@@ -1069,7 +1069,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=87;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=89;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2892,9 +2892,9 @@ function row(title, list, rid) {
   if (!list.length) return '';
   if (rid && isTv() && list.length > TV_ROW_N) list = list.slice(0, TV_ROW_N);     // التلفزيون: 6 أعمال بس في الصف + زرار «المزيد»
   return '<h3 class="sec">' + title + '</h3><div class="hrow">' + list.map(t =>
-    (t.id ? '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">'
-      : t.imdb ? '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">'
-      : '<div class="poster" data-q="' + esc(t.title) + '" data-y="' + esc(t.year) + '" data-t="' + esc(t.type) + '" onclick="openLookup(this)">') +
+    (t.id ? '<div class="poster"' + faAttr(t) + ' onclick="' + (t.aid ? 'faSet(this);' : '') + 'openDetails(\'' + t.type + '\',' + t.id + ')">'
+      : t.imdb ? '<div class="poster"' + faAttr(t) + ' data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="' + (t.aid ? 'faSet(this);' : '') + 'openImdb(this.dataset.i,this.dataset.t)">'
+      : '<div class="poster"' + faAttr(t) + ' data-q="' + esc(t.title) + '" data-y="' + esc(t.year) + '" data-t="' + esc(t.type) + '" onclick="' + (t.aid ? 'faSet(this);' : '') + 'openLookup(this)">') +
     (t.rating > 0 ? '<span class="rt">★ ' + Number(t.rating).toFixed(1) + '</span>' : '') +
     (t.cl ? '<span class="agb lv' + (t.lv < 0 ? 'u' : t.lv) + '">' + esc(t.cl) + '</span>' : '') +
     (t.poster ? '<img ' + lzA(t.poster) + ' alt="">'
@@ -5784,15 +5784,15 @@ async function stGo(s, e, auto) {
   panel.style.display = 'block';
   $('torrentHeader').innerHTML = torrentHeader();
   box.innerHTML = pend('بجيب النتايج من إضافات Stremio...');
-  panel.scrollIntoView({behavior: 'smooth'});
+  if (!auto) panel.scrollIntoView({behavior: 'smooth'});   // التشغيل التلقائي مايسحبش الصفحة لتحت
   let d;
   try {
-    d = (await api('/stremio/streams?type=' + cur.type + '&imdb=' + encodeURIComponent(cur.imdb || '') + '&tmdb=' + cur.id +
+    d = (await api('/stremio/streams?type=' + cur.type + '&imdb=' + encodeURIComponent(cur.imdb || '') + '&tmdb=' + cur.id + faQS() +
       (want ? '&s=' + want.s + '&e=' + (want.e || 1) : ''))).d;
   } catch (x) { if (my === seq) box.innerHTML = ERR; return; }
   if (my !== seq) return;
   if (d.error || !(d.results || []).length) {
-    if (auto) return go(s, e, true, true, true);
+    if (auto && !faOn()) return go(s, e, true, true, true);
     const nt = (d.notes || []).map(x => '• ' + esc(x)).join('<br>');
     return box.innerHTML = warn(d.error || 'الإضافات مرجعتش نتايج.') +
       (nt ? '<div style="font-size:12px;color:var(--mut);direction:ltr;text-align:left">' + nt + '</div>' : '');
@@ -5810,6 +5810,7 @@ async function stGo(s, e, auto) {
   if (!c.length && NOCHK) c = shown.slice();
   const best = bestOf(c);
   if (best) return pullTorrent(shown.indexOf(best));
+  if (faOn()) return;   // عمل من قسم إضافة: نتايجها بس، من غير بحث تورنت
   go(s, e, true, true, true);
 }
 
@@ -14231,6 +14232,22 @@ async function ruRunNow() {
   } catch (e) { toast('❌ ' + e.message, true); }
   ruWLLoad(); try { libRefresh(); } catch (e) {}
 }
+</script>
+<script>
+// ===== v89: العمل اللي بيتفتح من قسم إضافة (زي aradeb) بيجيب نتايج الإضافة دي بس، من غير بحث تورنت ولا إضافات تانية =====
+let FA = null;
+function faAttr(t) { return t && t.aid ? ' data-aid="' + esc(t.aid) + '" data-mid="' + esc(t.mid || '') + '"' : ''; }
+function faSet(el) { const d = el.dataset || {}; FA = d.aid ? {aid: d.aid, mid: d.mid || '', pend: true} : null; }
+function faOn() { return !!(FA && !FA.pend && cur && FA.type === cur.type && String(FA.id) === String(cur.id)); }
+function faQS() { return faOn() ? '&aid=' + encodeURIComponent(FA.aid) + (FA.mid ? '&mid=' + encodeURIComponent(FA.mid) : '') : ''; }
+(function () {
+  const od = window.openDetails;
+  if (typeof od !== 'function') return;
+  window.openDetails = function (t, i) {
+    if (FA && FA.pend) { FA.pend = false; FA.type = t; FA.id = i; } else FA = null;
+    return od.apply(this, arguments);
+  };
+})();
 </script>
 </body>
 </html>
