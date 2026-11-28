@@ -1070,7 +1070,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=89;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=90;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2773,7 +2773,12 @@ function renderShelves() {
   if (typeof TV_FREED !== 'undefined' && TV_FREED) return;
   const el = $('shelves');
   if (!PID) { el.innerHTML = ''; cwTopSet(''); return; }
-  if (CAT !== 'home') { cwTopSet(''); el.innerHTML = catView(); tvApply(); return; }
+  if (CAT !== 'home') {
+    cwTopSet('');
+    let ch;
+    try { ch = catView(); } catch (e) { ch = '<div class="warn">❌ تعذّر عرض القسم: ' + esc((e && e.message) || 'خطأ') + '</div>'; }
+    el.innerHTML = ch; tvApply(); return;
+  }
   if (HOME_ONLY_NEW) { el.innerHTML = newHomeHTML(); tvApply(); return; }
   cwTopSet('');
   const its = Object.values(UD.items[PID] || {}).filter(x => !x.del && x.key);
@@ -3088,6 +3093,7 @@ function closeDetails() {
 // ================= مكتبتي الخاصة (أفلام / مسلسلات / كرتون) — الأدمن بس بيضيف، والروابط مخفية عن الباقي =================
 // ================= IPTV: حساب خاص لكل عضو (الأدمن بس هو اللي بيضيف الهوست/اليوزر/الباس) =================
 // الطلبات بتطلع من جهاز العضو نفسه (التطبيق عن طريق الجسر AndroidPlayer.httpGet) عشان الآيبي مصري ومن غير CORS.
+const IV_LEAN = true;   // v90: مانحمّلش كتالوج الأفلام/المسلسلات كله عند فتح الصفحة (تقل كبير). بيتحمّل بس لو فيه مثبّتات منهم
 const IV = {cfg: null, loaded: false, ck: '', L: {}, C: {}, pins: {live: [], cats: [], vod: [], ser: [], order: {}, hidden: {}}, pinsPid: null, homeFor: null, homePid: null, homeHTML: '',
   open: false, tab: 'vod', cat: '', q: '', lim: 90, sort: 'new', sel: null, ss: null, flat: [], flatSid: null, rt: 0, info: null};
 const IV_PEND = {};
@@ -3867,7 +3873,7 @@ async function ivHomeLoad(pid) {
   if (!cfg) { IV.homeHTML = ''; IV.pinHTML = ''; IV.homePid = pid; return; }
   if (IV.homeFor !== pid) return;
   // نبدأ تحميل القوائم الكبيرة بالتوازي من أول لحظة (بدل ما نستنى واحدة واحدة)
-  ivList('get_vod_streams').catch(() => {}); ivList('get_series').catch(() => {});
+  if (!IV_LEAN) { ivList('get_vod_streams').catch(() => {}); ivList('get_series').catch(() => {}); }
   await ivPinsLoad();
   if (IV.pins && IV.pins.live && IV.pins.live.length) ivList('get_live_streams').catch(() => {});
   await ftLoad();
@@ -3876,7 +3882,8 @@ async function ivHomeLoad(pid) {
   const N = isTv() ? TV_ROW_N : 20;
   let err = '';
   const bad = e => { err = err || (e && e.message) || 'خطأ'; return []; };
-  const [vod, ser] = await Promise.all([ivList('get_vod_streams').catch(bad), ivList('get_series').catch(bad)]);
+  const needV = !IV_LEAN || (IV.pins.vod || []).length, needS = !IV_LEAN || (IV.pins.ser || []).length;
+  const [vod, ser] = await Promise.all([needV ? ivList('get_vod_streams').catch(bad) : [], needS ? ivList('get_series').catch(bad) : []]);
   const pc = k => '';   // v76: الأقسام المثبّتة بقت أقسام كاملة (ivSecBuild) مش كروت
   let h = '', pinH = '', pv = [], ps = [], livePinH = '';
   const st = ivDaysTxt(cfg.stat);
@@ -11022,7 +11029,7 @@ function catView() {
   if (catAddonOnly()) {   // صفوف الإضافات بس، بنوع القسم (فيلم/مسلسل)
     if (!ARD_ALL) ensureAddonRows(true);
     const hr0 = ((prof() || {}).hr) || [];
-    (ROWS || []).forEach(r => { if (hr0.includes(r.id)) return; const it = (r.items || []).filter(ok); if (it.length) h += row(r.title, it, r.id); });
+    (ROWS || []).forEach(r => { if (hr0.includes(r.id)) return; const it = (r.items || []).filter(x => x.aid && ok(x)); if (it.length) h += row(r.title, it, r.id); });
     if (!ROWS) return pend('جاري تحميل صفوف الإضافات...');
     return h || warn('مفيش حاجة من الإضافات هنا لسه. أي إضافة تضيفها هتظهر هنا لوحدها.');
   }
