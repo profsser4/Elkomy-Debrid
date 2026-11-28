@@ -17,6 +17,7 @@ html.lite .poster{transition:none!important}</style>
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
 <!--
   سجل التعديلات (كل تعديل بياخد رقم جديد، والرقم بيظهر فوق الصفحة في الشارة الصغيرة):
+  v86: TMDB هو الأساس (عربي): كروت صفوف الإضافات بتفتح بصفحة TMDB مباشرة، وزرار نتايج Stremio بيشتغل بـTMDB id حتى من غير IMDb. صفوف الإضافات ظاهرة لكل الأعضاء تلقائي والعضو يقدر يقفل أي صف من «مفضلتي» (محتاج bot.py الجديد)
   v79: التحميل: تجديد الرابط المنتهي تلقائي من الأصل (مكتبة / تورنت / رابط أصلي) في كل أزرار التحميل، مع إعادة محاولة تلقائية، والاستكمال بياخد رابط جديد لوحده من غير ما ترجع للصفحة
   v78: البحث الذكي: زرار «ارفع صورة من الفيلم» بقى بيفتح اختيار الصور مباشرة (إصلاح WebView الأندرويد) + لصق صورة كبديل (مع إضافة onShowFileChooser في MainActivity)
   v77: القواعد المشتركة (الذوق/تبويبات القنوات/أنماط الأقسام/اقتراحات ⚙) اتفصلت في elk_shared.js ومتزامنة مع شاشة الـTV (sync_shared.py)
@@ -1068,7 +1069,7 @@ body.m-tv .ftbg{filter:brightness(.4);transform:none}body.m-tv .fttag,body.m-tv 
 <body>
 <div id="pageVer" style="position:fixed;bottom:6px;right:6px;z-index:2147483646;background:rgba(0,0,0,.5);color:#fff;opacity:.7;font:10px sans-serif;padding:1px 7px;border-radius:8px;pointer-events:none;direction:ltr"></div>
 <script>try{if(window.top!==window.self){window.top.location=window.self.location;}}catch(e){document.documentElement.innerHTML='';}</script>
-<script>window.PAGE_VER=85;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
+<script>window.PAGE_VER=86;document.getElementById('pageVer').textContent='page v'+window.PAGE_VER;</script>
 
 <div id="login-screen">
 <div class="login-box">
@@ -2891,9 +2892,9 @@ function row(title, list, rid) {
   if (!list.length) return '';
   if (rid && isTv() && list.length > TV_ROW_N) list = list.slice(0, TV_ROW_N);     // التلفزيون: 6 أعمال بس في الصف + زرار «المزيد»
   return '<h3 class="sec">' + title + '</h3><div class="hrow">' + list.map(t =>
-    (t.imdb ? '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">'
-      : t.lk ? '<div class="poster" data-q="' + esc(t.title) + '" data-y="' + esc(t.year) + '" data-t="' + esc(t.type) + '" onclick="openLookup(this)">'
-      : '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">') +
+    (t.id ? '<div class="poster" onclick="openDetails(\'' + t.type + '\',' + t.id + ')">'
+      : t.imdb ? '<div class="poster" data-i="' + esc(t.imdb) + '" data-t="' + esc(t.type) + '" onclick="openImdb(this.dataset.i,this.dataset.t)">'
+      : '<div class="poster" data-q="' + esc(t.title) + '" data-y="' + esc(t.year) + '" data-t="' + esc(t.type) + '" onclick="openLookup(this)">') +
     (t.rating > 0 ? '<span class="rt">★ ' + Number(t.rating).toFixed(1) + '</span>' : '') +
     (t.cl ? '<span class="agb lv' + (t.lv < 0 ? 'u' : t.lv) + '">' + esc(t.cl) + '</span>' : '') +
     (t.poster ? '<img ' + lzA(t.poster) + ' alt="">'
@@ -2928,7 +2929,7 @@ const IC_P = {
 const IC = n => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC_P[n] + '</svg>';
 const chips = (a, sc) => '<div class="chips' + (sc ? ' scroll' : '') + '">' +
   a.map(x => '<span class="chip">' + esc(x) + '</span>').join('') + '</div>';
-const stOK = () => (ST.n > 0 || ROLE !== 'admin') && !!cur && !!cur.imdb;   // الأعضاء: السيرفر هو اللي يقرر، مش عدّاد الإضافات في المتصفح
+const stOK = () => (ST.n > 0 || ROLE !== 'admin') && !!cur && !!(cur.imdb || cur.id);   // الأعضاء: السيرفر هو اللي يقرر، مش عدّاد الإضافات في المتصفح
 const stBtn = (s, e) => stOK()
   ? '<button class="btn-st" onclick="stGo(' + s + ',' + e + ')">🧩</button>' : '';
 const playBtn = (s, e) => {
@@ -6380,9 +6381,9 @@ const SOURCES = [
    title: t => t.title, thumb: t => t.poster || '',
    meta: t => (t.type === 'tv' ? '📺 مسلسل' : '🎬 فيلم') + (t.year ? ' · ' + t.year : '') + (t.title_ar ? ' · ' + t.title_ar : ''),
    open: t => {
+     if (t.id) return openDetails(t.type, t.id);
      if (t.imdb) return openImdb(t.imdb, t.type);
      if (t.lk) return openLookup({dataset: {q: t.title, t: t.type, y: t.year || ''}});
-     openDetails(t.type, t.id);
    }},
   {id: 'iptv', icon: '📡', name: 'IPTV', color: '#ff5a36', quiet: true,
    search: async q => {
@@ -11063,7 +11064,7 @@ let FAVL = null, FAVD = {}, FAV_BUSY = {}, ARD_LOADED = false, FAV_OPEN = false,
 const XL_GROUPS = {ar: ['ar'], ko: ['ko'], in: ['hi', 'ta', 'te', 'ml', 'kn', 'bn', 'mr', 'pa'], tr: ['tr'], ja: ['ja'], zh: ['zh', 'cn'], th: ['th'], en: ['en']};
 const XL_NAMES = [['ar', '🇪🇬 عربي'], ['ko', '🇰🇷 كوري'], ['in', '🇮🇳 هندي'], ['tr', '🇹🇷 تركي'], ['ja', '🇯🇵 ياباني'], ['zh', '🇨🇳 صيني'], ['th', '🇹🇭 تايلاندي'], ['en', '🇺🇸 إنجليزي']];
 const NEWROW_NAMES = [['new-for', '🌍 جديد أجنبي'], ['new-ar', '🇪🇬 جديد عربي'], ['new-toon', '🧸 كرتون وأنمي جديد']];
-const pf = () => { const p = prof() || {}; return {fav: p.fav || [], xl: p.xl || [], ar: p.ar || [], hn: p.hn || []}; };
+const pf = () => { const p = prof() || {}; return {fav: p.fav || [], xl: p.xl || [], ar: p.ar || [], arx: p.arx || [], hn: p.hn || []}; };
 function xlSet() { const s = new Set(); pf().xl.forEach(g => (XL_GROUPS[g] || []).forEach(c => s.add(c))); return s; }
 function xlFilter(items) { const s = xlSet(); return s.size ? (items || []).filter(x => !s.has(x.lg)) : (items || []); }
 const favId = k => String(k).replace(/[^a-z0-9]/gi, '_');
@@ -11098,11 +11099,10 @@ async function ensureAddonRows(all) {
     if (CAT === 'movie' || CAT === 'tv') renderShelvesSoon();
     return;
   }
-  const want = (pf().ar || []).map(String);
-  const have = id => (ROWS || []).some(r => String(r.id) === id);
-  if (ARD_LOADED && (want.every(have) || Date.now() - ARD_T < 60000)) return;
+  // v86: صفوف الإضافات ظاهرة لكل الأعضاء تلقائي (من غير ما كل عضو يعلّمها). العضو يقدر يخفي صف معيّن بس (arx)
+  if (ARD_LOADED && Date.now() - ARD_T < ((ROWS && ROWS.length) ? 10 * 60 * 1000 : 60000)) return;
   ARD_LOADED = true; ARD_T = Date.now();
-  try { const {d} = await api('/rows' + (want.length ? '?ids=' + encodeURIComponent(want.join(',')) : '')); ROWS = layApply(d.rows || []); } catch (e) { ROWS = ROWS || []; ARD_LOADED = false; }
+  try { const {d} = await api('/rows'); ROWS = layApply(d.rows || []); ARD_ALL = true; } catch (e) { ROWS = ROWS || []; ARD_LOADED = false; }
   if (CAT === 'home' && !FAV_OPEN) renderShelvesSoon();
 }
 async function loadFav(force) {
@@ -11131,7 +11131,7 @@ function homeBoot() {
   try { loadBlocks(); } catch (e) {}
   if (hbHas(i => i === 'fav')) { ensureFavList(); loadFav(); seedFavMaybe(); }
   try { tzBoot(); } catch (e) {}
-  if (pf().ar.length && hbHas(i => i === 'ar')) ensureAddonRows();
+  if (hbHas(i => i === 'ar')) ensureAddonRows();
 }
 function favBarHTML() {
   const f = pf().fav;
@@ -11143,7 +11143,7 @@ function favBarHTML() {
 function favGo(k) { const el = document.getElementById('favs-' + favId(k)); if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
 // ================= أقسام الرئيسية (مرتّبة من الأدمن وبتظهر في الموقع والأندرويد والتلفزيون) =================
 let HB = null, HBD = {}, HB_BUSY = false, HB_T = 0;
-const HB_DEF = ['feat', 'cw', 'pins', 'live', 'ivsec', 'tz'];
+const HB_DEF = ['feat', 'cw', 'pins', 'live', 'ivsec', 'tz', 'ar'];
 try { HB = JSON.parse(localStorage.getItem('hb_v3') || 'null'); } catch (e) { HB = null; }
 function hbList() { return (HB && HB.length) ? HB : HB_DEF.map(id => ({id: id, on: true})); }
 const hbHas = f => hbList().some(b => b.on !== false && f(b.id));
@@ -11173,7 +11173,7 @@ async function loadBlocks(force) {
   } catch (e) {}
   HB_BUSY = false;
   hbLoadCustom(force);
-  try { if (hbHas(i => i === 'fav')) loadFav(); if (hbHas(i => /^new-/.test(i))) loadNew(); if (hbHas(i => i === 'ar') && pf().ar.length) ensureAddonRows(); } catch (e) {}
+  try { if (hbHas(i => i === 'fav')) loadFav(); if (hbHas(i => /^new-/.test(i))) loadNew(); if (hbHas(i => i === 'ar')) ensureAddonRows(); } catch (e) {}
   if (CAT === 'home' && !FAV_OPEN) renderShelvesSoon();
 }
 function newHomeHTML() {
@@ -11218,7 +11218,7 @@ function newHomeHTML() {
           c.rows.forEach(r => { const it = xlFilter(r.items); if (it.length) h += row(r.title, it, r.id); });
         });
       } else if (id === 'ar') {
-        if (P.ar.length && ROWS) ROWS.filter(r => P.ar.includes(r.id)).forEach(r => { h += row(r.title, isTv() ? r.items.slice(0, TV_ROW_N) : r.items, r.id); });
+        if (ROWS && ROWS.length) ROWS.filter(r => r.items && r.items.length && !P.arx.includes(String(r.id))).forEach(r => { const it = xlFilter(r.items); if (it.length) h += row(r.title, isTv() ? it.slice(0, TV_ROW_N) : it, r.id); });
       }
     } catch (e) {}
   });
@@ -11346,8 +11346,8 @@ function drawFav() {
   h += sec('🏠 صفوف الجديد', 'اللي تقفله مش هيظهر في الرئيسية.',
     '<div class="chips">' + NEWROW_NAMES.map(x => favChip('hn', x[0], x[1], !P.hn.includes(x[0]), '')).join('') + '</div>');
   const rs = (ARM || []);
-  h += sec('🧩 صفوف الإضافات (Stremio)', 'علّم الصفوف اللي عايزها تظهر لك بس.',
-    rs.length ? '<div class="chips">' + rs.map(r => favChip('ar', r.id, r.title, P.ar.includes(r.id), '')).join('') + '</div>' : '<p class="fps">' + (ARM ? 'مفيش صفوف إضافات.' : '⏳ جاري التحميل...') + '</p>');
+  h += sec('🧩 صفوف الإضافات (Stremio)', 'كل الصفوف ظاهرة لك. اقفل الصف اللي مش عايزه بس.',
+    rs.length ? '<div class="chips">' + rs.map(r => favChip('arx', String(r.id), r.title, !P.arx.includes(String(r.id)), '')).join('') + '</div>' : '<p class="fps">' + (ARM ? 'مفيش صفوف إضافات.' : '⏳ جاري التحميل...') + '</p>');
   h += '<button class="search-btn" style="margin-top:18px" onclick="closeVP()">تمام ✔</button></div>';
   vpEl().innerHTML = h;
 }
@@ -11357,7 +11357,7 @@ function favTog(el) {
   const f = el.dataset.f, k = el.dataset.k, a = (p[f] || []).slice(), i = a.indexOf(k);
   if (i >= 0) a.splice(i, 1); else a.push(k);
   p[f] = a;
-  el.classList.toggle('on', f === 'hn' ? i >= 0 : i < 0);
+  el.classList.toggle('on', (f === 'hn' || f === 'arx') ? i >= 0 : i < 0);
   clearTimeout(_favT);
   _favT = setTimeout(() => saveProfileObj(p), 700);
 }
